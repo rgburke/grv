@@ -11,7 +11,7 @@ type UI interface {
 	ViewDimension() ViewDimension
 	Update([]*Window) error
 	GetInput() (KeyPressEvent, error)
-	End()
+	Free()
 }
 
 type NCursesUI struct {
@@ -20,7 +20,7 @@ type NCursesUI struct {
 }
 
 type KeyPressEvent struct {
-	key gc.Key
+	key int
 }
 
 func NewNcursesDisplay() *NCursesUI {
@@ -92,6 +92,7 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 				return
 			}
 
+			nwin.Timeout(0)
 			ui.windows[win] = nwin
 		}
 
@@ -130,7 +131,7 @@ func drawWindow(win *Window, nwin *gc.Window) {
 func (ui *NCursesUI) GetInput() (keyPressEvent KeyPressEvent, err error) {
 	for _, nwin := range ui.windows {
 		if y, x := nwin.MaxYX(); y > 0 && x > 0 {
-			keyPressEvent = KeyPressEvent{key: nwin.GetChar()}
+			keyPressEvent = KeyPressEvent{key: int(nwin.GetChar())}
 			return
 		}
 	}
@@ -139,7 +140,7 @@ func (ui *NCursesUI) GetInput() (keyPressEvent KeyPressEvent, err error) {
 	return
 }
 
-func (ui *NCursesUI) End() {
+func (ui *NCursesUI) Free() {
 	for _, nwin := range ui.windows {
 		nwin.Delete()
 	}
