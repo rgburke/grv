@@ -124,6 +124,6 @@ func DrawTags(refView *RefView, refList *RefList, win RenderWindow, rowIndex uin
 	return rowIndex, nil
 }
 
-func (refView *RefView) Handle(keyPressEvent KeyPressEvent) (err error) {
+func (refView *RefView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
 	return
 }

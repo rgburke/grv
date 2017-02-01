@@ -3,13 +3,13 @@ package main
 type WindowView interface {
 	Initialise() error
 	Render(RenderWindow) error
-	Handle(KeyPressEvent) error
+	Handle(KeyPressEvent, HandlerChannels) error
 }
 
 type WindowViewCollection interface {
 	Initialise() error
 	Render(ViewDimension) ([]*Window, error)
-	Handle(KeyPressEvent) error
+	Handle(KeyPressEvent, HandlerChannels) error
 }
 
 type ViewDimension struct {
@@ -45,6 +45,6 @@ func (view *View) Render(viewDimension ViewDimension) ([]*Window, error) {
 	return view.views[view.activeViewIndex].Render(viewDimension)
 }
 
-func (view *View) Handle(keyPressEvent KeyPressEvent) error {
-	return view.views[view.activeViewIndex].Handle(keyPressEvent)
+func (view *View) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) error {
+	return view.views[view.activeViewIndex].Handle(keyPressEvent, channels)
 }

@@ -11,6 +11,11 @@ const (
 	INPUT_SLEEP_MS      = 100
 )
 
+type HandlerChannels struct {
+	displayCh chan<- bool
+	inputCh   <-chan KeyPressEvent
+}
+
 type GRV struct {
 	repoData *RepositoryData
 	view     *View
@@ -118,6 +123,11 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, displayCh chan<- bool, inputCh <-chan KeyPressEvent) {
 	defer waitGroup.Done()
 
+	channels := HandlerChannels{
+		displayCh: displayCh,
+		inputCh:   inputCh,
+	}
+
 	for {
 		select {
 		case keyPressEvent := <-inputCh:
@@ -125,6 +135,8 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, di
 				close(exitCh)
 				return
 			}
+
+			grv.view.Handle(keyPressEvent, channels)
 		}
 	}
 }

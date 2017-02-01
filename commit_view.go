@@ -51,6 +51,6 @@ func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
 	return
 }
 
-func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent) (err error) {
+func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
 	return
 }

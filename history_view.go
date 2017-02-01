@@ -65,7 +65,7 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 	return
 }
 
-func (historyView *HistoryView) Handle(keyPressEvent KeyPressEvent) error {
+func (historyView *HistoryView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) error {
 	view := historyView.views[historyView.activeViewIndex]
-	return view.Handle(keyPressEvent)
+	return view.Handle(keyPressEvent, channels)
 }
