@@ -8,6 +8,7 @@ import (
 const (
 	INPUT_BUFFER_SIZE   = 100
 	DISPLAY_BUFFER_SIZE = 10
+	ERROR_BUFFER_SIZE   = 10
 	INPUT_SLEEP_MS      = 100
 )
 
@@ -58,28 +59,29 @@ func (grv *GRV) Run() {
 	exitCh := make(chan bool)
 	inputCh := make(chan KeyPressEvent, INPUT_BUFFER_SIZE)
 	displayCh := make(chan bool, DISPLAY_BUFFER_SIZE)
+	errorCh := make(chan error, ERROR_BUFFER_SIZE)
 
 	var waitGroup sync.WaitGroup
 
 	waitGroup.Add(1)
-	go grv.runInputLoop(&waitGroup, exitCh, inputCh)
+	go grv.runInputLoop(&waitGroup, exitCh, inputCh, errorCh)
 	waitGroup.Add(1)
-	go grv.runDisplayLoop(&waitGroup, exitCh, displayCh)
+	go grv.runDisplayLoop(&waitGroup, exitCh, displayCh, errorCh)
 	waitGroup.Add(1)
-	go grv.runHandlerLoop(&waitGroup, exitCh, displayCh, inputCh)
+	go grv.runHandlerLoop(&waitGroup, exitCh, displayCh, inputCh, errorCh)
 
 	displayCh <- true
 
 	waitGroup.Wait()
 }
 
-func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, inputCh chan<- KeyPressEvent) {
+func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, inputCh chan<- KeyPressEvent, errorCh chan<- error) {
 	defer waitGroup.Done()
 
 	for {
 		keyPressEvent, err := grv.ui.GetInput()
 		if err != nil {
-
+			errorCh <- err
 		} else if int(keyPressEvent.key) != 0 {
 			inputCh <- keyPressEvent
 		}
@@ -96,7 +98,7 @@ func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, inpu
 	}
 }
 
-func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, displayCh <-chan bool) {
+func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, displayCh <-chan bool, errorCh chan error) {
 	defer waitGroup.Done()
 
 	for {
@@ -106,12 +108,14 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 
 			wins, err := grv.view.Render(viewDimension)
 			if err != nil {
-				// TODO Handle
+				errorCh <- err
 			}
 
 			if err := grv.ui.Update(wins); err != nil {
-				// TODO Handle
+				errorCh <- err
 			}
+		case err := <-errorCh:
+			grv.ui.ShowError(err)
 		case _, ok := <-exitCh:
 			if !ok {
 				return
@@ -120,7 +124,7 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	}
 }
 
-func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, displayCh chan<- bool, inputCh <-chan KeyPressEvent) {
+func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, displayCh chan<- bool, inputCh <-chan KeyPressEvent, errorCh chan<- error) {
 	defer waitGroup.Done()
 
 	channels := HandlerChannels{
@@ -136,7 +140,9 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, di
 				return
 			}
 
-			grv.view.Handle(keyPressEvent, channels)
+			if err := grv.view.Handle(keyPressEvent, channels); err != nil {
+				errorCh <- err
+			}
 		}
 	}
 }

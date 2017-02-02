@@ -11,6 +11,7 @@ type UI interface {
 	ViewDimension() ViewDimension
 	Update([]*Window) error
 	GetInput() (KeyPressEvent, error)
+	ShowError(error)
 	Free()
 }
 
@@ -27,6 +28,14 @@ func NewNcursesDisplay() *NCursesUI {
 	return &NCursesUI{
 		windows: make(map[*Window]*gc.Window),
 	}
+}
+
+func (ui *NCursesUI) Free() {
+	for _, nwin := range ui.windows {
+		nwin.Delete()
+	}
+
+	gc.End()
 }
 
 func (ui *NCursesUI) Initialise() (err error) {
@@ -140,10 +149,6 @@ func (ui *NCursesUI) GetInput() (keyPressEvent KeyPressEvent, err error) {
 	return
 }
 
-func (ui *NCursesUI) Free() {
-	for _, nwin := range ui.windows {
-		nwin.Delete()
-	}
-
-	gc.End()
+func (ui *NCursesUI) ShowError(err error) {
+	// TODO
 }
