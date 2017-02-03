@@ -7,6 +7,7 @@ import (
 )
 
 type RenderWindow interface {
+	Id() string
 	Rows() uint
 	Cols() uint
 	Clear()
@@ -25,6 +26,7 @@ type Cell struct {
 }
 
 type Window struct {
+	id       string
 	rows     uint
 	cols     uint
 	cells    [][]Cell
@@ -32,8 +34,10 @@ type Window struct {
 	startCol uint
 }
 
-func NewWindow() *Window {
-	return &Window{}
+func NewWindow(id string) *Window {
+	return &Window{
+		id: id,
+	}
 }
 
 func (win *Window) Resize(viewDimension ViewDimension) {
@@ -54,6 +58,10 @@ func (win *Window) Resize(viewDimension ViewDimension) {
 func (win *Window) SetPosition(startRow, startCol uint) {
 	win.startRow = startRow
 	win.startCol = startCol
+}
+
+func (win *Window) Id() string {
+	return win.id
 }
 
 func (win *Window) Rows() uint {

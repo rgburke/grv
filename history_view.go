@@ -21,8 +21,8 @@ func NewHistoryView(repoData RepoData) *HistoryView {
 	return &HistoryView{
 		refView:       refView,
 		commitView:    commitView,
-		refViewWin:    NewWindow(),
-		commitViewWin: NewWindow(),
+		refViewWin:    NewWindow("refView"),
+		commitViewWin: NewWindow("commitView"),
 		views:         []WindowView{refView, commitView},
 	}
 }
