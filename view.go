@@ -9,12 +9,14 @@ type WindowView interface {
 	Initialise() error
 	Render(RenderWindow) error
 	Handle(KeyPressEvent, HandlerChannels) error
+	OnActiveChange(bool)
 }
 
 type WindowViewCollection interface {
 	Initialise() error
 	Render(ViewDimension) ([]*Window, error)
 	Handle(KeyPressEvent, HandlerChannels) error
+	OnActiveChange(bool)
 }
 
 type ViewDimension struct {
@@ -47,6 +49,8 @@ func (view *View) Initialise() (err error) {
 		}
 	}
 
+	view.OnActiveChange(true)
+
 	return
 }
 
@@ -58,4 +62,9 @@ func (view *View) Render(viewDimension ViewDimension) ([]*Window, error) {
 func (view *View) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) error {
 	log.Debugf("View handling key %v", keyPressEvent)
 	return view.views[view.activeViewIndex].Handle(keyPressEvent, channels)
+}
+
+func (view *View) OnActiveChange(active bool) {
+	log.Debugf("View active %v", active)
+	view.views[view.activeViewIndex].OnActiveChange(active)
 }

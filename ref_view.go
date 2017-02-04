@@ -18,6 +18,7 @@ type RefView struct {
 	refLists           []RefList
 	activeRefListIndex uint
 	refListeners       []RefListener
+	active             bool
 }
 
 type RefListener interface {
@@ -136,4 +137,9 @@ func DrawTags(refView *RefView, refList *RefList, win RenderWindow, rowIndex uin
 func (refView *RefView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
 	log.Debugf("RefView handling key %v", keyPressEvent)
 	return
+}
+
+func (refView *RefView) OnActiveChange(active bool) {
+	log.Debugf("RefView active %v", active)
+	refView.active = active
 }

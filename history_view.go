@@ -15,6 +15,7 @@ type HistoryView struct {
 	commitViewWin   *Window
 	views           []WindowView
 	activeViewIndex uint
+	active          bool
 }
 
 func NewHistoryView(repoData RepoData) *HistoryView {
@@ -23,11 +24,12 @@ func NewHistoryView(repoData RepoData) *HistoryView {
 	refView.RegisterRefListener(commitView)
 
 	return &HistoryView{
-		refView:       refView,
-		commitView:    commitView,
-		refViewWin:    NewWindow("refView"),
-		commitViewWin: NewWindow("commitView"),
-		views:         []WindowView{refView, commitView},
+		refView:         refView,
+		commitView:      commitView,
+		refViewWin:      NewWindow("refView"),
+		commitViewWin:   NewWindow("commitView"),
+		views:           []WindowView{refView, commitView},
+		activeViewIndex: 1,
 	}
 }
 
@@ -77,4 +79,10 @@ func (historyView *HistoryView) Handle(keyPressEvent KeyPressEvent, channels Han
 	log.Debugf("HistoryView handling key %v", keyPressEvent)
 	view := historyView.views[historyView.activeViewIndex]
 	return view.Handle(keyPressEvent, channels)
+}
+
+func (historyView *HistoryView) OnActiveChange(active bool) {
+	log.Debugf("History active %v", active)
+	historyView.active = active
+	historyView.views[historyView.activeViewIndex].OnActiveChange(active)
 }

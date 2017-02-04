@@ -8,6 +8,7 @@ type CommitView struct {
 	repoData          RepoData
 	activeBranch      *Oid
 	activeCommitIndex map[*Oid]uint
+	active            bool
 }
 
 func NewCommitView(repoData RepoData) *CommitView {
@@ -62,4 +63,9 @@ func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
 func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
 	log.Debugf("CommitView handling key %v", keyPressEvent)
 	return
+}
+
+func (commitView *CommitView) OnActiveChange(active bool) {
+	log.Debugf("CommitView active %v", active)
+	commitView.active = active
 }
