@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
 )
 
@@ -44,6 +45,8 @@ func (win *Window) Resize(viewDimension ViewDimension) {
 	if win.rows == viewDimension.rows && win.cols == viewDimension.cols {
 		return
 	}
+
+	log.Debugf("Resizing window %v from rows:%v,cols:%v to %v", win.id, win.rows, win.cols, viewDimension)
 
 	win.rows = viewDimension.rows
 	win.cols = viewDimension.cols

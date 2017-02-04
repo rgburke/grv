@@ -1,6 +1,7 @@
 package main
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"sync"
 	"time"
 )
@@ -35,6 +36,8 @@ func NewGRV() *GRV {
 }
 
 func (grv *GRV) Initialise(repoPath string) (err error) {
+	log.Info("Initialising GRV")
+
 	if err = grv.repoData.Initialise(repoPath); err != nil {
 		return
 	}
@@ -51,6 +54,8 @@ func (grv *GRV) Initialise(repoPath string) (err error) {
 }
 
 func (grv *GRV) Free() {
+	log.Info("Freeing GRV")
+
 	grv.ui.Free()
 	grv.repoData.Free()
 }
@@ -72,11 +77,15 @@ func (grv *GRV) Run() {
 
 	displayCh <- true
 
+	log.Info("Waiting for loops to finish")
 	waitGroup.Wait()
+	log.Info("All loops finished")
 }
 
 func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, inputCh chan<- KeyPressEvent, errorCh chan<- error) {
 	defer waitGroup.Done()
+	defer log.Info("Input loop stopping")
+	log.Info("Starting input loop")
 
 	for {
 		keyPressEvent, err := grv.ui.GetInput()
@@ -84,6 +93,7 @@ func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, inpu
 			errorCh <- err
 		} else if int(keyPressEvent.key) != 0 {
 			inputCh <- keyPressEvent
+			log.Debugf("Received keypress from UI %v", keyPressEvent)
 		}
 
 		select {
@@ -94,16 +104,19 @@ func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, inpu
 		default:
 			time.Sleep(INPUT_SLEEP_MS * time.Millisecond)
 		}
-
 	}
 }
 
 func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, displayCh <-chan bool, errorCh chan error) {
 	defer waitGroup.Done()
+	defer log.Info("Display loop stopping")
+	log.Info("Starting display loop")
 
 	for {
 		select {
 		case <-displayCh:
+			log.Debug("Received display refresh request")
+
 			viewDimension := grv.ui.ViewDimension()
 
 			wins, err := grv.view.Render(viewDimension)
@@ -115,6 +128,7 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 				errorCh <- err
 			}
 		case err := <-errorCh:
+			log.Errorf("Error channel received error: %v", err)
 			grv.ui.ShowError(err)
 		case _, ok := <-exitCh:
 			if !ok {
@@ -126,6 +140,8 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 
 func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, displayCh chan<- bool, inputCh <-chan KeyPressEvent, errorCh chan<- error) {
 	defer waitGroup.Done()
+	defer log.Info("Handler loop stopping")
+	log.Info("Starting handler loop")
 
 	channels := HandlerChannels{
 		displayCh: displayCh,
@@ -136,6 +152,7 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, di
 		select {
 		case keyPressEvent := <-inputCh:
 			if keyPressEvent.key == 'q' {
+				log.Infof("Received exit key %v, now closing exit channel", keyPressEvent)
 				close(exitCh)
 				return
 			}

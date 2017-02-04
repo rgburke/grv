@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	log "github.com/Sirupsen/logrus"
+)
+
 type WindowView interface {
 	Initialise() error
 	Render(RenderWindow) error
@@ -22,6 +27,10 @@ type View struct {
 	activeViewIndex uint
 }
 
+func (viewDimension ViewDimension) String() string {
+	return fmt.Sprintf("rows:%v,cols:%v", viewDimension.rows, viewDimension.cols)
+}
+
 func NewView(repoData RepoData) (view *View) {
 	view = &View{}
 	view.views = []WindowViewCollection{
@@ -42,9 +51,11 @@ func (view *View) Initialise() (err error) {
 }
 
 func (view *View) Render(viewDimension ViewDimension) ([]*Window, error) {
+	log.Debug("Rendering View")
 	return view.views[view.activeViewIndex].Render(viewDimension)
 }
 
 func (view *View) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) error {
+	log.Debugf("View handling key %v", keyPressEvent)
 	return view.views[view.activeViewIndex].Handle(keyPressEvent, channels)
 }

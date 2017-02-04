@@ -8,35 +8,50 @@ import (
 )
 
 const (
-	NO_LOGGING = "NONE"
-	LOG_FILE   = "grv.log"
+	ARG_REPO_FILE_PATH_DEFAULT = "."
+	ARG_LOG_LEVEL_DEFAULT      = "NONE"
+	ARG_LOG_FILE_PATH_DEFAULT  = "grv.log"
 )
 
+type GRVArgs struct {
+	repoFilePath string
+	logLevel     string
+	logFilePath  string
+}
+
 func main() {
-	parseArgs()
+	args := parseArgs()
+	initialiseLogging(args.logLevel, args.logFilePath)
 
 	grv := NewGRV()
 
-	if err := grv.Initialise("."); err != nil {
+	if err := grv.Initialise(args.repoFilePath); err != nil {
 		log.Fatal(err)
 	}
 
 	grv.Run()
 
 	grv.Free()
+
+	log.Info("Exiting normally")
 }
 
-func parseArgs() {
-	logLevelPtr := flag.String("logLevel", NO_LOGGING, "Sets the logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG]")
-	logFilePtr := flag.String("logFile", LOG_FILE, "Specifies the log file path")
+func parseArgs() *GRVArgs {
+	repoFilePathPtr := flag.String("repoFilePath", ARG_REPO_FILE_PATH_DEFAULT, "Repository file path")
+	logLevelPtr := flag.String("logLevel", ARG_LOG_LEVEL_DEFAULT, "Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG]")
+	logFilePathPtr := flag.String("logFile", ARG_LOG_FILE_PATH_DEFAULT, "Log file path")
 
 	flag.Parse()
 
-	initialiseLogging(*logLevelPtr, *logFilePtr)
+	return &GRVArgs{
+		repoFilePath: *repoFilePathPtr,
+		logLevel:     *logLevelPtr,
+		logFilePath:  *logFilePathPtr,
+	}
 }
 
-func initialiseLogging(logLevel, logFile string) {
-	if logLevel == NO_LOGGING {
+func initialiseLogging(logLevel, logFilePath string) {
+	if logLevel == ARG_LOG_LEVEL_DEFAULT {
 		log.SetOutput(ioutil.Discard)
 		return
 	}
@@ -56,14 +71,16 @@ func initialiseLogging(logLevel, logFile string) {
 		log.Fatalf("Invalid logLevel: %v", logLevel)
 	}
 
-	file, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
+	file, err := os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
-		log.Fatalf("Unable to open log file %v for writing: %v", logFile, err)
+		log.Fatalf("Unable to open log file %v for writing: %v", logFilePath, err)
 	}
 
 	log.SetOutput(file)
 
-	formatter := &log.TextFormatter{}
-	formatter.DisableColors = true
+	formatter := &log.TextFormatter{
+		DisableColors: true,
+		FullTimestamp: true,
+	}
 	log.SetFormatter(formatter)
 }

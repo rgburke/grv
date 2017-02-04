@@ -1,5 +1,9 @@
 package main
 
+import (
+	log "github.com/Sirupsen/logrus"
+)
+
 type CommitView struct {
 	repoData          RepoData
 	activeBranch      *Oid
@@ -14,10 +18,12 @@ func NewCommitView(repoData RepoData) *CommitView {
 }
 
 func (commitView *CommitView) Initialise() (err error) {
+	log.Info("Initialising CommitView")
 	return
 }
 
 func (commitView *CommitView) Render(win RenderWindow) (err error) {
+	log.Debug("Rendering CommitView")
 	rowIndex := uint(1)
 	commitIndex := 0
 	commits := commitView.repoData.Commits(commitView.activeBranch)
@@ -38,6 +44,8 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 }
 
 func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
+	log.Debugf("CommitView loading commits for selected oid %v", oid)
+
 	if _, ok := commitView.activeCommitIndex[oid]; ok {
 		return
 	}
@@ -52,5 +60,6 @@ func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
 }
 
 func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
+	log.Debugf("CommitView handling key %v", keyPressEvent)
 	return
 }

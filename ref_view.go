@@ -1,5 +1,9 @@
 package main
 
+import (
+	log "github.com/Sirupsen/logrus"
+)
+
 type RenderRefList func(*RefView, *RefList, RenderWindow, uint) (uint, error)
 
 type RefList struct {
@@ -38,6 +42,8 @@ func NewRefView(repoData RepoData) *RefView {
 }
 
 func (refView *RefView) Initialise() (err error) {
+	log.Info("Initialising RefView")
+
 	if err = refView.repoData.LoadHead(); err != nil {
 		return
 	}
@@ -56,6 +62,8 @@ func (refView *RefView) RegisterRefListener(refListener RefListener) {
 }
 
 func (refView *RefView) notifyRefListeners(oid *Oid) (err error) {
+	log.Debugf("Notifying RefListeners of selected oid %v", oid)
+
 	for _, refListener := range refView.refListeners {
 		if err = refListener.OnRefSelect(oid); err != nil {
 			break
@@ -66,6 +74,7 @@ func (refView *RefView) notifyRefListeners(oid *Oid) (err error) {
 }
 
 func (refView *RefView) Render(win RenderWindow) (err error) {
+	log.Debug("Rendering RefView")
 	rowIndex := uint(1)
 
 	for _, refList := range refView.refLists {
@@ -125,5 +134,6 @@ func DrawTags(refView *RefView, refList *RefList, win RenderWindow, rowIndex uin
 }
 
 func (refView *RefView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
+	log.Debugf("RefView handling key %v", keyPressEvent)
 	return
 }

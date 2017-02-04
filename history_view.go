@@ -1,5 +1,9 @@
 package main
 
+import (
+	log "github.com/Sirupsen/logrus"
+)
+
 const (
 	BRANCH_VIEW_WIDTH = 75
 )
@@ -38,11 +42,15 @@ func (historyView *HistoryView) Initialise() (err error) {
 }
 
 func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Window, err error) {
+	log.Debug("Rendering HistoryView")
+
 	refViewDim := viewDimension
 	refViewDim.cols = Min(BRANCH_VIEW_WIDTH, refViewDim.cols/2)
+	log.Debugf("RefView dimensions: %v", refViewDim)
 
 	commitViewDim := viewDimension
 	commitViewDim.cols = viewDimension.cols - refViewDim.cols
+	log.Debugf("CommitView dimensions: %v", commitViewDim)
 
 	historyView.refViewWin.Resize(refViewDim)
 	historyView.commitViewWin.Resize(commitViewDim)
@@ -66,6 +74,7 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 }
 
 func (historyView *HistoryView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) error {
+	log.Debugf("HistoryView handling key %v", keyPressEvent)
 	view := historyView.views[historyView.activeViewIndex]
 	return view.Handle(keyPressEvent, channels)
 }

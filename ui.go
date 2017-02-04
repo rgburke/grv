@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
 )
 
@@ -24,6 +25,10 @@ type KeyPressEvent struct {
 	key int
 }
 
+func (keyPressEvent KeyPressEvent) String() string {
+	return fmt.Sprintf("%c:%v", keyPressEvent.key, keyPressEvent.key)
+}
+
 func NewNcursesDisplay() *NCursesUI {
 	return &NCursesUI{
 		windows: make(map[*Window]*gc.Window),
@@ -31,14 +36,19 @@ func NewNcursesDisplay() *NCursesUI {
 }
 
 func (ui *NCursesUI) Free() {
+	log.Info("Deleting NCurses windows")
+
 	for _, nwin := range ui.windows {
 		nwin.Delete()
 	}
 
+	log.Info("Ending NCurses")
 	gc.End()
 }
 
 func (ui *NCursesUI) Initialise() (err error) {
+	log.Info("Initialising NCurses")
+
 	ui.stdscr, err = gc.Init()
 	if err != nil {
 		return
@@ -60,10 +70,16 @@ func (ui *NCursesUI) Initialise() (err error) {
 
 func (ui *NCursesUI) ViewDimension() ViewDimension {
 	y, x := ui.stdscr.MaxYX()
-	return ViewDimension{rows: uint(y), cols: uint(x)}
+	viewDimension := ViewDimension{rows: uint(y), cols: uint(x)}
+
+	log.Debugf("Determining ViewDimension: %v", viewDimension)
+
+	return viewDimension
 }
 
 func (ui *NCursesUI) Update(wins []*Window) (err error) {
+	log.Debug("Updating display")
+
 	if err = ui.createAndUpdateWindows(wins); err != nil {
 		return
 	}
@@ -78,6 +94,8 @@ func (ui *NCursesUI) Update(wins []*Window) (err error) {
 }
 
 func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
+	log.Debug("Creating and updating NCurses windows")
+
 	winMap := make(map[*Window]bool)
 
 	for _, win := range wins {
@@ -88,15 +106,18 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 		if _, ok := winMap[win]; ok {
 			nwin.Resize(int(win.rows), int(win.cols))
 			nwin.MoveWindow(int(win.startRow), int(win.startCol))
+			log.Debugf("Moving NCurses window %v to row:%v,col:%v", win.Id(), win.startRow, win.startCol)
 		} else {
 			nwin.Resize(0, 0)
 			nwin.MoveWindow(0, 0)
 			nwin.NoutRefresh()
+			log.Debugf("Hiding NCurses window %v", win.Id())
 		}
 	}
 
 	for _, win := range wins {
 		if nwin, ok := ui.windows[win]; !ok {
+			log.Debugf("Creating new NCurses window %v with position row:%v,col:%v and dimensions rows:%v,cols:%v", win.Id(), win.startRow, win.startCol, win.rows, win.cols)
 			if nwin, err = gc.NewWindow(int(win.rows), int(win.cols), int(win.startRow), int(win.startCol)); err != nil {
 				return
 			}
@@ -124,6 +145,8 @@ func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
 }
 
 func drawWindow(win *Window, nwin *gc.Window) {
+	log.Debugf("Drawing window %v", win.Id())
+
 	for rowIndex := uint(0); rowIndex < win.rows; rowIndex++ {
 		row := win.cells[rowIndex]
 		nwin.Move(int(rowIndex), 0)
