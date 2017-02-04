@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	ARG_REPO_FILE_PATH_DEFAULT = "."
-	ARG_LOG_LEVEL_DEFAULT      = "NONE"
-	ARG_LOG_FILE_PATH_DEFAULT  = "grv.log"
+	MN_REPO_FILE_PATH_DEFAULT = "."
+	MN_LOG_LEVEL_DEFAULT      = "NONE"
+	MN_LOG_FILE_PATH_DEFAULT  = "grv.log"
 )
 
 type GRVArgs struct {
@@ -37,9 +37,9 @@ func main() {
 }
 
 func parseArgs() *GRVArgs {
-	repoFilePathPtr := flag.String("repoFilePath", ARG_REPO_FILE_PATH_DEFAULT, "Repository file path")
-	logLevelPtr := flag.String("logLevel", ARG_LOG_LEVEL_DEFAULT, "Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG]")
-	logFilePathPtr := flag.String("logFile", ARG_LOG_FILE_PATH_DEFAULT, "Log file path")
+	repoFilePathPtr := flag.String("repoFilePath", MN_REPO_FILE_PATH_DEFAULT, "Repository file path")
+	logLevelPtr := flag.String("logLevel", MN_LOG_LEVEL_DEFAULT, "Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG]")
+	logFilePathPtr := flag.String("logFile", MN_LOG_FILE_PATH_DEFAULT, "Log file path")
 
 	flag.Parse()
 
@@ -51,7 +51,7 @@ func parseArgs() *GRVArgs {
 }
 
 func initialiseLogging(logLevel, logFilePath string) {
-	if logLevel == ARG_LOG_LEVEL_DEFAULT {
+	if logLevel == MN_LOG_LEVEL_DEFAULT {
 		log.SetOutput(ioutil.Discard)
 		return
 	}

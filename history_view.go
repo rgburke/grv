@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	BRANCH_VIEW_WIDTH = 75
+	HV_BRANCH_VIEW_WIDTH = 75
 )
 
 type HistoryView struct {
@@ -45,7 +45,7 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 	log.Debug("Rendering HistoryView")
 
 	refViewDim := viewDimension
-	refViewDim.cols = Min(BRANCH_VIEW_WIDTH, refViewDim.cols/2)
+	refViewDim.cols = Min(HV_BRANCH_VIEW_WIDTH, refViewDim.cols/2)
 	log.Debugf("RefView dimensions: %v", refViewDim)
 
 	commitViewDim := viewDimension

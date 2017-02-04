@@ -7,10 +7,10 @@ import (
 )
 
 const (
-	INPUT_BUFFER_SIZE   = 100
-	DISPLAY_BUFFER_SIZE = 10
-	ERROR_BUFFER_SIZE   = 10
-	INPUT_SLEEP_MS      = 100
+	GRV_INPUT_BUFFER_SIZE   = 100
+	GRV_DISPLAY_BUFFER_SIZE = 10
+	GRV_ERROR_BUFFER_SIZE   = 10
+	GRV_INPUT_SLEEP_MS      = 100
 )
 
 type HandlerChannels struct {
@@ -62,9 +62,9 @@ func (grv *GRV) Free() {
 
 func (grv *GRV) Run() {
 	exitCh := make(chan bool)
-	inputCh := make(chan KeyPressEvent, INPUT_BUFFER_SIZE)
-	displayCh := make(chan bool, DISPLAY_BUFFER_SIZE)
-	errorCh := make(chan error, ERROR_BUFFER_SIZE)
+	inputCh := make(chan KeyPressEvent, GRV_INPUT_BUFFER_SIZE)
+	displayCh := make(chan bool, GRV_DISPLAY_BUFFER_SIZE)
+	errorCh := make(chan error, GRV_ERROR_BUFFER_SIZE)
 
 	var waitGroup sync.WaitGroup
 
@@ -102,7 +102,7 @@ func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, inpu
 				return
 			}
 		default:
-			time.Sleep(INPUT_SLEEP_MS * time.Millisecond)
+			time.Sleep(GRV_INPUT_SLEEP_MS * time.Millisecond)
 		}
 	}
 }
