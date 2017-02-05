@@ -29,17 +29,19 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	commitIndex := 0
 	commits := commitView.repoData.Commits(commitView.activeBranch)
 
-	for rowIndex < win.Rows() && commitIndex < len(commits) {
+	for rowIndex < win.Rows()-1 && commitIndex < len(commits) {
 		commit := commits[commitIndex]
 		author := commit.commit.Author()
 
-		if err = win.SetRow(rowIndex, "%v %s %s", author.When, author.Name, commit.commit.Summary()); err != nil {
+		if err = win.SetRow(rowIndex, " %v %s %s", author.When, author.Name, commit.commit.Summary()); err != nil {
 			break
 		}
 
 		commitIndex++
 		rowIndex++
 	}
+
+	win.DrawBorder()
 
 	return err
 }

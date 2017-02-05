@@ -153,7 +153,14 @@ func drawWindow(win *Window, nwin *gc.Window) {
 
 		for colIndex := uint(0); colIndex < win.cols; colIndex++ {
 			cell := row[colIndex]
-			nwin.Print(fmt.Sprintf("%c", cell.codePoint))
+
+			if cell.style.acs_char != 0 {
+				nwin.AddChar(cell.style.acs_char)
+			} else {
+				nwin.AttrOn(cell.style.attr)
+				nwin.Print(fmt.Sprintf("%c", cell.codePoint))
+				nwin.AttrOff(cell.style.attr)
+			}
 		}
 	}
 

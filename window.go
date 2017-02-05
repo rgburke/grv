@@ -13,12 +13,13 @@ type RenderWindow interface {
 	Cols() uint
 	Clear()
 	SetRow(rowIndex uint, format string, args ...interface{}) error
+	SetSelectedRow(rowIndex uint, active bool) error
 	DrawBorder()
 }
 
 type CellStyle struct {
-	bgColour int16
-	fgColour int16
+	attr     gc.Char
+	acs_char gc.Char
 }
 
 type Cell struct {
@@ -76,9 +77,13 @@ func (win *Window) Cols() uint {
 }
 
 func (win *Window) Clear() {
+	log.Debugf("Clearing window %v", win.id)
+
 	for i := uint(0); i < win.rows; i++ {
 		for j := uint(0); j < win.cols; j++ {
 			win.cells[i][j].codePoint = ' '
+			win.cells[i][j].style.attr = gc.A_NORMAL
+			win.cells[i][j].style.acs_char = 0
 		}
 	}
 }
@@ -110,34 +115,54 @@ func (win *Window) SetRow(rowIndex uint, format string, args ...interface{}) err
 	return nil
 }
 
-func (win *Window) DrawBorder() {
-	return
+func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
+	if rowIndex >= win.rows {
+		return errors.New(fmt.Sprintf("Invalid row index: %v >= %v rows", rowIndex, win.rows))
+	}
 
+	var attr gc.Char
+
+	if active {
+		attr = gc.A_REVERSE
+	} else {
+		attr = gc.A_DIM
+	}
+
+	rowCells := win.cells[rowIndex]
+
+	for colIndex, _ := range rowCells {
+		rowCells[colIndex].style.attr |= attr
+	}
+
+	return nil
+}
+
+func (win *Window) DrawBorder() {
 	if win.rows < 3 || win.cols < 3 {
 		return
 	}
 
 	firstRow := win.cells[0]
-	firstRow[0].codePoint = rune(gc.ACS_ULCORNER)
+	firstRow[0].style.acs_char = gc.ACS_ULCORNER
 
 	for i := uint(1); i < win.cols-1; i++ {
-		firstRow[i].codePoint = rune(gc.ACS_HLINE)
+		firstRow[i].style.acs_char = gc.ACS_HLINE
 	}
 
-	firstRow[win.cols-1].codePoint = rune(gc.ACS_URCORNER)
+	firstRow[win.cols-1].style.acs_char = gc.ACS_URCORNER
 
 	for i := uint(1); i < win.rows-1; i++ {
 		row := win.cells[i]
-		row[0].codePoint = rune(gc.ACS_VLINE)
-		row[win.rows-1].codePoint = rune(gc.ACS_VLINE)
+		row[0].style.acs_char = gc.ACS_VLINE
+		row[win.cols-1].style.acs_char = gc.ACS_VLINE
 	}
 
 	lastRow := win.cells[win.rows-1]
-	lastRow[0].codePoint = rune(gc.ACS_LLCORNER)
+	lastRow[0].style.acs_char = gc.ACS_LLCORNER
 
 	for i := uint(1); i < win.cols-1; i++ {
-		lastRow[i].codePoint = rune(gc.ACS_HLINE)
+		lastRow[i].style.acs_char = gc.ACS_HLINE
 	}
 
-	lastRow[win.cols-1].codePoint = rune(gc.ACS_LRCORNER)
+	lastRow[win.cols-1].style.acs_char = gc.ACS_LRCORNER
 }

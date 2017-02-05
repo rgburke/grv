@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	HV_BRANCH_VIEW_WIDTH = 75
+	HV_BRANCH_VIEW_WIDTH = 40
 )
 
 type HistoryView struct {
