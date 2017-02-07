@@ -1,24 +1,31 @@
 package main
 
 import (
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 )
 
-type RenderRefList func(*RefView, *RefList, RenderWindow, uint) (uint, error)
+type RenderedRefGenerator func(*RefView, *RefList, *[]RenderedRef)
 
 type RefList struct {
-	name        string
-	expanded    bool
-	activeIndex uint
-	renderer    RenderRefList
+	name     string
+	expanded bool
+	renderer RenderedRefGenerator
+}
+
+type RenderedRef struct {
+	value string
+	oid   *Oid
 }
 
 type RefView struct {
-	repoData           RepoData
-	refLists           []RefList
-	activeRefListIndex uint
-	refListeners       []RefListener
-	active             bool
+	repoData       RepoData
+	refLists       []*RefList
+	refListeners   []RefListener
+	active         bool
+	renderedRefs   []RenderedRef
+	activeIndex    uint
+	viewStartIndex uint
 }
 
 type RefListener interface {
@@ -28,15 +35,15 @@ type RefListener interface {
 func NewRefView(repoData RepoData) *RefView {
 	return &RefView{
 		repoData: repoData,
-		refLists: []RefList{
-			RefList{
+		refLists: []*RefList{
+			&RefList{
 				name:     "Branches",
-				renderer: DrawBranches,
+				renderer: GenerateBranches,
 				expanded: true,
 			},
-			RefList{
+			&RefList{
 				name:     "Tags",
-				renderer: DrawTags,
+				renderer: GenerateTags,
 			},
 		},
 	}
@@ -51,6 +58,20 @@ func (refView *RefView) Initialise() (err error) {
 
 	if err = refView.repoData.LoadLocalRefs(); err != nil {
 		return
+	}
+
+	refView.GenerateRenderedRefs()
+
+	head := refView.repoData.Head()
+	branches := refView.repoData.LocalBranches()
+	refView.activeIndex = 1
+
+	for _, branch := range branches {
+		if branch.oid.oid.Equal(head.oid) {
+			break
+		}
+
+		refView.activeIndex++
 	}
 
 	refView.notifyRefListeners(refView.repoData.Head())
@@ -76,33 +97,28 @@ func (refView *RefView) notifyRefListeners(oid *Oid) (err error) {
 
 func (refView *RefView) Render(win RenderWindow) (err error) {
 	log.Debug("Rendering RefView")
-	rowIndex := uint(1)
 
-	for _, refList := range refView.refLists {
-		if rowIndex >= win.Rows() {
-			break
+	rows := win.Rows() - 2
+	rowDiff := refView.activeIndex - refView.viewStartIndex
+
+	if rowDiff < 0 {
+		refView.viewStartIndex = refView.activeIndex
+	} else if rowDiff >= rows {
+		refView.viewStartIndex += (rowDiff - rows) + 1
+	}
+
+	refIndex := refView.viewStartIndex
+
+	for winRowIndex := uint(0); winRowIndex < rows && refIndex < uint(len(refView.renderedRefs)); winRowIndex++ {
+		if err = win.SetRow(winRowIndex+1, "%v", refView.renderedRefs[refIndex].value); err != nil {
+			return
 		}
 
-		expandChar := "+"
-		if refList.expanded {
-			expandChar = "-"
-		}
+		refIndex++
+	}
 
-		if err = win.SetRow(rowIndex, " %v%s:", expandChar, refList.name); err != nil {
-			break
-		}
-
-		if refList.expanded {
-			rowIndex++
-
-			if rowIndex >= win.Rows() {
-				break
-			} else if rowIndex, err = refList.renderer(refView, &refList, win, rowIndex); err != nil {
-				break
-			}
-		}
-
-		rowIndex++
+	if err = win.SetSelectedRow((refView.activeIndex-refView.viewStartIndex)+1, refView.active); err != nil {
+		return
 	}
 
 	win.DrawBorder()
@@ -110,28 +126,50 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	return
 }
 
-func DrawBranches(refView *RefView, refList *RefList, win RenderWindow, rowIndex uint) (uint, error) {
-	startRowIndex := rowIndex
-	branches := refView.repoData.LocalBranches()
+func (refView *RefView) GenerateRenderedRefs() {
+	log.Debug("Generating Rendered Refs")
+	var renderedRefs []RenderedRef
 
-	for rowIndex < win.Rows() && rowIndex-startRowIndex < uint(len(branches)) {
-		win.SetRow(rowIndex, "   %s", branches[rowIndex-startRowIndex].name)
-		rowIndex++
+	for _, refList := range refView.refLists {
+		expandChar := "+"
+		if refList.expanded {
+			expandChar = "-"
+		}
+
+		renderedRefs = append(renderedRefs, RenderedRef{
+			value: fmt.Sprintf("  %v%v", expandChar, refList.name),
+		})
+
+		if refList.expanded {
+			refList.renderer(refView, refList, &renderedRefs)
+		}
+
+		renderedRefs = append(renderedRefs, RenderedRef{value: ""})
 	}
 
-	return rowIndex, nil
+	refView.renderedRefs = renderedRefs
 }
 
-func DrawTags(refView *RefView, refList *RefList, win RenderWindow, rowIndex uint) (uint, error) {
-	startRowIndex := rowIndex
+func GenerateBranches(refView *RefView, refList *RefList, renderedRefs *[]RenderedRef) {
+	branches := refView.repoData.LocalBranches()
+
+	for _, branch := range branches {
+		*renderedRefs = append(*renderedRefs, RenderedRef{
+			value: fmt.Sprintf("   %s", branch.name),
+			oid:   branch.oid,
+		})
+	}
+}
+
+func GenerateTags(refView *RefView, refList *RefList, renderedRefs *[]RenderedRef) {
 	tags := refView.repoData.LocalTags()
 
-	for rowIndex < win.Rows() && rowIndex-startRowIndex < uint(len(tags)) {
-		win.SetRow(rowIndex, "   %s", tags[rowIndex-startRowIndex].tag.Name())
-		rowIndex++
+	for _, tag := range tags {
+		*renderedRefs = append(*renderedRefs, RenderedRef{
+			value: fmt.Sprintf("   %s", tag.tag.Name()),
+			oid:   tag.oid,
+		})
 	}
-
-	return rowIndex, nil
 }
 
 func (refView *RefView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {

@@ -116,16 +116,16 @@ func (win *Window) SetRow(rowIndex uint, format string, args ...interface{}) err
 }
 
 func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
+	log.Debugf("Set selected rowIndex for window %v to %v with active %v", win.id, rowIndex, active)
+
 	if rowIndex >= win.rows {
 		return errors.New(fmt.Sprintf("Invalid row index: %v >= %v rows", rowIndex, win.rows))
 	}
 
-	var attr gc.Char
+	var attr gc.Char = gc.A_REVERSE
 
-	if active {
-		attr = gc.A_REVERSE
-	} else {
-		attr = gc.A_DIM
+	if !active {
+		attr |= gc.A_DIM
 	}
 
 	rowCells := win.cells[rowIndex]
