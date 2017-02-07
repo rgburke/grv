@@ -1,20 +1,26 @@
 package main
 
 import (
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 )
 
+type ViewIndex struct {
+	activeIndex    uint
+	viewStartIndex uint
+}
+
 type CommitView struct {
-	repoData          RepoData
-	activeBranch      *Oid
-	activeCommitIndex map[*Oid]uint
-	active            bool
+	repoData     RepoData
+	activeBranch *Oid
+	active       bool
+	viewIndex    map[*Oid]*ViewIndex
 }
 
 func NewCommitView(repoData RepoData) *CommitView {
 	return &CommitView{
-		repoData:          repoData,
-		activeCommitIndex: make(map[*Oid]uint),
+		repoData:  repoData,
+		viewIndex: make(map[*Oid]*ViewIndex),
 	}
 }
 
@@ -25,20 +31,38 @@ func (commitView *CommitView) Initialise() (err error) {
 
 func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	log.Debug("Rendering CommitView")
-	rowIndex := uint(1)
-	commitIndex := 0
-	commits := commitView.repoData.Commits(commitView.activeBranch)
 
-	for rowIndex < win.Rows()-1 && commitIndex < len(commits) {
+	var viewIndex *ViewIndex
+	var ok bool
+	if viewIndex, ok = commitView.viewIndex[commitView.activeBranch]; !ok {
+		return fmt.Errorf("No ViewIndex exists for oid %v", commitView.activeBranch)
+	}
+
+	commits := commitView.repoData.Commits(commitView.activeBranch)
+	rows := win.Rows() - 2
+	rowDiff := viewIndex.activeIndex - viewIndex.viewStartIndex
+
+	if rowDiff < 0 {
+		viewIndex.viewStartIndex = viewIndex.activeIndex
+	} else if rowDiff >= rows {
+		viewIndex.viewStartIndex += (rowDiff - rows) + 1
+	}
+
+	commitIndex := viewIndex.viewStartIndex
+
+	for rowIndex := uint(0); rowIndex < rows && commitIndex < uint(len(commits)); rowIndex++ {
 		commit := commits[commitIndex]
 		author := commit.commit.Author()
 
-		if err = win.SetRow(rowIndex, " %v %s %s", author.When, author.Name, commit.commit.Summary()); err != nil {
+		if err = win.SetRow(rowIndex+1, " %v %s %s", author.When, author.Name, commit.commit.Summary()); err != nil {
 			break
 		}
 
 		commitIndex++
-		rowIndex++
+	}
+
+	if err = win.SetSelectedRow((viewIndex.activeIndex-viewIndex.viewStartIndex)+1, commitView.active); err != nil {
+		return
 	}
 
 	win.DrawBorder()
@@ -49,7 +73,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
 	log.Debugf("CommitView loading commits for selected oid %v", oid)
 
-	if _, ok := commitView.activeCommitIndex[oid]; ok {
+	if _, ok := commitView.viewIndex[oid]; ok {
 		return
 	}
 
@@ -58,7 +82,7 @@ func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
 	}
 
 	commitView.activeBranch = oid
-	commitView.activeCommitIndex[oid] = 0
+	commitView.viewIndex[oid] = &ViewIndex{}
 	return
 }
 

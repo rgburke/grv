@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
@@ -90,7 +89,7 @@ func (win *Window) Clear() {
 
 func (win *Window) SetRow(rowIndex uint, format string, args ...interface{}) error {
 	if rowIndex >= win.rows {
-		return errors.New(fmt.Sprintf("Invalid row index: %v >= %v rows", rowIndex, win.rows))
+		return fmt.Errorf("Invalid row index: %v >= %v rows", rowIndex, win.rows)
 	}
 
 	str := fmt.Sprintf(format, args...)
@@ -119,7 +118,7 @@ func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
 	log.Debugf("Set selected rowIndex for window %v to %v with active %v", win.id, rowIndex, active)
 
 	if rowIndex >= win.rows {
-		return errors.New(fmt.Sprintf("Invalid row index: %v >= %v rows", rowIndex, win.rows))
+		return fmt.Errorf("Invalid row index: %v >= %v rows", rowIndex, win.rows)
 	}
 
 	var attr gc.Char = gc.A_REVERSE
