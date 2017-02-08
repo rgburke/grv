@@ -2,6 +2,7 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
+	gc "github.com/rthornton128/goncurses"
 )
 
 const (
@@ -75,14 +76,32 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 	return
 }
 
-func (historyView *HistoryView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) error {
+func (historyView *HistoryView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
 	log.Debugf("HistoryView handling key %v", keyPressEvent)
+
+	switch keyPressEvent.key {
+	case gc.KEY_TAB:
+		historyView.activeViewIndex++
+		historyView.activeViewIndex %= uint(len(historyView.views))
+		historyView.OnActiveChange(true)
+		channels.displayCh <- true
+		return
+	}
+
 	view := historyView.views[historyView.activeViewIndex]
-	return view.Handle(keyPressEvent, channels)
+	err = view.Handle(keyPressEvent, channels)
+	return
 }
 
 func (historyView *HistoryView) OnActiveChange(active bool) {
-	log.Debugf("History active %v", active)
+	log.Debugf("History active set to %v", active)
 	historyView.active = active
-	historyView.views[historyView.activeViewIndex].OnActiveChange(active)
+
+	for viewIndex := uint(0); viewIndex < uint(len(historyView.views)); viewIndex++ {
+		if viewIndex == historyView.activeViewIndex {
+			historyView.views[viewIndex].OnActiveChange(active)
+		} else {
+			historyView.views[viewIndex].OnActiveChange(false)
+		}
+	}
 }
