@@ -3,14 +3,12 @@ package main
 import (
 	log "github.com/Sirupsen/logrus"
 	"sync"
-	"time"
 )
 
 const (
 	GRV_INPUT_BUFFER_SIZE   = 100
 	GRV_DISPLAY_BUFFER_SIZE = 10
 	GRV_ERROR_BUFFER_SIZE   = 10
-	GRV_INPUT_SLEEP_MS      = 20
 )
 
 type HandlerChannels struct {
@@ -82,7 +80,7 @@ func (grv *GRV) Run() {
 	log.Info("All loops finished")
 }
 
-func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, inputCh chan<- KeyPressEvent, errorCh chan<- error) {
+func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, inputCh chan<- KeyPressEvent, errorCh chan<- error) {
 	defer waitGroup.Done()
 	defer log.Info("Input loop stopping")
 	log.Info("Starting input loop")
@@ -91,18 +89,13 @@ func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, inpu
 		keyPressEvent, err := grv.ui.GetInput()
 		if err != nil {
 			errorCh <- err
+		} else if keyPressEvent.key == 'q' {
+			log.Infof("Received exit key %v, now closing exit channel", keyPressEvent)
+			close(exitCh)
+			return
 		} else if int(keyPressEvent.key) != 0 {
 			inputCh <- keyPressEvent
 			log.Debugf("Received keypress from UI %v", keyPressEvent)
-		}
-
-		select {
-		case _, ok := <-exitCh:
-			if !ok {
-				return
-			}
-		default:
-			time.Sleep(GRV_INPUT_SLEEP_MS * time.Millisecond)
 		}
 	}
 }
@@ -138,7 +131,7 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	}
 }
 
-func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, displayCh chan<- bool, inputCh <-chan KeyPressEvent, errorCh chan<- error) {
+func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, displayCh chan<- bool, inputCh <-chan KeyPressEvent, errorCh chan<- error) {
 	defer waitGroup.Done()
 	defer log.Info("Handler loop stopping")
 	log.Info("Starting handler loop")
@@ -151,14 +144,12 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, di
 	for {
 		select {
 		case keyPressEvent := <-inputCh:
-			if keyPressEvent.key == 'q' {
-				log.Infof("Received exit key %v, now closing exit channel", keyPressEvent)
-				close(exitCh)
-				return
-			}
-
 			if err := grv.view.Handle(keyPressEvent, channels); err != nil {
 				errorCh <- err
+			}
+		case _, ok := <-exitCh:
+			if !ok {
+				return
 			}
 		}
 	}

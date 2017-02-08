@@ -125,7 +125,6 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 			if err = nwin.Keypad(true); err != nil {
 				return
 			}
-			nwin.Timeout(0)
 			ui.windows[win] = nwin
 		}
 
