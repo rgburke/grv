@@ -99,11 +99,10 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	log.Debug("Rendering RefView")
 
 	rows := win.Rows() - 2
-	rowDiff := refView.activeIndex - refView.viewStartIndex
 
-	if rowDiff < 0 {
+	if refView.viewStartIndex > refView.activeIndex {
 		refView.viewStartIndex = refView.activeIndex
-	} else if rowDiff >= rows {
+	} else if rowDiff := refView.activeIndex - refView.viewStartIndex; rowDiff >= rows {
 		refView.viewStartIndex += (rowDiff - rows) + 1
 	}
 

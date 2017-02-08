@@ -10,7 +10,7 @@ const (
 	GRV_INPUT_BUFFER_SIZE   = 100
 	GRV_DISPLAY_BUFFER_SIZE = 10
 	GRV_ERROR_BUFFER_SIZE   = 10
-	GRV_INPUT_SLEEP_MS      = 100
+	GRV_INPUT_SLEEP_MS      = 20
 )
 
 type HandlerChannels struct {

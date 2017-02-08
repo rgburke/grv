@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	gc "github.com/rthornton128/goncurses"
 )
 
 type ViewIndex struct {
@@ -40,11 +41,10 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 
 	commits := commitView.repoData.Commits(commitView.activeBranch)
 	rows := win.Rows() - 2
-	rowDiff := viewIndex.activeIndex - viewIndex.viewStartIndex
 
-	if rowDiff < 0 {
+	if viewIndex.viewStartIndex > viewIndex.activeIndex {
 		viewIndex.viewStartIndex = viewIndex.activeIndex
-	} else if rowDiff >= rows {
+	} else if rowDiff := viewIndex.activeIndex - viewIndex.viewStartIndex; rowDiff >= rows {
 		viewIndex.viewStartIndex += (rowDiff - rows) + 1
 	}
 
@@ -88,6 +88,24 @@ func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
 
 func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
 	log.Debugf("CommitView handling key %v", keyPressEvent)
+
+	switch keyPressEvent.key {
+	case gc.KEY_UP:
+		viewIndex := commitView.viewIndex[commitView.activeBranch]
+		if viewIndex.activeIndex > 0 {
+			viewIndex.activeIndex--
+			channels.displayCh <- true
+		}
+	case gc.KEY_DOWN:
+		commits := commitView.repoData.Commits(commitView.activeBranch)
+		viewIndex := commitView.viewIndex[commitView.activeBranch]
+
+		if viewIndex.activeIndex < uint(len(commits))-1 {
+			viewIndex.activeIndex++
+			channels.displayCh <- true
+		}
+	}
+
 	return
 }
 

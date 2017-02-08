@@ -22,7 +22,7 @@ type NCursesUI struct {
 }
 
 type KeyPressEvent struct {
-	key int
+	key gc.Key
 }
 
 func (keyPressEvent KeyPressEvent) String() string {
@@ -122,6 +122,9 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 				return
 			}
 
+			if err = nwin.Keypad(true); err != nil {
+				return
+			}
 			nwin.Timeout(0)
 			ui.windows[win] = nwin
 		}
@@ -170,7 +173,7 @@ func drawWindow(win *Window, nwin *gc.Window) {
 func (ui *NCursesUI) GetInput() (keyPressEvent KeyPressEvent, err error) {
 	for _, nwin := range ui.windows {
 		if y, x := nwin.MaxYX(); y > 0 && x > 0 {
-			keyPressEvent = KeyPressEvent{key: int(nwin.GetChar())}
+			keyPressEvent = KeyPressEvent{key: nwin.GetChar()}
 			return
 		}
 	}
