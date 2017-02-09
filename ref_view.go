@@ -6,6 +6,8 @@ import (
 	gc "github.com/rthornton128/goncurses"
 )
 
+type RefViewHandler func(*RefView, HandlerChannels) error
+
 type RenderedRefType int
 
 const (
@@ -39,6 +41,7 @@ type RefView struct {
 	renderedRefs   []RenderedRef
 	activeIndex    uint
 	viewStartIndex uint
+	handlers       map[gc.Key]RefViewHandler
 }
 
 type RefListener interface {
@@ -60,6 +63,10 @@ func NewRefView(repoData RepoData) *RefView {
 				renderer:        GenerateTags,
 				renderedRefType: RV_TAG_GROUP,
 			},
+		},
+		handlers: map[gc.Key]RefViewHandler{
+			gc.KEY_UP:   MoveUpRef,
+			gc.KEY_DOWN: MoveDownRef,
 		},
 	}
 }
@@ -194,42 +201,49 @@ func GenerateTags(refView *RefView, refList *RefList, renderedRefs *[]RenderedRe
 	}
 }
 
+func (refView *RefView) OnActiveChange(active bool) {
+	log.Debugf("RefView active %v", active)
+	refView.active = active
+}
+
 func (refView *RefView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
 	log.Debugf("RefView handling key %v", keyPressEvent)
 
-	switch keyPressEvent.key {
-	case gc.KEY_UP:
-		if refView.activeIndex == 0 {
-			return
-		}
-
-		refView.activeIndex--
-
-		for refView.renderedRefs[refView.activeIndex].renderedRefType == RV_SPACE && refView.activeIndex > 0 {
-			refView.activeIndex--
-		}
-
-		channels.displayCh <- true
-	case gc.KEY_DOWN:
-		indexLimit := uint(len(refView.renderedRefs)) - 1
-
-		if refView.activeIndex >= indexLimit {
-			return
-		}
-
-		refView.activeIndex++
-
-		for refView.renderedRefs[refView.activeIndex].renderedRefType == RV_SPACE && refView.activeIndex < indexLimit {
-			refView.activeIndex++
-		}
-
-		channels.displayCh <- true
+	if handler, ok := refView.handlers[keyPressEvent.key]; ok {
+		err = handler(refView, channels)
 	}
 
 	return
 }
 
-func (refView *RefView) OnActiveChange(active bool) {
-	log.Debugf("RefView active %v", active)
-	refView.active = active
+func MoveUpRef(refView *RefView, channels HandlerChannels) (err error) {
+	if refView.activeIndex == 0 {
+		return
+	}
+
+	refView.activeIndex--
+
+	for refView.renderedRefs[refView.activeIndex].renderedRefType == RV_SPACE && refView.activeIndex > 0 {
+		refView.activeIndex--
+	}
+
+	channels.displayCh <- true
+	return
+}
+
+func MoveDownRef(refView *RefView, channels HandlerChannels) (err error) {
+	indexLimit := uint(len(refView.renderedRefs)) - 1
+
+	if refView.activeIndex >= indexLimit {
+		return
+	}
+
+	refView.activeIndex++
+
+	for refView.renderedRefs[refView.activeIndex].renderedRefType == RV_SPACE && refView.activeIndex < indexLimit {
+		refView.activeIndex++
+	}
+
+	channels.displayCh <- true
+	return
 }

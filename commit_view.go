@@ -6,6 +6,8 @@ import (
 	gc "github.com/rthornton128/goncurses"
 )
 
+type CommitViewHandler func(*CommitView, HandlerChannels) error
+
 type ViewIndex struct {
 	activeIndex    uint
 	viewStartIndex uint
@@ -16,12 +18,17 @@ type CommitView struct {
 	activeBranch *Oid
 	active       bool
 	viewIndex    map[*Oid]*ViewIndex
+	handlers     map[gc.Key]CommitViewHandler
 }
 
 func NewCommitView(repoData RepoData) *CommitView {
 	return &CommitView{
 		repoData:  repoData,
 		viewIndex: make(map[*Oid]*ViewIndex),
+		handlers: map[gc.Key]CommitViewHandler{
+			gc.KEY_UP:   MoveUpCommit,
+			gc.KEY_DOWN: MoveDownCommit,
+		},
 	}
 }
 
@@ -86,30 +93,39 @@ func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
 	return
 }
 
+func (commitView *CommitView) OnActiveChange(active bool) {
+	log.Debugf("CommitView active %v", active)
+	commitView.active = active
+}
+
 func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
 	log.Debugf("CommitView handling key %v", keyPressEvent)
 
-	switch keyPressEvent.key {
-	case gc.KEY_UP:
-		viewIndex := commitView.viewIndex[commitView.activeBranch]
-		if viewIndex.activeIndex > 0 {
-			viewIndex.activeIndex--
-			channels.displayCh <- true
-		}
-	case gc.KEY_DOWN:
-		commits := commitView.repoData.Commits(commitView.activeBranch)
-		viewIndex := commitView.viewIndex[commitView.activeBranch]
-
-		if viewIndex.activeIndex < uint(len(commits))-1 {
-			viewIndex.activeIndex++
-			channels.displayCh <- true
-		}
+	if handler, ok := commitView.handlers[keyPressEvent.key]; ok {
+		err = handler(commitView, channels)
 	}
 
 	return
 }
 
-func (commitView *CommitView) OnActiveChange(active bool) {
-	log.Debugf("CommitView active %v", active)
-	commitView.active = active
+func MoveUpCommit(commitView *CommitView, channels HandlerChannels) (err error) {
+	viewIndex := commitView.viewIndex[commitView.activeBranch]
+	if viewIndex.activeIndex > 0 {
+		viewIndex.activeIndex--
+		channels.displayCh <- true
+	}
+
+	return
+}
+
+func MoveDownCommit(commitView *CommitView, channels HandlerChannels) (err error) {
+	commits := commitView.repoData.Commits(commitView.activeBranch)
+	viewIndex := commitView.viewIndex[commitView.activeBranch]
+
+	if viewIndex.activeIndex < uint(len(commits))-1 {
+		viewIndex.activeIndex++
+		channels.displayCh <- true
+	}
+
+	return
 }
