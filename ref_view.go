@@ -3,19 +3,32 @@ package main
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	gc "github.com/rthornton128/goncurses"
+)
+
+type RenderedRefType int
+
+const (
+	RV_BRANCH_GROUP RenderedRefType = iota
+	RV_BRANCH
+	RV_TAG_GROUP
+	RV_TAG
+	RV_SPACE
 )
 
 type RenderedRefGenerator func(*RefView, *RefList, *[]RenderedRef)
 
 type RefList struct {
-	name     string
-	expanded bool
-	renderer RenderedRefGenerator
+	name            string
+	expanded        bool
+	renderer        RenderedRefGenerator
+	renderedRefType RenderedRefType
 }
 
 type RenderedRef struct {
-	value string
-	oid   *Oid
+	value           string
+	oid             *Oid
+	renderedRefType RenderedRefType
 }
 
 type RefView struct {
@@ -37,13 +50,15 @@ func NewRefView(repoData RepoData) *RefView {
 		repoData: repoData,
 		refLists: []*RefList{
 			&RefList{
-				name:     "Branches",
-				renderer: GenerateBranches,
-				expanded: true,
+				name:            "Branches",
+				renderer:        GenerateBranches,
+				expanded:        true,
+				renderedRefType: RV_BRANCH_GROUP,
 			},
 			&RefList{
-				name:     "Tags",
-				renderer: GenerateTags,
+				name:            "Tags",
+				renderer:        GenerateTags,
+				renderedRefType: RV_TAG_GROUP,
 			},
 		},
 	}
@@ -129,21 +144,27 @@ func (refView *RefView) GenerateRenderedRefs() {
 	log.Debug("Generating Rendered Refs")
 	var renderedRefs []RenderedRef
 
-	for _, refList := range refView.refLists {
+	for refIndex, refList := range refView.refLists {
 		expandChar := "+"
 		if refList.expanded {
 			expandChar = "-"
 		}
 
 		renderedRefs = append(renderedRefs, RenderedRef{
-			value: fmt.Sprintf("  %v%v", expandChar, refList.name),
+			value:           fmt.Sprintf("  %v%v", expandChar, refList.name),
+			renderedRefType: refList.renderedRefType,
 		})
 
 		if refList.expanded {
 			refList.renderer(refView, refList, &renderedRefs)
 		}
 
-		renderedRefs = append(renderedRefs, RenderedRef{value: ""})
+		if refIndex != len(refView.refLists)-1 {
+			renderedRefs = append(renderedRefs, RenderedRef{
+				value:           "",
+				renderedRefType: RV_SPACE,
+			})
+		}
 	}
 
 	refView.renderedRefs = renderedRefs
@@ -154,8 +175,9 @@ func GenerateBranches(refView *RefView, refList *RefList, renderedRefs *[]Render
 
 	for _, branch := range branches {
 		*renderedRefs = append(*renderedRefs, RenderedRef{
-			value: fmt.Sprintf("   %s", branch.name),
-			oid:   branch.oid,
+			value:           fmt.Sprintf("   %s", branch.name),
+			oid:             branch.oid,
+			renderedRefType: RV_BRANCH,
 		})
 	}
 }
@@ -165,14 +187,45 @@ func GenerateTags(refView *RefView, refList *RefList, renderedRefs *[]RenderedRe
 
 	for _, tag := range tags {
 		*renderedRefs = append(*renderedRefs, RenderedRef{
-			value: fmt.Sprintf("   %s", tag.tag.Name()),
-			oid:   tag.oid,
+			value:           fmt.Sprintf("   %s", tag.tag.Name()),
+			oid:             tag.oid,
+			renderedRefType: RV_TAG,
 		})
 	}
 }
 
 func (refView *RefView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
 	log.Debugf("RefView handling key %v", keyPressEvent)
+
+	switch keyPressEvent.key {
+	case gc.KEY_UP:
+		if refView.activeIndex == 0 {
+			return
+		}
+
+		refView.activeIndex--
+
+		for refView.renderedRefs[refView.activeIndex].renderedRefType == RV_SPACE && refView.activeIndex > 0 {
+			refView.activeIndex--
+		}
+
+		channels.displayCh <- true
+	case gc.KEY_DOWN:
+		indexLimit := uint(len(refView.renderedRefs)) - 1
+
+		if refView.activeIndex >= indexLimit {
+			return
+		}
+
+		refView.activeIndex++
+
+		for refView.renderedRefs[refView.activeIndex].renderedRefType == RV_SPACE && refView.activeIndex < indexLimit {
+			refView.activeIndex++
+		}
+
+		channels.displayCh <- true
+	}
+
 	return
 }
 
