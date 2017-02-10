@@ -31,6 +31,7 @@ type RenderedRef struct {
 	value           string
 	oid             *Oid
 	renderedRefType RenderedRefType
+	refList         *RefList
 }
 
 type RefView struct {
@@ -67,6 +68,7 @@ func NewRefView(repoData RepoData) *RefView {
 		handlers: map[gc.Key]RefViewHandler{
 			gc.KEY_UP:   MoveUpRef,
 			gc.KEY_DOWN: MoveDownRef,
+			'\n':        SelectRef,
 		},
 	}
 }
@@ -159,6 +161,7 @@ func (refView *RefView) GenerateRenderedRefs() {
 
 		renderedRefs = append(renderedRefs, RenderedRef{
 			value:           fmt.Sprintf("  %v%v", expandChar, refList.name),
+			refList:         refList,
 			renderedRefType: refList.renderedRefType,
 		})
 
@@ -221,6 +224,8 @@ func MoveUpRef(refView *RefView, channels HandlerChannels) (err error) {
 		return
 	}
 
+	log.Debug("Moving up one ref")
+
 	refView.activeIndex--
 
 	for refView.renderedRefs[refView.activeIndex].renderedRefType == RV_SPACE && refView.activeIndex > 0 {
@@ -238,6 +243,8 @@ func MoveDownRef(refView *RefView, channels HandlerChannels) (err error) {
 		return
 	}
 
+	log.Debug("Moving down one ref")
+
 	refView.activeIndex++
 
 	for refView.renderedRefs[refView.activeIndex].renderedRefType == RV_SPACE && refView.activeIndex < indexLimit {
@@ -245,5 +252,27 @@ func MoveDownRef(refView *RefView, channels HandlerChannels) (err error) {
 	}
 
 	channels.displayCh <- true
+	return
+}
+
+func SelectRef(refView *RefView, channels HandlerChannels) (err error) {
+	renderedRef := refView.renderedRefs[refView.activeIndex]
+
+	switch renderedRef.renderedRefType {
+	case RV_BRANCH_GROUP, RV_TAG_GROUP:
+		renderedRef.refList.expanded = !renderedRef.refList.expanded
+		log.Debugf("Setting ref group %v to expanded %v", renderedRef.refList.name, renderedRef.refList.expanded)
+		refView.GenerateRenderedRefs()
+		channels.displayCh <- true
+	case RV_BRANCH, RV_TAG:
+		log.Debugf("Selecting ref %v:%v", renderedRef.value, renderedRef.oid)
+		if err = refView.notifyRefListeners(renderedRef.oid); err != nil {
+			return
+		}
+		channels.displayCh <- true
+	default:
+		log.Warn("Unexpected ref type %v", renderedRef.renderedRefType)
+	}
+
 	return
 }

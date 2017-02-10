@@ -80,16 +80,16 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
 	log.Debugf("CommitView loading commits for selected oid %v", oid)
 
-	if _, ok := commitView.viewIndex[oid]; ok {
-		return
-	}
-
 	if err = commitView.repoData.LoadCommits(oid); err != nil {
 		return
 	}
 
 	commitView.activeBranch = oid
-	commitView.viewIndex[oid] = &ViewIndex{}
+
+	if _, ok := commitView.viewIndex[oid]; !ok {
+		commitView.viewIndex[oid] = &ViewIndex{}
+	}
+
 	return
 }
 
@@ -110,7 +110,9 @@ func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent, channels Handl
 
 func MoveUpCommit(commitView *CommitView, channels HandlerChannels) (err error) {
 	viewIndex := commitView.viewIndex[commitView.activeBranch]
+
 	if viewIndex.activeIndex > 0 {
+		log.Debug("Moving up one commit")
 		viewIndex.activeIndex--
 		channels.displayCh <- true
 	}
@@ -123,6 +125,7 @@ func MoveDownCommit(commitView *CommitView, channels HandlerChannels) (err error
 	viewIndex := commitView.viewIndex[commitView.activeBranch]
 
 	if viewIndex.activeIndex < uint(len(commits))-1 {
+		log.Debug("Moving down one commit")
 		viewIndex.activeIndex++
 		channels.displayCh <- true
 	}
