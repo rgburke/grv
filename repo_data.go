@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/bradfitz/slice"
+	"sync"
 )
 
 type RepoData interface {
@@ -11,7 +14,19 @@ type RepoData interface {
 	Head() *Oid
 	LocalBranches() []*Branch
 	LocalTags() []*Tag
-	Commits(*Oid) []*Commit
+	CommitSetState(*Oid) CommitSetState
+	Commits(oid *Oid, startIndex, count uint) (<-chan *Commit, error)
+}
+
+type CommitSet struct {
+	commits []*Commit
+	loading bool
+	lock    sync.Mutex
+}
+
+type CommitSetState struct {
+	loading   bool
+	commitNum uint
 }
 
 type RepositoryData struct {
@@ -21,7 +36,7 @@ type RepositoryData struct {
 	localBranchesList []*Branch
 	localTags         map[*Oid]*Tag
 	localTagsList     []*Tag
-	commits           map[*Oid][]*Commit
+	commits           map[*Oid]*CommitSet
 }
 
 func NewRepositoryData(repoDataLoader *RepoDataLoader) *RepositoryData {
@@ -29,7 +44,7 @@ func NewRepositoryData(repoDataLoader *RepoDataLoader) *RepositoryData {
 		repoDataLoader: repoDataLoader,
 		localBranches:  make(map[*Oid]*Branch),
 		localTags:      make(map[*Oid]*Tag),
-		commits:        make(map[*Oid][]*Commit),
+		commits:        make(map[*Oid]*CommitSet),
 	}
 }
 
@@ -83,17 +98,37 @@ func (repoData *RepositoryData) LoadLocalRefs() (err error) {
 	return
 }
 
-func (repoData *RepositoryData) LoadCommits(oid *Oid) error {
+func (repoData *RepositoryData) LoadCommits(oid *Oid) (err error) {
 	if _, ok := repoData.commits[oid]; ok {
-		return nil
+		log.Debugf("Commits already loaded for oid %v", oid)
+		return
 	}
 
-	commits, err := repoData.repoDataLoader.Commits(oid)
-	if err == nil {
-		repoData.commits[oid] = commits
+	commitCh, err := repoData.repoDataLoader.Commits(oid)
+	if err != nil {
+		return
 	}
 
-	return err
+	commitSet := &CommitSet{
+		loading: true,
+		commits: make([]*Commit, 0),
+	}
+	repoData.commits[oid] = commitSet
+
+	go func() {
+		log.Debugf("Receiving commits from RepoDataLoader for oid %v", oid)
+
+		for commit := range commitCh {
+			commitSet.lock.Lock()
+			commitSet.commits = append(commitSet.commits, commit)
+			commitSet.lock.Unlock()
+		}
+
+		commitSet.loading = false
+		log.Debugf("Finished loading commits for oid %v", oid)
+	}()
+
+	return
 }
 
 func (repoData *RepositoryData) Head() *Oid {
@@ -108,6 +143,59 @@ func (repoData *RepositoryData) LocalTags() []*Tag {
 	return repoData.localTagsList
 }
 
-func (repoData *RepositoryData) Commits(oid *Oid) []*Commit {
-	return repoData.commits[oid]
+func (repoData *RepositoryData) CommitSetState(oid *Oid) CommitSetState {
+	var commitSetState CommitSetState
+
+	if commitSet, ok := repoData.commits[oid]; !ok {
+		commitSetState = CommitSetState{
+			loading:   false,
+			commitNum: 0,
+		}
+	} else {
+		commitSet.lock.Lock()
+		commitSetState = CommitSetState{
+			loading:   commitSet.loading,
+			commitNum: uint(len(commitSet.commits)),
+		}
+		commitSet.lock.Unlock()
+	}
+
+	return commitSetState
+}
+
+func (repoData *RepositoryData) Commits(oid *Oid, startIndex, count uint) (<-chan *Commit, error) {
+	var commitSet *CommitSet
+	var ok bool
+
+	if commitSet, ok = repoData.commits[oid]; !ok {
+		return nil, fmt.Errorf("No commits loaded for oid %v", oid)
+	}
+
+	commitCh := make(chan *Commit)
+
+	go func() {
+		defer close(commitCh)
+		var commit *Commit
+		index := startIndex
+
+		for {
+			commit = nil
+			commitSet.lock.Lock()
+
+			if index < uint(len(commitSet.commits)) && index-startIndex < count {
+				commit = commitSet.commits[index]
+				index++
+			}
+
+			commitSet.lock.Unlock()
+
+			if commit != nil {
+				commitCh <- commit
+			} else {
+				return
+			}
+		}
+	}()
+
+	return commitCh, nil
 }

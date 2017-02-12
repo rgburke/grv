@@ -6,6 +6,10 @@ import (
 	"github.com/libgit2/git2go"
 )
 
+const (
+	RDL_COMMIT_BUFFER_SIZE = 100
+)
+
 type RepoDataLoader struct {
 	repo *git.Repository
 }
@@ -122,24 +126,31 @@ func (repoDataLoader *RepoDataLoader) LocalRefs() (branches []*Branch, tags []*T
 	return
 }
 
-func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (commits []*Commit, err error) {
+func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) {
 	log.Debugf("Loading commits for oid %v", oid)
 
 	revWalk, err := repoDataLoader.repo.Walk()
 	if err != nil {
-		return
+		return nil, err
 	}
-	defer revWalk.Free()
 
 	revWalk.Sorting(git.SortTime)
 	revWalk.Push(oid.oid)
 
-	revWalk.Iterate(func(commit *git.Commit) bool {
-		commits = append(commits, &Commit{commit})
-		return true
-	})
+	commitCh := make(chan *Commit, RDL_COMMIT_BUFFER_SIZE)
 
-	log.Debugf("Loaded %v commits", len(commits))
+	go func() {
+		commitNum := 0
+		revWalk.Iterate(func(commit *git.Commit) bool {
+			commitNum++
+			commitCh <- &Commit{commit}
+			return true
+		})
 
-	return
+		close(commitCh)
+		revWalk.Free()
+		log.Debugf("Loaded %v commits for oid %v", commitNum, oid)
+	}()
+
+	return commitCh, nil
 }

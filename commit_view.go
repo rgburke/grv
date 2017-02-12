@@ -46,7 +46,6 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		return fmt.Errorf("No ViewIndex exists for oid %v", commitView.activeBranch)
 	}
 
-	commits := commitView.repoData.Commits(commitView.activeBranch)
 	rows := win.Rows() - 2
 
 	if viewIndex.viewStartIndex > viewIndex.activeIndex {
@@ -55,17 +54,21 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		viewIndex.viewStartIndex += (rowDiff - rows) + 1
 	}
 
-	commitIndex := viewIndex.viewStartIndex
+	commitCh, err := commitView.repoData.Commits(commitView.activeBranch, viewIndex.viewStartIndex, rows)
+	if err != nil {
+		return err
+	}
 
-	for rowIndex := uint(0); rowIndex < rows && commitIndex < uint(len(commits)); rowIndex++ {
-		commit := commits[commitIndex]
+	rowIndex := uint(1)
+
+	for commit := range commitCh {
 		author := commit.commit.Author()
 
-		if err = win.SetRow(rowIndex+1, " %v %s %s", author.When, author.Name, commit.commit.Summary()); err != nil {
+		if err = win.SetRow(rowIndex, " %v %s %s", author.When, author.Name, commit.commit.Summary()); err != nil {
 			break
 		}
 
-		commitIndex++
+		rowIndex++
 	}
 
 	if err = win.SetSelectedRow((viewIndex.activeIndex-viewIndex.viewStartIndex)+1, commitView.active); err != nil {
@@ -121,10 +124,10 @@ func MoveUpCommit(commitView *CommitView, channels HandlerChannels) (err error) 
 }
 
 func MoveDownCommit(commitView *CommitView, channels HandlerChannels) (err error) {
-	commits := commitView.repoData.Commits(commitView.activeBranch)
+	commitSetState := commitView.repoData.CommitSetState(commitView.activeBranch)
 	viewIndex := commitView.viewIndex[commitView.activeBranch]
 
-	if viewIndex.activeIndex < uint(len(commits))-1 {
+	if viewIndex.activeIndex < commitSetState.commitNum-1 {
 		log.Debug("Moving down one commit")
 		viewIndex.activeIndex++
 		channels.displayCh <- true
