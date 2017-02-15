@@ -11,15 +11,22 @@ const (
 	GRV_ERROR_BUFFER_SIZE   = 10
 )
 
+type GRVChannels struct {
+	exitCh    chan bool
+	inputCh   chan KeyPressEvent
+	displayCh chan bool
+	errorCh   chan error
+}
+
 type HandlerChannels struct {
 	displayCh chan<- bool
-	inputCh   <-chan KeyPressEvent
 }
 
 type GRV struct {
 	repoData *RepositoryData
 	view     *View
 	ui       UI
+	channels GRVChannels
 }
 
 func NewGRV() *GRV {
@@ -30,6 +37,12 @@ func NewGRV() *GRV {
 		repoData: repoData,
 		view:     NewView(repoData),
 		ui:       NewNcursesDisplay(),
+		channels: GRVChannels{
+			exitCh:    make(chan bool),
+			inputCh:   make(chan KeyPressEvent, GRV_INPUT_BUFFER_SIZE),
+			displayCh: make(chan bool, GRV_DISPLAY_BUFFER_SIZE),
+			errorCh:   make(chan error, GRV_ERROR_BUFFER_SIZE),
+		},
 	}
 }
 
@@ -44,7 +57,7 @@ func (grv *GRV) Initialise(repoPath string) (err error) {
 		return
 	}
 
-	if err = grv.view.Initialise(); err != nil {
+	if err = grv.view.Initialise(HandlerChannels{displayCh: grv.channels.displayCh}); err != nil {
 		return
 	}
 
@@ -59,21 +72,17 @@ func (grv *GRV) Free() {
 }
 
 func (grv *GRV) Run() {
-	exitCh := make(chan bool)
-	inputCh := make(chan KeyPressEvent, GRV_INPUT_BUFFER_SIZE)
-	displayCh := make(chan bool, GRV_DISPLAY_BUFFER_SIZE)
-	errorCh := make(chan error, GRV_ERROR_BUFFER_SIZE)
-
 	var waitGroup sync.WaitGroup
+	channels := grv.channels
 
 	waitGroup.Add(1)
-	go grv.runInputLoop(&waitGroup, exitCh, inputCh, errorCh)
+	go grv.runInputLoop(&waitGroup, channels.exitCh, channels.inputCh, channels.errorCh)
 	waitGroup.Add(1)
-	go grv.runDisplayLoop(&waitGroup, exitCh, displayCh, errorCh)
+	go grv.runDisplayLoop(&waitGroup, channels.exitCh, channels.displayCh, channels.errorCh)
 	waitGroup.Add(1)
-	go grv.runHandlerLoop(&waitGroup, exitCh, displayCh, inputCh, errorCh)
+	go grv.runHandlerLoop(&waitGroup, channels.exitCh, channels.displayCh, channels.inputCh, channels.errorCh)
 
-	displayCh <- true
+	channels.displayCh <- true
 
 	log.Info("Waiting for loops to finish")
 	waitGroup.Wait()
@@ -138,7 +147,6 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 
 	channels := HandlerChannels{
 		displayCh: displayCh,
-		inputCh:   inputCh,
 	}
 
 	for {

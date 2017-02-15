@@ -4,6 +4,11 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
+	"time"
+)
+
+const (
+	CV_LOAD_REFRESH_MS = 500
 )
 
 type CommitViewHandler func(*CommitView, HandlerChannels) error
@@ -14,11 +19,12 @@ type ViewIndex struct {
 }
 
 type CommitView struct {
-	repoData     RepoData
-	activeBranch *Oid
-	active       bool
-	viewIndex    map[*Oid]*ViewIndex
-	handlers     map[gc.Key]CommitViewHandler
+	repoData            RepoData
+	activeBranch        *Oid
+	active              bool
+	viewIndex           map[*Oid]*ViewIndex
+	handlers            map[gc.Key]CommitViewHandler
+	loadingRefreshTimer *time.Ticker
 }
 
 func NewCommitView(repoData RepoData) *CommitView {
@@ -32,7 +38,7 @@ func NewCommitView(repoData RepoData) *CommitView {
 	}
 }
 
-func (commitView *CommitView) Initialise() (err error) {
+func (commitView *CommitView) Initialise(channels HandlerChannels) (err error) {
 	log.Info("Initialising CommitView")
 	return
 }
@@ -80,10 +86,22 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	return err
 }
 
-func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
+func (commitView *CommitView) OnRefSelect(oid *Oid, channels HandlerChannels) (err error) {
 	log.Debugf("CommitView loading commits for selected oid %v", oid)
 
-	if err = commitView.repoData.LoadCommits(oid); err != nil {
+	if commitView.loadingRefreshTimer != nil {
+		commitView.loadingRefreshTimer.Stop()
+	}
+
+	commitView.loadingRefreshTimer = time.NewTicker(time.Millisecond * CV_LOAD_REFRESH_MS)
+	commitsLoadedCh := make(chan bool)
+	onCommitsLoaded := func(oid *Oid) {
+		commitView.loadingRefreshTimer.Stop()
+		commitsLoadedCh <- true
+		close(commitsLoadedCh)
+	}
+
+	if err = commitView.repoData.LoadCommits(oid, onCommitsLoaded); err != nil {
 		return
 	}
 
@@ -91,6 +109,25 @@ func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
 
 	if _, ok := commitView.viewIndex[oid]; !ok {
 		commitView.viewIndex[oid] = &ViewIndex{}
+	}
+
+	commitSetState := commitView.repoData.CommitSetState(oid)
+
+	if commitSetState.loading {
+		go func() {
+			for {
+				select {
+				case <-commitView.loadingRefreshTimer.C:
+					log.Debug("Updating display with newly loaded commits")
+					channels.displayCh <- true
+				case <-commitsLoadedCh:
+					channels.displayCh <- true
+					return
+				}
+			}
+		}()
+	} else {
+		commitView.loadingRefreshTimer.Stop()
 	}
 
 	return

@@ -6,14 +6,14 @@ import (
 )
 
 type WindowView interface {
-	Initialise() error
+	Initialise(HandlerChannels) error
 	Render(RenderWindow) error
 	Handle(KeyPressEvent, HandlerChannels) error
 	OnActiveChange(bool)
 }
 
 type WindowViewCollection interface {
-	Initialise() error
+	Initialise(HandlerChannels) error
 	Render(ViewDimension) ([]*Window, error)
 	Handle(KeyPressEvent, HandlerChannels) error
 	OnActiveChange(bool)
@@ -42,9 +42,9 @@ func NewView(repoData RepoData) (view *View) {
 	return
 }
 
-func (view *View) Initialise() (err error) {
+func (view *View) Initialise(channels HandlerChannels) (err error) {
 	for _, childView := range view.views {
-		if err = childView.Initialise(); err != nil {
+		if err = childView.Initialise(channels); err != nil {
 			break
 		}
 	}

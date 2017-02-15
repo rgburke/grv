@@ -7,10 +7,12 @@ import (
 	"sync"
 )
 
+type OnCommitsLoaded func(*Oid)
+
 type RepoData interface {
 	LoadHead() error
 	LoadLocalRefs() error
-	LoadCommits(*Oid) error
+	LoadCommits(*Oid, OnCommitsLoaded) error
 	Head() *Oid
 	LocalBranches() []*Branch
 	LocalTags() []*Tag
@@ -98,9 +100,9 @@ func (repoData *RepositoryData) LoadLocalRefs() (err error) {
 	return
 }
 
-func (repoData *RepositoryData) LoadCommits(oid *Oid) (err error) {
+func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsLoaded) (err error) {
 	if _, ok := repoData.commits[oid]; ok {
-		log.Debugf("Commits already loaded for oid %v", oid)
+		log.Debugf("Commits already loading/loaded for oid %v", oid)
 		return
 	}
 
@@ -124,8 +126,12 @@ func (repoData *RepositoryData) LoadCommits(oid *Oid) (err error) {
 			commitSet.lock.Unlock()
 		}
 
+		commitSet.lock.Lock()
 		commitSet.loading = false
+		commitSet.lock.Unlock()
 		log.Debugf("Finished loading commits for oid %v", oid)
+
+		onCommitsLoaded(oid)
 	}()
 
 	return

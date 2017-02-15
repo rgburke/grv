@@ -34,9 +34,9 @@ func NewHistoryView(repoData RepoData) *HistoryView {
 	}
 }
 
-func (historyView *HistoryView) Initialise() (err error) {
+func (historyView *HistoryView) Initialise(channels HandlerChannels) (err error) {
 	for _, childView := range historyView.views {
-		if err = childView.Initialise(); err != nil {
+		if err = childView.Initialise(channels); err != nil {
 			break
 		}
 	}

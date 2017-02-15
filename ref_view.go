@@ -46,7 +46,7 @@ type RefView struct {
 }
 
 type RefListener interface {
-	OnRefSelect(*Oid) error
+	OnRefSelect(*Oid, HandlerChannels) error
 }
 
 func NewRefView(repoData RepoData) *RefView {
@@ -73,7 +73,7 @@ func NewRefView(repoData RepoData) *RefView {
 	}
 }
 
-func (refView *RefView) Initialise() (err error) {
+func (refView *RefView) Initialise(channels HandlerChannels) (err error) {
 	log.Info("Initialising RefView")
 
 	if err = refView.repoData.LoadHead(); err != nil {
@@ -98,7 +98,7 @@ func (refView *RefView) Initialise() (err error) {
 		refView.activeIndex++
 	}
 
-	refView.notifyRefListeners(refView.repoData.Head())
+	err = refView.notifyRefListeners(refView.repoData.Head(), channels)
 
 	return
 }
@@ -107,11 +107,11 @@ func (refView *RefView) RegisterRefListener(refListener RefListener) {
 	refView.refListeners = append(refView.refListeners, refListener)
 }
 
-func (refView *RefView) notifyRefListeners(oid *Oid) (err error) {
+func (refView *RefView) notifyRefListeners(oid *Oid, channels HandlerChannels) (err error) {
 	log.Debugf("Notifying RefListeners of selected oid %v", oid)
 
 	for _, refListener := range refView.refListeners {
-		if err = refListener.OnRefSelect(oid); err != nil {
+		if err = refListener.OnRefSelect(oid, channels); err != nil {
 			break
 		}
 	}
@@ -266,7 +266,7 @@ func SelectRef(refView *RefView, channels HandlerChannels) (err error) {
 		channels.displayCh <- true
 	case RV_BRANCH, RV_TAG:
 		log.Debugf("Selecting ref %v:%v", renderedRef.value, renderedRef.oid)
-		if err = refView.notifyRefListeners(renderedRef.oid); err != nil {
+		if err = refView.notifyRefListeners(renderedRef.oid, channels); err != nil {
 			return
 		}
 		channels.displayCh <- true
