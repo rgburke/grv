@@ -4,6 +4,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
+	"sync"
 	"time"
 )
 
@@ -25,6 +26,7 @@ type CommitView struct {
 	viewIndex           map[*Oid]*ViewIndex
 	handlers            map[gc.Key]CommitViewHandler
 	loadingRefreshTimer *time.Ticker
+	lock                sync.Mutex
 }
 
 func NewCommitView(repoData RepoData) *CommitView {
@@ -45,6 +47,8 @@ func (commitView *CommitView) Initialise(channels HandlerChannels) (err error) {
 
 func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	log.Debug("Rendering CommitView")
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
 
 	var viewIndex *ViewIndex
 	var ok bool
@@ -88,15 +92,22 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 
 func (commitView *CommitView) OnRefSelect(oid *Oid, channels HandlerChannels) (err error) {
 	log.Debugf("CommitView loading commits for selected oid %v", oid)
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
 
 	if commitView.loadingRefreshTimer != nil {
 		commitView.loadingRefreshTimer.Stop()
 	}
 
-	commitView.loadingRefreshTimer = time.NewTicker(time.Millisecond * CV_LOAD_REFRESH_MS)
+	loadingRefreshTimer := time.NewTicker(time.Millisecond * CV_LOAD_REFRESH_MS)
+	commitView.loadingRefreshTimer = loadingRefreshTimer
+
 	commitsLoadedCh := make(chan bool)
 	onCommitsLoaded := func(oid *Oid) {
-		commitView.loadingRefreshTimer.Stop()
+		commitView.lock.Lock()
+		defer commitView.lock.Unlock()
+
+		loadingRefreshTimer.Stop()
 		commitsLoadedCh <- true
 		close(commitsLoadedCh)
 	}
@@ -117,7 +128,7 @@ func (commitView *CommitView) OnRefSelect(oid *Oid, channels HandlerChannels) (e
 		go func() {
 			for {
 				select {
-				case <-commitView.loadingRefreshTimer.C:
+				case <-loadingRefreshTimer.C:
 					log.Debug("Updating display with newly loaded commits")
 					channels.displayCh <- true
 				case <-commitsLoadedCh:
@@ -135,11 +146,16 @@ func (commitView *CommitView) OnRefSelect(oid *Oid, channels HandlerChannels) (e
 
 func (commitView *CommitView) OnActiveChange(active bool) {
 	log.Debugf("CommitView active %v", active)
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
 	commitView.active = active
 }
 
 func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
 	log.Debugf("CommitView handling key %v", keyPressEvent)
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
 
 	if handler, ok := commitView.handlers[keyPressEvent.key]; ok {
 		err = handler(commitView, channels)

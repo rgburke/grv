@@ -4,6 +4,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
+	"sync"
 )
 
 type RefViewHandler func(*RefView, HandlerChannels) error
@@ -43,6 +44,7 @@ type RefView struct {
 	activeIndex    uint
 	viewStartIndex uint
 	handlers       map[gc.Key]RefViewHandler
+	lock           sync.Mutex
 }
 
 type RefListener interface {
@@ -121,6 +123,8 @@ func (refView *RefView) notifyRefListeners(oid *Oid, channels HandlerChannels) (
 
 func (refView *RefView) Render(win RenderWindow) (err error) {
 	log.Debug("Rendering RefView")
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
 
 	rows := win.Rows() - 2
 
@@ -206,11 +210,16 @@ func GenerateTags(refView *RefView, refList *RefList, renderedRefs *[]RenderedRe
 
 func (refView *RefView) OnActiveChange(active bool) {
 	log.Debugf("RefView active %v", active)
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
+
 	refView.active = active
 }
 
 func (refView *RefView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
 	log.Debugf("RefView handling key %v", keyPressEvent)
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
 
 	if handler, ok := refView.handlers[keyPressEvent.key]; ok {
 		err = handler(refView, channels)

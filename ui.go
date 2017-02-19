@@ -5,6 +5,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
+	"sync"
 )
 
 type UI interface {
@@ -17,8 +18,9 @@ type UI interface {
 }
 
 type NCursesUI struct {
-	windows map[*Window]*gc.Window
-	stdscr  *gc.Window
+	windows     map[*Window]*gc.Window
+	windowsLock sync.RWMutex
+	stdscr      *gc.Window
 }
 
 type KeyPressEvent struct {
@@ -98,6 +100,7 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 
 	winMap := make(map[*Window]bool)
 
+	ui.windowsLock.RLock()
 	for _, win := range wins {
 		winMap[win] = true
 	}
@@ -115,8 +118,21 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 		}
 	}
 
+	newWins := make([]*Window, 0)
+
 	for _, win := range wins {
-		if nwin, ok := ui.windows[win]; !ok {
+		if _, ok := ui.windows[win]; !ok {
+			newWins = append(newWins, win)
+		}
+	}
+	ui.windowsLock.RUnlock()
+
+	if len(newWins) > 0 {
+		ui.windowsLock.Lock()
+		defer ui.windowsLock.Unlock()
+		var nwin *gc.Window
+
+		for _, win := range newWins {
 			log.Debugf("Creating new NCurses window %v with position row:%v,col:%v and dimensions rows:%v,cols:%v", win.Id(), win.startRow, win.startCol, win.rows, win.cols)
 			if nwin, err = gc.NewWindow(int(win.rows), int(win.cols), int(win.startRow), int(win.startCol)); err != nil {
 				return
@@ -125,15 +141,18 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 			if err = nwin.Keypad(true); err != nil {
 				return
 			}
+
 			ui.windows[win] = nwin
 		}
-
 	}
 
 	return
 }
 
 func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
+	ui.windowsLock.RLock()
+	defer ui.windowsLock.RUnlock()
+
 	for _, win := range wins {
 		if nwin, ok := ui.windows[win]; ok {
 			drawWindow(win, nwin)
@@ -170,14 +189,23 @@ func drawWindow(win *Window, nwin *gc.Window) {
 }
 
 func (ui *NCursesUI) GetInput() (keyPressEvent KeyPressEvent, err error) {
+	var activeWin *gc.Window
+
+	ui.windowsLock.RLock()
 	for _, nwin := range ui.windows {
 		if y, x := nwin.MaxYX(); y > 0 && x > 0 {
-			keyPressEvent = KeyPressEvent{key: nwin.GetChar()}
-			return
+			activeWin = nwin
+			break
 		}
 	}
+	ui.windowsLock.RUnlock()
 
-	err = errors.New("Unable to find active window to receive input from")
+	if activeWin != nil {
+		keyPressEvent = KeyPressEvent{key: activeWin.GetChar()}
+	} else {
+		err = errors.New("Unable to find active window to receive input from")
+	}
+
 	return
 }
 

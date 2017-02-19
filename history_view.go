@@ -89,12 +89,14 @@ func (historyView *HistoryView) Handle(keyPressEvent KeyPressEvent, channels Han
 	}
 
 	view := historyView.views[historyView.activeViewIndex]
+
 	err = view.Handle(keyPressEvent, channels)
 	return
 }
 
 func (historyView *HistoryView) OnActiveChange(active bool) {
 	log.Debugf("History active set to %v", active)
+
 	historyView.active = active
 
 	for viewIndex := uint(0); viewIndex < uint(len(historyView.views)); viewIndex++ {
