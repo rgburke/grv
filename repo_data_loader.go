@@ -4,14 +4,23 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/libgit2/git2go"
+	"sync"
 )
 
 const (
 	RDL_COMMIT_BUFFER_SIZE = 100
 )
 
+type InstanceCache struct {
+	oids       map[string]*Oid
+	commits    map[string]*Commit
+	oidLock    sync.Mutex
+	commitLock sync.Mutex
+}
+
 type RepoDataLoader struct {
-	repo *git.Repository
+	repo  *git.Repository
+	cache *InstanceCache
 }
 
 type Oid struct {
@@ -44,8 +53,49 @@ func (tag Tag) String() string {
 	return fmt.Sprintf("%v:%v", tag.tag.Name(), tag.oid)
 }
 
+func NewInstanceCache() *InstanceCache {
+	return &InstanceCache{
+		oids:    make(map[string]*Oid),
+		commits: make(map[string]*Commit),
+	}
+}
+
+func (cache *InstanceCache) getOid(rawOid *git.Oid) *Oid {
+	cache.oidLock.Lock()
+	defer cache.oidLock.Unlock()
+
+	oidStr := rawOid.String()
+
+	if oid, ok := cache.oids[oidStr]; ok {
+		return oid
+	}
+
+	oid := &Oid{oid: rawOid}
+	cache.oids[oidStr] = oid
+
+	return oid
+}
+
+func (cache *InstanceCache) getCommit(rawCommit *git.Commit) *Commit {
+	cache.commitLock.Lock()
+	defer cache.commitLock.Unlock()
+
+	oidStr := rawCommit.Id().String()
+
+	if commit, ok := cache.commits[oidStr]; ok {
+		return commit
+	}
+
+	commit := &Commit{commit: rawCommit}
+	cache.commits[oidStr] = commit
+
+	return commit
+}
+
 func NewRepoDataLoader() *RepoDataLoader {
-	return &RepoDataLoader{}
+	return &RepoDataLoader{
+		cache: NewInstanceCache(),
+	}
 }
 
 func (repoDataLoader *RepoDataLoader) Free() {
@@ -71,7 +121,7 @@ func (repoDataLoader *RepoDataLoader) Head() (oid *Oid, err error) {
 		return
 	}
 
-	oid = &Oid{ref.Target()}
+	oid = repoDataLoader.cache.getOid(ref.Target())
 	log.Debugf("Loaded HEAD %v", oid)
 
 	return
@@ -95,7 +145,7 @@ func (repoDataLoader *RepoDataLoader) LocalRefs() (branches []*Branch, tags []*T
 		if !ref.IsRemote() {
 			if ref.IsBranch() {
 				branch := ref.Branch()
-				oid := &Oid{branch.Target()}
+				oid := repoDataLoader.cache.getOid(branch.Target())
 				branchName, err := branch.Name()
 				branch.Free()
 
@@ -113,7 +163,7 @@ func (repoDataLoader *RepoDataLoader) LocalRefs() (branches []*Branch, tags []*T
 					break
 				}
 
-				oid := &Oid{tag.TargetId()}
+				oid := repoDataLoader.cache.getOid(tag.TargetId())
 
 				newTag := &Tag{oid, tag}
 				tags = append(tags, newTag)
@@ -143,7 +193,7 @@ func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) 
 		commitNum := 0
 		revWalk.Iterate(func(commit *git.Commit) bool {
 			commitNum++
-			commitCh <- &Commit{commit}
+			commitCh <- repoDataLoader.cache.getCommit(commit)
 			return true
 		})
 
