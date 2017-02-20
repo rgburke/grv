@@ -19,14 +19,21 @@ type ViewIndex struct {
 	viewStartIndex uint
 }
 
+type LoadingCommitsRefreshTask struct {
+	refreshRate time.Duration
+	ticker      *time.Ticker
+	cancelCh    chan<- bool
+	displayCh   chan<- bool
+}
+
 type CommitView struct {
-	repoData            RepoData
-	activeBranch        *Oid
-	active              bool
-	viewIndex           map[*Oid]*ViewIndex
-	handlers            map[gc.Key]CommitViewHandler
-	loadingRefreshTimer *time.Ticker
-	lock                sync.Mutex
+	repoData     RepoData
+	activeBranch *Oid
+	active       bool
+	viewIndex    map[*Oid]*ViewIndex
+	handlers     map[gc.Key]CommitViewHandler
+	refreshTask  *LoadingCommitsRefreshTask
+	lock         sync.Mutex
 }
 
 func NewCommitView(repoData RepoData) *CommitView {
@@ -90,26 +97,57 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	return err
 }
 
+func NewLoadingCommitsRefreshTask(refreshRate time.Duration, displayCh chan<- bool) *LoadingCommitsRefreshTask {
+	return &LoadingCommitsRefreshTask{
+		refreshRate: refreshRate,
+		displayCh:   displayCh,
+	}
+}
+
+func (refreshTask *LoadingCommitsRefreshTask) Start() {
+	refreshTask.ticker = time.NewTicker(refreshTask.refreshRate)
+	cancelCh := make(chan bool)
+	refreshTask.cancelCh = cancelCh
+
+	go func(cancelCh <-chan bool) {
+		for {
+			select {
+			case <-refreshTask.ticker.C:
+				log.Debug("Updating display with newly loaded commits")
+				refreshTask.displayCh <- true
+			case <-cancelCh:
+				refreshTask.displayCh <- true
+				return
+			}
+		}
+	}(cancelCh)
+}
+
+func (refreshTask *LoadingCommitsRefreshTask) Stop() {
+	if refreshTask.ticker != nil {
+		refreshTask.ticker.Stop()
+		refreshTask.cancelCh <- true
+		close(refreshTask.cancelCh)
+		refreshTask.ticker = nil
+	}
+}
+
 func (commitView *CommitView) OnRefSelect(oid *Oid, channels HandlerChannels) (err error) {
 	log.Debugf("CommitView loading commits for selected oid %v", oid)
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
-	if commitView.loadingRefreshTimer != nil {
-		commitView.loadingRefreshTimer.Stop()
+	if commitView.refreshTask != nil {
+		commitView.refreshTask.Stop()
 	}
 
-	loadingRefreshTimer := time.NewTicker(time.Millisecond * CV_LOAD_REFRESH_MS)
-	commitView.loadingRefreshTimer = loadingRefreshTimer
+	refreshTask := NewLoadingCommitsRefreshTask(time.Millisecond*CV_LOAD_REFRESH_MS, channels.displayCh)
+	commitView.refreshTask = refreshTask
 
-	commitsLoadedCh := make(chan bool)
 	onCommitsLoaded := func(oid *Oid) {
 		commitView.lock.Lock()
 		defer commitView.lock.Unlock()
-
-		loadingRefreshTimer.Stop()
-		commitsLoadedCh <- true
-		close(commitsLoadedCh)
+		refreshTask.Stop()
 	}
 
 	if err = commitView.repoData.LoadCommits(oid, onCommitsLoaded); err != nil {
@@ -125,20 +163,9 @@ func (commitView *CommitView) OnRefSelect(oid *Oid, channels HandlerChannels) (e
 	commitSetState := commitView.repoData.CommitSetState(oid)
 
 	if commitSetState.loading {
-		go func() {
-			for {
-				select {
-				case <-loadingRefreshTimer.C:
-					log.Debug("Updating display with newly loaded commits")
-					channels.displayCh <- true
-				case <-commitsLoadedCh:
-					channels.displayCh <- true
-					return
-				}
-			}
-		}()
+		commitView.refreshTask.Start()
 	} else {
-		commitView.loadingRefreshTimer.Stop()
+		commitView.refreshTask.Stop()
 	}
 
 	return
