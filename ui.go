@@ -1,11 +1,19 @@
 package main
 
+// Link against ncurses with wide character support in case goncurses doesn't
+
+// #cgo pkg-config: ncursesw
+// #include <stdlib.h>
+// #include <locale.h>
+import "C"
+
 import (
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
 	"sync"
+	"unsafe"
 )
 
 type UI interface {
@@ -50,6 +58,10 @@ func (ui *NCursesUI) Free() {
 
 func (ui *NCursesUI) Initialise() (err error) {
 	log.Info("Initialising NCurses")
+
+	emptyCString := C.CString("")
+	C.setlocale(C.LC_ALL, emptyCString)
+	C.free(unsafe.Pointer(emptyCString))
 
 	ui.stdscr, err = gc.Init()
 	if err != nil {
@@ -169,17 +181,17 @@ func drawWindow(win *Window, nwin *gc.Window) {
 	log.Debugf("Drawing window %v", win.Id())
 
 	for rowIndex := uint(0); rowIndex < win.rows; rowIndex++ {
-		row := win.cells[rowIndex]
+		line := win.lines[rowIndex]
 		nwin.Move(int(rowIndex), 0)
 
 		for colIndex := uint(0); colIndex < win.cols; colIndex++ {
-			cell := row[colIndex]
+			cell := line.cells[colIndex]
 
 			if cell.style.acs_char != 0 {
 				nwin.AddChar(cell.style.acs_char)
-			} else {
+			} else if cell.codePoints.Len() > 0 {
 				nwin.AttrOn(cell.style.attr)
-				nwin.Print(fmt.Sprintf("%c", cell.codePoint))
+				nwin.Print(cell.codePoints.String())
 				nwin.AttrOff(cell.style.attr)
 			}
 		}
