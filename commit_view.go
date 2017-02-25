@@ -81,7 +81,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	for commit := range commitCh {
 		author := commit.commit.Author()
 
-		if err = win.SetRow(rowIndex, " %v %s %s", author.When, author.Name, commit.commit.Summary()); err != nil {
+		if err = win.SetRow(rowIndex, " %v %s %s", author.When.Format("2006-01-02 15:04"), author.Name, commit.commit.Summary()); err != nil {
 			break
 		}
 
