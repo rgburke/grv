@@ -127,8 +127,37 @@ func (repoDataLoader *RepoDataLoader) Head() (oid *Oid, err error) {
 	return
 }
 
-func (repoDataLoader *RepoDataLoader) LocalRefs() (branches []*Branch, tags []*Tag, err error) {
-	log.Debug("Loading local refs")
+func (repoDataLoader *RepoDataLoader) LoadLocalBranches() (branches []*Branch, err error) {
+	log.Debug("Loading local branches")
+	return repoDataLoader.LoadBranches(git.BranchLocal)
+}
+
+func (repoDataLoader *RepoDataLoader) LoadBranches(branchType git.BranchType) (branches []*Branch, err error) {
+	branchIter, err := repoDataLoader.repo.NewBranchIterator(branchType)
+	if err != nil {
+		return
+	}
+	defer branchIter.Free()
+
+	err = branchIter.ForEach(func(branch *git.Branch, branchType git.BranchType) error {
+		branchName, err := branch.Name()
+		if err != nil {
+			return err
+		}
+		oid := repoDataLoader.cache.getOid(branch.Target())
+
+		newBranch := &Branch{oid, branchName}
+		branches = append(branches, newBranch)
+		log.Debugf("Loaded branch %v", newBranch)
+
+		return nil
+	})
+
+	return
+}
+
+func (repoDataLoader *RepoDataLoader) LocalTags() (tags []*Tag, err error) {
+	log.Debug("Loading local tags")
 
 	refIter, err := repoDataLoader.repo.NewReferenceIterator()
 	if err != nil {
@@ -142,34 +171,18 @@ func (repoDataLoader *RepoDataLoader) LocalRefs() (branches []*Branch, tags []*T
 			break
 		}
 
-		if !ref.IsRemote() {
-			if ref.IsBranch() {
-				branch := ref.Branch()
-				oid := repoDataLoader.cache.getOid(branch.Target())
-				branchName, err := branch.Name()
-				branch.Free()
-
-				if err != nil {
-					break
-				}
-
-				newBranch := &Branch{oid, branchName}
-				branches = append(branches, newBranch)
-
-				log.Debugf("Loaded branch %v", newBranch)
-			} else if ref.IsTag() {
-				tag, err := repoDataLoader.repo.LookupTag(ref.Target())
-				if err != nil {
-					break
-				}
-
-				oid := repoDataLoader.cache.getOid(tag.TargetId())
-
-				newTag := &Tag{oid, tag}
-				tags = append(tags, newTag)
-
-				log.Debugf("Loaded tag %v", newTag)
+		if !ref.IsRemote() && ref.IsTag() {
+			tag, err := repoDataLoader.repo.LookupTag(ref.Target())
+			if err != nil {
+				break
 			}
+
+			oid := repoDataLoader.cache.getOid(tag.TargetId())
+
+			newTag := &Tag{oid, tag}
+			tags = append(tags, newTag)
+
+			log.Debugf("Loaded tag %v", newTag)
 		}
 	}
 

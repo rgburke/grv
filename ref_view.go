@@ -17,6 +17,7 @@ const (
 	RV_TAG_GROUP
 	RV_TAG
 	RV_SPACE
+	RV_LOADING
 )
 
 type RenderedRefGenerator func(*RefView, *RefList, *[]RenderedRef)
@@ -82,25 +83,43 @@ func (refView *RefView) Initialise(channels HandlerChannels) (err error) {
 		return
 	}
 
-	if err = refView.repoData.LoadLocalRefs(); err != nil {
+	if err = refView.repoData.LoadLocalBranches(func(branches []*Branch) {
+		log.Debug("Local branches loaded")
+		refView.lock.Lock()
+		defer refView.lock.Unlock()
+
+		refView.GenerateRenderedRefs()
+
+		head := refView.repoData.Head()
+		refView.activeIndex = 1
+
+		for _, branch := range branches {
+			if branch.oid.oid.Equal(head.oid) {
+				break
+			}
+
+			refView.activeIndex++
+		}
+
+		refView.notifyRefListeners(refView.repoData.Head(), channels)
+
+		channels.displayCh <- true
+	}); err != nil {
+		return
+	}
+
+	if err = refView.repoData.LoadLocalTags(func(tags []*Tag) {
+		log.Debug("Local tags loaded")
+		refView.lock.Lock()
+		defer refView.lock.Unlock()
+
+		refView.GenerateRenderedRefs()
+		channels.displayCh <- true
+	}); err != nil {
 		return
 	}
 
 	refView.GenerateRenderedRefs()
-
-	head := refView.repoData.Head()
-	branches := refView.repoData.LocalBranches()
-	refView.activeIndex = 1
-
-	for _, branch := range branches {
-		if branch.oid.oid.Equal(head.oid) {
-			break
-		}
-
-		refView.activeIndex++
-	}
-
-	err = refView.notifyRefListeners(refView.repoData.Head(), channels)
 
 	return
 }
@@ -185,7 +204,16 @@ func (refView *RefView) GenerateRenderedRefs() {
 }
 
 func GenerateBranches(refView *RefView, refList *RefList, renderedRefs *[]RenderedRef) {
-	branches := refView.repoData.LocalBranches()
+	branches, loading := refView.repoData.LocalBranches()
+
+	if loading {
+		*renderedRefs = append(*renderedRefs, RenderedRef{
+			value:           "   Loading...",
+			renderedRefType: RV_LOADING,
+		})
+
+		return
+	}
 
 	for _, branch := range branches {
 		*renderedRefs = append(*renderedRefs, RenderedRef{
@@ -197,7 +225,16 @@ func GenerateBranches(refView *RefView, refList *RefList, renderedRefs *[]Render
 }
 
 func GenerateTags(refView *RefView, refList *RefList, renderedRefs *[]RenderedRef) {
-	tags := refView.repoData.LocalTags()
+	tags, loading := refView.repoData.LocalTags()
+
+	if loading {
+		*renderedRefs = append(*renderedRefs, RenderedRef{
+			value:           "   Loading...",
+			renderedRefType: RV_LOADING,
+		})
+
+		return
+	}
 
 	for _, tag := range tags {
 		*renderedRefs = append(*renderedRefs, RenderedRef{
@@ -237,7 +274,13 @@ func MoveUpRef(refView *RefView, channels HandlerChannels) (err error) {
 
 	refView.activeIndex--
 
-	for refView.renderedRefs[refView.activeIndex].renderedRefType == RV_SPACE && refView.activeIndex > 0 {
+	for refView.activeIndex > 0 {
+		renderedRef := refView.renderedRefs[refView.activeIndex]
+
+		if renderedRef.renderedRefType != RV_SPACE && renderedRef.renderedRefType != RV_LOADING {
+			break
+		}
+
 		refView.activeIndex--
 	}
 
@@ -256,7 +299,13 @@ func MoveDownRef(refView *RefView, channels HandlerChannels) (err error) {
 
 	refView.activeIndex++
 
-	for refView.renderedRefs[refView.activeIndex].renderedRefType == RV_SPACE && refView.activeIndex < indexLimit {
+	for refView.activeIndex < indexLimit {
+		renderedRef := refView.renderedRefs[refView.activeIndex]
+
+		if renderedRef.renderedRefType != RV_SPACE && renderedRef.renderedRefType != RV_LOADING {
+			break
+		}
+
 		refView.activeIndex++
 	}
 

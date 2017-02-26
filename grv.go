@@ -123,11 +123,23 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 
 			wins, err := grv.view.Render(viewDimension)
 			if err != nil {
-				errorCh <- err
+				select {
+				case errorCh <- err:
+				default:
+					log.Errorf("Unable to send error %v", err)
+				}
+
+				break
 			}
 
 			if err := grv.ui.Update(wins); err != nil {
-				errorCh <- err
+				select {
+				case errorCh <- err:
+				default:
+					log.Errorf("Unable to send error %v", err)
+				}
+
+				break
 			}
 		case err := <-errorCh:
 			log.Errorf("Error channel received error: %v", err)

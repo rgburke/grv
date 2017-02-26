@@ -8,14 +8,17 @@ import (
 )
 
 type OnCommitsLoaded func(*Oid)
+type OnBranchesLoaded func([]*Branch)
+type OnTagsLoaded func([]*Tag)
 
 type RepoData interface {
 	LoadHead() error
-	LoadLocalRefs() error
+	LoadLocalBranches(OnBranchesLoaded) error
+	LoadLocalTags(OnTagsLoaded) error
 	LoadCommits(*Oid, OnCommitsLoaded) error
 	Head() *Oid
-	LocalBranches() []*Branch
-	LocalTags() []*Tag
+	LocalBranches() (branches []*Branch, loading bool)
+	LocalTags() (tags []*Tag, loading bool)
 	CommitSetState(*Oid) CommitSetState
 	Commits(oid *Oid, startIndex, count uint) (<-chan *Commit, error)
 }
@@ -31,21 +34,45 @@ type CommitSetState struct {
 	commitNum uint
 }
 
+type BranchSet struct {
+	branches     map[*Oid]*Branch
+	branchesList []*Branch
+	loading      bool
+	lock         sync.Mutex
+}
+
+type TagSet struct {
+	tags     map[*Oid]*Tag
+	tagsList []*Tag
+	loading  bool
+	lock     sync.Mutex
+}
+
 type RepositoryData struct {
-	repoDataLoader    *RepoDataLoader
-	head              *Oid
-	localBranches     map[*Oid]*Branch
-	localBranchesList []*Branch
-	localTags         map[*Oid]*Tag
-	localTagsList     []*Tag
-	commits           map[*Oid]*CommitSet
+	repoDataLoader *RepoDataLoader
+	head           *Oid
+	localBranches  *BranchSet
+	localTags      *TagSet
+	commits        map[*Oid]*CommitSet
+}
+
+func NewBranchSet() *BranchSet {
+	return &BranchSet{
+		branches: make(map[*Oid]*Branch),
+	}
+}
+
+func NewTagSet() *TagSet {
+	return &TagSet{
+		tags: make(map[*Oid]*Tag),
+	}
 }
 
 func NewRepositoryData(repoDataLoader *RepoDataLoader) *RepositoryData {
 	return &RepositoryData{
 		repoDataLoader: repoDataLoader,
-		localBranches:  make(map[*Oid]*Branch),
-		localTags:      make(map[*Oid]*Tag),
+		localBranches:  NewBranchSet(),
+		localTags:      NewTagSet(),
 		commits:        make(map[*Oid]*CommitSet),
 	}
 }
@@ -73,29 +100,80 @@ func (repoData *RepositoryData) LoadHead() (err error) {
 	return
 }
 
-func (repoData *RepositoryData) LoadLocalRefs() (err error) {
-	branches, tags, err := repoData.repoDataLoader.LocalRefs()
-	if err != nil {
+func (repoData *RepositoryData) LoadLocalBranches(onBranchesLoaded OnBranchesLoaded) (err error) {
+	branchSet := repoData.localBranches
+	branchSet.lock.Lock()
+	defer branchSet.lock.Unlock()
+
+	if branchSet.loading {
+		log.Debug("Local branches already loading")
 		return
 	}
 
-	for _, branch := range branches {
-		repoData.localBranches[branch.oid] = branch
-		repoData.localBranchesList = append(repoData.localBranchesList, branch)
+	go func() {
+		branches, err := repoData.repoDataLoader.LoadLocalBranches()
+		if err != nil {
+			return
+		}
+
+		slice.Sort(branches, func(i, j int) bool {
+			return branches[i].name < branches[j].name
+		})
+
+		branchMap := make(map[*Oid]*Branch)
+		for _, branch := range branches {
+			branchMap[branch.oid] = branch
+		}
+
+		branchSet.lock.Lock()
+		branchSet.branches = branchMap
+		branchSet.branchesList = branches
+		branchSet.loading = false
+		branchSet.lock.Unlock()
+
+		onBranchesLoaded(branches)
+	}()
+
+	branchSet.loading = true
+
+	return
+}
+
+func (repoData *RepositoryData) LoadLocalTags(onTagsLoaded OnTagsLoaded) (err error) {
+	tagSet := repoData.localTags
+	tagSet.lock.Lock()
+	defer tagSet.lock.Unlock()
+
+	if tagSet.loading {
+		log.Debug("Local tags already loading")
+		return
 	}
 
-	slice.Sort(repoData.localBranchesList, func(i, j int) bool {
-		return repoData.localBranchesList[i].name < repoData.localBranchesList[j].name
-	})
+	go func() {
+		tags, err := repoData.repoDataLoader.LocalTags()
+		if err != nil {
+			return
+		}
 
-	for _, tag := range tags {
-		repoData.localTags[tag.oid] = tag
-		repoData.localTagsList = append(repoData.localTagsList, tag)
-	}
+		slice.Sort(tags, func(i, j int) bool {
+			return tags[i].tag.Name() < tags[j].tag.Name()
+		})
 
-	slice.Sort(repoData.localTagsList, func(i, j int) bool {
-		return repoData.localTagsList[i].tag.Name() < repoData.localTagsList[j].tag.Name()
-	})
+		tagMap := make(map[*Oid]*Tag)
+		for _, tag := range tags {
+			tagMap[tag.oid] = tag
+		}
+
+		tagSet.lock.Lock()
+		tagSet.tags = tagMap
+		tagSet.tagsList = tags
+		tagSet.loading = false
+		tagSet.lock.Unlock()
+
+		onTagsLoaded(tags)
+	}()
+
+	tagSet.loading = true
 
 	return
 }
@@ -141,12 +219,26 @@ func (repoData *RepositoryData) Head() *Oid {
 	return repoData.head
 }
 
-func (repoData *RepositoryData) LocalBranches() []*Branch {
-	return repoData.localBranchesList
+func (repoData *RepositoryData) LocalBranches() (branches []*Branch, loading bool) {
+	branchSet := repoData.localBranches
+	branchSet.lock.Lock()
+	defer branchSet.lock.Unlock()
+
+	branches = branchSet.branchesList
+	loading = branchSet.loading
+
+	return
 }
 
-func (repoData *RepositoryData) LocalTags() []*Tag {
-	return repoData.localTagsList
+func (repoData *RepositoryData) LocalTags() (tags []*Tag, loading bool) {
+	tagSet := repoData.localTags
+	tagSet.lock.Lock()
+	defer tagSet.lock.Unlock()
+
+	tags = tagSet.tagsList
+	loading = tagSet.loading
+
+	return
 }
 
 func (repoData *RepositoryData) CommitSetState(oid *Oid) CommitSetState {
