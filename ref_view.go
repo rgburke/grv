@@ -90,18 +90,19 @@ func (refView *RefView) Initialise(channels HandlerChannels) (err error) {
 
 		refView.GenerateRenderedRefs()
 
-		head := refView.repoData.Head()
-		refView.activeIndex = 1
+		_, headBranch := refView.repoData.Head()
 
-		for _, branch := range branches {
-			if branch.oid.oid.Equal(head.oid) {
-				break
+		if headBranch != nil {
+			refView.activeIndex = 1
+
+			for _, branch := range branches {
+				if branch.name == headBranch.name {
+					break
+				}
+
+				refView.activeIndex++
 			}
-
-			refView.activeIndex++
 		}
-
-		refView.notifyRefListeners(refView.repoData.Head(), channels)
 
 		channels.displayCh <- true
 	}); err != nil {
@@ -120,6 +121,8 @@ func (refView *RefView) Initialise(channels HandlerChannels) (err error) {
 	}
 
 	refView.GenerateRenderedRefs()
+	head, _ := refView.repoData.Head()
+	refView.notifyRefListeners(head, channels)
 
 	return
 }

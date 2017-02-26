@@ -16,7 +16,7 @@ type RepoData interface {
 	LoadLocalBranches(OnBranchesLoaded) error
 	LoadLocalTags(OnTagsLoaded) error
 	LoadCommits(*Oid, OnCommitsLoaded) error
-	Head() *Oid
+	Head() (*Oid, *Branch)
 	LocalBranches() (branches []*Branch, loading bool)
 	LocalTags() (tags []*Tag, loading bool)
 	CommitSetState(*Oid) CommitSetState
@@ -51,6 +51,7 @@ type TagSet struct {
 type RepositoryData struct {
 	repoDataLoader *RepoDataLoader
 	head           *Oid
+	headBranch     *Branch
 	localBranches  *BranchSet
 	localTags      *TagSet
 	commits        map[*Oid]*CommitSet
@@ -90,12 +91,13 @@ func (repoData *RepositoryData) Initialise(repoPath string) (err error) {
 }
 
 func (repoData *RepositoryData) LoadHead() (err error) {
-	head, err := repoData.repoDataLoader.Head()
+	head, branch, err := repoData.repoDataLoader.Head()
 	if err != nil {
 		return
 	}
 
 	repoData.head = head
+	repoData.headBranch = branch
 
 	return
 }
@@ -111,7 +113,7 @@ func (repoData *RepositoryData) LoadLocalBranches(onBranchesLoaded OnBranchesLoa
 	}
 
 	go func() {
-		branches, err := repoData.repoDataLoader.LoadLocalBranches()
+		branches, err := repoData.repoDataLoader.LocalBranches()
 		if err != nil {
 			return
 		}
@@ -215,8 +217,8 @@ func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsL
 	return
 }
 
-func (repoData *RepositoryData) Head() *Oid {
-	return repoData.head
+func (repoData *RepositoryData) Head() (*Oid, *Branch) {
+	return repoData.head, repoData.headBranch
 }
 
 func (repoData *RepositoryData) LocalBranches() (branches []*Branch, loading bool) {

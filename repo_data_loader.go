@@ -115,7 +115,7 @@ func (repoDataLoader *RepoDataLoader) Initialise(repoPath string) (err error) {
 	return
 }
 
-func (repoDataLoader *RepoDataLoader) Head() (oid *Oid, err error) {
+func (repoDataLoader *RepoDataLoader) Head() (oid *Oid, branch *Branch, err error) {
 	log.Debug("Loading HEAD")
 	ref, err := repoDataLoader.repo.Head()
 	if err != nil {
@@ -123,12 +123,27 @@ func (repoDataLoader *RepoDataLoader) Head() (oid *Oid, err error) {
 	}
 
 	oid = repoDataLoader.cache.getOid(ref.Target())
+
+	if ref.IsBranch() {
+		rawBranch := ref.Branch()
+		var branchName string
+		branchName, err = rawBranch.Name()
+		if err != nil {
+			return
+		}
+
+		branch = &Branch{
+			name: branchName,
+			oid:  oid,
+		}
+	}
+
 	log.Debugf("Loaded HEAD %v", oid)
 
 	return
 }
 
-func (repoDataLoader *RepoDataLoader) LoadLocalBranches() (branches []*Branch, err error) {
+func (repoDataLoader *RepoDataLoader) LocalBranches() (branches []*Branch, err error) {
 	log.Debug("Loading local branches")
 	return repoDataLoader.LoadBranches(git.BranchLocal)
 }
