@@ -33,8 +33,9 @@ type Branch struct {
 }
 
 type Tag struct {
-	oid *Oid
-	tag *git.Tag
+	oid  *Oid
+	name string
+	tag  *git.Tag
 }
 
 type Commit struct {
@@ -50,7 +51,7 @@ func (branch Branch) String() string {
 }
 
 func (tag Tag) String() string {
-	return fmt.Sprintf("%v:%v", tag.tag.Name(), tag.oid)
+	return fmt.Sprintf("%v:%v", tag.name, tag.oid)
 }
 
 func NewInstanceCache() *InstanceCache {
@@ -172,14 +173,14 @@ func (repoDataLoader *RepoDataLoader) LocalTags() (tags []*Tag, err error) {
 		}
 
 		if !ref.IsRemote() && ref.IsTag() {
-			tag, err := repoDataLoader.repo.LookupTag(ref.Target())
-			if err != nil {
-				break
+			tag, _ := repoDataLoader.repo.LookupTag(ref.Target())
+			oid := repoDataLoader.cache.getOid(ref.Target())
+
+			newTag := &Tag{
+				oid:  oid,
+				name: ref.Shorthand(),
+				tag:  tag,
 			}
-
-			oid := repoDataLoader.cache.getOid(tag.TargetId())
-
-			newTag := &Tag{oid, tag}
 			tags = append(tags, newTag)
 
 			log.Debugf("Loaded tag %v", newTag)

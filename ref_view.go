@@ -238,7 +238,7 @@ func GenerateTags(refView *RefView, refList *RefList, renderedRefs *[]RenderedRe
 
 	for _, tag := range tags {
 		*renderedRefs = append(*renderedRefs, RenderedRef{
-			value:           fmt.Sprintf("   %s", tag.tag.Name()),
+			value:           fmt.Sprintf("   %s", tag.name),
 			oid:             tag.oid,
 			renderedRefType: RV_TAG,
 		})

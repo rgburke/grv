@@ -156,7 +156,7 @@ func (repoData *RepositoryData) LoadLocalTags(onTagsLoaded OnTagsLoaded) (err er
 		}
 
 		slice.Sort(tags, func(i, j int) bool {
-			return tags[i].tag.Name() < tags[j].tag.Name()
+			return tags[i].name < tags[j].name
 		})
 
 		tagMap := make(map[*Oid]*Tag)
