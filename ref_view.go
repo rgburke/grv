@@ -275,6 +275,7 @@ func MoveUpRef(refView *RefView, channels HandlerChannels) (err error) {
 
 	log.Debug("Moving up one ref")
 
+	startIndex := refView.activeIndex
 	refView.activeIndex--
 
 	for refView.activeIndex > 0 {
@@ -287,7 +288,14 @@ func MoveUpRef(refView *RefView, channels HandlerChannels) (err error) {
 		refView.activeIndex--
 	}
 
-	channels.displayCh <- true
+	renderedRef := refView.renderedRefs[refView.activeIndex]
+	if renderedRef.renderedRefType == RV_SPACE || renderedRef.renderedRefType == RV_LOADING {
+		refView.activeIndex = startIndex
+		log.Debug("No valid ref entry to move to")
+	} else {
+		channels.displayCh <- true
+	}
+
 	return
 }
 
@@ -300,6 +308,7 @@ func MoveDownRef(refView *RefView, channels HandlerChannels) (err error) {
 
 	log.Debug("Moving down one ref")
 
+	startIndex := refView.activeIndex
 	refView.activeIndex++
 
 	for refView.activeIndex < indexLimit {
@@ -312,7 +321,14 @@ func MoveDownRef(refView *RefView, channels HandlerChannels) (err error) {
 		refView.activeIndex++
 	}
 
-	channels.displayCh <- true
+	renderedRef := refView.renderedRefs[refView.activeIndex]
+	if renderedRef.renderedRefType == RV_SPACE || renderedRef.renderedRefType == RV_LOADING {
+		refView.activeIndex = startIndex
+		log.Debug("No valid ref entry to move to")
+	} else {
+		channels.displayCh <- true
+	}
+
 	return
 }
 
