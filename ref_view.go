@@ -91,6 +91,7 @@ func (refView *RefView) Initialise(channels HandlerChannels) (err error) {
 		refView.GenerateRenderedRefs()
 
 		_, headBranch := refView.repoData.Head()
+		refView.activeIndex = 1
 
 		if headBranch != nil {
 			refView.activeIndex = 1
@@ -216,6 +217,14 @@ func GenerateBranches(refView *RefView, refList *RefList, renderedRefs *[]Render
 		})
 
 		return
+	}
+
+	if head, headBranch := refView.repoData.Head(); headBranch == nil {
+		*renderedRefs = append(*renderedRefs, RenderedRef{
+			value:           fmt.Sprintf("   HEAD detached at %s", head.oid.String()[0:7]),
+			oid:             head,
+			renderedRefType: RV_BRANCH,
+		})
 	}
 
 	for _, branch := range branches {
