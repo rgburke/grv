@@ -18,8 +18,10 @@ type GRVChannels struct {
 	errorCh   chan error
 }
 
-type HandlerChannels struct {
+type Channels struct {
 	displayCh chan<- bool
+	exitCh    <-chan bool
+	errorCh   chan<- error
 }
 
 type GRV struct {
@@ -29,20 +31,55 @@ type GRV struct {
 	channels GRVChannels
 }
 
+func (channels *Channels) UpdateDisplay() {
+	channels.displayCh <- true
+}
+
+// Check if grv is exiting
+// This is intended to be used by long running go routines
+func (channels *Channels) Exit() bool {
+	select {
+	case _, ok := <-channels.exitCh:
+		return !ok
+	default:
+		return false
+	}
+}
+
+// Report an error to the error channel
+// This is intended to be used by go routines to report errors that cannot be returned
+func (channels *Channels) ReportError(err error) {
+	if err != nil {
+		select {
+		case channels.errorCh <- err:
+		default:
+			log.Errorf("Unable to report error %v", err)
+		}
+	}
+}
+
 func NewGRV() *GRV {
-	repoDataLoader := NewRepoDataLoader()
-	repoData := NewRepositoryData(repoDataLoader)
+	grvChannels := GRVChannels{
+		exitCh:    make(chan bool),
+		inputCh:   make(chan KeyPressEvent, GRV_INPUT_BUFFER_SIZE),
+		displayCh: make(chan bool, GRV_DISPLAY_BUFFER_SIZE),
+		errorCh:   make(chan error, GRV_ERROR_BUFFER_SIZE),
+	}
+
+	channels := &Channels{
+		displayCh: grvChannels.displayCh,
+		exitCh:    grvChannels.exitCh,
+		errorCh:   grvChannels.errorCh,
+	}
+
+	repoDataLoader := NewRepoDataLoader(channels)
+	repoData := NewRepositoryData(repoDataLoader, channels)
 
 	return &GRV{
 		repoData: repoData,
-		view:     NewView(repoData),
+		view:     NewView(repoData, channels),
 		ui:       NewNcursesDisplay(),
-		channels: GRVChannels{
-			exitCh:    make(chan bool),
-			inputCh:   make(chan KeyPressEvent, GRV_INPUT_BUFFER_SIZE),
-			displayCh: make(chan bool, GRV_DISPLAY_BUFFER_SIZE),
-			errorCh:   make(chan error, GRV_ERROR_BUFFER_SIZE),
-		},
+		channels: grvChannels,
 	}
 }
 
@@ -57,7 +94,7 @@ func (grv *GRV) Initialise(repoPath string) (err error) {
 		return
 	}
 
-	if err = grv.view.Initialise(HandlerChannels{displayCh: grv.channels.displayCh}); err != nil {
+	if err = grv.view.Initialise(); err != nil {
 		return
 	}
 
@@ -157,14 +194,10 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	defer log.Info("Handler loop stopping")
 	log.Info("Starting handler loop")
 
-	channels := HandlerChannels{
-		displayCh: displayCh,
-	}
-
 	for {
 		select {
 		case keyPressEvent := <-inputCh:
-			if err := grv.view.Handle(keyPressEvent, channels); err != nil {
+			if err := grv.view.Handle(keyPressEvent); err != nil {
 				errorCh <- err
 			}
 		case _, ok := <-exitCh:

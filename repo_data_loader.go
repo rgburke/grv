@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/libgit2/git2go"
@@ -19,8 +20,9 @@ type InstanceCache struct {
 }
 
 type RepoDataLoader struct {
-	repo  *git.Repository
-	cache *InstanceCache
+	repo     *git.Repository
+	cache    *InstanceCache
+	channels *Channels
 }
 
 type Oid struct {
@@ -93,9 +95,10 @@ func (cache *InstanceCache) getCommit(rawCommit *git.Commit) *Commit {
 	return commit
 }
 
-func NewRepoDataLoader() *RepoDataLoader {
+func NewRepoDataLoader(channels *Channels) *RepoDataLoader {
 	return &RepoDataLoader{
-		cache: NewInstanceCache(),
+		cache:    NewInstanceCache(),
+		channels: channels,
 	}
 }
 
@@ -156,6 +159,10 @@ func (repoDataLoader *RepoDataLoader) LoadBranches(branchType git.BranchType) (b
 	defer branchIter.Free()
 
 	err = branchIter.ForEach(func(branch *git.Branch, branchType git.BranchType) error {
+		if repoDataLoader.channels.Exit() {
+			return errors.New("Program exiting - Aborting loading local branches")
+		}
+
 		branchName, err := branch.Name()
 		if err != nil {
 			return err
@@ -183,7 +190,7 @@ func (repoDataLoader *RepoDataLoader) LocalTags() (tags []*Tag, err error) {
 
 	for {
 		ref, err := refIter.Next()
-		if err != nil {
+		if err != nil || repoDataLoader.channels.Exit() {
 			break
 		}
 
@@ -221,6 +228,10 @@ func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) 
 	go func() {
 		commitNum := 0
 		revWalk.Iterate(func(commit *git.Commit) bool {
+			if repoDataLoader.channels.Exit() {
+				return false
+			}
+
 			commitNum++
 			commitCh <- repoDataLoader.cache.getCommit(commit)
 			return true

@@ -7,9 +7,9 @@ import (
 	"sync"
 )
 
-type OnCommitsLoaded func(*Oid)
-type OnBranchesLoaded func([]*Branch)
-type OnTagsLoaded func([]*Tag)
+type OnCommitsLoaded func(*Oid) error
+type OnBranchesLoaded func([]*Branch) error
+type OnTagsLoaded func([]*Tag) error
 
 type RepoData interface {
 	LoadHead() error
@@ -49,6 +49,7 @@ type TagSet struct {
 }
 
 type RepositoryData struct {
+	channels       *Channels
 	repoDataLoader *RepoDataLoader
 	head           *Oid
 	headBranch     *Branch
@@ -69,8 +70,9 @@ func NewTagSet() *TagSet {
 	}
 }
 
-func NewRepositoryData(repoDataLoader *RepoDataLoader) *RepositoryData {
+func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *RepositoryData {
 	return &RepositoryData{
+		channels:       channels,
 		repoDataLoader: repoDataLoader,
 		localBranches:  NewBranchSet(),
 		localTags:      NewTagSet(),
@@ -115,6 +117,7 @@ func (repoData *RepositoryData) LoadLocalBranches(onBranchesLoaded OnBranchesLoa
 	go func() {
 		branches, err := repoData.repoDataLoader.LocalBranches()
 		if err != nil {
+			repoData.channels.ReportError(err)
 			return
 		}
 
@@ -133,7 +136,7 @@ func (repoData *RepositoryData) LoadLocalBranches(onBranchesLoaded OnBranchesLoa
 		branchSet.loading = false
 		branchSet.lock.Unlock()
 
-		onBranchesLoaded(branches)
+		repoData.channels.ReportError(onBranchesLoaded(branches))
 	}()
 
 	branchSet.loading = true
@@ -154,6 +157,7 @@ func (repoData *RepositoryData) LoadLocalTags(onTagsLoaded OnTagsLoaded) (err er
 	go func() {
 		tags, err := repoData.repoDataLoader.LocalTags()
 		if err != nil {
+			repoData.channels.ReportError(err)
 			return
 		}
 
@@ -172,7 +176,7 @@ func (repoData *RepositoryData) LoadLocalTags(onTagsLoaded OnTagsLoaded) (err er
 		tagSet.loading = false
 		tagSet.lock.Unlock()
 
-		onTagsLoaded(tags)
+		repoData.channels.ReportError(onTagsLoaded(tags))
 	}()
 
 	tagSet.loading = true
@@ -211,7 +215,7 @@ func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsL
 		commitSet.lock.Unlock()
 		log.Debugf("Finished loading commits for oid %v", oid)
 
-		onCommitsLoaded(oid)
+		repoData.channels.ReportError(onCommitsLoaded(oid))
 	}()
 
 	return

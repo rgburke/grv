@@ -10,6 +10,7 @@ const (
 )
 
 type HistoryView struct {
+	channels        *Channels
 	refView         WindowView
 	commitView      WindowView
 	refViewWin      *Window
@@ -19,12 +20,13 @@ type HistoryView struct {
 	active          bool
 }
 
-func NewHistoryView(repoData RepoData) *HistoryView {
-	refView := NewRefView(repoData)
-	commitView := NewCommitView(repoData)
+func NewHistoryView(repoData RepoData, channels *Channels) *HistoryView {
+	refView := NewRefView(repoData, channels)
+	commitView := NewCommitView(repoData, channels)
 	refView.RegisterRefListener(commitView)
 
 	return &HistoryView{
+		channels:        channels,
 		refView:         refView,
 		commitView:      commitView,
 		refViewWin:      NewWindow("refView"),
@@ -34,9 +36,9 @@ func NewHistoryView(repoData RepoData) *HistoryView {
 	}
 }
 
-func (historyView *HistoryView) Initialise(channels HandlerChannels) (err error) {
+func (historyView *HistoryView) Initialise() (err error) {
 	for _, childView := range historyView.views {
-		if err = childView.Initialise(channels); err != nil {
+		if err = childView.Initialise(); err != nil {
 			break
 		}
 	}
@@ -76,7 +78,7 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 	return
 }
 
-func (historyView *HistoryView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
+func (historyView *HistoryView) Handle(keyPressEvent KeyPressEvent) (err error) {
 	log.Debugf("HistoryView handling key %v", keyPressEvent)
 
 	switch keyPressEvent.key {
@@ -84,13 +86,13 @@ func (historyView *HistoryView) Handle(keyPressEvent KeyPressEvent, channels Han
 		historyView.activeViewIndex++
 		historyView.activeViewIndex %= uint(len(historyView.views))
 		historyView.OnActiveChange(true)
-		channels.displayCh <- true
+		historyView.channels.UpdateDisplay()
 		return
 	}
 
 	view := historyView.views[historyView.activeViewIndex]
 
-	err = view.Handle(keyPressEvent, channels)
+	err = view.Handle(keyPressEvent)
 	return
 }
 

@@ -12,7 +12,7 @@ const (
 	CV_LOAD_REFRESH_MS = 500
 )
 
-type CommitViewHandler func(*CommitView, HandlerChannels) error
+type CommitViewHandler func(*CommitView) error
 
 type ViewIndex struct {
 	activeIndex    uint
@@ -22,11 +22,12 @@ type ViewIndex struct {
 type LoadingCommitsRefreshTask struct {
 	refreshRate time.Duration
 	ticker      *time.Ticker
+	channels    *Channels
 	cancelCh    chan<- bool
-	displayCh   chan<- bool
 }
 
 type CommitView struct {
+	channels     *Channels
 	repoData     RepoData
 	activeBranch *Oid
 	active       bool
@@ -36,8 +37,9 @@ type CommitView struct {
 	lock         sync.Mutex
 }
 
-func NewCommitView(repoData RepoData) *CommitView {
+func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 	return &CommitView{
+		channels:  channels,
 		repoData:  repoData,
 		viewIndex: make(map[*Oid]*ViewIndex),
 		handlers: map[gc.Key]CommitViewHandler{
@@ -47,7 +49,7 @@ func NewCommitView(repoData RepoData) *CommitView {
 	}
 }
 
-func (commitView *CommitView) Initialise(channels HandlerChannels) (err error) {
+func (commitView *CommitView) Initialise() (err error) {
 	log.Info("Initialising CommitView")
 	return
 }
@@ -97,10 +99,10 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	return err
 }
 
-func NewLoadingCommitsRefreshTask(refreshRate time.Duration, displayCh chan<- bool) *LoadingCommitsRefreshTask {
+func NewLoadingCommitsRefreshTask(refreshRate time.Duration, channels *Channels) *LoadingCommitsRefreshTask {
 	return &LoadingCommitsRefreshTask{
 		refreshRate: refreshRate,
-		displayCh:   displayCh,
+		channels:    channels,
 	}
 }
 
@@ -114,9 +116,9 @@ func (refreshTask *LoadingCommitsRefreshTask) Start() {
 			select {
 			case <-refreshTask.ticker.C:
 				log.Debug("Updating display with newly loaded commits")
-				refreshTask.displayCh <- true
+				refreshTask.channels.UpdateDisplay()
 			case <-cancelCh:
-				refreshTask.displayCh <- true
+				refreshTask.channels.UpdateDisplay()
 				return
 			}
 		}
@@ -132,7 +134,7 @@ func (refreshTask *LoadingCommitsRefreshTask) Stop() {
 	}
 }
 
-func (commitView *CommitView) OnRefSelect(oid *Oid, channels HandlerChannels) (err error) {
+func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
 	log.Debugf("CommitView loading commits for selected oid %v", oid)
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
@@ -141,16 +143,17 @@ func (commitView *CommitView) OnRefSelect(oid *Oid, channels HandlerChannels) (e
 		commitView.refreshTask.Stop()
 	}
 
-	refreshTask := NewLoadingCommitsRefreshTask(time.Millisecond*CV_LOAD_REFRESH_MS, channels.displayCh)
+	refreshTask := NewLoadingCommitsRefreshTask(time.Millisecond*CV_LOAD_REFRESH_MS, commitView.channels)
 	commitView.refreshTask = refreshTask
 
-	onCommitsLoaded := func(oid *Oid) {
+	if err = commitView.repoData.LoadCommits(oid, func(oid *Oid) error {
 		commitView.lock.Lock()
 		defer commitView.lock.Unlock()
-		refreshTask.Stop()
-	}
 
-	if err = commitView.repoData.LoadCommits(oid, onCommitsLoaded); err != nil {
+		refreshTask.Stop()
+
+		return nil
+	}); err != nil {
 		return
 	}
 
@@ -179,38 +182,38 @@ func (commitView *CommitView) OnActiveChange(active bool) {
 	commitView.active = active
 }
 
-func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
+func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent) (err error) {
 	log.Debugf("CommitView handling key %v", keyPressEvent)
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
 	if handler, ok := commitView.handlers[keyPressEvent.key]; ok {
-		err = handler(commitView, channels)
+		err = handler(commitView)
 	}
 
 	return
 }
 
-func MoveUpCommit(commitView *CommitView, channels HandlerChannels) (err error) {
+func MoveUpCommit(commitView *CommitView) (err error) {
 	viewIndex := commitView.viewIndex[commitView.activeBranch]
 
 	if viewIndex.activeIndex > 0 {
 		log.Debug("Moving up one commit")
 		viewIndex.activeIndex--
-		channels.displayCh <- true
+		commitView.channels.UpdateDisplay()
 	}
 
 	return
 }
 
-func MoveDownCommit(commitView *CommitView, channels HandlerChannels) (err error) {
+func MoveDownCommit(commitView *CommitView) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeBranch)
 	viewIndex := commitView.viewIndex[commitView.activeBranch]
 
 	if viewIndex.activeIndex < commitSetState.commitNum-1 {
 		log.Debug("Moving down one commit")
 		viewIndex.activeIndex++
-		channels.displayCh <- true
+		commitView.channels.UpdateDisplay()
 	}
 
 	return

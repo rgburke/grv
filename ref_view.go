@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-type RefViewHandler func(*RefView, HandlerChannels) error
+type RefViewHandler func(*RefView) error
 
 type RenderedRefType int
 
@@ -37,6 +37,7 @@ type RenderedRef struct {
 }
 
 type RefView struct {
+	channels       *Channels
 	repoData       RepoData
 	refLists       []*RefList
 	refListeners   []RefListener
@@ -49,11 +50,12 @@ type RefView struct {
 }
 
 type RefListener interface {
-	OnRefSelect(*Oid, HandlerChannels) error
+	OnRefSelect(*Oid) error
 }
 
-func NewRefView(repoData RepoData) *RefView {
+func NewRefView(repoData RepoData, channels *Channels) *RefView {
 	return &RefView{
+		channels: channels,
 		repoData: repoData,
 		refLists: []*RefList{
 			&RefList{
@@ -76,14 +78,14 @@ func NewRefView(repoData RepoData) *RefView {
 	}
 }
 
-func (refView *RefView) Initialise(channels HandlerChannels) (err error) {
+func (refView *RefView) Initialise() (err error) {
 	log.Info("Initialising RefView")
 
 	if err = refView.repoData.LoadHead(); err != nil {
 		return
 	}
 
-	if err = refView.repoData.LoadLocalBranches(func(branches []*Branch) {
+	if err = refView.repoData.LoadLocalBranches(func(branches []*Branch) error {
 		log.Debug("Local branches loaded")
 		refView.lock.Lock()
 		defer refView.lock.Unlock()
@@ -105,25 +107,29 @@ func (refView *RefView) Initialise(channels HandlerChannels) (err error) {
 			}
 		}
 
-		channels.displayCh <- true
+		refView.channels.UpdateDisplay()
+
+		return nil
 	}); err != nil {
 		return
 	}
 
-	if err = refView.repoData.LoadLocalTags(func(tags []*Tag) {
+	if err = refView.repoData.LoadLocalTags(func(tags []*Tag) error {
 		log.Debug("Local tags loaded")
 		refView.lock.Lock()
 		defer refView.lock.Unlock()
 
 		refView.GenerateRenderedRefs()
-		channels.displayCh <- true
+		refView.channels.UpdateDisplay()
+
+		return nil
 	}); err != nil {
 		return
 	}
 
 	refView.GenerateRenderedRefs()
 	head, _ := refView.repoData.Head()
-	refView.notifyRefListeners(head, channels)
+	refView.notifyRefListeners(head)
 
 	return
 }
@@ -132,11 +138,11 @@ func (refView *RefView) RegisterRefListener(refListener RefListener) {
 	refView.refListeners = append(refView.refListeners, refListener)
 }
 
-func (refView *RefView) notifyRefListeners(oid *Oid, channels HandlerChannels) (err error) {
+func (refView *RefView) notifyRefListeners(oid *Oid) (err error) {
 	log.Debugf("Notifying RefListeners of selected oid %v", oid)
 
 	for _, refListener := range refView.refListeners {
-		if err = refListener.OnRefSelect(oid, channels); err != nil {
+		if err = refListener.OnRefSelect(oid); err != nil {
 			break
 		}
 	}
@@ -265,19 +271,19 @@ func (refView *RefView) OnActiveChange(active bool) {
 	refView.active = active
 }
 
-func (refView *RefView) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) (err error) {
+func (refView *RefView) Handle(keyPressEvent KeyPressEvent) (err error) {
 	log.Debugf("RefView handling key %v", keyPressEvent)
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
 
 	if handler, ok := refView.handlers[keyPressEvent.key]; ok {
-		err = handler(refView, channels)
+		err = handler(refView)
 	}
 
 	return
 }
 
-func MoveUpRef(refView *RefView, channels HandlerChannels) (err error) {
+func MoveUpRef(refView *RefView) (err error) {
 	if refView.activeIndex == 0 {
 		return
 	}
@@ -302,13 +308,13 @@ func MoveUpRef(refView *RefView, channels HandlerChannels) (err error) {
 		refView.activeIndex = startIndex
 		log.Debug("No valid ref entry to move to")
 	} else {
-		channels.displayCh <- true
+		refView.channels.UpdateDisplay()
 	}
 
 	return
 }
 
-func MoveDownRef(refView *RefView, channels HandlerChannels) (err error) {
+func MoveDownRef(refView *RefView) (err error) {
 	indexLimit := uint(len(refView.renderedRefs)) - 1
 
 	if refView.activeIndex >= indexLimit {
@@ -335,13 +341,13 @@ func MoveDownRef(refView *RefView, channels HandlerChannels) (err error) {
 		refView.activeIndex = startIndex
 		log.Debug("No valid ref entry to move to")
 	} else {
-		channels.displayCh <- true
+		refView.channels.UpdateDisplay()
 	}
 
 	return
 }
 
-func SelectRef(refView *RefView, channels HandlerChannels) (err error) {
+func SelectRef(refView *RefView) (err error) {
 	renderedRef := refView.renderedRefs[refView.activeIndex]
 
 	switch renderedRef.renderedRefType {
@@ -349,13 +355,13 @@ func SelectRef(refView *RefView, channels HandlerChannels) (err error) {
 		renderedRef.refList.expanded = !renderedRef.refList.expanded
 		log.Debugf("Setting ref group %v to expanded %v", renderedRef.refList.name, renderedRef.refList.expanded)
 		refView.GenerateRenderedRefs()
-		channels.displayCh <- true
+		refView.channels.UpdateDisplay()
 	case RV_BRANCH, RV_TAG:
 		log.Debugf("Selecting ref %v:%v", renderedRef.value, renderedRef.oid)
-		if err = refView.notifyRefListeners(renderedRef.oid, channels); err != nil {
+		if err = refView.notifyRefListeners(renderedRef.oid); err != nil {
 			return
 		}
-		channels.displayCh <- true
+		refView.channels.UpdateDisplay()
 	default:
 		log.Warn("Unexpected ref type %v", renderedRef.renderedRefType)
 	}

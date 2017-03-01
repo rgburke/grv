@@ -6,16 +6,16 @@ import (
 )
 
 type WindowView interface {
-	Initialise(HandlerChannels) error
+	Initialise() error
 	Render(RenderWindow) error
-	Handle(KeyPressEvent, HandlerChannels) error
+	Handle(KeyPressEvent) error
 	OnActiveChange(bool)
 }
 
 type WindowViewCollection interface {
-	Initialise(HandlerChannels) error
+	Initialise() error
 	Render(ViewDimension) ([]*Window, error)
-	Handle(KeyPressEvent, HandlerChannels) error
+	Handle(KeyPressEvent) error
 	OnActiveChange(bool)
 }
 
@@ -33,18 +33,18 @@ func (viewDimension ViewDimension) String() string {
 	return fmt.Sprintf("rows:%v,cols:%v", viewDimension.rows, viewDimension.cols)
 }
 
-func NewView(repoData RepoData) (view *View) {
+func NewView(repoData RepoData, channels *Channels) (view *View) {
 	view = &View{}
 	view.views = []WindowViewCollection{
-		NewHistoryView(repoData),
+		NewHistoryView(repoData, channels),
 	}
 
 	return
 }
 
-func (view *View) Initialise(channels HandlerChannels) (err error) {
+func (view *View) Initialise() (err error) {
 	for _, childView := range view.views {
-		if err = childView.Initialise(channels); err != nil {
+		if err = childView.Initialise(); err != nil {
 			break
 		}
 	}
@@ -59,9 +59,9 @@ func (view *View) Render(viewDimension ViewDimension) ([]*Window, error) {
 	return view.views[view.activeViewIndex].Render(viewDimension)
 }
 
-func (view *View) Handle(keyPressEvent KeyPressEvent, channels HandlerChannels) error {
+func (view *View) Handle(keyPressEvent KeyPressEvent) error {
 	log.Debugf("View handling key %v", keyPressEvent)
-	return view.views[view.activeViewIndex].Handle(keyPressEvent, channels)
+	return view.views[view.activeViewIndex].Handle(keyPressEvent)
 }
 
 func (view *View) OnActiveChange(active bool) {
