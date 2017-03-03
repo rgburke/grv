@@ -3,12 +3,14 @@ package main
 import (
 	log "github.com/Sirupsen/logrus"
 	"sync"
+	"time"
 )
 
 const (
 	GRV_INPUT_BUFFER_SIZE   = 100
 	GRV_DISPLAY_BUFFER_SIZE = 10
 	GRV_ERROR_BUFFER_SIZE   = 10
+	GRV_MAX_DRAW_FREQUENCY  = time.Millisecond * 100
 )
 
 type GRVChannels struct {
@@ -140,8 +142,13 @@ func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, inpu
 			close(exitCh)
 			return
 		} else if int(keyPressEvent.key) != 0 {
-			inputCh <- keyPressEvent
 			log.Debugf("Received keypress from UI %v", keyPressEvent)
+
+			select {
+			case inputCh <- keyPressEvent:
+			default:
+				log.Errorf("Unable to add keypress %v to input channel", keyPressEvent)
+			}
 		}
 	}
 }
@@ -151,33 +158,37 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	defer log.Info("Display loop stopping")
 	log.Info("Starting display loop")
 
+	displayTimerCh := time.NewTicker(GRV_MAX_DRAW_FREQUENCY)
+	defer displayTimerCh.Stop()
+	refreshRequestReceived := false
+	channels := &Channels{errorCh: errorCh}
+
 	for {
 		select {
 		case <-displayCh:
 			log.Debug("Received display refresh request")
+			refreshRequestReceived = true
+		case <-displayTimerCh.C:
+			if !refreshRequestReceived {
+				break
+			}
+
+			log.Debug("Refreshing display - Display refresh request received since last check")
 
 			viewDimension := grv.ui.ViewDimension()
 
 			wins, err := grv.view.Render(viewDimension)
 			if err != nil {
-				select {
-				case errorCh <- err:
-				default:
-					log.Errorf("Unable to send error %v", err)
-				}
-
+				channels.ReportError(err)
 				break
 			}
 
 			if err := grv.ui.Update(wins); err != nil {
-				select {
-				case errorCh <- err:
-				default:
-					log.Errorf("Unable to send error %v", err)
-				}
-
+				channels.ReportError(err)
 				break
 			}
+
+			refreshRequestReceived = false
 		case err := <-errorCh:
 			log.Errorf("Error channel received error: %v", err)
 			grv.ui.ShowError(err)
