@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestScanSingleTokens(t *testing.T) {
+func TestScanSingleToken(t *testing.T) {
 	var singleTokenTests = []struct {
 		input         string
 		expectedToken Token

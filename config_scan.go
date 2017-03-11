@@ -19,6 +19,15 @@ const (
 	TK_EOF
 )
 
+var tokenNames = map[TokenType]string{
+	TK_INVALID:     "Invalid",
+	TK_WORD:        "Word",
+	TK_OPTION:      "Option",
+	TK_WHITE_SPACE: "White Space",
+	TK_TERMINATOR:  "Terminator",
+	TK_EOF:         "EOF",
+}
+
 type ScannerPos struct {
 	line uint
 	col  uint
@@ -51,6 +60,10 @@ func (token *Token) Equal(other *Token) bool {
 		((token.err == nil && other.err == nil) ||
 			(token.err != nil && other.err != nil &&
 				token.err.Error() == other.err.Error()))
+}
+
+func TokenName(tokenType TokenType) string {
+	return tokenNames[tokenType]
 }
 
 func NewScanner(reader io.Reader) *Scanner {
