@@ -84,11 +84,11 @@ func TestParseMultipleCommands(t *testing.T) {
 		expectedCommands []Command
 	}{
 		{
-			input: " set theme\tmytheme\n\n\tset theme \"my theme 2\"",
+			input: " set mouse\ttrue # Enable mouse\n# Set theme\n\tset theme \"my theme 2\" #Custom theme",
 			expectedCommands: []Command{
 				&SetCommand{
-					variable: "theme",
-					value:    "mytheme",
+					variable: "mouse",
+					value:    "true",
 				},
 				&SetCommand{
 					variable: "theme",

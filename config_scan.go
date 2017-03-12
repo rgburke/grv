@@ -15,6 +15,7 @@ const (
 	TK_WORD
 	TK_OPTION
 	TK_WHITE_SPACE
+	TK_COMMENT
 	TK_TERMINATOR
 	TK_EOF
 )
@@ -24,6 +25,7 @@ var tokenNames = map[TokenType]string{
 	TK_WORD:        "Word",
 	TK_OPTION:      "Option",
 	TK_WHITE_SPACE: "White Space",
+	TK_COMMENT:     "Comment",
 	TK_TERMINATOR:  "Terminator",
 	TK_EOF:         "EOF",
 }
@@ -141,6 +143,12 @@ func (scanner *Scanner) Scan() (token *Token, err error) {
 		}
 
 		token, err = scanner.scanWhiteSpace()
+	case char == '#':
+		if err = scanner.unread(); err != nil {
+			break
+		}
+
+		token, err = scanner.scanComment()
 	case char == '-':
 		var nextBytes []byte
 		nextBytes, err = scanner.reader.Peek(1)
@@ -241,6 +249,42 @@ OuterLoop:
 
 	token = &Token{
 		tokenType: TK_WHITE_SPACE,
+		value:     buffer.String(),
+		endPos:    scanner.pos,
+	}
+
+	return
+}
+
+func (scanner *Scanner) scanComment() (token *Token, err error) {
+	var buffer bytes.Buffer
+	var char rune
+	var eof bool
+
+OuterLoop:
+	for {
+		char, eof, err = scanner.read()
+
+		switch {
+		case err != nil:
+			return
+		case eof:
+			break OuterLoop
+		case char == '\n':
+			if err = scanner.unread(); err != nil {
+				return
+			}
+
+			break OuterLoop
+		default:
+			if _, err = buffer.WriteRune(char); err != nil {
+				return
+			}
+		}
+	}
+
+	token = &Token{
+		tokenType: TK_COMMENT,
 		value:     buffer.String(),
 		endPos:    scanner.pos,
 	}

@@ -110,13 +110,15 @@ func (parser *Parser) Parse() (command Command, eof bool, err error) {
 }
 
 func (parser *Parser) scan() (token *Token, err error) {
-	token, err = parser.scanner.Scan()
-	if err != nil {
-		return
-	}
+	for {
+		token, err = parser.scanner.Scan()
+		if err != nil {
+			return
+		}
 
-	if token.tokenType == TK_WHITE_SPACE {
-		token, err = parser.scan()
+		if token.tokenType != TK_WHITE_SPACE && token.tokenType != TK_COMMENT {
+			break
+		}
 	}
 
 	return

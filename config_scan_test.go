@@ -57,6 +57,21 @@ func TestScanSingleToken(t *testing.T) {
 			},
 		},
 		{
+			input: "# Comment",
+			expectedToken: Token{
+				tokenType: TK_COMMENT,
+				value:     "# Comment",
+				startPos: ScannerPos{
+					line: 1,
+					col:  1,
+				},
+				endPos: ScannerPos{
+					line: 1,
+					col:  9,
+				},
+			},
+		},
+		{
 			input: "--option",
 			expectedToken: Token{
 				tokenType: TK_OPTION,
@@ -544,6 +559,238 @@ func TestScanMultipleTokens(t *testing.T) {
 					endPos: ScannerPos{
 						line: 2,
 						col:  18,
+					},
+				},
+			},
+		},
+		{
+			input: "set theme mytheme # Set theme \n # set theme again\nset theme mytheme #EOF",
+			expectedTokens: []Token{
+				Token{
+					tokenType: TK_WORD,
+					value:     "set",
+					startPos: ScannerPos{
+						line: 1,
+						col:  1,
+					},
+					endPos: ScannerPos{
+						line: 1,
+						col:  3,
+					},
+				},
+				Token{
+					tokenType: TK_WHITE_SPACE,
+					value:     " ",
+					startPos: ScannerPos{
+						line: 1,
+						col:  4,
+					},
+					endPos: ScannerPos{
+						line: 1,
+						col:  4,
+					},
+				},
+				Token{
+					tokenType: TK_WORD,
+					value:     "theme",
+					startPos: ScannerPos{
+						line: 1,
+						col:  5,
+					},
+					endPos: ScannerPos{
+						line: 1,
+						col:  9,
+					},
+				},
+				Token{
+					tokenType: TK_WHITE_SPACE,
+					value:     " ",
+					startPos: ScannerPos{
+						line: 1,
+						col:  10,
+					},
+					endPos: ScannerPos{
+						line: 1,
+						col:  10,
+					},
+				},
+				Token{
+					tokenType: TK_WORD,
+					value:     "mytheme",
+					startPos: ScannerPos{
+						line: 1,
+						col:  11,
+					},
+					endPos: ScannerPos{
+						line: 1,
+						col:  17,
+					},
+				},
+				Token{
+					tokenType: TK_WHITE_SPACE,
+					value:     " ",
+					startPos: ScannerPos{
+						line: 1,
+						col:  18,
+					},
+					endPos: ScannerPos{
+						line: 1,
+						col:  18,
+					},
+				},
+				Token{
+					tokenType: TK_COMMENT,
+					value:     "# Set theme ",
+					startPos: ScannerPos{
+						line: 1,
+						col:  19,
+					},
+					endPos: ScannerPos{
+						line: 1,
+						col:  30,
+					},
+				},
+				Token{
+					tokenType: TK_TERMINATOR,
+					value:     "\n",
+					startPos: ScannerPos{
+						line: 1,
+						col:  31,
+					},
+					endPos: ScannerPos{
+						line: 1,
+						col:  31,
+					},
+				},
+				Token{
+					tokenType: TK_WHITE_SPACE,
+					value:     " ",
+					startPos: ScannerPos{
+						line: 2,
+						col:  1,
+					},
+					endPos: ScannerPos{
+						line: 2,
+						col:  1,
+					},
+				},
+				Token{
+					tokenType: TK_COMMENT,
+					value:     "# set theme again",
+					startPos: ScannerPos{
+						line: 2,
+						col:  2,
+					},
+					endPos: ScannerPos{
+						line: 2,
+						col:  18,
+					},
+				},
+				Token{
+					tokenType: TK_TERMINATOR,
+					value:     "\n",
+					startPos: ScannerPos{
+						line: 2,
+						col:  19,
+					},
+					endPos: ScannerPos{
+						line: 2,
+						col:  19,
+					},
+				},
+				Token{
+					tokenType: TK_WORD,
+					value:     "set",
+					startPos: ScannerPos{
+						line: 3,
+						col:  1,
+					},
+					endPos: ScannerPos{
+						line: 3,
+						col:  3,
+					},
+				},
+				Token{
+					tokenType: TK_WHITE_SPACE,
+					value:     " ",
+					startPos: ScannerPos{
+						line: 3,
+						col:  4,
+					},
+					endPos: ScannerPos{
+						line: 3,
+						col:  4,
+					},
+				},
+				Token{
+					tokenType: TK_WORD,
+					value:     "theme",
+					startPos: ScannerPos{
+						line: 3,
+						col:  5,
+					},
+					endPos: ScannerPos{
+						line: 3,
+						col:  9,
+					},
+				},
+				Token{
+					tokenType: TK_WHITE_SPACE,
+					value:     " ",
+					startPos: ScannerPos{
+						line: 3,
+						col:  10,
+					},
+					endPos: ScannerPos{
+						line: 3,
+						col:  10,
+					},
+				},
+				Token{
+					tokenType: TK_WORD,
+					value:     "mytheme",
+					startPos: ScannerPos{
+						line: 3,
+						col:  11,
+					},
+					endPos: ScannerPos{
+						line: 3,
+						col:  17,
+					},
+				},
+				Token{
+					tokenType: TK_WHITE_SPACE,
+					value:     " ",
+					startPos: ScannerPos{
+						line: 3,
+						col:  18,
+					},
+					endPos: ScannerPos{
+						line: 3,
+						col:  18,
+					},
+				},
+				Token{
+					tokenType: TK_COMMENT,
+					value:     "#EOF",
+					startPos: ScannerPos{
+						line: 3,
+						col:  19,
+					},
+					endPos: ScannerPos{
+						line: 3,
+						col:  22,
+					},
+				},
+				Token{
+					tokenType: TK_EOF,
+					startPos: ScannerPos{
+						line: 3,
+						col:  22,
+					},
+					endPos: ScannerPos{
+						line: 3,
+						col:  22,
 					},
 				},
 			},
