@@ -27,17 +27,17 @@ func TestScanSingleToken(t *testing.T) {
 			},
 		},
 		{
-			input: "\"word \\\"with\\\" spaces\"",
+			input: "\"word \\t\\\"with\\\"\\n spaces\"",
 			expectedToken: Token{
 				tokenType: TK_WORD,
-				value:     "\"word \\\"with\\\" spaces\"",
+				value:     "word \t\"with\"\n spaces",
 				startPos: ScannerPos{
 					line: 1,
 					col:  1,
 				},
 				endPos: ScannerPos{
 					line: 1,
-					col:  22,
+					col:  26,
 				},
 			},
 		},
@@ -203,7 +203,7 @@ func TestScanMultipleTokens(t *testing.T) {
 				},
 				Token{
 					tokenType: TK_WORD,
-					value:     "\"my theme\"",
+					value:     "my theme",
 					startPos: ScannerPos{
 						line: 1,
 						col:  16,
@@ -363,7 +363,7 @@ func TestScanMultipleTokens(t *testing.T) {
 				},
 				Token{
 					tokenType: TK_WORD,
-					value:     "\"%yyyy-mm-dd HH:MM\"",
+					value:     "%yyyy-mm-dd HH:MM",
 					startPos: ScannerPos{
 						line: 2,
 						col:  27,

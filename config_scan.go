@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"unicode"
 )
@@ -378,9 +379,15 @@ OuterLoop:
 	}
 
 	if closingQuoteFound {
+		var word string
+		word, err = scanner.processStringWord(buffer.String())
+		if err != nil {
+			return
+		}
+
 		token = &Token{
 			tokenType: TK_WORD,
-			value:     buffer.String(),
+			value:     word,
 			endPos:    scanner.pos,
 		}
 	} else {
@@ -393,4 +400,38 @@ OuterLoop:
 	}
 
 	return
+}
+
+func (scanner *Scanner) processStringWord(str string) (string, error) {
+	var buffer bytes.Buffer
+	chars := []rune(str)
+
+	if len(chars) < 2 || chars[0] != '"' || chars[len(chars)-1] != '"' {
+		return str, fmt.Errorf("Invalid string word: %v", str)
+	}
+
+	chars = chars[1 : len(chars)-1]
+	escape := false
+
+	for _, char := range chars {
+		switch {
+		case escape:
+			switch char {
+			case 'n':
+				buffer.WriteRune('\n')
+			case 't':
+				buffer.WriteRune('\t')
+			default:
+				buffer.WriteRune(char)
+			}
+
+			escape = false
+		case char == '\\':
+			escape = true
+		default:
+			buffer.WriteRune(char)
+		}
+	}
+
+	return buffer.String(), nil
 }

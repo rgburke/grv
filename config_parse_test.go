@@ -92,7 +92,7 @@ func TestParseMultipleCommands(t *testing.T) {
 				},
 				&SetCommand{
 					variable: "theme",
-					value:    "\"my theme 2\"",
+					value:    "my theme 2",
 				},
 			},
 		},
