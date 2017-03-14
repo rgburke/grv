@@ -31,6 +31,7 @@ type GRV struct {
 	view     *View
 	ui       UI
 	channels GRVChannels
+	config   *Configuration
 }
 
 func (channels *Channels) UpdateDisplay() {
@@ -76,12 +77,14 @@ func NewGRV() *GRV {
 
 	repoDataLoader := NewRepoDataLoader(channels)
 	repoData := NewRepositoryData(repoDataLoader, channels)
+	config := NewConfiguration()
 
 	return &GRV{
 		repoData: repoData,
-		view:     NewView(repoData, channels),
+		view:     NewView(repoData, channels, config),
 		ui:       NewNcursesDisplay(),
 		channels: grvChannels,
+		config:   config,
 	}
 }
 

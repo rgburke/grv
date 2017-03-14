@@ -33,10 +33,10 @@ func (viewDimension ViewDimension) String() string {
 	return fmt.Sprintf("rows:%v,cols:%v", viewDimension.rows, viewDimension.cols)
 }
 
-func NewView(repoData RepoData, channels *Channels) (view *View) {
+func NewView(repoData RepoData, channels *Channels, config Config) (view *View) {
 	view = &View{}
 	view.views = []WindowViewCollection{
-		NewHistoryView(repoData, channels),
+		NewHistoryView(repoData, channels, config),
 	}
 
 	return

@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	WN_TAB_WIDTH        = 8
 	WN_WINDOW_DUMP_FILE = "grv-window.log"
 )
 
@@ -34,6 +33,7 @@ type LineBuilder struct {
 	line      *Line
 	cellIndex uint
 	column    uint
+	config    Config
 }
 
 type CellStyle struct {
@@ -53,6 +53,7 @@ type Window struct {
 	lines    []*Line
 	startRow uint
 	startCol uint
+	config   Config
 }
 
 func NewLine(cols uint) *Line {
@@ -67,23 +68,25 @@ func NewLine(cols uint) *Line {
 	return line
 }
 
-func NewLineBuilder(line *Line) *LineBuilder {
+func NewLineBuilder(line *Line, config Config) *LineBuilder {
 	return &LineBuilder{
 		line:   line,
 		column: 1,
+		config: config,
 	}
 }
 
 func (lineBuilder *LineBuilder) Append(format string, args ...interface{}) {
 	str := fmt.Sprintf(format, args...)
 	line := lineBuilder.line
+	tabWidth := uint(lineBuilder.config.GetInt(CV_TAB_WIDTH))
 
 	for _, codePoint := range str {
 		if lineBuilder.cellIndex > uint(len(line.cells)) {
 			break
 		} else if !unicode.IsPrint(codePoint) {
 			if codePoint == '\t' {
-				width := WN_TAB_WIDTH - ((lineBuilder.column - 1) % WN_TAB_WIDTH)
+				width := tabWidth - ((lineBuilder.column - 1) % tabWidth)
 
 				for i := uint(0); i < width; i++ {
 					lineBuilder.SetCellAndAdvanceIndex(' ', 1)
@@ -138,9 +141,10 @@ func (lineBuilder *LineBuilder) AppendToPreviousCell(codePoint rune) {
 	}
 }
 
-func NewWindow(id string) *Window {
+func NewWindow(id string, config Config) *Window {
 	return &Window{
-		id: id,
+		id:     id,
+		config: config,
 	}
 }
 
@@ -196,7 +200,7 @@ func (win *Window) LineBuilder(rowIndex uint) (*LineBuilder, error) {
 		return nil, fmt.Errorf("Invalid row index: %v >= %v rows", rowIndex, win.rows)
 	}
 
-	return NewLineBuilder(win.lines[rowIndex]), nil
+	return NewLineBuilder(win.lines[rowIndex], win.config), nil
 }
 
 func (win *Window) SetRow(rowIndex uint, format string, args ...interface{}) error {

@@ -20,7 +20,7 @@ type HistoryView struct {
 	active          bool
 }
 
-func NewHistoryView(repoData RepoData, channels *Channels) *HistoryView {
+func NewHistoryView(repoData RepoData, channels *Channels, config Config) *HistoryView {
 	refView := NewRefView(repoData, channels)
 	commitView := NewCommitView(repoData, channels)
 	refView.RegisterRefListener(commitView)
@@ -29,8 +29,8 @@ func NewHistoryView(repoData RepoData, channels *Channels) *HistoryView {
 		channels:        channels,
 		refView:         refView,
 		commitView:      commitView,
-		refViewWin:      NewWindow("refView"),
-		commitViewWin:   NewWindow("commitView"),
+		refViewWin:      NewWindow("refView", config),
+		commitViewWin:   NewWindow("commitView", config),
 		views:           []WindowView{refView, commitView},
 		activeViewIndex: 1,
 	}
