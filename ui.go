@@ -13,7 +13,12 @@ import (
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
 	"sync"
+	"time"
 	"unsafe"
+)
+
+const (
+	INPUT_NO_WIN_SLEEP_MS = 50 * time.Millisecond
 )
 
 type UI interface {
@@ -215,7 +220,7 @@ func (ui *NCursesUI) GetInput() (keyPressEvent KeyPressEvent, err error) {
 	if activeWin != nil {
 		keyPressEvent = KeyPressEvent{key: activeWin.GetChar()}
 	} else {
-		err = errors.New("Unable to find active window to receive input from")
+		time.Sleep(INPUT_NO_WIN_SLEEP_MS)
 	}
 
 	return
