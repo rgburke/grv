@@ -11,6 +11,7 @@ const (
 	MN_REPO_FILE_PATH_DEFAULT = "."
 	MN_LOG_LEVEL_DEFAULT      = "NONE"
 	MN_LOG_FILE_PATH_DEFAULT  = "grv.log"
+	MN_LOG_FILE_DATE_FORMAT   = "2006-01-02T15:04:05.000-0700"
 )
 
 type GRVArgs struct {
@@ -79,8 +80,10 @@ func initialiseLogging(logLevel, logFilePath string) {
 	log.SetOutput(file)
 
 	formatter := &log.TextFormatter{
-		DisableColors: true,
-		FullTimestamp: true,
+		DisableColors:   true,
+		FullTimestamp:   true,
+		TimestampFormat: MN_LOG_FILE_DATE_FORMAT,
 	}
+
 	log.SetFormatter(formatter)
 }
