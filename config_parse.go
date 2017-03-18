@@ -14,8 +14,8 @@ type Command interface {
 }
 
 type SetCommand struct {
-	variable string
-	value    string
+	variable *Token
+	value    *Token
 }
 
 func (setCommand *SetCommand) Equal(command Command) bool {
@@ -24,15 +24,17 @@ func (setCommand *SetCommand) Equal(command Command) bool {
 		return false
 	}
 
-	return setCommand.variable == other.variable &&
-		setCommand.value == other.value
+	return ((setCommand.variable != nil && setCommand.variable.Equal(other.variable)) ||
+		(setCommand.variable == nil && other.variable == nil)) &&
+		((setCommand.value != nil && setCommand.value.Equal(other.value)) ||
+			(setCommand.value == nil && other.value == nil))
 }
 
 type ThemeCommand struct {
-	name      string
-	component string
-	bgcolor   string
-	fgcolour  string
+	name      *Token
+	component *Token
+	bgcolor   *Token
+	fgcolor   *Token
 }
 
 func (themeCommand *ThemeCommand) Equal(command Command) bool {
@@ -41,10 +43,14 @@ func (themeCommand *ThemeCommand) Equal(command Command) bool {
 		return false
 	}
 
-	return themeCommand.name == other.name &&
-		themeCommand.component == other.component &&
-		themeCommand.bgcolor == other.bgcolor &&
-		themeCommand.fgcolour == other.fgcolour
+	return ((themeCommand.name != nil && themeCommand.name.Equal(other.name)) ||
+		(themeCommand.name == nil && other.name == nil)) &&
+		((themeCommand.component != nil && themeCommand.component.Equal(other.component)) ||
+			(themeCommand.component == nil && other.component == nil)) &&
+		((themeCommand.bgcolor != nil && themeCommand.bgcolor.Equal(other.bgcolor)) ||
+			(themeCommand.bgcolor == nil && other.bgcolor == nil)) &&
+		((themeCommand.fgcolor != nil && themeCommand.fgcolor.Equal(other.fgcolor)) ||
+			(themeCommand.fgcolor == nil && other.fgcolor == nil))
 }
 
 type CommandDescriptor struct {
@@ -109,6 +115,10 @@ func (parser *Parser) Parse() (command Command, eof bool, err error) {
 	return
 }
 
+func (parser *Parser) InputSource() string {
+	return parser.inputSource
+}
+
 func (parser *Parser) scan() (token *Token, err error) {
 	for {
 		token, err = parser.scanner.Scan()
@@ -125,10 +135,14 @@ func (parser *Parser) scan() (token *Token, err error) {
 }
 
 func (parser *Parser) generateParseError(token *Token, errorMessage string, args ...interface{}) error {
+	return generateConfigError(parser.inputSource, token, errorMessage, args...)
+}
+
+func generateConfigError(inputSource string, token *Token, errorMessage string, args ...interface{}) error {
 	var buffer bytes.Buffer
 
-	if parser.inputSource != "" {
-		buffer.WriteString(parser.inputSource)
+	if inputSource != "" {
+		buffer.WriteString(inputSource)
 		buffer.WriteRune(':')
 	}
 
@@ -171,6 +185,9 @@ func (parser *Parser) parseCommand(token *Token) (command Command, eof bool, err
 		switch {
 		case err != nil:
 			return
+		case token.err != nil:
+			err = parser.generateParseError(token, "Syntax Error")
+			return
 		case token.tokenType == TK_EOF:
 			err = parser.generateParseError(token, "Unexpected EOF")
 			eof = true
@@ -191,19 +208,19 @@ func (parser *Parser) parseCommand(token *Token) (command Command, eof bool, err
 
 func setCommandConstructor(parser *Parser, tokens []*Token) (Command, error) {
 	return &SetCommand{
-		variable: tokens[0].value,
-		value:    tokens[1].value,
+		variable: tokens[0],
+		value:    tokens[1],
 	}, nil
 }
 
 func themeCommandConstructor(parser *Parser, tokens []*Token) (Command, error) {
 	themeCommand := &ThemeCommand{}
 
-	optionSetters := map[string]func(string){
-		"--name":      func(name string) { themeCommand.name = name },
-		"--component": func(component string) { themeCommand.component = component },
-		"--bgcolor":   func(bgcolor string) { themeCommand.bgcolor = bgcolor },
-		"--fgcolor":   func(fgcolour string) { themeCommand.fgcolour = fgcolour },
+	optionSetters := map[string]func(*Token){
+		"--name":      func(name *Token) { themeCommand.name = name },
+		"--component": func(component *Token) { themeCommand.component = component },
+		"--bgcolor":   func(bgcolor *Token) { themeCommand.bgcolor = bgcolor },
+		"--fgcolor":   func(fgcolor *Token) { themeCommand.fgcolor = fgcolor },
 	}
 
 	for i := 0; i+1 < len(tokens); i += 2 {
@@ -213,7 +230,7 @@ func themeCommandConstructor(parser *Parser, tokens []*Token) (Command, error) {
 		if optionSetter, ok := optionSetters[optionToken.value]; !ok {
 			return nil, parser.generateParseError(optionToken, "Invalid option for theme command: \"%v\"", optionToken.value)
 		} else {
-			optionSetter(valueToken.value)
+			optionSetter(valueToken)
 		}
 	}
 

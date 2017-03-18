@@ -9,6 +9,56 @@ const (
 	CONFIG_FILE = "~/.config/grv/grvrc"
 )
 
+type SetCommandValues struct {
+	variable string
+	value    string
+}
+
+func (setCommandValues *SetCommandValues) Equal(command Command) bool {
+	if command == nil {
+		return false
+	}
+
+	other, ok := command.(*SetCommand)
+	if !ok {
+		return false
+	}
+
+	if other.variable == nil || other.value == nil {
+		return false
+	}
+
+	return setCommandValues.variable == other.variable.value &&
+		setCommandValues.value == other.value.value
+}
+
+type ThemeCommandValues struct {
+	name      string
+	component string
+	bgcolor   string
+	fgcolour  string
+}
+
+func (themeCommandValues *ThemeCommandValues) Equal(command Command) bool {
+	if command == nil {
+		return false
+	}
+
+	other, ok := command.(*ThemeCommand)
+	if !ok {
+		return false
+	}
+
+	if other.name == nil || other.component == nil || other.bgcolor == nil || other.fgcolor == nil {
+		return false
+	}
+
+	return themeCommandValues.name == other.name.value &&
+		themeCommandValues.component == other.component.value &&
+		themeCommandValues.bgcolor == other.bgcolor.value &&
+		themeCommandValues.fgcolour == other.fgcolor.value
+}
+
 func TestParseSingleCommand(t *testing.T) {
 	var singleCommandTests = []struct {
 		input           string
@@ -16,14 +66,14 @@ func TestParseSingleCommand(t *testing.T) {
 	}{
 		{
 			input: "set theme mytheme",
-			expectedCommand: &SetCommand{
+			expectedCommand: &SetCommandValues{
 				variable: "theme",
 				value:    "mytheme",
 			},
 		},
 		{
 			input: "theme --name mytheme --component CommitView.CommitDate --bgcolor NONE --fgcolor YELLOW\n",
-			expectedCommand: &ThemeCommand{
+			expectedCommand: &ThemeCommandValues{
 				name:      "mytheme",
 				component: "CommitView.CommitDate",
 				bgcolor:   "NONE",
@@ -33,12 +83,13 @@ func TestParseSingleCommand(t *testing.T) {
 	}
 
 	for _, singleCommandTest := range singleCommandTests {
+		expectedCommand := singleCommandTest.expectedCommand
 		parser := NewParser(strings.NewReader(singleCommandTest.input), CONFIG_FILE)
 		command, _, err := parser.Parse()
 
 		if err != nil {
 			t.Errorf("Parse failed with error %v", err)
-		} else if !command.Equal(singleCommandTest.expectedCommand) {
+		} else if !expectedCommand.Equal(command) {
 			t.Errorf("Command does not match expected value. Expected %v, Actual %v", singleCommandTest.expectedCommand, command)
 		}
 	}
@@ -86,11 +137,11 @@ func TestParseMultipleCommands(t *testing.T) {
 		{
 			input: " set mouse\ttrue # Enable mouse\n# Set theme\n\tset theme \"my theme 2\" #Custom theme",
 			expectedCommands: []Command{
-				&SetCommand{
+				&SetCommandValues{
 					variable: "mouse",
 					value:    "true",
 				},
-				&SetCommand{
+				&SetCommandValues{
 					variable: "theme",
 					value:    "my theme 2",
 				},
@@ -99,13 +150,13 @@ func TestParseMultipleCommands(t *testing.T) {
 		{
 			input: "theme\t--name mytheme\t--component RefView.LocalBranch \\\n\t--bgcolor BLUE\t--fgcolor YELLOW\nset mouse false\n",
 			expectedCommands: []Command{
-				&ThemeCommand{
+				&ThemeCommandValues{
 					name:      "mytheme",
 					component: "RefView.LocalBranch",
 					bgcolor:   "BLUE",
 					fgcolour:  "YELLOW",
 				},
-				&SetCommand{
+				&SetCommandValues{
 					variable: "mouse",
 					value:    "false",
 				},
@@ -121,7 +172,7 @@ func TestParseMultipleCommands(t *testing.T) {
 
 			if err != nil {
 				t.Errorf("Parse failed with error %v", err)
-			} else if !command.Equal(expectedCommand) {
+			} else if !expectedCommand.Equal(command) {
 				t.Errorf("Command does not match expected value. Expected %v, Actual %v", expectedCommand, command)
 			}
 		}
@@ -183,11 +234,11 @@ func TestInvalidCommandsAreDiscardedAndParsingContinuesOnNextLine(t *testing.T) 
 		{
 			input: "set theme mytheme\nset theme --name theme\nset mouse false",
 			expectedCommands: []Command{
-				&SetCommand{
+				&SetCommandValues{
 					variable: "theme",
 					value:    "mytheme",
 				},
-				&SetCommand{
+				&SetCommandValues{
 					variable: "mouse",
 					value:    "false",
 				},
@@ -196,7 +247,7 @@ func TestInvalidCommandsAreDiscardedAndParsingContinuesOnNextLine(t *testing.T) 
 		{
 			input: "set theme\nmytheme\nset theme --name theme\nset mouse false",
 			expectedCommands: []Command{
-				&SetCommand{
+				&SetCommandValues{
 					variable: "mouse",
 					value:    "false",
 				},
@@ -229,7 +280,7 @@ func TestInvalidCommandsAreDiscardedAndParsingContinuesOnNextLine(t *testing.T) 
 			expectedCommand := invalidCommandTest.expectedCommands[i]
 			command := commands[i]
 
-			if !command.Equal(expectedCommand) {
+			if !expectedCommand.Equal(command) {
 				t.Errorf("Command does not match expected value. Expected %v, Actual %v", expectedCommand, command)
 			}
 		}

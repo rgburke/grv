@@ -9,7 +9,7 @@ import (
 const (
 	GRV_INPUT_BUFFER_SIZE   = 100
 	GRV_DISPLAY_BUFFER_SIZE = 10
-	GRV_ERROR_BUFFER_SIZE   = 10
+	GRV_ERROR_BUFFER_SIZE   = 100
 	GRV_MAX_DRAW_FREQUENCY  = time.Millisecond * 100
 )
 
@@ -101,6 +101,12 @@ func (grv *GRV) Initialise(repoPath string) (err error) {
 
 	if err = grv.view.Initialise(); err != nil {
 		return
+	}
+
+	if configErrors := grv.config.Initialise(); configErrors != nil {
+		for _, configError := range configErrors {
+			grv.channels.errorCh <- configError
+		}
 	}
 
 	return
