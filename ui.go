@@ -34,6 +34,8 @@ type NCursesUI struct {
 	windows     map[*Window]*gc.Window
 	windowsLock sync.RWMutex
 	stdscr      *gc.Window
+	config      Config
+	colors      map[ThemeColor]int16
 }
 
 type KeyPressEvent struct {
@@ -44,9 +46,21 @@ func (keyPressEvent KeyPressEvent) String() string {
 	return fmt.Sprintf("%c:%v", keyPressEvent.key, keyPressEvent.key)
 }
 
-func NewNcursesDisplay() *NCursesUI {
+func NewNcursesDisplay(config Config) *NCursesUI {
 	return &NCursesUI{
 		windows: make(map[*Window]*gc.Window),
+		config:  config,
+		colors: map[ThemeColor]int16{
+			COLOR_NONE:    -1,
+			COLOR_BLACK:   gc.C_BLACK,
+			COLOR_RED:     gc.C_RED,
+			COLOR_GREEN:   gc.C_GREEN,
+			COLOR_YELLOW:  gc.C_YELLOW,
+			COLOR_BLUE:    gc.C_BLUE,
+			COLOR_MAGENTA: gc.C_MAGENTA,
+			COLOR_CYAN:    gc.C_CYAN,
+			COLOR_WHITE:   gc.C_WHITE,
+		},
 	}
 }
 
@@ -73,6 +87,12 @@ func (ui *NCursesUI) Initialise() (err error) {
 		return
 	}
 
+	if gc.HasColors() {
+		gc.StartColor()
+		gc.UseDefaultColors()
+		ui.onConfigVariableChange(CV_THEME)
+	}
+
 	gc.Echo(false)
 	gc.Raw(true)
 
@@ -83,6 +103,8 @@ func (ui *NCursesUI) Initialise() (err error) {
 	if err = ui.stdscr.Keypad(true); err != nil {
 		return
 	}
+
+	ui.config.AddOnChangeListener(CV_THEME, ui)
 
 	return
 }
@@ -195,9 +217,10 @@ func drawWindow(win *Window, nwin *gc.Window) {
 			if cell.style.acs_char != 0 {
 				nwin.AddChar(cell.style.acs_char)
 			} else if cell.codePoints.Len() > 0 {
-				nwin.AttrOn(cell.style.attr)
+				attr := cell.style.attr | gc.ColorPair(int16(cell.style.componentId))
+				nwin.AttrOn(attr)
 				nwin.Print(cell.codePoints.String())
-				nwin.AttrOff(cell.style.attr)
+				nwin.AttrOff(attr)
 			}
 		}
 	}
@@ -228,4 +251,14 @@ func (ui *NCursesUI) GetInput() (keyPressEvent KeyPressEvent, err error) {
 
 func (ui *NCursesUI) ShowError(err error) {
 	// TODO
+}
+
+func (ui *NCursesUI) onConfigVariableChange(configVariable ConfigVariable) {
+	theme := ui.config.GetTheme()
+
+	for themeComponentId, themeComponent := range theme.GetAllComponents() {
+		fgcolor := ui.colors[themeComponent.fgcolor]
+		bgcolor := ui.colors[themeComponent.bgcolor]
+		gc.InitPair(int16(themeComponentId), fgcolor, bgcolor)
+	}
 }

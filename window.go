@@ -23,6 +23,7 @@ type RenderWindow interface {
 	SetRow(rowIndex uint, format string, args ...interface{}) error
 	SetSelectedRow(rowIndex uint, active bool) error
 	DrawBorder()
+	LineBuilder(rowIndex uint) (*LineBuilder, error)
 }
 
 type Line struct {
@@ -37,8 +38,9 @@ type LineBuilder struct {
 }
 
 type CellStyle struct {
-	attr     gc.Char
-	acs_char gc.Char
+	componentId ThemeComponentId
+	attr        gc.Char
+	acs_char    gc.Char
 }
 
 type Cell struct {
@@ -76,7 +78,11 @@ func NewLineBuilder(line *Line, config Config) *LineBuilder {
 	}
 }
 
-func (lineBuilder *LineBuilder) Append(format string, args ...interface{}) {
+func (lineBuilder *LineBuilder) Append(format string, args ...interface{}) *LineBuilder {
+	return lineBuilder.AppendWithStyle(CMP_NONE, format, args...)
+}
+
+func (lineBuilder *LineBuilder) AppendWithStyle(componentId ThemeComponentId, format string, args ...interface{}) *LineBuilder {
 	str := fmt.Sprintf(format, args...)
 	line := lineBuilder.line
 	tabWidth := uint(lineBuilder.config.GetInt(CV_TAB_WIDTH))
@@ -89,37 +95,40 @@ func (lineBuilder *LineBuilder) Append(format string, args ...interface{}) {
 				width := tabWidth - ((lineBuilder.column - 1) % tabWidth)
 
 				for i := uint(0); i < width; i++ {
-					lineBuilder.SetCellAndAdvanceIndex(' ', 1)
+					lineBuilder.setCellAndAdvanceIndex(' ', 1, componentId)
 				}
 			} else if codePoint != '\n' && (codePoint < 32 || codePoint == 127) {
-				lineBuilder.SetCellAndAdvanceIndex('^', 1)
+				lineBuilder.setCellAndAdvanceIndex('^', 1, componentId)
 
 				if codePoint == 127 {
-					lineBuilder.SetCellAndAdvanceIndex('?', 1)
+					lineBuilder.setCellAndAdvanceIndex('?', 1, componentId)
 				} else {
-					lineBuilder.SetCellAndAdvanceIndex(codePoint+64, 1)
+					lineBuilder.setCellAndAdvanceIndex(codePoint+64, 1, componentId)
 				}
 			} else {
-				lineBuilder.SetCellAndAdvanceIndex(codePoint, 1)
+				lineBuilder.setCellAndAdvanceIndex(codePoint, 1, componentId)
 			}
 		} else if width := uint(rw.RuneWidth(codePoint)); width == 0 {
-			lineBuilder.AppendToPreviousCell(codePoint)
+			lineBuilder.appendToPreviousCell(codePoint)
 		} else if width > 1 {
-			lineBuilder.SetCellAndAdvanceIndex(codePoint, width)
+			lineBuilder.setCellAndAdvanceIndex(codePoint, width, componentId)
 			lineBuilder.Clear(width - 1)
 		} else {
-			lineBuilder.SetCellAndAdvanceIndex(codePoint, width)
+			lineBuilder.setCellAndAdvanceIndex(codePoint, width, componentId)
 		}
 	}
+
+	return lineBuilder
 }
 
-func (lineBuilder *LineBuilder) SetCellAndAdvanceIndex(codePoint rune, width uint) {
+func (lineBuilder *LineBuilder) setCellAndAdvanceIndex(codePoint rune, width uint, componentId ThemeComponentId) {
 	line := lineBuilder.line
 
 	if lineBuilder.cellIndex < uint(len(line.cells)) {
 		cell := line.cells[lineBuilder.cellIndex]
 		cell.codePoints.Reset()
 		cell.codePoints.WriteRune(codePoint)
+		cell.style.componentId = componentId
 		lineBuilder.cellIndex++
 		lineBuilder.column += width
 	}
@@ -134,7 +143,7 @@ func (lineBuilder *LineBuilder) Clear(cellNum uint) {
 	}
 }
 
-func (lineBuilder *LineBuilder) AppendToPreviousCell(codePoint rune) {
+func (lineBuilder *LineBuilder) appendToPreviousCell(codePoint rune) {
 	if lineBuilder.cellIndex > 0 {
 		cell := lineBuilder.line.cells[lineBuilder.cellIndex-1]
 		cell.codePoints.WriteRune(codePoint)
@@ -189,6 +198,7 @@ func (win *Window) Clear() {
 		for _, cell := range line.cells {
 			cell.codePoints.Reset()
 			cell.codePoints.WriteRune(' ')
+			cell.style.componentId = CMP_NONE
 			cell.style.attr = gc.A_NORMAL
 			cell.style.acs_char = 0
 		}
@@ -231,6 +241,7 @@ func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
 
 	for _, cell := range line.cells {
 		cell.style.attr |= attr
+		cell.style.componentId = CMP_NONE
 	}
 
 	return nil

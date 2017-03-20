@@ -78,14 +78,23 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		return err
 	}
 
+	var lineBuilder *LineBuilder
 	rowIndex := uint(1)
 
 	for commit := range commitCh {
+		if lineBuilder, err = win.LineBuilder(rowIndex); err != nil {
+			return
+		}
+
 		author := commit.commit.Author()
 
-		if err = win.SetRow(rowIndex, " %v %s %s", author.When.Format("2006-01-02 15:04"), author.Name, commit.commit.Summary()); err != nil {
-			break
-		}
+		lineBuilder.
+			Append(" ").
+			AppendWithStyle(CMP_COMMITVIEW_DATE, "%v", author.When.Format("2006-01-02 15:04")).
+			Append(" ").
+			AppendWithStyle(CMP_COMMITVIEW_AUTHOR, "%v", author.Name).
+			Append(" ").
+			AppendWithStyle(CMP_COMMITVIEW_SUMMARY, "%v", commit.commit.Summary())
 
 		rowIndex++
 	}

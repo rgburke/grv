@@ -9,15 +9,17 @@ import (
 )
 
 const (
-	DEFAULT_CONFIG_DIR  = "/.config"
-	GRV_CONFIG_FILE     = "/grv/grvrc"
-	MIN_TAB_WIDTH_VALUE = 1
+	CF_DEFAULT_CONFIG_DIR  = "/.config"
+	CF_GRV_CONFIG_FILE     = "/grv/grvrc"
+	CV_TAB_WIDTH_MIN_VALUE = 1
+	CV_THEME_DEFALT_VALUE  = "default"
 )
 
 type ConfigVariable string
 
 const (
 	CV_TAB_WIDTH ConfigVariable = "tabWidth"
+	CV_THEME     ConfigVariable = "theme"
 )
 
 type Config interface {
@@ -25,25 +27,45 @@ type Config interface {
 	GetString(ConfigVariable) string
 	GetInt(ConfigVariable) int
 	GetFloat(ConfigVariable) float64
+	GetTheme() Theme
+	AddOnChangeListener(ConfigVariable, ConfigVariableOnChangeListener)
 }
 
-type ConfigVariableValidator func(value string) (processedValue interface{}, err error)
+type ConfigVariableValidator interface {
+	validate(value string) (processedValue interface{}, err error)
+}
+
+type ConfigVariableOnChangeListener interface {
+	onConfigVariableChange(ConfigVariable)
+}
 
 type ConfigurationVariable struct {
-	value     interface{}
-	validator ConfigVariableValidator
+	value             interface{}
+	validator         ConfigVariableValidator
+	onChangeListeners []ConfigVariableOnChangeListener
 }
 
 type Configuration struct {
 	variables map[ConfigVariable]*ConfigurationVariable
+	themes    map[string]Theme
 }
 
 func NewConfiguration() *Configuration {
 	config := &Configuration{
-		variables: map[ConfigVariable]*ConfigurationVariable{
-			CV_TAB_WIDTH: &ConfigurationVariable{
-				value:     8,
-				validator: tabwidthValidator,
+		themes: map[string]Theme{
+			CV_THEME_DEFALT_VALUE: NewDefaultTheme(),
+		},
+	}
+
+	config.variables = map[ConfigVariable]*ConfigurationVariable{
+		CV_TAB_WIDTH: &ConfigurationVariable{
+			value:     8,
+			validator: TabWidithValidator{},
+		},
+		CV_THEME: &ConfigurationVariable{
+			value: CV_THEME_DEFALT_VALUE,
+			validator: ThemeValidator{
+				config: config,
 			},
 		},
 	}
@@ -64,12 +86,12 @@ func (config *Configuration) Initialise() []error {
 		}
 
 		log.Debugf("HOME directory: %v", home)
-		configHome = home + DEFAULT_CONFIG_DIR
+		configHome = home + CF_DEFAULT_CONFIG_DIR
 	} else {
 		log.Debugf("XDG_CONFIG_HOME: %v", configHome)
 	}
 
-	grvConfig := configHome + GRV_CONFIG_FILE
+	grvConfig := configHome + CF_GRV_CONFIG_FILE
 
 	if _, err := os.Stat(grvConfig); os.IsNotExist(err) {
 		log.Infof("No config file found at: %v", grvConfig)
@@ -135,23 +157,24 @@ func (config *Configuration) processCommand(command Command, inputSource string)
 }
 
 func (config *Configuration) processSetCommand(setCommand *SetCommand, inputSource string) error {
-	configVariable, ok := config.variables[ConfigVariable(setCommand.variable.value)]
+	configVariable := ConfigVariable(setCommand.variable.value)
+	variable, ok := config.variables[configVariable]
 	if !ok {
 		return generateConfigError(inputSource, setCommand.variable, "Invalid variable %v", setCommand.variable.value)
 	}
 
 	var value interface{}
 
-	if configVariable.validator != nil {
+	if variable.validator != nil {
 		var err error
-		if value, err = configVariable.validator(setCommand.value.value); err != nil {
+		if value, err = variable.validator.validate(setCommand.value.value); err != nil {
 			return generateConfigError(inputSource, setCommand.value, "%v", err.Error())
 		}
 	} else {
 		value = setCommand.value.value
 	}
 
-	expectedType := reflect.TypeOf(configVariable.value)
+	expectedType := reflect.TypeOf(variable.value)
 	actualType := reflect.TypeOf(value)
 
 	if actualType != expectedType {
@@ -159,22 +182,34 @@ func (config *Configuration) processSetCommand(setCommand *SetCommand, inputSour
 			expectedType, actualType)
 	}
 
-	log.Infof("Setting %v = %v", setCommand.variable.value, value)
-	configVariable.value = value
+	log.Infof("Setting %v = %v", configVariable, value)
+	variable.value = value
+
+	if len(variable.onChangeListeners) > 0 {
+		log.Debugf("Firing on change listeners for config variable %v", configVariable)
+		for _, listener := range variable.onChangeListeners {
+			listener.onConfigVariableChange(configVariable)
+		}
+	}
 
 	return nil
 }
 
-func (config *Configuration) getValue(configVariable ConfigVariable) interface{} {
+func (config *Configuration) getVariable(configVariable ConfigVariable) *ConfigurationVariable {
 	if variable, ok := config.variables[configVariable]; ok {
-		return variable.value
-	} else {
-		panic(fmt.Sprintf("No ConfigVariable exists exists for ID %v", configVariable))
+		return variable
 	}
+
+	panic(fmt.Sprintf("No ConfigVariable exists exists for ID %v", configVariable))
+}
+
+func (config *Configuration) AddOnChangeListener(configVariable ConfigVariable, listener ConfigVariableOnChangeListener) {
+	variable := config.getVariable(configVariable)
+	variable.onChangeListeners = append(variable.onChangeListeners, listener)
 }
 
 func (config *Configuration) GetBool(configVariable ConfigVariable) bool {
-	switch value := config.getValue(configVariable).(type) {
+	switch value := config.getVariable(configVariable).value.(type) {
 	case bool:
 		return value
 	}
@@ -183,7 +218,7 @@ func (config *Configuration) GetBool(configVariable ConfigVariable) bool {
 }
 
 func (config *Configuration) GetString(configVariable ConfigVariable) string {
-	switch value := config.getValue(configVariable).(type) {
+	switch value := config.getVariable(configVariable).value.(type) {
 	case string:
 		return value
 	}
@@ -192,7 +227,7 @@ func (config *Configuration) GetString(configVariable ConfigVariable) string {
 }
 
 func (config *Configuration) GetInt(configVariable ConfigVariable) int {
-	switch value := config.getValue(configVariable).(type) {
+	switch value := config.getVariable(configVariable).value.(type) {
 	case int:
 		return value
 	}
@@ -201,7 +236,7 @@ func (config *Configuration) GetInt(configVariable ConfigVariable) int {
 }
 
 func (config *Configuration) GetFloat(configVariable ConfigVariable) float64 {
-	switch value := config.getValue(configVariable).(type) {
+	switch value := config.getVariable(configVariable).value.(type) {
 	case float64:
 		return value
 	}
@@ -209,15 +244,42 @@ func (config *Configuration) GetFloat(configVariable ConfigVariable) float64 {
 	panic(fmt.Sprintf("ConfigVariable with ID %v does not have a floating point value", configVariable))
 }
 
-func tabwidthValidator(value string) (processedValue interface{}, err error) {
+func (config *Configuration) GetTheme() Theme {
+	themeName := config.GetString(CV_THEME)
+	theme, ok := config.themes[themeName]
+
+	if !ok {
+		panic(fmt.Sprintf("No theme exists with name %v", themeName))
+	}
+
+	return theme
+}
+
+type TabWidithValidator struct{}
+
+func (tabwidthValidator TabWidithValidator) validate(value string) (processedValue interface{}, err error) {
 	var tabWidth int
 
 	if tabWidth, err = strconv.Atoi(value); err != nil {
-		err = fmt.Errorf("%v must be an integer value greater than %v", CV_TAB_WIDTH, MIN_TAB_WIDTH_VALUE-1)
-	} else if tabWidth < MIN_TAB_WIDTH_VALUE {
-		err = fmt.Errorf("%v must be greater than %v", CV_TAB_WIDTH, MIN_TAB_WIDTH_VALUE-1)
+		err = fmt.Errorf("%v must be an integer value greater than %v", CV_TAB_WIDTH, CV_TAB_WIDTH_MIN_VALUE-1)
+	} else if tabWidth < CV_TAB_WIDTH_MIN_VALUE {
+		err = fmt.Errorf("%v must be greater than %v", CV_TAB_WIDTH, CV_TAB_WIDTH_MIN_VALUE-1)
 	} else {
 		processedValue = tabWidth
+	}
+
+	return
+}
+
+type ThemeValidator struct {
+	config *Configuration
+}
+
+func (themeValidator ThemeValidator) validate(value string) (processedValue interface{}, err error) {
+	if _, ok := themeValidator.config.themes[value]; !ok {
+		err = fmt.Errorf("No theme exists with name %v", value)
+	} else {
+		processedValue = value
 	}
 
 	return

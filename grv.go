@@ -82,7 +82,7 @@ func NewGRV() *GRV {
 	return &GRV{
 		repoData: repoData,
 		view:     NewView(repoData, channels, config),
-		ui:       NewNcursesDisplay(),
+		ui:       NewNcursesDisplay(config),
 		channels: grvChannels,
 		config:   config,
 	}
