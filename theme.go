@@ -36,43 +36,71 @@ type Theme interface {
 	GetAllComponents() map[ThemeComponentId]ThemeComponent
 }
 
+type MutableTheme interface {
+	Theme
+	CreateOrGetComponent(ThemeComponentId) *ThemeComponent
+}
+
 type ThemeComponents struct {
-	components map[ThemeComponentId]ThemeComponent
+	components map[ThemeComponentId]*ThemeComponent
 }
 
 func (themeComponents *ThemeComponents) GetComponent(themeComponentId ThemeComponentId) ThemeComponent {
 	if themeComponent, ok := themeComponents.components[themeComponentId]; ok {
-		return themeComponent
+		return *themeComponent
 	}
 
-	return ThemeComponent{
-		bgcolor: COLOR_NONE,
-		fgcolor: COLOR_NONE,
-	}
+	return getDefaultThemeComponent()
 }
 
 func (themeComponents *ThemeComponents) GetAllComponents() map[ThemeComponentId]ThemeComponent {
 	components := make(map[ThemeComponentId]ThemeComponent, CMP_COUNT)
 
 	for themeComponentId := ThemeComponentId(1); themeComponentId < CMP_COUNT; themeComponentId++ {
-		components[themeComponentId] = themeComponents.GetComponent(themeComponentId)
+		themeComponent := themeComponents.GetComponent(themeComponentId)
+		components[themeComponentId] = themeComponent
 	}
 
 	return components
 }
 
-func NewDefaultTheme() Theme {
+func (themeComponents *ThemeComponents) CreateOrGetComponent(themeComponentId ThemeComponentId) *ThemeComponent {
+	themeComponent, ok := themeComponents.components[themeComponentId]
+
+	if !ok {
+		defultThemeComponent := getDefaultThemeComponent()
+		themeComponent = &defultThemeComponent
+		themeComponents.components[themeComponentId] = themeComponent
+	}
+
+	return themeComponent
+}
+
+func getDefaultThemeComponent() ThemeComponent {
+	return ThemeComponent{
+		bgcolor: COLOR_NONE,
+		fgcolor: COLOR_NONE,
+	}
+}
+
+func NewTheme() MutableTheme {
 	return &ThemeComponents{
-		components: map[ThemeComponentId]ThemeComponent{
-			CMP_COMMITVIEW_DATE: ThemeComponent{
+		components: make(map[ThemeComponentId]*ThemeComponent),
+	}
+}
+
+func NewDefaultTheme() MutableTheme {
+	return &ThemeComponents{
+		components: map[ThemeComponentId]*ThemeComponent{
+			CMP_COMMITVIEW_DATE: &ThemeComponent{
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_BLUE,
 			},
-			CMP_COMMITVIEW_AUTHOR: ThemeComponent{
+			CMP_COMMITVIEW_AUTHOR: &ThemeComponent{
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_GREEN,
 			},
-			CMP_COMMITVIEW_SUMMARY: ThemeComponent{
+			CMP_COMMITVIEW_SUMMARY: &ThemeComponent{
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_YELLOW,
 			},

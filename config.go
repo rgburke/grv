@@ -22,6 +22,24 @@ const (
 	CV_THEME     ConfigVariable = "theme"
 )
 
+var themeColors = map[string]ThemeColor{
+	"NONE":    COLOR_NONE,
+	"BLACK":   COLOR_BLACK,
+	"RED":     COLOR_RED,
+	"GREEN":   COLOR_GREEN,
+	"YELLOW":  COLOR_YELLOW,
+	"BLUE":    COLOR_BLUE,
+	"MAGENTA": COLOR_MAGENTA,
+	"CYAN":    COLOR_CYAN,
+	"WHITE":   COLOR_WHITE,
+}
+
+var themeComponents = map[string]ThemeComponentId{
+	"CommitView.Date":    CMP_COMMITVIEW_DATE,
+	"CommitView.Author":  CMP_COMMITVIEW_AUTHOR,
+	"CommitView.Summary": CMP_COMMITVIEW_SUMMARY,
+}
+
 type Config interface {
 	GetBool(ConfigVariable) bool
 	GetString(ConfigVariable) string
@@ -47,12 +65,12 @@ type ConfigurationVariable struct {
 
 type Configuration struct {
 	variables map[ConfigVariable]*ConfigurationVariable
-	themes    map[string]Theme
+	themes    map[string]MutableTheme
 }
 
 func NewConfiguration() *Configuration {
 	config := &Configuration{
-		themes: map[string]Theme{
+		themes: map[string]MutableTheme{
 			CV_THEME_DEFALT_VALUE: NewDefaultTheme(),
 		},
 	}
@@ -148,7 +166,7 @@ func (config *Configuration) processCommand(command Command, inputSource string)
 	case *SetCommand:
 		err = config.processSetCommand(command, inputSource)
 	case *ThemeCommand:
-		break
+		err = config.processThemeCommand(command, inputSource)
 	default:
 		log.Errorf("Unknown command type %T", command)
 	}
@@ -193,6 +211,50 @@ func (config *Configuration) processSetCommand(setCommand *SetCommand, inputSour
 	}
 
 	return nil
+}
+
+func (config *Configuration) processThemeCommand(themeCommand *ThemeCommand, inputSource string) (err error) {
+	themeComponentId, componentIdExists := themeComponents[themeCommand.component.value]
+
+	if !componentIdExists {
+		err = generateConfigError(inputSource, themeCommand.component, "Invalid theme component: %v", themeCommand.component.value)
+		return
+	}
+
+	var bgThemeColor, fgThemeColor ThemeColor
+
+	if bgThemeColor, err = getThemeColor(themeCommand.bgcolor, inputSource); err != nil {
+		return
+	} else if fgThemeColor, err = getThemeColor(themeCommand.fgcolor, inputSource); err != nil {
+		return
+	}
+
+	theme, themeExists := config.themes[themeCommand.name.value]
+
+	if !themeExists {
+		theme = NewTheme()
+		config.themes[themeCommand.name.value] = theme
+	}
+
+	log.Infof("Setting bgcolor = %v and fgcolor = %v for component %v in theme %v",
+		themeCommand.bgcolor.value, themeCommand.fgcolor.value,
+		themeCommand.component.value, themeCommand.name.value)
+
+	themeComponent := theme.CreateOrGetComponent(themeComponentId)
+	themeComponent.bgcolor = bgThemeColor
+	themeComponent.fgcolor = fgThemeColor
+
+	return
+}
+
+func getThemeColor(color *Token, inputSource string) (ThemeColor, error) {
+	themeColor, ok := themeColors[color.value]
+
+	if !ok {
+		return COLOR_NONE, generateConfigError(inputSource, color, "Invalid color: %v", color.value)
+	}
+
+	return themeColor, nil
 }
 
 func (config *Configuration) getVariable(configVariable ConfigVariable) *ConfigurationVariable {
