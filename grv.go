@@ -10,7 +10,7 @@ const (
 	GRV_INPUT_BUFFER_SIZE   = 100
 	GRV_DISPLAY_BUFFER_SIZE = 10
 	GRV_ERROR_BUFFER_SIZE   = 100
-	GRV_MAX_DRAW_FREQUENCY  = time.Millisecond * 100
+	GRV_MAX_DRAW_FREQUENCY  = time.Millisecond * 50
 )
 
 type GRVChannels struct {
