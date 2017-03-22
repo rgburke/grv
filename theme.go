@@ -5,6 +5,8 @@ type ThemeComponentId int16
 const (
 	CMP_NONE ThemeComponentId = iota
 
+	CMP_COMMITVIEW_TITLE
+	CMP_COMMITVIEW_FOOTER
 	CMP_COMMITVIEW_DATE
 	CMP_COMMITVIEW_AUTHOR
 	CMP_COMMITVIEW_SUMMARY
@@ -92,6 +94,14 @@ func NewTheme() MutableTheme {
 func NewDefaultTheme() MutableTheme {
 	return &ThemeComponents{
 		components: map[ThemeComponentId]*ThemeComponent{
+			CMP_COMMITVIEW_TITLE: &ThemeComponent{
+				bgcolor: COLOR_NONE,
+				fgcolor: COLOR_CYAN,
+			},
+			CMP_COMMITVIEW_FOOTER: &ThemeComponent{
+				bgcolor: COLOR_NONE,
+				fgcolor: COLOR_CYAN,
+			},
 			CMP_COMMITVIEW_DATE: &ThemeComponent{
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_BLUE,

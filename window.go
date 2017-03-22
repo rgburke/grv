@@ -22,6 +22,8 @@ type RenderWindow interface {
 	Clear()
 	SetRow(rowIndex uint, format string, args ...interface{}) error
 	SetSelectedRow(rowIndex uint, active bool) error
+	SetTitle(themeComponentId ThemeComponentId, format string, args ...interface{}) error
+	SetFooter(themeComponentId ThemeComponentId, format string, args ...interface{}) error
 	DrawBorder()
 	LineBuilder(rowIndex uint) (*LineBuilder, error)
 }
@@ -129,6 +131,7 @@ func (lineBuilder *LineBuilder) setCellAndAdvanceIndex(codePoint rune, width uin
 		cell.codePoints.Reset()
 		cell.codePoints.WriteRune(codePoint)
 		cell.style.componentId = componentId
+		cell.style.acs_char = 0
 		lineBuilder.cellIndex++
 		lineBuilder.column += width
 	}
@@ -245,6 +248,40 @@ func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
 	}
 
 	return nil
+}
+
+func (win *Window) SetTitle(componentId ThemeComponentId, format string, args ...interface{}) (err error) {
+	return win.setHeader(0, componentId, format, args...)
+}
+
+func (win *Window) SetFooter(componentId ThemeComponentId, format string, args ...interface{}) (err error) {
+	if win.rows < 1 {
+		log.Errorf("Can't set footer on window %v with %v rows", win.id, win.rows)
+		return
+	}
+
+	return win.setHeader(win.rows-1, componentId, format, args...)
+}
+
+func (win *Window) setHeader(rowIndex uint, componentId ThemeComponentId, format string, args ...interface{}) (err error) {
+	if win.rows < 3 || win.cols < 3 {
+		log.Errorf("Can't set header on window %v with %v rows and %v cols", win.id, win.rows, win.cols)
+		return
+	}
+
+	var lineBuilder *LineBuilder
+	lineBuilder, err = win.LineBuilder(rowIndex)
+
+	if err != nil {
+		return
+	}
+
+	lineBuilder.cellIndex = 2
+	lineBuilder.column = 3
+
+	lineBuilder.AppendWithStyle(componentId, " "+format+" ", args...)
+
+	return
 }
 
 func (win *Window) DrawBorder() {

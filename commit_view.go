@@ -27,14 +27,15 @@ type LoadingCommitsRefreshTask struct {
 }
 
 type CommitView struct {
-	channels     *Channels
-	repoData     RepoData
-	activeBranch *Oid
-	active       bool
-	viewIndex    map[*Oid]*ViewIndex
-	handlers     map[gc.Key]CommitViewHandler
-	refreshTask  *LoadingCommitsRefreshTask
-	lock         sync.Mutex
+	channels      *Channels
+	repoData      RepoData
+	activeRef     *Oid
+	activeRefName string
+	active        bool
+	viewIndex     map[*Oid]*ViewIndex
+	handlers      map[gc.Key]CommitViewHandler
+	refreshTask   *LoadingCommitsRefreshTask
+	lock          sync.Mutex
 }
 
 func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
@@ -61,8 +62,8 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 
 	var viewIndex *ViewIndex
 	var ok bool
-	if viewIndex, ok = commitView.viewIndex[commitView.activeBranch]; !ok {
-		return fmt.Errorf("No ViewIndex exists for oid %v", commitView.activeBranch)
+	if viewIndex, ok = commitView.viewIndex[commitView.activeRef]; !ok {
+		return fmt.Errorf("No ViewIndex exists for oid %v", commitView.activeRef)
 	}
 
 	rows := win.Rows() - 2
@@ -73,7 +74,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		viewIndex.viewStartIndex += (rowDiff - rows) + 1
 	}
 
-	commitCh, err := commitView.repoData.Commits(commitView.activeBranch, viewIndex.viewStartIndex, rows)
+	commitCh, err := commitView.repoData.Commits(commitView.activeRef, viewIndex.viewStartIndex, rows)
 	if err != nil {
 		return err
 	}
@@ -104,6 +105,16 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	}
 
 	win.DrawBorder()
+
+	if err = win.SetTitle(CMP_COMMITVIEW_TITLE, "Commits for %v", commitView.activeRefName); err != nil {
+		return
+	}
+
+	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
+
+	if err = win.SetFooter(CMP_COMMITVIEW_FOOTER, "Commit %v of %v", viewIndex.activeIndex+1, commitSetState.commitNum); err != nil {
+		return
+	}
 
 	return err
 }
@@ -143,7 +154,7 @@ func (refreshTask *LoadingCommitsRefreshTask) Stop() {
 	}
 }
 
-func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
+func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) {
 	log.Debugf("CommitView loading commits for selected oid %v", oid)
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
@@ -166,7 +177,8 @@ func (commitView *CommitView) OnRefSelect(oid *Oid) (err error) {
 		return
 	}
 
-	commitView.activeBranch = oid
+	commitView.activeRef = oid
+	commitView.activeRefName = refName
 
 	if _, ok := commitView.viewIndex[oid]; !ok {
 		commitView.viewIndex[oid] = &ViewIndex{}
@@ -204,7 +216,7 @@ func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent) (err error) {
 }
 
 func MoveUpCommit(commitView *CommitView) (err error) {
-	viewIndex := commitView.viewIndex[commitView.activeBranch]
+	viewIndex := commitView.viewIndex[commitView.activeRef]
 
 	if viewIndex.activeIndex > 0 {
 		log.Debug("Moving up one commit")
@@ -216,8 +228,8 @@ func MoveUpCommit(commitView *CommitView) (err error) {
 }
 
 func MoveDownCommit(commitView *CommitView) (err error) {
-	commitSetState := commitView.repoData.CommitSetState(commitView.activeBranch)
-	viewIndex := commitView.viewIndex[commitView.activeBranch]
+	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
+	viewIndex := commitView.viewIndex[commitView.activeRef]
 
 	if viewIndex.activeIndex < commitSetState.commitNum-1 {
 		log.Debug("Moving down one commit")

@@ -35,6 +35,8 @@ var themeColors = map[string]ThemeColor{
 }
 
 var themeComponents = map[string]ThemeComponentId{
+	"CommitView.Title":   CMP_COMMITVIEW_TITLE,
+	"CommitView.Footer":  CMP_COMMITVIEW_FOOTER,
 	"CommitView.Date":    CMP_COMMITVIEW_DATE,
 	"CommitView.Author":  CMP_COMMITVIEW_AUTHOR,
 	"CommitView.Summary": CMP_COMMITVIEW_SUMMARY,

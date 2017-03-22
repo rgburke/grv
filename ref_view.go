@@ -4,6 +4,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
+	"strings"
 	"sync"
 )
 
@@ -50,7 +51,7 @@ type RefView struct {
 }
 
 type RefListener interface {
-	OnRefSelect(*Oid) error
+	OnRefSelect(refName string, oid *Oid) error
 }
 
 func NewRefView(repoData RepoData, channels *Channels) *RefView {
@@ -128,8 +129,16 @@ func (refView *RefView) Initialise() (err error) {
 	}
 
 	refView.GenerateRenderedRefs()
-	head, _ := refView.repoData.Head()
-	refView.notifyRefListeners(head)
+	head, branch := refView.repoData.Head()
+
+	var branchName string
+	if branch == nil {
+		branchName = head.oid.String()[0:7]
+	} else {
+		branchName = branch.name
+	}
+
+	refView.notifyRefListeners(branchName, head)
 
 	return
 }
@@ -138,11 +147,11 @@ func (refView *RefView) RegisterRefListener(refListener RefListener) {
 	refView.refListeners = append(refView.refListeners, refListener)
 }
 
-func (refView *RefView) notifyRefListeners(oid *Oid) (err error) {
+func (refView *RefView) notifyRefListeners(refName string, oid *Oid) (err error) {
 	log.Debugf("Notifying RefListeners of selected oid %v", oid)
 
 	for _, refListener := range refView.refListeners {
-		if err = refListener.OnRefSelect(oid); err != nil {
+		if err = refListener.OnRefSelect(refName, oid); err != nil {
 			break
 		}
 	}
@@ -358,7 +367,7 @@ func SelectRef(refView *RefView) (err error) {
 		refView.channels.UpdateDisplay()
 	case RV_BRANCH, RV_TAG:
 		log.Debugf("Selecting ref %v:%v", renderedRef.value, renderedRef.oid)
-		if err = refView.notifyRefListeners(renderedRef.oid); err != nil {
+		if err = refView.notifyRefListeners(strings.TrimLeft(renderedRef.value, " "), renderedRef.oid); err != nil {
 			return
 		}
 		refView.channels.UpdateDisplay()
