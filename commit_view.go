@@ -100,8 +100,12 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		rowIndex++
 	}
 
-	if err = win.SetSelectedRow((viewIndex.activeIndex-viewIndex.viewStartIndex)+1, commitView.active); err != nil {
-		return
+	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
+
+	if commitSetState.commitNum > 0 {
+		if err = win.SetSelectedRow((viewIndex.activeIndex-viewIndex.viewStartIndex)+1, commitView.active); err != nil {
+			return
+		}
 	}
 
 	win.DrawBorder()
@@ -110,9 +114,14 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		return
 	}
 
-	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
+	var selectedCommit uint
+	if commitSetState.commitNum == 0 {
+		selectedCommit = 0
+	} else {
+		selectedCommit = viewIndex.activeIndex + 1
+	}
 
-	if err = win.SetFooter(CMP_COMMITVIEW_FOOTER, "Commit %v of %v", viewIndex.activeIndex+1, commitSetState.commitNum); err != nil {
+	if err = win.SetFooter(CMP_COMMITVIEW_FOOTER, "Commit %v of %v", selectedCommit, commitSetState.commitNum); err != nil {
 		return
 	}
 
@@ -231,7 +240,7 @@ func MoveDownCommit(commitView *CommitView) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 	viewIndex := commitView.viewIndex[commitView.activeRef]
 
-	if viewIndex.activeIndex < commitSetState.commitNum-1 {
+	if commitSetState.commitNum > 0 && viewIndex.activeIndex < commitSetState.commitNum-1 {
 		log.Debug("Moving down one commit")
 		viewIndex.activeIndex++
 		commitView.channels.UpdateDisplay()
