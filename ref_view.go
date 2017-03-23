@@ -133,7 +133,7 @@ func (refView *RefView) Initialise() (err error) {
 
 	var branchName string
 	if branch == nil {
-		branchName = head.oid.String()[0:7]
+		branchName = getDetachedHeadDisplayValue(head)
 	} else {
 		branchName = branch.name
 	}
@@ -141,6 +141,10 @@ func (refView *RefView) Initialise() (err error) {
 	refView.notifyRefListeners(branchName, head)
 
 	return
+}
+
+func getDetachedHeadDisplayValue(oid *Oid) string {
+	return fmt.Sprintf("HEAD detached at %s", oid.String()[0:7])
 }
 
 func (refView *RefView) RegisterRefListener(refListener RefListener) {
@@ -236,7 +240,7 @@ func GenerateBranches(refView *RefView, refList *RefList, renderedRefs *[]Render
 
 	if head, headBranch := refView.repoData.Head(); headBranch == nil {
 		*renderedRefs = append(*renderedRefs, RenderedRef{
-			value:           fmt.Sprintf("   HEAD detached at %s", head.oid.String()[0:7]),
+			value:           fmt.Sprintf("   %s", getDetachedHeadDisplayValue(head)),
 			oid:             head,
 			renderedRefType: RV_BRANCH,
 		})
