@@ -26,16 +26,22 @@ type LoadingCommitsRefreshTask struct {
 	cancelCh    chan<- bool
 }
 
+type CommitListener interface {
+	OnCommitSelect(*Commit)
+}
+
 type CommitView struct {
-	channels      *Channels
-	repoData      RepoData
-	activeRef     *Oid
-	activeRefName string
-	active        bool
-	viewIndex     map[*Oid]*ViewIndex
-	handlers      map[gc.Key]CommitViewHandler
-	refreshTask   *LoadingCommitsRefreshTask
-	lock          sync.Mutex
+	channels        *Channels
+	repoData        RepoData
+	activeRef       *Oid
+	activeRefName   string
+	active          bool
+	viewIndex       map[*Oid]*ViewIndex
+	handlers        map[gc.Key]CommitViewHandler
+	refreshTask     *LoadingCommitsRefreshTask
+	displayCommits  []*Commit
+	commitListeners []CommitListener
+	lock            sync.Mutex
 }
 
 func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
@@ -46,6 +52,7 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 		handlers: map[gc.Key]CommitViewHandler{
 			gc.KEY_UP:   MoveUpCommit,
 			gc.KEY_DOWN: MoveDownCommit,
+			'\n':        SelectCommit,
 		},
 	}
 }
@@ -79,10 +86,17 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		return err
 	}
 
+	displayCommits := make([]*Commit, 0, rows)
+	for commit := range commitCh {
+		displayCommits = append(displayCommits, commit)
+	}
+
+	commitView.displayCommits = displayCommits
+
 	var lineBuilder *LineBuilder
 	rowIndex := uint(1)
 
-	for commit := range commitCh {
+	for _, commit := range displayCommits {
 		if lineBuilder, err = win.LineBuilder(rowIndex); err != nil {
 			return
 		}
@@ -212,6 +226,20 @@ func (commitView *CommitView) OnActiveChange(active bool) {
 	commitView.active = active
 }
 
+func (commitView *CommitView) RegisterCommitListner(commitListener CommitListener) {
+	commitView.commitListeners = append(commitView.commitListeners, commitListener)
+}
+
+func (commitView *CommitView) notifyCommitListeners(commit *Commit) {
+	log.Debugf("Notifying commit listners of selected commit %v", commit.commit.Id().String())
+
+	for _, commitListener := range commitView.commitListeners {
+		commitListener.OnCommitSelect(commit)
+	}
+
+	return
+}
+
 func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent) (err error) {
 	log.Debugf("CommitView handling key %v", keyPressEvent)
 	commitView.lock.Lock()
@@ -245,6 +273,29 @@ func MoveDownCommit(commitView *CommitView) (err error) {
 		viewIndex.activeIndex++
 		commitView.channels.UpdateDisplay()
 	}
+
+	return
+}
+
+func SelectCommit(commitView *CommitView) (err error) {
+	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
+
+	if commitSetState.commitNum == 0 {
+		log.Debug("Cannot select commit as there are no commits for ref %v", commitView.activeRef)
+		return
+	}
+
+	viewIndex := commitView.viewIndex[commitView.activeRef]
+
+	if viewIndex.activeIndex >= uint(len(commitView.displayCommits)) {
+		log.Errorf("Invalid activeIndex: %v. Only %v commits are displayed",
+			viewIndex.activeIndex, len(commitView.displayCommits))
+		return
+	}
+
+	selectedCommit := commitView.displayCommits[viewIndex.activeIndex]
+
+	commitView.notifyCommitListeners(selectedCommit)
 
 	return
 }
