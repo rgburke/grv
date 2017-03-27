@@ -251,7 +251,7 @@ func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
 }
 
 func (win *Window) SetTitle(componentId ThemeComponentId, format string, args ...interface{}) (err error) {
-	return win.setHeader(0, componentId, format, args...)
+	return win.setHeader(0, false, componentId, format, args...)
 }
 
 func (win *Window) SetFooter(componentId ThemeComponentId, format string, args ...interface{}) (err error) {
@@ -260,10 +260,10 @@ func (win *Window) SetFooter(componentId ThemeComponentId, format string, args .
 		return
 	}
 
-	return win.setHeader(win.rows-1, componentId, format, args...)
+	return win.setHeader(win.rows-1, true, componentId, format, args...)
 }
 
-func (win *Window) setHeader(rowIndex uint, componentId ThemeComponentId, format string, args ...interface{}) (err error) {
+func (win *Window) setHeader(rowIndex uint, rightJustified bool, componentId ThemeComponentId, format string, args ...interface{}) (err error) {
 	if win.rows < 3 || win.cols < 3 {
 		log.Errorf("Can't set header on window %v with %v rows and %v cols", win.id, win.rows, win.cols)
 		return
@@ -276,10 +276,24 @@ func (win *Window) setHeader(rowIndex uint, componentId ThemeComponentId, format
 		return
 	}
 
-	lineBuilder.cellIndex = 2
-	lineBuilder.column = 3
+	format = " " + format + " "
 
-	lineBuilder.AppendWithStyle(componentId, " "+format+" ", args...)
+	if rightJustified {
+		// Assume only ascii alphanumeric characters and space character
+		// present in footer text
+		formattedLen := uint(len([]rune(fmt.Sprintf(format, args...))))
+		if formattedLen > win.cols+2 {
+			return
+		}
+
+		lineBuilder.cellIndex = win.cols - (2 + formattedLen)
+	} else {
+		lineBuilder.cellIndex = 2
+	}
+
+	lineBuilder.column = lineBuilder.cellIndex + 1
+
+	lineBuilder.AppendWithStyle(componentId, format, args...)
 
 	return
 }
