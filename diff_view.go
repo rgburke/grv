@@ -84,7 +84,7 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 		return
 	}
 
-	if err = win.SetFooter(CMP_COMMITVIEW_FOOTER, "Line %v of %v", lineIndex+1, lineNum); err != nil {
+	if err = win.SetFooter(CMP_COMMITVIEW_FOOTER, "Line %v of %v", diffView.activeIndex+1, lineNum); err != nil {
 		return
 	}
 
