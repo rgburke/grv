@@ -277,7 +277,7 @@ func GenerateTags(refView *RefView, refList *RefList, renderedRefs *[]RenderedRe
 }
 
 func (refView *RefView) OnActiveChange(active bool) {
-	log.Debugf("RefView active %v", active)
+	log.Debugf("RefView active: %v", active)
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
 

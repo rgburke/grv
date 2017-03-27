@@ -27,7 +27,7 @@ type LoadingCommitsRefreshTask struct {
 }
 
 type CommitListener interface {
-	OnCommitSelect(*Commit)
+	OnCommitSelect(*Commit) error
 }
 
 type CommitView struct {
@@ -215,11 +215,18 @@ func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) 
 		commitView.refreshTask.Stop()
 	}
 
+	commit, err := commitView.repoData.Commit(oid)
+	if err != nil {
+		return
+	}
+
+	commitView.notifyCommitListeners(commit)
+
 	return
 }
 
 func (commitView *CommitView) OnActiveChange(active bool) {
-	log.Debugf("CommitView active %v", active)
+	log.Debugf("CommitView active: %v", active)
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
@@ -234,7 +241,9 @@ func (commitView *CommitView) notifyCommitListeners(commit *Commit) {
 	log.Debugf("Notifying commit listners of selected commit %v", commit.commit.Id().String())
 
 	for _, commitListener := range commitView.commitListeners {
-		commitListener.OnCommitSelect(commit)
+		if err := commitListener.OnCommitSelect(commit); err != nil {
+			commitView.channels.ReportError(err)
+		}
 	}
 
 	return
@@ -286,14 +295,15 @@ func SelectCommit(commitView *CommitView) (err error) {
 	}
 
 	viewIndex := commitView.viewIndex[commitView.activeRef]
+	commitIndex := viewIndex.activeIndex - viewIndex.viewStartIndex
 
-	if viewIndex.activeIndex >= uint(len(commitView.displayCommits)) {
-		log.Errorf("Invalid activeIndex: %v. Only %v commits are displayed",
-			viewIndex.activeIndex, len(commitView.displayCommits))
+	if commitIndex >= uint(len(commitView.displayCommits)) {
+		log.Errorf("Invalid commitIndex: %v, only %v commits are displayed.",
+			commitIndex, len(commitView.displayCommits))
 		return
 	}
 
-	selectedCommit := commitView.displayCommits[viewIndex.activeIndex]
+	selectedCommit := commitView.displayCommits[commitIndex]
 
 	commitView.notifyCommitListeners(selectedCommit)
 

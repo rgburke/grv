@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/bradfitz/slice"
@@ -21,6 +22,8 @@ type RepoData interface {
 	LocalTags() (tags []*Tag, loading bool)
 	CommitSetState(*Oid) CommitSetState
 	Commits(oid *Oid, startIndex, count uint) (<-chan *Commit, error)
+	Commit(oid *Oid) (*Commit, error)
+	Diff(commit *Commit) (bytes.Buffer, error)
 }
 
 type CommitSet struct {
@@ -302,4 +305,12 @@ func (repoData *RepositoryData) Commits(oid *Oid, startIndex, count uint) (<-cha
 	}()
 
 	return commitCh, nil
+}
+
+func (repoData *RepositoryData) Commit(oid *Oid) (*Commit, error) {
+	return repoData.repoDataLoader.Commit(oid)
+}
+
+func (repoData *RepositoryData) Diff(commit *Commit) (bytes.Buffer, error) {
+	return repoData.repoDataLoader.Diff(commit)
 }

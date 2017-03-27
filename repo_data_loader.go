@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
@@ -243,4 +244,69 @@ func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) 
 	}()
 
 	return commitCh, nil
+}
+
+func (repoDataLoader *RepoDataLoader) Commit(oid *Oid) (commit *Commit, err error) {
+	rawCommit, err := repoDataLoader.repo.LookupCommit(oid.oid)
+	if err != nil {
+		log.Debugf("Error when attempting to lookup commit with ID %v", oid)
+		return
+	}
+
+	commit = repoDataLoader.cache.getCommit(rawCommit)
+
+	return
+}
+
+func (repoDataLoader *RepoDataLoader) Diff(commit *Commit) (buf bytes.Buffer, err error) {
+	if commit.commit.ParentCount() > 1 {
+		return
+	}
+
+	var commitTree, parentTree *git.Tree
+	if commitTree, err = commit.commit.Tree(); err != nil {
+		return
+	}
+	defer commitTree.Free()
+
+	if commit.commit.ParentCount() > 0 {
+		if parentTree, err = commit.commit.Parent(0).Tree(); err != nil {
+			return
+		}
+		defer parentTree.Free()
+	}
+
+	options, err := git.DefaultDiffOptions()
+	if err != nil {
+		return
+	}
+
+	diff, err := repoDataLoader.repo.DiffTreeToTree(parentTree, commitTree, &options)
+	if err != nil {
+		return
+	}
+	defer diff.Free()
+
+	numDeltas, err := diff.NumDeltas()
+	if err != nil {
+		return
+	}
+
+	var patch *git.Patch
+	var patchString string
+
+	for i := 0; i < numDeltas; i++ {
+		if patch, err = diff.Patch(i); err != nil {
+			return
+		}
+
+		if patchString, err = patch.String(); err != nil {
+			return
+		}
+
+		buf.WriteString(patchString)
+		patch.Free()
+	}
+
+	return
 }

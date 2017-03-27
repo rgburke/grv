@@ -13,8 +13,10 @@ type HistoryView struct {
 	channels        *Channels
 	refView         WindowView
 	commitView      WindowView
+	diffView        WindowView
 	refViewWin      *Window
 	commitViewWin   *Window
+	diffViewWin     *Window
 	views           []WindowView
 	activeViewIndex uint
 	active          bool
@@ -23,15 +25,20 @@ type HistoryView struct {
 func NewHistoryView(repoData RepoData, channels *Channels, config Config) *HistoryView {
 	refView := NewRefView(repoData, channels)
 	commitView := NewCommitView(repoData, channels)
+	diffView := NewDiffView(repoData, channels)
+
 	refView.RegisterRefListener(commitView)
+	commitView.RegisterCommitListner(diffView)
 
 	return &HistoryView{
 		channels:        channels,
 		refView:         refView,
 		commitView:      commitView,
+		diffView:        diffView,
 		refViewWin:      NewWindow("refView", config),
 		commitViewWin:   NewWindow("commitView", config),
-		views:           []WindowView{refView, commitView},
+		diffViewWin:     NewWindow("diffView", config),
+		views:           []WindowView{refView, commitView, diffView},
 		activeViewIndex: 1,
 	}
 }
@@ -50,18 +57,26 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 	log.Debug("Rendering HistoryView")
 
 	refViewDim := viewDimension
-	refViewDim.cols = Min(HV_BRANCH_VIEW_WIDTH, refViewDim.cols/2)
-	log.Debugf("RefView dimensions: %v", refViewDim)
+	refViewDim.cols = Min(HV_BRANCH_VIEW_WIDTH, viewDimension.cols/2)
 
 	commitViewDim := viewDimension
 	commitViewDim.cols = viewDimension.cols - refViewDim.cols
+
+	diffViewDim := commitViewDim
+	diffViewDim.rows = viewDimension.rows / 2
+	commitViewDim.rows = viewDimension.rows - diffViewDim.rows
+
+	log.Debugf("RefView dimensions: %v", refViewDim)
 	log.Debugf("CommitView dimensions: %v", commitViewDim)
+	log.Debugf("DiffView dimensions: %v", diffViewDim)
 
 	historyView.refViewWin.Resize(refViewDim)
 	historyView.commitViewWin.Resize(commitViewDim)
+	historyView.diffViewWin.Resize(diffViewDim)
 
 	historyView.refViewWin.Clear()
 	historyView.commitViewWin.Clear()
+	historyView.diffViewWin.Clear()
 
 	if err = historyView.refView.Render(historyView.refViewWin); err != nil {
 		return
@@ -71,10 +86,15 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 		return
 	}
 
+	if err = historyView.diffView.Render(historyView.diffViewWin); err != nil {
+		return
+	}
+
 	historyView.refViewWin.SetPosition(0, 0)
 	historyView.commitViewWin.SetPosition(0, refViewDim.cols)
+	historyView.diffViewWin.SetPosition(commitViewDim.rows, refViewDim.cols)
 
-	wins = []*Window{historyView.refViewWin, historyView.commitViewWin}
+	wins = []*Window{historyView.refViewWin, historyView.commitViewWin, historyView.diffViewWin}
 	return
 }
 
