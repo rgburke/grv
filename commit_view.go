@@ -52,7 +52,6 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 		handlers: map[gc.Key]CommitViewHandler{
 			gc.KEY_UP:   MoveUpCommit,
 			gc.KEY_DOWN: MoveDownCommit,
-			'\n':        SelectCommit,
 		},
 	}
 }
@@ -86,17 +85,10 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		return err
 	}
 
-	displayCommits := make([]*Commit, 0, rows)
-	for commit := range commitCh {
-		displayCommits = append(displayCommits, commit)
-	}
-
-	commitView.displayCommits = displayCommits
-
 	var lineBuilder *LineBuilder
 	rowIndex := uint(1)
 
-	for _, commit := range displayCommits {
+	for commit := range commitCh {
 		if lineBuilder, err = win.LineBuilder(rowIndex); err != nil {
 			return
 		}
@@ -249,6 +241,27 @@ func (commitView *CommitView) notifyCommitListeners(commit *Commit) {
 	return
 }
 
+func (commitView *CommitView) selectCommit(commitIndex uint) (err error) {
+	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
+
+	if commitSetState.commitNum == 0 {
+		return fmt.Errorf("Cannot select commit as there are no commits for ref %v", commitView.activeRef)
+	}
+
+	if commitIndex >= commitSetState.commitNum {
+		return fmt.Errorf("Invalid commitIndex: %v, only %v commits are loaded", commitIndex, commitSetState.commitNum)
+	}
+
+	selectedCommit, err := commitView.repoData.CommitByIndex(commitView.activeRef, commitIndex)
+	if err != nil {
+		return
+	}
+
+	commitView.notifyCommitListeners(selectedCommit)
+
+	return
+}
+
 func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent) (err error) {
 	log.Debugf("CommitView handling key %v", keyPressEvent)
 	commitView.lock.Lock()
@@ -267,6 +280,7 @@ func MoveUpCommit(commitView *CommitView) (err error) {
 	if viewIndex.activeIndex > 0 {
 		log.Debug("Moving up one commit")
 		viewIndex.activeIndex--
+		commitView.selectCommit(viewIndex.activeIndex)
 		commitView.channels.UpdateDisplay()
 	}
 
@@ -280,32 +294,9 @@ func MoveDownCommit(commitView *CommitView) (err error) {
 	if commitSetState.commitNum > 0 && viewIndex.activeIndex < commitSetState.commitNum-1 {
 		log.Debug("Moving down one commit")
 		viewIndex.activeIndex++
+		commitView.selectCommit(viewIndex.activeIndex)
 		commitView.channels.UpdateDisplay()
 	}
-
-	return
-}
-
-func SelectCommit(commitView *CommitView) (err error) {
-	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
-
-	if commitSetState.commitNum == 0 {
-		log.Debug("Cannot select commit as there are no commits for ref %v", commitView.activeRef)
-		return
-	}
-
-	viewIndex := commitView.viewIndex[commitView.activeRef]
-	commitIndex := viewIndex.activeIndex - viewIndex.viewStartIndex
-
-	if commitIndex >= uint(len(commitView.displayCommits)) {
-		log.Errorf("Invalid commitIndex: %v, only %v commits are displayed.",
-			commitIndex, len(commitView.displayCommits))
-		return
-	}
-
-	selectedCommit := commitView.displayCommits[commitIndex]
-
-	commitView.notifyCommitListeners(selectedCommit)
 
 	return
 }

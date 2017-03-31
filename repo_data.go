@@ -22,6 +22,7 @@ type RepoData interface {
 	LocalTags() (tags []*Tag, loading bool)
 	CommitSetState(*Oid) CommitSetState
 	Commits(oid *Oid, startIndex, count uint) (<-chan *Commit, error)
+	CommitByIndex(oid *Oid, index uint) (*Commit, error)
 	Commit(oid *Oid) (*Commit, error)
 	Diff(commit *Commit) (bytes.Buffer, error)
 }
@@ -305,6 +306,26 @@ func (repoData *RepositoryData) Commits(oid *Oid, startIndex, count uint) (<-cha
 	}()
 
 	return commitCh, nil
+}
+
+func (repoData *RepositoryData) CommitByIndex(oid *Oid, index uint) (commit *Commit, err error) {
+	commitSet, ok := repoData.commits[oid]
+	if !ok {
+		return nil, fmt.Errorf("No commits loaded for oid %v", oid)
+	}
+
+	commitSet.lock.Lock()
+	defer commitSet.lock.Unlock()
+
+	commitNum := uint(len(commitSet.commits))
+
+	if index < commitNum {
+		commit = commitSet.commits[index]
+	} else {
+		err = fmt.Errorf("Commit index %v is invalid for branch %v with %v commits", index, oid, commitNum)
+	}
+
+	return
 }
 
 func (repoData *RepositoryData) Commit(oid *Oid) (*Commit, error) {
