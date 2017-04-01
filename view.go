@@ -25,8 +25,8 @@ type ViewDimension struct {
 }
 
 type View struct {
-	views           []WindowViewCollection
-	activeViewIndex uint
+	views         []WindowViewCollection
+	activeViewPos uint
 }
 
 func (viewDimension ViewDimension) String() string {
@@ -56,15 +56,15 @@ func (view *View) Initialise() (err error) {
 
 func (view *View) Render(viewDimension ViewDimension) ([]*Window, error) {
 	log.Debug("Rendering View")
-	return view.views[view.activeViewIndex].Render(viewDimension)
+	return view.views[view.activeViewPos].Render(viewDimension)
 }
 
 func (view *View) Handle(keyPressEvent KeyPressEvent) error {
 	log.Debugf("View handling key %v", keyPressEvent)
-	return view.views[view.activeViewIndex].Handle(keyPressEvent)
+	return view.views[view.activeViewPos].Handle(keyPressEvent)
 }
 
 func (view *View) OnActiveChange(active bool) {
 	log.Debugf("View active %v", active)
-	view.views[view.activeViewIndex].OnActiveChange(active)
+	view.views[view.activeViewPos].OnActiveChange(active)
 }

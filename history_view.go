@@ -10,16 +10,16 @@ const (
 )
 
 type HistoryView struct {
-	channels        *Channels
-	refView         WindowView
-	commitView      WindowView
-	diffView        WindowView
-	refViewWin      *Window
-	commitViewWin   *Window
-	diffViewWin     *Window
-	views           []WindowView
-	activeViewIndex uint
-	active          bool
+	channels      *Channels
+	refView       WindowView
+	commitView    WindowView
+	diffView      WindowView
+	refViewWin    *Window
+	commitViewWin *Window
+	diffViewWin   *Window
+	views         []WindowView
+	activeViewPos uint
+	active        bool
 }
 
 func NewHistoryView(repoData RepoData, channels *Channels, config Config) *HistoryView {
@@ -31,15 +31,15 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 	commitView.RegisterCommitListner(diffView)
 
 	return &HistoryView{
-		channels:        channels,
-		refView:         refView,
-		commitView:      commitView,
-		diffView:        diffView,
-		refViewWin:      NewWindow("refView", config),
-		commitViewWin:   NewWindow("commitView", config),
-		diffViewWin:     NewWindow("diffView", config),
-		views:           []WindowView{refView, commitView, diffView},
-		activeViewIndex: 1,
+		channels:      channels,
+		refView:       refView,
+		commitView:    commitView,
+		diffView:      diffView,
+		refViewWin:    NewWindow("refView", config),
+		commitViewWin: NewWindow("commitView", config),
+		diffViewWin:   NewWindow("diffView", config),
+		views:         []WindowView{refView, commitView, diffView},
+		activeViewPos: 1,
 	}
 }
 
@@ -103,14 +103,14 @@ func (historyView *HistoryView) Handle(keyPressEvent KeyPressEvent) (err error) 
 
 	switch keyPressEvent.key {
 	case gc.KEY_TAB:
-		historyView.activeViewIndex++
-		historyView.activeViewIndex %= uint(len(historyView.views))
+		historyView.activeViewPos++
+		historyView.activeViewPos %= uint(len(historyView.views))
 		historyView.OnActiveChange(true)
 		historyView.channels.UpdateDisplay()
 		return
 	}
 
-	view := historyView.views[historyView.activeViewIndex]
+	view := historyView.views[historyView.activeViewPos]
 
 	err = view.Handle(keyPressEvent)
 	return
@@ -121,11 +121,11 @@ func (historyView *HistoryView) OnActiveChange(active bool) {
 
 	historyView.active = active
 
-	for viewIndex := uint(0); viewIndex < uint(len(historyView.views)); viewIndex++ {
-		if viewIndex == historyView.activeViewIndex {
-			historyView.views[viewIndex].OnActiveChange(active)
+	for viewPos := uint(0); viewPos < uint(len(historyView.views)); viewPos++ {
+		if viewPos == historyView.activeViewPos {
+			historyView.views[viewPos].OnActiveChange(active)
 		} else {
-			historyView.views[viewIndex].OnActiveChange(false)
+			historyView.views[viewPos].OnActiveChange(false)
 		}
 	}
 }
