@@ -38,16 +38,16 @@ type RenderedRef struct {
 }
 
 type RefView struct {
-	channels       *Channels
-	repoData       RepoData
-	refLists       []*RefList
-	refListeners   []RefListener
-	active         bool
-	renderedRefs   []RenderedRef
-	activeIndex    uint
-	viewStartIndex uint
-	handlers       map[gc.Key]RefViewHandler
-	lock           sync.Mutex
+	channels          *Channels
+	repoData          RepoData
+	refLists          []*RefList
+	refListeners      []RefListener
+	active            bool
+	renderedRefs      []RenderedRef
+	activeRowIndex    uint
+	viewStartRowIndex uint
+	handlers          map[gc.Key]RefViewHandler
+	lock              sync.Mutex
 }
 
 type RefListener interface {
@@ -94,17 +94,17 @@ func (refView *RefView) Initialise() (err error) {
 		refView.GenerateRenderedRefs()
 
 		_, headBranch := refView.repoData.Head()
-		refView.activeIndex = 1
+		refView.activeRowIndex = 1
 
 		if headBranch != nil {
-			refView.activeIndex = 1
+			refView.activeRowIndex = 1
 
 			for _, branch := range branches {
 				if branch.name == headBranch.name {
 					break
 				}
 
-				refView.activeIndex++
+				refView.activeRowIndex++
 			}
 		}
 
@@ -170,13 +170,13 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 
 	rows := win.Rows() - 2
 
-	if refView.viewStartIndex > refView.activeIndex {
-		refView.viewStartIndex = refView.activeIndex
-	} else if rowDiff := refView.activeIndex - refView.viewStartIndex; rowDiff >= rows {
-		refView.viewStartIndex += (rowDiff - rows) + 1
+	if refView.viewStartRowIndex > refView.activeRowIndex {
+		refView.viewStartRowIndex = refView.activeRowIndex
+	} else if rowDiff := refView.activeRowIndex - refView.viewStartRowIndex; rowDiff >= rows {
+		refView.viewStartRowIndex += (rowDiff - rows) + 1
 	}
 
-	refIndex := refView.viewStartIndex
+	refIndex := refView.viewStartRowIndex
 
 	for winRowIndex := uint(0); winRowIndex < rows && refIndex < uint(len(refView.renderedRefs)); winRowIndex++ {
 		if err = win.SetRow(winRowIndex+1, "%v", refView.renderedRefs[refIndex].value); err != nil {
@@ -186,7 +186,7 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 		refIndex++
 	}
 
-	if err = win.SetSelectedRow((refView.activeIndex-refView.viewStartIndex)+1, refView.active); err != nil {
+	if err = win.SetSelectedRow((refView.activeRowIndex-refView.viewStartRowIndex)+1, refView.active); err != nil {
 		return
 	}
 
@@ -297,28 +297,28 @@ func (refView *RefView) Handle(keyPressEvent KeyPressEvent) (err error) {
 }
 
 func MoveUpRef(refView *RefView) (err error) {
-	if refView.activeIndex == 0 {
+	if refView.activeRowIndex == 0 {
 		return
 	}
 
 	log.Debug("Moving up one ref")
 
-	startIndex := refView.activeIndex
-	refView.activeIndex--
+	startIndex := refView.activeRowIndex
+	refView.activeRowIndex--
 
-	for refView.activeIndex > 0 {
-		renderedRef := refView.renderedRefs[refView.activeIndex]
+	for refView.activeRowIndex > 0 {
+		renderedRef := refView.renderedRefs[refView.activeRowIndex]
 
 		if renderedRef.renderedRefType != RV_SPACE && renderedRef.renderedRefType != RV_LOADING {
 			break
 		}
 
-		refView.activeIndex--
+		refView.activeRowIndex--
 	}
 
-	renderedRef := refView.renderedRefs[refView.activeIndex]
+	renderedRef := refView.renderedRefs[refView.activeRowIndex]
 	if renderedRef.renderedRefType == RV_SPACE || renderedRef.renderedRefType == RV_LOADING {
-		refView.activeIndex = startIndex
+		refView.activeRowIndex = startIndex
 		log.Debug("No valid ref entry to move to")
 	} else {
 		refView.channels.UpdateDisplay()
@@ -330,28 +330,28 @@ func MoveUpRef(refView *RefView) (err error) {
 func MoveDownRef(refView *RefView) (err error) {
 	indexLimit := uint(len(refView.renderedRefs)) - 1
 
-	if refView.activeIndex >= indexLimit {
+	if refView.activeRowIndex >= indexLimit {
 		return
 	}
 
 	log.Debug("Moving down one ref")
 
-	startIndex := refView.activeIndex
-	refView.activeIndex++
+	startIndex := refView.activeRowIndex
+	refView.activeRowIndex++
 
-	for refView.activeIndex < indexLimit {
-		renderedRef := refView.renderedRefs[refView.activeIndex]
+	for refView.activeRowIndex < indexLimit {
+		renderedRef := refView.renderedRefs[refView.activeRowIndex]
 
 		if renderedRef.renderedRefType != RV_SPACE && renderedRef.renderedRefType != RV_LOADING {
 			break
 		}
 
-		refView.activeIndex++
+		refView.activeRowIndex++
 	}
 
-	renderedRef := refView.renderedRefs[refView.activeIndex]
+	renderedRef := refView.renderedRefs[refView.activeRowIndex]
 	if renderedRef.renderedRefType == RV_SPACE || renderedRef.renderedRefType == RV_LOADING {
-		refView.activeIndex = startIndex
+		refView.activeRowIndex = startIndex
 		log.Debug("No valid ref entry to move to")
 	} else {
 		refView.channels.UpdateDisplay()
@@ -361,7 +361,7 @@ func MoveDownRef(refView *RefView) (err error) {
 }
 
 func SelectRef(refView *RefView) (err error) {
-	renderedRef := refView.renderedRefs[refView.activeIndex]
+	renderedRef := refView.renderedRefs[refView.activeRowIndex]
 
 	switch renderedRef.renderedRefType {
 	case RV_BRANCH_GROUP, RV_TAG_GROUP:

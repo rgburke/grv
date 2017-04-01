@@ -57,15 +57,15 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	rows := win.Rows() - 2
 	viewIndex := &diffView.viewIndex
 
-	if viewIndex.viewStartIndex > viewIndex.activeIndex {
-		viewIndex.viewStartIndex = viewIndex.activeIndex
-	} else if rowDiff := viewIndex.activeIndex - viewIndex.viewStartIndex; rowDiff >= rows {
-		viewIndex.viewStartIndex += (rowDiff - rows) + 1
+	if viewIndex.viewStartRowIndex > viewIndex.activeRowIndex {
+		viewIndex.viewStartRowIndex = viewIndex.activeRowIndex
+	} else if rowDiff := viewIndex.activeRowIndex - viewIndex.viewStartRowIndex; rowDiff >= rows {
+		viewIndex.viewStartRowIndex += (rowDiff - rows) + 1
 	}
 
 	diff := diffView.commitDiffs[diffView.activeCommit]
 	lineNum := uint(len(diff.lines))
-	lineIndex := viewIndex.viewStartIndex
+	lineIndex := viewIndex.viewStartRowIndex
 
 	for rowIndex := uint(0); rowIndex < rows && lineIndex < lineNum; rowIndex++ {
 		if err = win.SetRow(rowIndex+1, " %v", diff.lines[lineIndex].line); err != nil {
@@ -75,7 +75,7 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 		lineIndex++
 	}
 
-	if err = win.SetSelectedRow((viewIndex.activeIndex-viewIndex.viewStartIndex)+1, diffView.active); err != nil {
+	if err = win.SetSelectedRow((viewIndex.activeRowIndex-viewIndex.viewStartRowIndex)+1, diffView.active); err != nil {
 		return
 	}
 
@@ -85,7 +85,7 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 		return
 	}
 
-	if err = win.SetFooter(CMP_COMMITVIEW_FOOTER, "Line %v of %v", viewIndex.activeIndex+1, lineNum); err != nil {
+	if err = win.SetFooter(CMP_COMMITVIEW_FOOTER, "Line %v of %v", viewIndex.activeRowIndex+1, lineNum); err != nil {
 		return
 	}
 
@@ -135,8 +135,8 @@ func (diffView *DiffView) OnCommitSelect(commit *Commit) (err error) {
 
 	diffView.activeCommit = commit
 	diffView.viewIndex = ViewIndex{
-		activeIndex:    0,
-		viewStartIndex: 0,
+		activeRowIndex:    0,
+		viewStartRowIndex: 0,
 	}
 	diffView.channels.UpdateDisplay()
 
@@ -160,8 +160,8 @@ func MoveDownLine(diffView *DiffView) (err error) {
 	lineNum := len(diff.lines)
 	viewIndex := &diffView.viewIndex
 
-	if lineNum > 0 && viewIndex.activeIndex < uint(lineNum-1) {
-		viewIndex.activeIndex++
+	if lineNum > 0 && viewIndex.activeRowIndex < uint(lineNum-1) {
+		viewIndex.activeRowIndex++
 		diffView.channels.UpdateDisplay()
 	}
 
@@ -171,8 +171,8 @@ func MoveDownLine(diffView *DiffView) (err error) {
 func MoveUpLine(diffView *DiffView) (err error) {
 	viewIndex := &diffView.viewIndex
 
-	if viewIndex.activeIndex > 0 {
-		viewIndex.activeIndex--
+	if viewIndex.activeRowIndex > 0 {
+		viewIndex.activeRowIndex--
 		diffView.channels.UpdateDisplay()
 	}
 

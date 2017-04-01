@@ -15,8 +15,8 @@ const (
 type CommitViewHandler func(*CommitView) error
 
 type ViewIndex struct {
-	activeIndex    uint
-	viewStartIndex uint
+	activeRowIndex    uint
+	viewStartRowIndex uint
 }
 
 type LoadingCommitsRefreshTask struct {
@@ -74,13 +74,13 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 
 	rows := win.Rows() - 2
 
-	if viewIndex.viewStartIndex > viewIndex.activeIndex {
-		viewIndex.viewStartIndex = viewIndex.activeIndex
-	} else if rowDiff := viewIndex.activeIndex - viewIndex.viewStartIndex; rowDiff >= rows {
-		viewIndex.viewStartIndex += (rowDiff - rows) + 1
+	if viewIndex.viewStartRowIndex > viewIndex.activeRowIndex {
+		viewIndex.viewStartRowIndex = viewIndex.activeRowIndex
+	} else if rowDiff := viewIndex.activeRowIndex - viewIndex.viewStartRowIndex; rowDiff >= rows {
+		viewIndex.viewStartRowIndex += (rowDiff - rows) + 1
 	}
 
-	commitCh, err := commitView.repoData.Commits(commitView.activeRef, viewIndex.viewStartIndex, rows)
+	commitCh, err := commitView.repoData.Commits(commitView.activeRef, viewIndex.viewStartRowIndex, rows)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 
 	if commitSetState.commitNum > 0 {
-		if err = win.SetSelectedRow((viewIndex.activeIndex-viewIndex.viewStartIndex)+1, commitView.active); err != nil {
+		if err = win.SetSelectedRow((viewIndex.activeRowIndex-viewIndex.viewStartRowIndex)+1, commitView.active); err != nil {
 			return
 		}
 	}
@@ -124,7 +124,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	if commitSetState.commitNum == 0 {
 		selectedCommit = 0
 	} else {
-		selectedCommit = viewIndex.activeIndex + 1
+		selectedCommit = viewIndex.activeRowIndex + 1
 	}
 
 	if err = win.SetFooter(CMP_COMMITVIEW_FOOTER, "Commit %v of %v", selectedCommit, commitSetState.commitNum); err != nil {
@@ -277,10 +277,10 @@ func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent) (err error) {
 func MoveUpCommit(commitView *CommitView) (err error) {
 	viewIndex := commitView.viewIndex[commitView.activeRef]
 
-	if viewIndex.activeIndex > 0 {
+	if viewIndex.activeRowIndex > 0 {
 		log.Debug("Moving up one commit")
-		viewIndex.activeIndex--
-		commitView.selectCommit(viewIndex.activeIndex)
+		viewIndex.activeRowIndex--
+		commitView.selectCommit(viewIndex.activeRowIndex)
 		commitView.channels.UpdateDisplay()
 	}
 
@@ -291,10 +291,10 @@ func MoveDownCommit(commitView *CommitView) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 	viewIndex := commitView.viewIndex[commitView.activeRef]
 
-	if commitSetState.commitNum > 0 && viewIndex.activeIndex < commitSetState.commitNum-1 {
+	if commitSetState.commitNum > 0 && viewIndex.activeRowIndex < commitSetState.commitNum-1 {
 		log.Debug("Moving down one commit")
-		viewIndex.activeIndex++
-		commitView.selectCommit(viewIndex.activeIndex)
+		viewIndex.activeRowIndex++
+		commitView.selectCommit(viewIndex.activeRowIndex)
 		commitView.channels.UpdateDisplay()
 	}
 
