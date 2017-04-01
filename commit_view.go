@@ -31,7 +31,7 @@ type CommitView struct {
 	activeRef       *Oid
 	activeRefName   string
 	active          bool
-	viewPos         map[*Oid]*ViewPos
+	commitViewPos   map[*Oid]*ViewPos
 	handlers        map[gc.Key]CommitViewHandler
 	refreshTask     *LoadingCommitsRefreshTask
 	displayCommits  []*Commit
@@ -41,9 +41,9 @@ type CommitView struct {
 
 func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 	return &CommitView{
-		channels: channels,
-		repoData: repoData,
-		viewPos:  make(map[*Oid]*ViewPos),
+		channels:      channels,
+		repoData:      repoData,
+		commitViewPos: make(map[*Oid]*ViewPos),
 		handlers: map[gc.Key]CommitViewHandler{
 			gc.KEY_UP:   MoveUpCommit,
 			gc.KEY_DOWN: MoveDownCommit,
@@ -63,17 +63,12 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 
 	var viewPos *ViewPos
 	var ok bool
-	if viewPos, ok = commitView.viewPos[commitView.activeRef]; !ok {
+	if viewPos, ok = commitView.commitViewPos[commitView.activeRef]; !ok {
 		return fmt.Errorf("No ViewPos exists for oid %v", commitView.activeRef)
 	}
 
 	rows := win.Rows() - 2
-
-	if viewPos.viewStartRowIndex > viewPos.activeRowIndex {
-		viewPos.viewStartRowIndex = viewPos.activeRowIndex
-	} else if rowDiff := viewPos.activeRowIndex - viewPos.viewStartRowIndex; rowDiff >= rows {
-		viewPos.viewStartRowIndex += (rowDiff - rows) + 1
-	}
+	viewPos.DetermineViewStartRow(rows)
 
 	commitCh, err := commitView.repoData.Commits(commitView.activeRef, viewPos.viewStartRowIndex, rows)
 	if err != nil {
@@ -190,8 +185,8 @@ func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) 
 	commitView.activeRef = oid
 	commitView.activeRefName = refName
 
-	if _, ok := commitView.viewPos[oid]; !ok {
-		commitView.viewPos[oid] = &ViewPos{}
+	if _, ok := commitView.commitViewPos[oid]; !ok {
+		commitView.commitViewPos[oid] = NewViewPos()
 	}
 
 	commitSetState := commitView.repoData.CommitSetState(oid)
@@ -270,11 +265,10 @@ func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent) (err error) {
 }
 
 func MoveUpCommit(commitView *CommitView) (err error) {
-	viewPos := commitView.viewPos[commitView.activeRef]
+	viewPos := commitView.commitViewPos[commitView.activeRef]
 
-	if viewPos.activeRowIndex > 0 {
+	if viewPos.MoveLineUp() {
 		log.Debug("Moving up one commit")
-		viewPos.activeRowIndex--
 		commitView.selectCommit(viewPos.activeRowIndex)
 		commitView.channels.UpdateDisplay()
 	}
@@ -284,11 +278,10 @@ func MoveUpCommit(commitView *CommitView) (err error) {
 
 func MoveDownCommit(commitView *CommitView) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
-	viewPos := commitView.viewPos[commitView.activeRef]
+	viewPos := commitView.commitViewPos[commitView.activeRef]
 
-	if commitSetState.commitNum > 0 && viewPos.activeRowIndex < commitSetState.commitNum-1 {
+	if viewPos.MoveLineDown(commitSetState.commitNum) {
 		log.Debug("Moving down one commit")
-		viewPos.activeRowIndex++
 		commitView.selectCommit(viewPos.activeRowIndex)
 		commitView.channels.UpdateDisplay()
 	}

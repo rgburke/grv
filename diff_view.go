@@ -16,7 +16,7 @@ type DiffLine struct {
 
 type Diff struct {
 	lines   []*DiffLine
-	viewPos ViewPos
+	viewPos *ViewPos
 }
 
 type DiffView struct {
@@ -24,7 +24,7 @@ type DiffView struct {
 	repoData     RepoData
 	activeCommit *Commit
 	commitDiffs  map[*Commit]*Diff
-	viewPos      ViewPos
+	viewPos      *ViewPos
 	handlers     map[gc.Key]DiffViewHandler
 	active       bool
 	lock         sync.Mutex
@@ -34,6 +34,7 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 	return &DiffView{
 		repoData:    repoData,
 		channels:    channels,
+		viewPos:     NewViewPos(),
 		commitDiffs: make(map[*Commit]*Diff),
 		handlers: map[gc.Key]DiffViewHandler{
 			gc.KEY_UP:   MoveUpLine,
@@ -55,13 +56,8 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	}
 
 	rows := win.Rows() - 2
-	viewPos := &diffView.viewPos
-
-	if viewPos.viewStartRowIndex > viewPos.activeRowIndex {
-		viewPos.viewStartRowIndex = viewPos.activeRowIndex
-	} else if rowDiff := viewPos.activeRowIndex - viewPos.viewStartRowIndex; rowDiff >= rows {
-		viewPos.viewStartRowIndex += (rowDiff - rows) + 1
-	}
+	viewPos := diffView.viewPos
+	viewPos.DetermineViewStartRow(rows)
 
 	diff := diffView.commitDiffs[diffView.activeCommit]
 	lineNum := uint(len(diff.lines))
@@ -134,10 +130,7 @@ func (diffView *DiffView) OnCommitSelect(commit *Commit) (err error) {
 	}
 
 	diffView.activeCommit = commit
-	diffView.viewPos = ViewPos{
-		activeRowIndex:    0,
-		viewStartRowIndex: 0,
-	}
+	diffView.viewPos = NewViewPos()
 	diffView.channels.UpdateDisplay()
 
 	return
@@ -157,11 +150,11 @@ func (diffView *DiffView) Handle(keyPressEvent KeyPressEvent) (err error) {
 
 func MoveDownLine(diffView *DiffView) (err error) {
 	diff := diffView.commitDiffs[diffView.activeCommit]
-	lineNum := len(diff.lines)
-	viewPos := &diffView.viewPos
+	lineNum := uint(len(diff.lines))
+	viewPos := diffView.viewPos
 
-	if lineNum > 0 && viewPos.activeRowIndex < uint(lineNum-1) {
-		viewPos.activeRowIndex++
+	if viewPos.MoveLineDown(lineNum) {
+		log.Debugf("Moving down one line in diff view")
 		diffView.channels.UpdateDisplay()
 	}
 
@@ -169,10 +162,10 @@ func MoveDownLine(diffView *DiffView) (err error) {
 }
 
 func MoveUpLine(diffView *DiffView) (err error) {
-	viewPos := &diffView.viewPos
+	viewPos := diffView.viewPos
 
-	if viewPos.activeRowIndex > 0 {
-		viewPos.activeRowIndex--
+	if viewPos.MoveLineUp() {
+		log.Debugf("Moving up one line in diff view")
 		diffView.channels.UpdateDisplay()
 	}
 
