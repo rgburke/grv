@@ -40,6 +40,15 @@ var themeComponents = map[string]ThemeComponentId{
 	"CommitView.Date":    CMP_COMMITVIEW_DATE,
 	"CommitView.Author":  CMP_COMMITVIEW_AUTHOR,
 	"CommitView.Summary": CMP_COMMITVIEW_SUMMARY,
+
+	"DiffView.Normal":                CMP_DIFFVIEW_DIFFLINE_NORMAL,
+	"DiffView.GitDiffHeader":         CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_HEADER,
+	"DiffView.GitDiffExtendedHeader": CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_EXTENDED_HEADER,
+	"DiffView.UnifiedDiffHeader":     CMP_DIFFVIEW_DIFFLINE_UNIFIED_DIFF_HEADER,
+	"DiffView.HunkStart":             CMP_DIFFVIEW_DIFFLINE_HUNK_START,
+	"DiffView.HunkHeader":            CMP_DIFFVIEW_DIFFLINE_HUNK_HEADER,
+	"DiffView.AddedLine":             CMP_DIFFVIEW_DIFFLINE_LINE_ADDED,
+	"DiffView.RemovedLine":           CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED,
 }
 
 type Config interface {

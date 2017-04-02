@@ -21,7 +21,7 @@ type RenderWindow interface {
 	Cols() uint
 	ViewDimensions() ViewDimension
 	Clear()
-	SetRow(rowIndex, startColumn uint, format string, args ...interface{}) error
+	SetRow(rowIndex, startColumn uint, themeComponentId ThemeComponentId, format string, args ...interface{}) error
 	SetSelectedRow(rowIndex uint, active bool) error
 	SetTitle(themeComponentId ThemeComponentId, format string, args ...interface{}) error
 	SetFooter(themeComponentId ThemeComponentId, format string, args ...interface{}) error
@@ -231,13 +231,13 @@ func (win *Window) LineBuilder(rowIndex, startColumn uint) (*LineBuilder, error)
 	return NewLineBuilder(win.lines[rowIndex], win.config, startColumn), nil
 }
 
-func (win *Window) SetRow(rowIndex, startColumn uint, format string, args ...interface{}) error {
+func (win *Window) SetRow(rowIndex, startColumn uint, themeComponentId ThemeComponentId, format string, args ...interface{}) error {
 	lineBuilder, err := win.LineBuilder(rowIndex, startColumn)
 	if err != nil {
 		return err
 	}
 
-	lineBuilder.Append(format, args...)
+	lineBuilder.AppendWithStyle(themeComponentId, format, args...)
 
 	return nil
 }

@@ -3,15 +3,74 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
+	"strings"
 	"sync"
 )
 
 type DiffViewHandler func(*DiffView) error
 
+type DiffLineType int
+
+const (
+	DLT_UNSET DiffLineType = iota
+	DLT_NORMAL
+	DLT_GIT_DIFF_HEADER
+	DLT_GIT_DIFF_EXTENDED_HEADER
+	DLT_UNIFIED_DIFF_HEADER
+	DLT_HUNK_START
+	DLT_LINE_ADDED
+	DLT_LINE_REMOVED
+)
+
+var diffLineThemeComponentId = map[DiffLineType]ThemeComponentId{
+	DLT_NORMAL:                   CMP_DIFFVIEW_DIFFLINE_NORMAL,
+	DLT_GIT_DIFF_HEADER:          CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_HEADER,
+	DLT_GIT_DIFF_EXTENDED_HEADER: CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_EXTENDED_HEADER,
+	DLT_UNIFIED_DIFF_HEADER:      CMP_DIFFVIEW_DIFFLINE_UNIFIED_DIFF_HEADER,
+	DLT_HUNK_START:               CMP_DIFFVIEW_DIFFLINE_HUNK_START,
+	DLT_LINE_ADDED:               CMP_DIFFVIEW_DIFFLINE_LINE_ADDED,
+	DLT_LINE_REMOVED:             CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED,
+}
+
 type DiffLine struct {
-	line string
+	line         string
+	diffLineType DiffLineType
+}
+
+func (diffLine *DiffLine) GetThemeComponentId() ThemeComponentId {
+	diffLine.DetermineDiffLineType()
+	return diffLineThemeComponentId[diffLine.diffLineType]
+}
+
+func (diffLine *DiffLine) DetermineDiffLineType() {
+	if diffLine.diffLineType != DLT_UNSET {
+		return
+	}
+
+	var diffLineType DiffLineType
+	line := diffLine.line
+
+	switch {
+	case strings.HasPrefix(line, "diff --git"):
+		diffLineType = DLT_GIT_DIFF_HEADER
+	case strings.HasPrefix(line, "index"):
+		diffLineType = DLT_GIT_DIFF_EXTENDED_HEADER
+	case strings.HasPrefix(line, "---") || strings.HasPrefix(line, "+++"):
+		diffLineType = DLT_UNIFIED_DIFF_HEADER
+	case strings.HasPrefix(line, "@@"):
+		diffLineType = DLT_HUNK_START
+	case strings.HasPrefix(line, "+"):
+		diffLineType = DLT_LINE_ADDED
+	case strings.HasPrefix(line, "-"):
+		diffLineType = DLT_LINE_REMOVED
+	default:
+		diffLineType = DLT_NORMAL
+	}
+
+	diffLine.diffLineType = diffLineType
 }
 
 type Diff struct {
@@ -70,7 +129,25 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	startColumn := viewPos.viewStartColumn
 
 	for rowIndex := uint(0); rowIndex < rows && lineIndex < lineNum; rowIndex++ {
-		if err = win.SetRow(rowIndex+1, startColumn, " %v", diff.lines[lineIndex].line); err != nil {
+		diffLine := diff.lines[lineIndex]
+		themeComponentId := diffLine.GetThemeComponentId()
+
+		if diffLine.diffLineType == DLT_HUNK_START {
+			lineParts := strings.SplitAfter(diffLine.line, "@@")
+
+			if len(lineParts) != 3 {
+				return fmt.Errorf("Unable to display hunk header line: %v", diffLine.line)
+			}
+
+			var lineBuilder *LineBuilder
+			if lineBuilder, err = win.LineBuilder(rowIndex+1, startColumn); err != nil {
+				return
+			}
+
+			lineBuilder.
+				AppendWithStyle(themeComponentId, "%v", strings.Join(lineParts[:2], "")).
+				AppendWithStyle(CMP_DIFFVIEW_DIFFLINE_HUNK_HEADER, "%v", lineParts[2])
+		} else if err = win.SetRow(rowIndex+1, startColumn, themeComponentId, " %v", diff.lines[lineIndex].line); err != nil {
 			return
 		}
 

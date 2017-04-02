@@ -181,7 +181,7 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	startColumn := viewPos.viewStartColumn
 
 	for winRowIndex := uint(0); winRowIndex < rows && refIndex < uint(len(refView.renderedRefs)); winRowIndex++ {
-		if err = win.SetRow(winRowIndex+1, startColumn, "%v", refView.renderedRefs[refIndex].value); err != nil {
+		if err = win.SetRow(winRowIndex+1, startColumn, CMP_NONE, "%v", refView.renderedRefs[refIndex].value); err != nil {
 			return
 		}
 
