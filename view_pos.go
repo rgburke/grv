@@ -39,3 +39,24 @@ func (viewPos *ViewPos) MoveLineUp() (changed bool) {
 
 	return
 }
+
+func (viewPos *ViewPos) MovePageRight(cols uint) {
+	halfPage := cols / 2
+	viewPos.viewStartColumn += halfPage
+}
+
+func (viewPos *ViewPos) MovePageLeft(cols uint) (changed bool) {
+	if viewPos.viewStartColumn > 1 {
+		halfPage := cols / 2
+
+		if halfPage > viewPos.viewStartColumn {
+			viewPos.viewStartColumn = 1
+		} else {
+			viewPos.viewStartColumn -= halfPage
+		}
+
+		changed = true
+	}
+
+	return
+}

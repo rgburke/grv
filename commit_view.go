@@ -36,6 +36,7 @@ type CommitView struct {
 	refreshTask     *LoadingCommitsRefreshTask
 	displayCommits  []*Commit
 	commitListeners []CommitListener
+	viewDimension   ViewDimension
 	lock            sync.Mutex
 }
 
@@ -45,8 +46,10 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 		repoData:      repoData,
 		commitViewPos: make(map[*Oid]*ViewPos),
 		handlers: map[gc.Key]CommitViewHandler{
-			gc.KEY_UP:   MoveUpCommit,
-			gc.KEY_DOWN: MoveDownCommit,
+			gc.KEY_UP:    MoveUpCommit,
+			gc.KEY_DOWN:  MoveDownCommit,
+			gc.KEY_RIGHT: ScrollCommitViewRight,
+			gc.KEY_LEFT:  ScrollCommitViewLeft,
 		},
 	}
 }
@@ -60,6 +63,8 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	log.Debug("Rendering CommitView")
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
+
+	commitView.viewDimension = win.ViewDimensions()
 
 	var viewPos *ViewPos
 	var ok bool
@@ -79,7 +84,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	rowIndex := uint(1)
 
 	for commit := range commitCh {
-		if lineBuilder, err = win.LineBuilder(rowIndex); err != nil {
+		if lineBuilder, err = win.LineBuilder(rowIndex, viewPos.viewStartColumn); err != nil {
 			return
 		}
 
@@ -283,6 +288,26 @@ func MoveDownCommit(commitView *CommitView) (err error) {
 	if viewPos.MoveLineDown(commitSetState.commitNum) {
 		log.Debug("Moving down one commit")
 		commitView.selectCommit(viewPos.activeRowIndex)
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func ScrollCommitViewRight(commitView *CommitView) (err error) {
+	viewPos := commitView.commitViewPos[commitView.activeRef]
+	viewPos.MovePageRight(commitView.viewDimension.cols)
+	log.Debugf("Scrolling right. View starts at column %v", viewPos.viewStartColumn)
+	commitView.channels.UpdateDisplay()
+
+	return
+}
+
+func ScrollCommitViewLeft(commitView *CommitView) (err error) {
+	viewPos := commitView.commitViewPos[commitView.activeRef]
+
+	if viewPos.MovePageLeft(commitView.viewDimension.cols) {
+		log.Debugf("Scrolling left. View starts at column %v", viewPos.viewStartColumn)
 		commitView.channels.UpdateDisplay()
 	}
 

@@ -20,14 +20,15 @@ type Diff struct {
 }
 
 type DiffView struct {
-	channels     *Channels
-	repoData     RepoData
-	activeCommit *Commit
-	commitDiffs  map[*Commit]*Diff
-	viewPos      *ViewPos
-	handlers     map[gc.Key]DiffViewHandler
-	active       bool
-	lock         sync.Mutex
+	channels      *Channels
+	repoData      RepoData
+	activeCommit  *Commit
+	commitDiffs   map[*Commit]*Diff
+	viewPos       *ViewPos
+	viewDimension ViewDimension
+	handlers      map[gc.Key]DiffViewHandler
+	active        bool
+	lock          sync.Mutex
 }
 
 func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
@@ -37,8 +38,10 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 		viewPos:     NewViewPos(),
 		commitDiffs: make(map[*Commit]*Diff),
 		handlers: map[gc.Key]DiffViewHandler{
-			gc.KEY_UP:   MoveUpLine,
-			gc.KEY_DOWN: MoveDownLine,
+			gc.KEY_UP:    MoveUpLine,
+			gc.KEY_DOWN:  MoveDownLine,
+			gc.KEY_RIGHT: ScrollDiffViewRight,
+			gc.KEY_LEFT:  ScrollDiffViewLeft,
 		},
 	}
 }
@@ -51,6 +54,8 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
+	diffView.viewDimension = win.ViewDimensions()
+
 	if diffView.activeCommit == nil {
 		return
 	}
@@ -62,9 +67,10 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	diff := diffView.commitDiffs[diffView.activeCommit]
 	lineNum := uint(len(diff.lines))
 	lineIndex := viewPos.viewStartRowIndex
+	startColumn := viewPos.viewStartColumn
 
 	for rowIndex := uint(0); rowIndex < rows && lineIndex < lineNum; rowIndex++ {
-		if err = win.SetRow(rowIndex+1, " %v", diff.lines[lineIndex].line); err != nil {
+		if err = win.SetRow(rowIndex+1, startColumn, " %v", diff.lines[lineIndex].line); err != nil {
 			return
 		}
 
@@ -166,6 +172,26 @@ func MoveUpLine(diffView *DiffView) (err error) {
 
 	if viewPos.MoveLineUp() {
 		log.Debugf("Moving up one line in diff view")
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func ScrollDiffViewRight(diffView *DiffView) (err error) {
+	viewPos := diffView.viewPos
+	viewPos.MovePageRight(diffView.viewDimension.cols)
+	log.Debugf("Scrolling right. View starts at column %v", viewPos.viewStartColumn)
+	diffView.channels.UpdateDisplay()
+
+	return
+}
+
+func ScrollDiffViewLeft(diffView *DiffView) (err error) {
+	viewPos := diffView.viewPos
+
+	if viewPos.MovePageLeft(diffView.viewDimension.cols) {
+		log.Debugf("Scrolling left. View starts at column %v", viewPos.viewStartColumn)
 		diffView.channels.UpdateDisplay()
 	}
 

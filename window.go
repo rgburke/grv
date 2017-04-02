@@ -19,13 +19,14 @@ type RenderWindow interface {
 	Id() string
 	Rows() uint
 	Cols() uint
+	ViewDimensions() ViewDimension
 	Clear()
-	SetRow(rowIndex uint, format string, args ...interface{}) error
+	SetRow(rowIndex, startColumn uint, format string, args ...interface{}) error
 	SetSelectedRow(rowIndex uint, active bool) error
 	SetTitle(themeComponentId ThemeComponentId, format string, args ...interface{}) error
 	SetFooter(themeComponentId ThemeComponentId, format string, args ...interface{}) error
 	DrawBorder()
-	LineBuilder(rowIndex uint) (*LineBuilder, error)
+	LineBuilder(rowIndex, startColumn uint) (*LineBuilder, error)
 }
 
 type Line struct {
@@ -33,10 +34,11 @@ type Line struct {
 }
 
 type LineBuilder struct {
-	line      *Line
-	cellIndex uint
-	column    uint
-	config    Config
+	line        *Line
+	cellIndex   uint
+	column      uint
+	startColumn uint
+	config      Config
 }
 
 type CellStyle struct {
@@ -72,11 +74,12 @@ func NewLine(cols uint) *Line {
 	return line
 }
 
-func NewLineBuilder(line *Line, config Config) *LineBuilder {
+func NewLineBuilder(line *Line, config Config, startColumn uint) *LineBuilder {
 	return &LineBuilder{
-		line:   line,
-		column: 1,
-		config: config,
+		line:        line,
+		column:      1,
+		config:      config,
+		startColumn: startColumn,
 	}
 }
 
@@ -127,12 +130,15 @@ func (lineBuilder *LineBuilder) setCellAndAdvanceIndex(codePoint rune, width uin
 	line := lineBuilder.line
 
 	if lineBuilder.cellIndex < uint(len(line.cells)) {
-		cell := line.cells[lineBuilder.cellIndex]
-		cell.codePoints.Reset()
-		cell.codePoints.WriteRune(codePoint)
-		cell.style.componentId = componentId
-		cell.style.acs_char = 0
-		lineBuilder.cellIndex++
+		if lineBuilder.column >= lineBuilder.startColumn {
+			cell := line.cells[lineBuilder.cellIndex]
+			cell.codePoints.Reset()
+			cell.codePoints.WriteRune(codePoint)
+			cell.style.componentId = componentId
+			cell.style.acs_char = 0
+			lineBuilder.cellIndex++
+		}
+
 		lineBuilder.column += width
 	}
 }
@@ -194,6 +200,13 @@ func (win *Window) Cols() uint {
 	return win.cols
 }
 
+func (win *Window) ViewDimensions() ViewDimension {
+	return ViewDimension{
+		rows: win.rows,
+		cols: win.cols,
+	}
+}
+
 func (win *Window) Clear() {
 	log.Debugf("Clearing window %v", win.id)
 
@@ -208,16 +221,18 @@ func (win *Window) Clear() {
 	}
 }
 
-func (win *Window) LineBuilder(rowIndex uint) (*LineBuilder, error) {
+func (win *Window) LineBuilder(rowIndex, startColumn uint) (*LineBuilder, error) {
 	if rowIndex >= win.rows {
 		return nil, fmt.Errorf("Invalid row index: %v >= %v rows", rowIndex, win.rows)
+	} else if startColumn == 0 {
+		return nil, fmt.Errorf("Column must be postive")
 	}
 
-	return NewLineBuilder(win.lines[rowIndex], win.config), nil
+	return NewLineBuilder(win.lines[rowIndex], win.config, startColumn), nil
 }
 
-func (win *Window) SetRow(rowIndex uint, format string, args ...interface{}) error {
-	lineBuilder, err := win.LineBuilder(rowIndex)
+func (win *Window) SetRow(rowIndex, startColumn uint, format string, args ...interface{}) error {
+	lineBuilder, err := win.LineBuilder(rowIndex, startColumn)
 	if err != nil {
 		return err
 	}
@@ -270,7 +285,7 @@ func (win *Window) setHeader(rowIndex uint, rightJustified bool, componentId The
 	}
 
 	var lineBuilder *LineBuilder
-	lineBuilder, err = win.LineBuilder(rowIndex)
+	lineBuilder, err = win.LineBuilder(rowIndex, 1)
 
 	if err != nil {
 		return

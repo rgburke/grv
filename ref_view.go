@@ -38,15 +38,16 @@ type RenderedRef struct {
 }
 
 type RefView struct {
-	channels     *Channels
-	repoData     RepoData
-	refLists     []*RefList
-	refListeners []RefListener
-	active       bool
-	renderedRefs []RenderedRef
-	viewPos      *ViewPos
-	handlers     map[gc.Key]RefViewHandler
-	lock         sync.Mutex
+	channels      *Channels
+	repoData      RepoData
+	refLists      []*RefList
+	refListeners  []RefListener
+	active        bool
+	renderedRefs  []RenderedRef
+	viewPos       *ViewPos
+	viewDimension ViewDimension
+	handlers      map[gc.Key]RefViewHandler
+	lock          sync.Mutex
 }
 
 type RefListener interface {
@@ -72,9 +73,11 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 			},
 		},
 		handlers: map[gc.Key]RefViewHandler{
-			gc.KEY_UP:   MoveUpRef,
-			gc.KEY_DOWN: MoveDownRef,
-			'\n':        SelectRef,
+			gc.KEY_UP:    MoveUpRef,
+			gc.KEY_DOWN:  MoveDownRef,
+			gc.KEY_RIGHT: ScrollRefViewRight,
+			gc.KEY_LEFT:  ScrollRefViewLeft,
+			'\n':         SelectRef,
 		},
 	}
 }
@@ -169,13 +172,16 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
 
+	refView.viewDimension = win.ViewDimensions()
+
 	rows := win.Rows() - 2
 	viewPos := refView.viewPos
 	viewPos.DetermineViewStartRow(rows)
 	refIndex := viewPos.viewStartRowIndex
+	startColumn := viewPos.viewStartColumn
 
 	for winRowIndex := uint(0); winRowIndex < rows && refIndex < uint(len(refView.renderedRefs)); winRowIndex++ {
-		if err = win.SetRow(winRowIndex+1, "%v", refView.renderedRefs[refIndex].value); err != nil {
+		if err = win.SetRow(winRowIndex+1, startColumn, "%v", refView.renderedRefs[refIndex].value); err != nil {
 			return
 		}
 
@@ -353,6 +359,26 @@ func MoveDownRef(refView *RefView) (err error) {
 		viewPos.activeRowIndex = startIndex
 		log.Debug("No valid ref entry to move to")
 	} else {
+		refView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func ScrollRefViewRight(refView *RefView) (err error) {
+	viewPos := refView.viewPos
+	viewPos.MovePageRight(refView.viewDimension.cols)
+	log.Debugf("Scrolling right. View starts at column %v", viewPos.viewStartColumn)
+	refView.channels.UpdateDisplay()
+
+	return
+}
+
+func ScrollRefViewLeft(refView *RefView) (err error) {
+	viewPos := refView.viewPos
+
+	if viewPos.MovePageLeft(refView.viewDimension.cols) {
+		log.Debugf("Scrolling left. View starts at column %v", viewPos.viewStartColumn)
 		refView.channels.UpdateDisplay()
 	}
 
