@@ -5,6 +5,13 @@ type ThemeComponentId int16
 const (
 	CMP_NONE ThemeComponentId = iota
 
+	CMP_REFVIEW_TITLE
+	CMP_REFVIEW_FOOTER
+	CMP_REFVIEW_BRANCHES_HEADER
+	CMP_REFVIEW_BRANCH
+	CMP_REFVIEW_TAGS_HEADER
+	CMP_REFVIEW_TAG
+
 	CMP_COMMITVIEW_TITLE
 	CMP_COMMITVIEW_FOOTER
 	CMP_COMMITVIEW_DATE
@@ -154,6 +161,30 @@ func NewDefaultTheme() MutableTheme {
 			CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED: &ThemeComponent{
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_RED,
+			},
+			CMP_REFVIEW_TITLE: &ThemeComponent{
+				bgcolor: COLOR_NONE,
+				fgcolor: COLOR_CYAN,
+			},
+			CMP_REFVIEW_FOOTER: &ThemeComponent{
+				bgcolor: COLOR_NONE,
+				fgcolor: COLOR_CYAN,
+			},
+			CMP_REFVIEW_BRANCHES_HEADER: &ThemeComponent{
+				bgcolor: COLOR_NONE,
+				fgcolor: COLOR_MAGENTA,
+			},
+			CMP_REFVIEW_BRANCH: &ThemeComponent{
+				bgcolor: COLOR_NONE,
+				fgcolor: COLOR_NONE,
+			},
+			CMP_REFVIEW_TAGS_HEADER: &ThemeComponent{
+				bgcolor: COLOR_NONE,
+				fgcolor: COLOR_MAGENTA,
+			},
+			CMP_REFVIEW_TAG: &ThemeComponent{
+				bgcolor: COLOR_NONE,
+				fgcolor: COLOR_NONE,
 			},
 		},
 	}

@@ -35,6 +35,13 @@ var themeColors = map[string]ThemeColor{
 }
 
 var themeComponents = map[string]ThemeComponentId{
+	"RefView.Title":          CMP_REFVIEW_TITLE,
+	"RefView.Footer":         CMP_REFVIEW_FOOTER,
+	"RefView.BranchesHeader": CMP_REFVIEW_BRANCHES_HEADER,
+	"RefView.Branch":         CMP_REFVIEW_BRANCH,
+	"RefView.TagsHeader":     CMP_REFVIEW_TAGS_HEADER,
+	"RefView.Tag":            CMP_REFVIEW_TAG,
+
 	"CommitView.Title":   CMP_COMMITVIEW_TITLE,
 	"CommitView.Footer":  CMP_COMMITVIEW_FOOTER,
 	"CommitView.Date":    CMP_COMMITVIEW_DATE,

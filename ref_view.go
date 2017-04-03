@@ -21,6 +21,13 @@ const (
 	RV_LOADING
 )
 
+var refToTheme = map[RenderedRefType]ThemeComponentId{
+	RV_BRANCH_GROUP: CMP_REFVIEW_BRANCHES_HEADER,
+	RV_BRANCH:       CMP_REFVIEW_BRANCH,
+	RV_TAG_GROUP:    CMP_REFVIEW_TAGS_HEADER,
+	RV_TAG:          CMP_REFVIEW_TAG,
+}
+
 type RenderedRefGenerator func(*RefView, *RefList, *[]RenderedRef)
 
 type RefList struct {
@@ -35,6 +42,7 @@ type RenderedRef struct {
 	oid             *Oid
 	renderedRefType RenderedRefType
 	refList         *RefList
+	refNum          uint
 }
 
 type RefView struct {
@@ -181,7 +189,14 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	startColumn := viewPos.viewStartColumn
 
 	for winRowIndex := uint(0); winRowIndex < rows && refIndex < uint(len(refView.renderedRefs)); winRowIndex++ {
-		if err = win.SetRow(winRowIndex+1, startColumn, CMP_NONE, "%v", refView.renderedRefs[refIndex].value); err != nil {
+		renderedRef := refView.renderedRefs[refIndex]
+
+		themeComponentId, ok := refToTheme[renderedRef.renderedRefType]
+		if !ok {
+			themeComponentId = CMP_NONE
+		}
+
+		if err = win.SetRow(winRowIndex+1, startColumn, themeComponentId, "%v", renderedRef.value); err != nil {
 			return
 		}
 
@@ -193,6 +208,46 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	}
 
 	win.DrawBorder()
+
+	if err = win.SetTitle(CMP_REFVIEW_TITLE, "Refs"); err != nil {
+		return
+	}
+
+	selectedRenderedRef := refView.renderedRefs[viewPos.activeRowIndex]
+	if err = refView.renderFooter(win, selectedRenderedRef); err != nil {
+		return
+	}
+
+	return
+}
+
+func (refView *RefView) renderFooter(win RenderWindow, selectedRenderedRef RenderedRef) (err error) {
+	var footer string
+
+	switch selectedRenderedRef.renderedRefType {
+	case RV_BRANCH_GROUP:
+		if branches, loading := refView.repoData.LocalBranches(); loading {
+			footer = "Branches: Loading..."
+		} else {
+			footer = fmt.Sprintf("Branches: %v", len(branches))
+		}
+	case RV_BRANCH:
+		branches, _ := refView.repoData.LocalBranches()
+		footer = fmt.Sprintf("Branch %v of %v", selectedRenderedRef.refNum, len(branches))
+	case RV_TAG_GROUP:
+		if tags, loading := refView.repoData.LocalTags(); loading {
+			footer = "Tags: Loading"
+		} else {
+			footer = fmt.Sprintf("Tags: %v", len(tags))
+		}
+	case RV_TAG:
+		tags, _ := refView.repoData.LocalTags()
+		footer = fmt.Sprintf("Tag %v of %v", selectedRenderedRef.refNum, len(tags))
+	}
+
+	if footer != "" {
+		err = win.SetFooter(CMP_REFVIEW_FOOTER, "%v", footer)
+	}
 
 	return
 }
@@ -208,7 +263,7 @@ func (refView *RefView) GenerateRenderedRefs() {
 		}
 
 		renderedRefs = append(renderedRefs, RenderedRef{
-			value:           fmt.Sprintf("  %v%v", expandChar, refList.name),
+			value:           fmt.Sprintf("  [%v] %v", expandChar, refList.name),
 			refList:         refList,
 			renderedRefType: refList.renderedRefType,
 		})
@@ -240,12 +295,17 @@ func GenerateBranches(refView *RefView, refList *RefList, renderedRefs *[]Render
 		return
 	}
 
+	branchNum := uint(1)
+
 	if head, headBranch := refView.repoData.Head(); headBranch == nil {
 		*renderedRefs = append(*renderedRefs, RenderedRef{
 			value:           fmt.Sprintf("   %s", getDetachedHeadDisplayValue(head)),
 			oid:             head,
 			renderedRefType: RV_BRANCH,
+			refNum:          branchNum,
 		})
+
+		branchNum++
 	}
 
 	for _, branch := range branches {
@@ -253,7 +313,10 @@ func GenerateBranches(refView *RefView, refList *RefList, renderedRefs *[]Render
 			value:           fmt.Sprintf("   %s", branch.name),
 			oid:             branch.oid,
 			renderedRefType: RV_BRANCH,
+			refNum:          branchNum,
 		})
+
+		branchNum++
 	}
 }
 
@@ -269,11 +332,12 @@ func GenerateTags(refView *RefView, refList *RefList, renderedRefs *[]RenderedRe
 		return
 	}
 
-	for _, tag := range tags {
+	for tagIndex, tag := range tags {
 		*renderedRefs = append(*renderedRefs, RenderedRef{
 			value:           fmt.Sprintf("   %s", tag.name),
 			oid:             tag.oid,
 			renderedRefType: RV_TAG,
+			refNum:          uint(tagIndex + 1),
 		})
 	}
 }
