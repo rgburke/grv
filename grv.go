@@ -7,10 +7,9 @@ import (
 )
 
 const (
-	GRV_INPUT_BUFFER_SIZE   = 100
-	GRV_DISPLAY_BUFFER_SIZE = 10
-	GRV_ERROR_BUFFER_SIZE   = 100
-	GRV_MAX_DRAW_FREQUENCY  = time.Millisecond * 50
+	GRV_INPUT_BUFFER_SIZE  = 100
+	GRV_ERROR_BUFFER_SIZE  = 100
+	GRV_MAX_DRAW_FREQUENCY = time.Millisecond * 50
 )
 
 type GRVChannels struct {
@@ -35,7 +34,10 @@ type GRV struct {
 }
 
 func (channels *Channels) UpdateDisplay() {
-	channels.displayCh <- true
+	select {
+	case channels.displayCh <- true:
+	default:
+	}
 }
 
 // Check if grv is exiting
@@ -65,7 +67,7 @@ func NewGRV() *GRV {
 	grvChannels := GRVChannels{
 		exitCh:    make(chan bool),
 		inputCh:   make(chan KeyPressEvent, GRV_INPUT_BUFFER_SIZE),
-		displayCh: make(chan bool, GRV_DISPLAY_BUFFER_SIZE),
+		displayCh: make(chan bool),
 		errorCh:   make(chan error, GRV_ERROR_BUFFER_SIZE),
 	}
 
