@@ -5,18 +5,20 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-type WindowView interface {
+type AbstractView interface {
 	Initialise() error
-	Render(RenderWindow) error
 	Handle(KeyPressEvent) error
 	OnActiveChange(bool)
 }
 
+type WindowView interface {
+	AbstractView
+	Render(RenderWindow) error
+}
+
 type WindowViewCollection interface {
-	Initialise() error
+	AbstractView
 	Render(ViewDimension) ([]*Window, error)
-	Handle(KeyPressEvent) error
-	OnActiveChange(bool)
 }
 
 type ViewDimension struct {
