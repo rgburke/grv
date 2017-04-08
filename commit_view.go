@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	gc "github.com/rthornton128/goncurses"
 	"sync"
 	"time"
 )
@@ -32,7 +31,7 @@ type CommitView struct {
 	activeRefName   string
 	active          bool
 	commitViewPos   map[*Oid]*ViewPos
-	handlers        map[gc.Key]CommitViewHandler
+	handlers        map[Action]CommitViewHandler
 	refreshTask     *LoadingCommitsRefreshTask
 	displayCommits  []*Commit
 	commitListeners []CommitListener
@@ -45,11 +44,11 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 		channels:      channels,
 		repoData:      repoData,
 		commitViewPos: make(map[*Oid]*ViewPos),
-		handlers: map[gc.Key]CommitViewHandler{
-			gc.KEY_UP:    MoveUpCommit,
-			gc.KEY_DOWN:  MoveDownCommit,
-			gc.KEY_RIGHT: ScrollCommitViewRight,
-			gc.KEY_LEFT:  ScrollCommitViewLeft,
+		handlers: map[Action]CommitViewHandler{
+			ACTION_COMMIT_VIEW_PREV_COMMIT:  MoveUpCommit,
+			ACTION_COMMIT_VIEW_NEXT_COMMIT:  MoveDownCommit,
+			ACTION_COMMIT_VIEW_SCROLL_RIGHT: ScrollCommitViewRight,
+			ACTION_COMMIT_VIEW_SCROLL_LEFT:  ScrollCommitViewLeft,
 		},
 	}
 }
@@ -220,6 +219,10 @@ func (commitView *CommitView) OnActiveChange(active bool) {
 	commitView.active = active
 }
 
+func (commitView *CommitView) ViewId() ViewId {
+	return VIEW_COMMIT
+}
+
 func (commitView *CommitView) RegisterCommitListner(commitListener CommitListener) {
 	commitView.commitListeners = append(commitView.commitListeners, commitListener)
 }
@@ -257,12 +260,17 @@ func (commitView *CommitView) selectCommit(commitIndex uint) (err error) {
 	return
 }
 
-func (commitView *CommitView) Handle(keyPressEvent KeyPressEvent) (err error) {
-	log.Debugf("CommitView handling key %v", keyPressEvent)
+func (commitView *CommitView) HandleKeyPress(keyPressEvent KeyPressEvent) (err error) {
+	log.Debugf("CommitView handling key %v - NOP", keyPressEvent)
+	return
+}
+
+func (commitView *CommitView) HandleAction(action Action) (err error) {
+	log.Debugf("CommitView handling action %v", action)
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
-	if handler, ok := commitView.handlers[keyPressEvent.key]; ok {
+	if handler, ok := commitView.handlers[action]; ok {
 		err = handler(commitView)
 	}
 

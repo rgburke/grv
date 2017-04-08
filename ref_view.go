@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	gc "github.com/rthornton128/goncurses"
 	"strings"
 	"sync"
 )
@@ -54,7 +53,7 @@ type RefView struct {
 	renderedRefs  []RenderedRef
 	viewPos       *ViewPos
 	viewDimension ViewDimension
-	handlers      map[gc.Key]RefViewHandler
+	handlers      map[Action]RefViewHandler
 	lock          sync.Mutex
 }
 
@@ -80,12 +79,12 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 				renderedRefType: RV_TAG_GROUP,
 			},
 		},
-		handlers: map[gc.Key]RefViewHandler{
-			gc.KEY_UP:    MoveUpRef,
-			gc.KEY_DOWN:  MoveDownRef,
-			gc.KEY_RIGHT: ScrollRefViewRight,
-			gc.KEY_LEFT:  ScrollRefViewLeft,
-			'\n':         SelectRef,
+		handlers: map[Action]RefViewHandler{
+			ACTION_REF_VIEW_PREV_REF:     MoveUpRef,
+			ACTION_REF_VIEW_NEXT_REF:     MoveDownRef,
+			ACTION_REF_VIEW_SCROLL_RIGHT: ScrollRefViewRight,
+			ACTION_REF_VIEW_SCROLL_LEFT:  ScrollRefViewLeft,
+			ACTION_REF_VIEW_SELECT_REF:   SelectRef,
 		},
 	}
 }
@@ -350,12 +349,21 @@ func (refView *RefView) OnActiveChange(active bool) {
 	refView.active = active
 }
 
-func (refView *RefView) Handle(keyPressEvent KeyPressEvent) (err error) {
-	log.Debugf("RefView handling key %v", keyPressEvent)
+func (refView *RefView) ViewId() ViewId {
+	return VIEW_REF
+}
+
+func (refView *RefView) HandleKeyPress(keyPressEvent KeyPressEvent) (err error) {
+	log.Debugf("RefView handling key %v - NOP", keyPressEvent)
+	return
+}
+
+func (refView *RefView) HandleAction(action Action) (err error) {
+	log.Debugf("RefView handling action %v", action)
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
 
-	if handler, ok := refView.handlers[keyPressEvent.key]; ok {
+	if handler, ok := refView.handlers[action]; ok {
 		err = handler(refView)
 	}
 

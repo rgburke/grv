@@ -5,10 +5,22 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+type ViewId int
+
+const (
+	VIEW_MAIN ViewId = iota
+	VIEW_HISTORY
+	VIEW_REF
+	VIEW_COMMIT
+	VIEW_DIFF
+)
+
 type AbstractView interface {
 	Initialise() error
-	Handle(KeyPressEvent) error
+	HandleKeyPress(KeyPressEvent) error
+	HandleAction(Action) error
 	OnActiveChange(bool)
+	ViewId() ViewId
 }
 
 type WindowView interface {
@@ -19,6 +31,7 @@ type WindowView interface {
 type WindowViewCollection interface {
 	AbstractView
 	Render(ViewDimension) ([]*Window, error)
+	ActiveViewHierarchy() []ViewId
 }
 
 type ViewDimension struct {
@@ -61,12 +74,25 @@ func (view *View) Render(viewDimension ViewDimension) ([]*Window, error) {
 	return view.views[view.activeViewPos].Render(viewDimension)
 }
 
-func (view *View) Handle(keyPressEvent KeyPressEvent) error {
+func (view *View) HandleKeyPress(keyPressEvent KeyPressEvent) error {
 	log.Debugf("View handling key %v", keyPressEvent)
-	return view.views[view.activeViewPos].Handle(keyPressEvent)
+	return view.views[view.activeViewPos].HandleKeyPress(keyPressEvent)
+}
+
+func (view *View) HandleAction(action Action) error {
+	log.Debugf("View handling action %v", action)
+	return view.views[view.activeViewPos].HandleAction(action)
 }
 
 func (view *View) OnActiveChange(active bool) {
 	log.Debugf("View active %v", active)
 	view.views[view.activeViewPos].OnActiveChange(active)
+}
+
+func (view *View) ViewId() ViewId {
+	return VIEW_MAIN
+}
+
+func (view *View) ActiveViewHierarchy() []ViewId {
+	return append([]ViewId{view.ViewId()}, view.views[view.activeViewPos].ActiveViewHierarchy()...)
 }

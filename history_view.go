@@ -2,7 +2,6 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
-	gc "github.com/rthornton128/goncurses"
 )
 
 const (
@@ -98,11 +97,17 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 	return
 }
 
-func (historyView *HistoryView) Handle(keyPressEvent KeyPressEvent) (err error) {
+func (historyView *HistoryView) HandleKeyPress(keyPressEvent KeyPressEvent) (err error) {
 	log.Debugf("HistoryView handling key %v", keyPressEvent)
+	activeChildView := historyView.views[historyView.activeViewPos]
+	return activeChildView.HandleKeyPress(keyPressEvent)
+}
 
-	switch keyPressEvent.key {
-	case gc.KEY_TAB:
+func (historyView *HistoryView) HandleAction(action Action) (err error) {
+	log.Debugf("HistoryView handling action %v", action)
+
+	switch action {
+	case ACTION_HISTORY_VIEW_NEXT_VIEW:
 		historyView.activeViewPos++
 		historyView.activeViewPos %= uint(len(historyView.views))
 		historyView.OnActiveChange(true)
@@ -110,10 +115,8 @@ func (historyView *HistoryView) Handle(keyPressEvent KeyPressEvent) (err error) 
 		return
 	}
 
-	view := historyView.views[historyView.activeViewPos]
-
-	err = view.Handle(keyPressEvent)
-	return
+	activeChildView := historyView.views[historyView.activeViewPos]
+	return activeChildView.HandleAction(action)
 }
 
 func (historyView *HistoryView) OnActiveChange(active bool) {
@@ -128,4 +131,16 @@ func (historyView *HistoryView) OnActiveChange(active bool) {
 			historyView.views[viewPos].OnActiveChange(false)
 		}
 	}
+}
+
+func (historyView *HistoryView) ViewId() ViewId {
+	return VIEW_HISTORY
+}
+
+func (historyView *HistoryView) ActiveViewHierarchy() []ViewId {
+	if historyView.active {
+		return []ViewId{historyView.ViewId(), historyView.views[historyView.activeViewPos].ViewId()}
+	}
+
+	return []ViewId{}
 }

@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	gc "github.com/rthornton128/goncurses"
 	"strings"
 	"sync"
 )
@@ -85,7 +84,7 @@ type DiffView struct {
 	commitDiffs   map[*Commit]*Diff
 	viewPos       *ViewPos
 	viewDimension ViewDimension
-	handlers      map[gc.Key]DiffViewHandler
+	handlers      map[Action]DiffViewHandler
 	active        bool
 	lock          sync.Mutex
 }
@@ -96,11 +95,11 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 		channels:    channels,
 		viewPos:     NewViewPos(),
 		commitDiffs: make(map[*Commit]*Diff),
-		handlers: map[gc.Key]DiffViewHandler{
-			gc.KEY_UP:    MoveUpLine,
-			gc.KEY_DOWN:  MoveDownLine,
-			gc.KEY_RIGHT: ScrollDiffViewRight,
-			gc.KEY_LEFT:  ScrollDiffViewLeft,
+		handlers: map[Action]DiffViewHandler{
+			ACTION_DIFF_VIEW_PREV_LINE:    MoveUpLine,
+			ACTION_DIFF_VIEW_NEXT_LINE:    MoveDownLine,
+			ACTION_DIFF_VIEW_SCROLL_RIGHT: ScrollDiffViewRight,
+			ACTION_DIFF_VIEW_SCROLL_LEFT:  ScrollDiffViewLeft,
 		},
 	}
 }
@@ -179,6 +178,10 @@ func (diffView *DiffView) OnActiveChange(active bool) {
 	diffView.active = active
 }
 
+func (diffView *DiffView) ViewId() ViewId {
+	return VIEW_DIFF
+}
+
 func (diffView *DiffView) OnCommitSelect(commit *Commit) (err error) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
@@ -219,12 +222,17 @@ func (diffView *DiffView) OnCommitSelect(commit *Commit) (err error) {
 	return
 }
 
-func (diffView *DiffView) Handle(keyPressEvent KeyPressEvent) (err error) {
-	log.Debugf("DiffView handling key %v", keyPressEvent)
+func (diffView *DiffView) HandleKeyPress(keyPressEvent KeyPressEvent) (err error) {
+	log.Debugf("DiffView handling key %v - NOP", keyPressEvent)
+	return
+}
+
+func (diffView *DiffView) HandleAction(action Action) (err error) {
+	log.Debugf("DiffView handling action %v", action)
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
-	if handler, ok := diffView.handlers[keyPressEvent.key]; ok {
+	if handler, ok := diffView.handlers[action]; ok {
 		err = handler(diffView)
 	}
 
