@@ -97,17 +97,17 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 	return
 }
 
-func (historyView *HistoryView) HandleKeyPress(keyPressEvent KeyPressEvent) (err error) {
-	log.Debugf("HistoryView handling key %v", keyPressEvent)
+func (historyView *HistoryView) HandleKeyPress(keystring string) (err error) {
+	log.Debugf("HistoryView handling keys %v", keystring)
 	activeChildView := historyView.views[historyView.activeViewPos]
-	return activeChildView.HandleKeyPress(keyPressEvent)
+	return activeChildView.HandleKeyPress(keystring)
 }
 
 func (historyView *HistoryView) HandleAction(action Action) (err error) {
 	log.Debugf("HistoryView handling action %v", action)
 
 	switch action {
-	case ACTION_HISTORY_VIEW_NEXT_VIEW:
+	case ACTION_NEXT_VIEW:
 		historyView.activeViewPos++
 		historyView.activeViewPos %= uint(len(historyView.views))
 		historyView.OnActiveChange(true)

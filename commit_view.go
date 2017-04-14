@@ -45,10 +45,10 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 		repoData:      repoData,
 		commitViewPos: make(map[*Oid]*ViewPos),
 		handlers: map[Action]CommitViewHandler{
-			ACTION_COMMIT_VIEW_PREV_COMMIT:  MoveUpCommit,
-			ACTION_COMMIT_VIEW_NEXT_COMMIT:  MoveDownCommit,
-			ACTION_COMMIT_VIEW_SCROLL_RIGHT: ScrollCommitViewRight,
-			ACTION_COMMIT_VIEW_SCROLL_LEFT:  ScrollCommitViewLeft,
+			ACTION_PREV_LINE:    MoveUpCommit,
+			ACTION_NEXT_LINE:    MoveDownCommit,
+			ACTION_SCROLL_RIGHT: ScrollCommitViewRight,
+			ACTION_SCROLL_LEFT:  ScrollCommitViewLeft,
 		},
 	}
 }
@@ -260,8 +260,8 @@ func (commitView *CommitView) selectCommit(commitIndex uint) (err error) {
 	return
 }
 
-func (commitView *CommitView) HandleKeyPress(keyPressEvent KeyPressEvent) (err error) {
-	log.Debugf("CommitView handling key %v - NOP", keyPressEvent)
+func (commitView *CommitView) HandleKeyPress(keystring string) (err error) {
+	log.Debugf("CommitView handling key %v - NOP", keystring)
 	return
 }
 

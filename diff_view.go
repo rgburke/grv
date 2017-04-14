@@ -96,10 +96,10 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 		viewPos:     NewViewPos(),
 		commitDiffs: make(map[*Commit]*Diff),
 		handlers: map[Action]DiffViewHandler{
-			ACTION_DIFF_VIEW_PREV_LINE:    MoveUpLine,
-			ACTION_DIFF_VIEW_NEXT_LINE:    MoveDownLine,
-			ACTION_DIFF_VIEW_SCROLL_RIGHT: ScrollDiffViewRight,
-			ACTION_DIFF_VIEW_SCROLL_LEFT:  ScrollDiffViewLeft,
+			ACTION_PREV_LINE:    MoveUpLine,
+			ACTION_NEXT_LINE:    MoveDownLine,
+			ACTION_SCROLL_RIGHT: ScrollDiffViewRight,
+			ACTION_SCROLL_LEFT:  ScrollDiffViewLeft,
 		},
 	}
 }
@@ -222,8 +222,8 @@ func (diffView *DiffView) OnCommitSelect(commit *Commit) (err error) {
 	return
 }
 
-func (diffView *DiffView) HandleKeyPress(keyPressEvent KeyPressEvent) (err error) {
-	log.Debugf("DiffView handling key %v - NOP", keyPressEvent)
+func (diffView *DiffView) HandleKeyPress(keystring string) (err error) {
+	log.Debugf("DiffView handling key %v - NOP", keystring)
 	return
 }
 

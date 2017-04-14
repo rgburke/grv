@@ -1,93 +1,115 @@
 package main
 
 import (
-	"fmt"
 	gc "github.com/rthornton128/goncurses"
+	pt "github.com/tchap/go-patricia/patricia"
 )
 
 type Action int
 
 const (
 	ACTION_NONE Action = iota
-
-	ACTION_HISTORY_VIEW_NEXT_VIEW
-
-	ACTION_REF_VIEW_SELECT_REF
-	ACTION_REF_VIEW_PREV_REF
-	ACTION_REF_VIEW_NEXT_REF
-	ACTION_REF_VIEW_SCROLL_RIGHT
-	ACTION_REF_VIEW_SCROLL_LEFT
-
-	ACTION_COMMIT_VIEW_PREV_COMMIT
-	ACTION_COMMIT_VIEW_NEXT_COMMIT
-	ACTION_COMMIT_VIEW_SCROLL_RIGHT
-	ACTION_COMMIT_VIEW_SCROLL_LEFT
-
-	ACTION_DIFF_VIEW_PREV_LINE
-	ACTION_DIFF_VIEW_NEXT_LINE
-	ACTION_DIFF_VIEW_SCROLL_RIGHT
-	ACTION_DIFF_VIEW_SCROLL_LEFT
+	ACTION_NEXT_LINE
+	ACTION_PREV_LINE
+	ACTION_SCROLL_RIGHT
+	ACTION_SCROLL_LEFT
+	ACTION_SELECT
+	ACTION_NEXT_VIEW
+	ACTION_PREV_VIEW
 )
 
 type ViewHierarchy []ViewId
 
+type BindingType int
+
+const (
+	BT_ACTION BindingType = iota
+	BT_KEYSTRING
+)
+
+type Binding struct {
+	bindingType BindingType
+	action      Action
+	keystring   string
+}
+
+func NewActionBinding(action Action) Binding {
+	return Binding{
+		bindingType: BT_ACTION,
+		action:      action,
+	}
+}
+
+func NewKeystringBinding(keystring string) Binding {
+	return Binding{
+		bindingType: BT_KEYSTRING,
+		keystring:   keystring,
+		action:      ACTION_NONE,
+	}
+}
+
 type KeyBindings interface {
-	Action(ViewHierarchy, gc.Key) Action
-	SetKeyBinding(gc.Key, ViewId, Action)
+	Binding(viewHierarchy ViewHierarchy, keystring string) (binding Binding, isPrefix bool)
+	SetActionBinding(viewId ViewId, keystring string, action Action)
+	SetKeystringBinding(viewId ViewId, keystring, mappedKeystring string)
 }
 
 type KeyBindingManager struct {
-	bindings map[ViewId]map[gc.Key]Action
+	bindings map[ViewId]*pt.Trie
 }
 
 func NewKeyBindingManager() KeyBindings {
-	return &KeyBindingManager{
-		bindings: map[ViewId]map[gc.Key]Action{
-			VIEW_MAIN: map[gc.Key]Action{},
-			VIEW_HISTORY: map[gc.Key]Action{
-				gc.KEY_TAB: ACTION_HISTORY_VIEW_NEXT_VIEW,
-			},
-			VIEW_REF: map[gc.Key]Action{
-				gc.KEY_UP:     ACTION_REF_VIEW_PREV_REF,
-				gc.KEY_DOWN:   ACTION_REF_VIEW_NEXT_REF,
-				gc.KEY_RIGHT:  ACTION_REF_VIEW_SCROLL_RIGHT,
-				gc.KEY_LEFT:   ACTION_REF_VIEW_SCROLL_LEFT,
-				gc.KEY_RETURN: ACTION_REF_VIEW_SELECT_REF,
-			},
-			VIEW_COMMIT: map[gc.Key]Action{
-				gc.KEY_UP:    ACTION_COMMIT_VIEW_PREV_COMMIT,
-				gc.KEY_DOWN:  ACTION_COMMIT_VIEW_NEXT_COMMIT,
-				gc.KEY_RIGHT: ACTION_COMMIT_VIEW_SCROLL_RIGHT,
-				gc.KEY_LEFT:  ACTION_COMMIT_VIEW_SCROLL_LEFT,
-			},
-			VIEW_DIFF: map[gc.Key]Action{
-				gc.KEY_UP:    ACTION_DIFF_VIEW_PREV_LINE,
-				gc.KEY_DOWN:  ACTION_DIFF_VIEW_NEXT_LINE,
-				gc.KEY_RIGHT: ACTION_DIFF_VIEW_SCROLL_RIGHT,
-				gc.KEY_LEFT:  ACTION_DIFF_VIEW_SCROLL_LEFT,
-			},
-		},
+	keyBindingManager := &KeyBindingManager{
+		bindings: make(map[ViewId]*pt.Trie),
 	}
+
+	keyBindingManager.setDefaultKeyBindings()
+
+	return keyBindingManager
 }
 
-func (keyBindingManager *KeyBindingManager) Action(viewHierarchy ViewHierarchy, key gc.Key) Action {
+func (keyBindingManager *KeyBindingManager) Binding(viewHierarchy ViewHierarchy, keystring string) (Binding, bool) {
+	viewHierarchy = append(viewHierarchy, VIEW_ALL)
+	isPrefix := false
+
 	for _, viewId := range viewHierarchy {
-		if keyBindings, ok := keyBindingManager.bindings[viewId]; ok {
-			if action, ok := keyBindings[key]; ok {
-				return action
+		if viewBindings, ok := keyBindingManager.bindings[viewId]; ok {
+			if binding := viewBindings.Get(pt.Prefix(keystring)); binding != nil {
+				return binding.(Binding), false
+			} else if viewBindings.MatchSubtree(pt.Prefix(keystring)) {
+				isPrefix = true
 			}
-		} else {
-			panic(fmt.Sprintf("No key bindings map defined for view with Id %v", viewId))
 		}
 	}
 
-	return ACTION_NONE
+	return NewActionBinding(ACTION_NONE), isPrefix
 }
 
-func (keyBindingManager *KeyBindingManager) SetKeyBinding(key gc.Key, viewId ViewId, action Action) {
-	if keyBindings, ok := keyBindingManager.bindings[viewId]; ok {
-		keyBindings[key] = action
+func (keyBindingManager *KeyBindingManager) SetActionBinding(viewId ViewId, keystring string, action Action) {
+	viewBindings := keyBindingManager.getOrCreateViewBindings(viewId)
+	viewBindings.Set(pt.Prefix(keystring), NewActionBinding(action))
+}
+
+func (keyBindingManager *KeyBindingManager) SetKeystringBinding(viewId ViewId, keystring, mappedKeystring string) {
+	viewBindings := keyBindingManager.getOrCreateViewBindings(viewId)
+	viewBindings.Set(pt.Prefix(keystring), NewKeystringBinding(mappedKeystring))
+}
+
+func (keyBindingManager *KeyBindingManager) getOrCreateViewBindings(viewId ViewId) *pt.Trie {
+	if viewBindings, ok := keyBindingManager.bindings[viewId]; ok {
+		return viewBindings
 	} else {
-		panic(fmt.Sprintf("No key bindings map defined for view with Id %v", viewId))
+		viewBindings = pt.NewTrie()
+		keyBindingManager.bindings[viewId] = viewBindings
+		return viewBindings
 	}
+}
+
+func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
+	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_UP), ACTION_PREV_LINE)
+	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_DOWN), ACTION_NEXT_LINE)
+	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_RIGHT), ACTION_SCROLL_RIGHT)
+	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_LEFT), ACTION_SCROLL_LEFT)
+	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_RETURN), ACTION_SELECT)
+	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_TAB), ACTION_NEXT_VIEW)
 }

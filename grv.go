@@ -2,6 +2,7 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
+	gc "github.com/rthornton128/goncurses"
 	"sync"
 	"time"
 )
@@ -26,12 +27,12 @@ type Channels struct {
 }
 
 type GRV struct {
-	repoData    *RepositoryData
-	view        *View
-	ui          UI
-	channels    GRVChannels
-	config      *Configuration
-	keyBindings KeyBindings
+	repoData     *RepositoryData
+	view         *View
+	ui           UI
+	channels     GRVChannels
+	config       *Configuration
+	inputHandler *InputHandler
 }
 
 func (channels *Channels) UpdateDisplay() {
@@ -83,12 +84,12 @@ func NewGRV() *GRV {
 	config := NewConfiguration()
 
 	return &GRV{
-		repoData:    repoData,
-		view:        NewView(repoData, channels, config),
-		ui:          NewNcursesDisplay(config),
-		channels:    grvChannels,
-		config:      config,
-		keyBindings: NewKeyBindingManager(),
+		repoData:     repoData,
+		view:         NewView(repoData, channels, config),
+		ui:           NewNcursesDisplay(config),
+		channels:     grvChannels,
+		config:       config,
+		inputHandler: NewInputHandler(NewKeyBindingManager()),
 	}
 }
 
@@ -221,15 +222,23 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	for {
 		select {
 		case keyPressEvent := <-inputCh:
-			viewHierarchy := grv.view.ActiveViewHierarchy()
-			action := grv.keyBindings.Action(viewHierarchy, keyPressEvent.key)
+			grv.inputHandler.Append(gc.KeyString(keyPressEvent.key))
 
-			if action != ACTION_NONE {
-				if err := grv.view.HandleAction(action); err != nil {
-					errorCh <- err
+			for {
+				viewHierarchy := grv.view.ActiveViewHierarchy()
+				action, keystring := grv.inputHandler.Process(viewHierarchy)
+
+				if action != ACTION_NONE {
+					if err := grv.view.HandleAction(action); err != nil {
+						errorCh <- err
+					}
+				} else if keystring != "" {
+					if err := grv.view.HandleKeyPress(keystring); err != nil {
+						errorCh <- err
+					}
+				} else {
+					break
 				}
-			} else if err := grv.view.HandleKeyPress(keyPressEvent); err != nil {
-				errorCh <- err
 			}
 		case _, ok := <-exitCh:
 			if !ok {

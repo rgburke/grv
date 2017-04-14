@@ -8,7 +8,8 @@ import (
 type ViewId int
 
 const (
-	VIEW_MAIN ViewId = iota
+	VIEW_ALL ViewId = iota
+	VIEW_MAIN
 	VIEW_HISTORY
 	VIEW_REF
 	VIEW_COMMIT
@@ -17,7 +18,7 @@ const (
 
 type AbstractView interface {
 	Initialise() error
-	HandleKeyPress(KeyPressEvent) error
+	HandleKeyPress(keystring string) error
 	HandleAction(Action) error
 	OnActiveChange(bool)
 	ViewId() ViewId
@@ -74,9 +75,9 @@ func (view *View) Render(viewDimension ViewDimension) ([]*Window, error) {
 	return view.views[view.activeViewPos].Render(viewDimension)
 }
 
-func (view *View) HandleKeyPress(keyPressEvent KeyPressEvent) error {
-	log.Debugf("View handling key %v", keyPressEvent)
-	return view.views[view.activeViewPos].HandleKeyPress(keyPressEvent)
+func (view *View) HandleKeyPress(keystring string) error {
+	log.Debugf("View handling keys %v", keystring)
+	return view.views[view.activeViewPos].HandleKeyPress(keystring)
 }
 
 func (view *View) HandleAction(action Action) error {

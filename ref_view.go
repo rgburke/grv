@@ -80,11 +80,11 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 			},
 		},
 		handlers: map[Action]RefViewHandler{
-			ACTION_REF_VIEW_PREV_REF:     MoveUpRef,
-			ACTION_REF_VIEW_NEXT_REF:     MoveDownRef,
-			ACTION_REF_VIEW_SCROLL_RIGHT: ScrollRefViewRight,
-			ACTION_REF_VIEW_SCROLL_LEFT:  ScrollRefViewLeft,
-			ACTION_REF_VIEW_SELECT_REF:   SelectRef,
+			ACTION_PREV_LINE:    MoveUpRef,
+			ACTION_NEXT_LINE:    MoveDownRef,
+			ACTION_SCROLL_RIGHT: ScrollRefViewRight,
+			ACTION_SCROLL_LEFT:  ScrollRefViewLeft,
+			ACTION_SELECT:       SelectRef,
 		},
 	}
 }
@@ -353,8 +353,8 @@ func (refView *RefView) ViewId() ViewId {
 	return VIEW_REF
 }
 
-func (refView *RefView) HandleKeyPress(keyPressEvent KeyPressEvent) (err error) {
-	log.Debugf("RefView handling key %v - NOP", keyPressEvent)
+func (refView *RefView) HandleKeyPress(keystring string) (err error) {
+	log.Debugf("RefView handling key %v - NOP", keystring)
 	return
 }
 
