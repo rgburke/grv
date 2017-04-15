@@ -51,7 +51,18 @@ func (logFormatter LogFormatter) Format(entry *log.Entry) ([]byte, error) {
 	logFormatter.formatBracketEntry(&buffer, file)
 
 	buffer.WriteString("- ")
-	buffer.WriteString(entry.Message)
+
+	for _, char := range entry.Message {
+		switch {
+		case char == '\n':
+			buffer.WriteString("\\n")
+		case char < 32 || char == 127:
+			buffer.WriteString(nonPrintableCharString(char))
+		default:
+			buffer.WriteRune(char)
+		}
+	}
+
 	buffer.WriteRune('\n')
 
 	return buffer.Bytes(), nil

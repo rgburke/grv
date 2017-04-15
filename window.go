@@ -103,12 +103,8 @@ func (lineBuilder *LineBuilder) AppendWithStyle(componentId ThemeComponentId, fo
 					lineBuilder.setCellAndAdvanceIndex(' ', 1, componentId)
 				}
 			} else if codePoint != '\n' && (codePoint < 32 || codePoint == 127) {
-				lineBuilder.setCellAndAdvanceIndex('^', 1, componentId)
-
-				if codePoint == 127 {
-					lineBuilder.setCellAndAdvanceIndex('?', 1, componentId)
-				} else {
-					lineBuilder.setCellAndAdvanceIndex(codePoint+64, 1, componentId)
+				for _, char := range nonPrintableCharString(codePoint) {
+					lineBuilder.setCellAndAdvanceIndex(char, 1, componentId)
 				}
 			} else {
 				lineBuilder.setCellAndAdvanceIndex(codePoint, 1, componentId)
