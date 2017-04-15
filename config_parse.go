@@ -53,6 +53,26 @@ func (themeCommand *ThemeCommand) Equal(command Command) bool {
 			(themeCommand.fgcolor == nil && other.fgcolor == nil))
 }
 
+type MapCommand struct {
+	view *Token
+	from *Token
+	to   *Token
+}
+
+func (mapCommand *MapCommand) Equal(command Command) bool {
+	other, ok := command.(*MapCommand)
+	if !ok {
+		return false
+	}
+
+	return ((mapCommand.from != nil && mapCommand.from.Equal(other.from)) ||
+		(mapCommand.from == nil && other.from == nil)) &&
+		((mapCommand.to != nil && mapCommand.to.Equal(other.to)) ||
+			(mapCommand.to == nil && other.to == nil)) &&
+		((mapCommand.view != nil && mapCommand.view.Equal(other.view)) ||
+			(mapCommand.view == nil && other.view == nil))
+}
+
 type CommandDescriptor struct {
 	tokenTypes  []TokenType
 	constructor CommandConstructor
@@ -66,6 +86,10 @@ var commandDescriptors = map[string]CommandDescriptor{
 	"theme": CommandDescriptor{
 		tokenTypes:  []TokenType{TK_OPTION, TK_WORD, TK_OPTION, TK_WORD, TK_OPTION, TK_WORD, TK_OPTION, TK_WORD},
 		constructor: themeCommandConstructor,
+	},
+	"map": CommandDescriptor{
+		tokenTypes:  []TokenType{TK_WORD, TK_WORD, TK_WORD},
+		constructor: mapCommandConstructor,
 	},
 }
 
@@ -235,4 +259,12 @@ func themeCommandConstructor(parser *Parser, tokens []*Token) (Command, error) {
 	}
 
 	return themeCommand, nil
+}
+
+func mapCommandConstructor(parser *Parser, tokens []*Token) (Command, error) {
+	return &MapCommand{
+		view: tokens[0],
+		from: tokens[1],
+		to:   tokens[2],
+	}, nil
 }

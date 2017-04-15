@@ -13,6 +13,13 @@ const (
 	CF_GRV_CONFIG_FILE     = "/grv/grvrc"
 	CV_TAB_WIDTH_MIN_VALUE = 1
 	CV_THEME_DEFALT_VALUE  = "default"
+
+	CV_ALL_VIEW     = "All"
+	CV_MAIN_VIEW    = "MainView"
+	CV_HISTORY_VIEW = "HistoryView"
+	CV_REF_VIEW     = "RefView"
+	CV_COMMIT_VIEW  = "CommitView"
+	CV_DIFF_VIEW    = "DiffView"
 )
 
 type ConfigVariable string
@@ -34,28 +41,37 @@ var themeColors = map[string]ThemeColor{
 	"WHITE":   COLOR_WHITE,
 }
 
+var viewIdNames = map[string]ViewId{
+	CV_ALL_VIEW:     VIEW_ALL,
+	CV_MAIN_VIEW:    VIEW_MAIN,
+	CV_HISTORY_VIEW: VIEW_HISTORY,
+	CV_REF_VIEW:     VIEW_REF,
+	CV_COMMIT_VIEW:  VIEW_COMMIT,
+	CV_DIFF_VIEW:    VIEW_DIFF,
+}
+
 var themeComponents = map[string]ThemeComponentId{
-	"RefView.Title":          CMP_REFVIEW_TITLE,
-	"RefView.Footer":         CMP_REFVIEW_FOOTER,
-	"RefView.BranchesHeader": CMP_REFVIEW_BRANCHES_HEADER,
-	"RefView.Branch":         CMP_REFVIEW_BRANCH,
-	"RefView.TagsHeader":     CMP_REFVIEW_TAGS_HEADER,
-	"RefView.Tag":            CMP_REFVIEW_TAG,
+	CV_REF_VIEW + ".Title":          CMP_REFVIEW_TITLE,
+	CV_REF_VIEW + ".Footer":         CMP_REFVIEW_FOOTER,
+	CV_REF_VIEW + ".BranchesHeader": CMP_REFVIEW_BRANCHES_HEADER,
+	CV_REF_VIEW + ".Branch":         CMP_REFVIEW_BRANCH,
+	CV_REF_VIEW + ".TagsHeader":     CMP_REFVIEW_TAGS_HEADER,
+	CV_REF_VIEW + ".Tag":            CMP_REFVIEW_TAG,
 
-	"CommitView.Title":   CMP_COMMITVIEW_TITLE,
-	"CommitView.Footer":  CMP_COMMITVIEW_FOOTER,
-	"CommitView.Date":    CMP_COMMITVIEW_DATE,
-	"CommitView.Author":  CMP_COMMITVIEW_AUTHOR,
-	"CommitView.Summary": CMP_COMMITVIEW_SUMMARY,
+	CV_COMMIT_VIEW + ".Title":   CMP_COMMITVIEW_TITLE,
+	CV_COMMIT_VIEW + ".Footer":  CMP_COMMITVIEW_FOOTER,
+	CV_COMMIT_VIEW + ".Date":    CMP_COMMITVIEW_DATE,
+	CV_COMMIT_VIEW + ".Author":  CMP_COMMITVIEW_AUTHOR,
+	CV_COMMIT_VIEW + ".Summary": CMP_COMMITVIEW_SUMMARY,
 
-	"DiffView.Normal":                CMP_DIFFVIEW_DIFFLINE_NORMAL,
-	"DiffView.GitDiffHeader":         CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_HEADER,
-	"DiffView.GitDiffExtendedHeader": CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_EXTENDED_HEADER,
-	"DiffView.UnifiedDiffHeader":     CMP_DIFFVIEW_DIFFLINE_UNIFIED_DIFF_HEADER,
-	"DiffView.HunkStart":             CMP_DIFFVIEW_DIFFLINE_HUNK_START,
-	"DiffView.HunkHeader":            CMP_DIFFVIEW_DIFFLINE_HUNK_HEADER,
-	"DiffView.AddedLine":             CMP_DIFFVIEW_DIFFLINE_LINE_ADDED,
-	"DiffView.RemovedLine":           CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED,
+	CV_DIFF_VIEW + ".Normal":                CMP_DIFFVIEW_DIFFLINE_NORMAL,
+	CV_DIFF_VIEW + ".GitDiffHeader":         CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_HEADER,
+	CV_DIFF_VIEW + ".GitDiffExtendedHeader": CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_EXTENDED_HEADER,
+	CV_DIFF_VIEW + ".UnifiedDiffHeader":     CMP_DIFFVIEW_DIFFLINE_UNIFIED_DIFF_HEADER,
+	CV_DIFF_VIEW + ".HunkStart":             CMP_DIFFVIEW_DIFFLINE_HUNK_START,
+	CV_DIFF_VIEW + ".HunkHeader":            CMP_DIFFVIEW_DIFFLINE_HUNK_HEADER,
+	CV_DIFF_VIEW + ".AddedLine":             CMP_DIFFVIEW_DIFFLINE_LINE_ADDED,
+	CV_DIFF_VIEW + ".RemovedLine":           CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED,
 }
 
 type Config interface {
@@ -82,12 +98,14 @@ type ConfigurationVariable struct {
 }
 
 type Configuration struct {
-	variables map[ConfigVariable]*ConfigurationVariable
-	themes    map[string]MutableTheme
+	variables   map[ConfigVariable]*ConfigurationVariable
+	themes      map[string]MutableTheme
+	keyBindings KeyBindings
 }
 
-func NewConfiguration() *Configuration {
+func NewConfiguration(keyBindings KeyBindings) *Configuration {
 	config := &Configuration{
+		keyBindings: keyBindings,
 		themes: map[string]MutableTheme{
 			CV_THEME_DEFALT_VALUE: NewDefaultTheme(),
 		},
@@ -185,6 +203,8 @@ func (config *Configuration) processCommand(command Command, inputSource string)
 		err = config.processSetCommand(command, inputSource)
 	case *ThemeCommand:
 		err = config.processThemeCommand(command, inputSource)
+	case *MapCommand:
+		err = config.processMapCommand(command, inputSource)
 	default:
 		log.Errorf("Unknown command type %T", command)
 	}
@@ -281,6 +301,23 @@ func (config *Configuration) getVariable(configVariable ConfigVariable) *Configu
 	}
 
 	panic(fmt.Sprintf("No ConfigVariable exists exists for ID %v", configVariable))
+}
+
+func (config *Configuration) processMapCommand(mapCommand *MapCommand, inputSource string) (err error) {
+	viewId, ok := viewIdNames[mapCommand.view.value]
+	if !ok {
+		return generateConfigError(inputSource, mapCommand.view, "Invalid view: %v", mapCommand.view.value)
+	}
+
+	if mapCommand.from.value == "" {
+		return generateConfigError(inputSource, mapCommand.from, "from keystring cannot be empty")
+	} else if mapCommand.to.value == "" {
+		return generateConfigError(inputSource, mapCommand.to, "to keystring cannot be empty")
+	}
+
+	config.keyBindings.SetKeystringBinding(viewId, mapCommand.from.value, mapCommand.to.value)
+
+	return
 }
 
 func (config *Configuration) AddOnChangeListener(configVariable ConfigVariable, listener ConfigVariableOnChangeListener) {

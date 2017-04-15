@@ -81,7 +81,8 @@ func NewGRV() *GRV {
 
 	repoDataLoader := NewRepoDataLoader(channels)
 	repoData := NewRepositoryData(repoDataLoader, channels)
-	config := NewConfiguration()
+	keyBindings := NewKeyBindingManager()
+	config := NewConfiguration(keyBindings)
 
 	return &GRV{
 		repoData:     repoData,
@@ -89,7 +90,7 @@ func NewGRV() *GRV {
 		ui:           NewNcursesDisplay(config),
 		channels:     grvChannels,
 		config:       config,
-		inputHandler: NewInputHandler(NewKeyBindingManager()),
+		inputHandler: NewInputHandler(keyBindings),
 	}
 }
 

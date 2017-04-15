@@ -18,6 +18,17 @@ const (
 	ACTION_PREV_VIEW
 )
 
+var actionKeys = map[Action]string{
+	ACTION_NONE:         "<grv-nop>",
+	ACTION_NEXT_LINE:    "<grv-next-line>",
+	ACTION_PREV_LINE:    "<grv-prev-line>",
+	ACTION_SCROLL_RIGHT: "<grv-scroll-right>",
+	ACTION_SCROLL_LEFT:  "<grv-scroll-left>",
+	ACTION_SELECT:       "<grv-select>",
+	ACTION_NEXT_VIEW:    "<grv-next-view>",
+	ACTION_PREV_VIEW:    "<grv-prev-view>",
+}
+
 type ViewHierarchy []ViewId
 
 type BindingType int
@@ -106,6 +117,10 @@ func (keyBindingManager *KeyBindingManager) getOrCreateViewBindings(viewId ViewI
 }
 
 func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
+	for action, actionKey := range actionKeys {
+		keyBindingManager.SetActionBinding(VIEW_ALL, actionKey, action)
+	}
+
 	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_UP), ACTION_PREV_LINE)
 	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_DOWN), ACTION_NEXT_LINE)
 	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_RIGHT), ACTION_SCROLL_RIGHT)
