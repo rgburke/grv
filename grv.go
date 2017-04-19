@@ -27,12 +27,12 @@ type Channels struct {
 }
 
 type GRV struct {
-	repoData     *RepositoryData
-	view         *View
-	ui           UI
-	channels     GRVChannels
-	config       *Configuration
-	inputHandler *InputHandler
+	repoData    *RepositoryData
+	view        *View
+	ui          UI
+	channels    GRVChannels
+	config      *Configuration
+	inputBuffer *InputBuffer
 }
 
 func (channels *Channels) UpdateDisplay() {
@@ -85,12 +85,12 @@ func NewGRV() *GRV {
 	config := NewConfiguration(keyBindings)
 
 	return &GRV{
-		repoData:     repoData,
-		view:         NewView(repoData, channels, config),
-		ui:           NewNcursesDisplay(config),
-		channels:     grvChannels,
-		config:       config,
-		inputHandler: NewInputHandler(keyBindings),
+		repoData:    repoData,
+		view:        NewView(repoData, channels, config),
+		ui:          NewNcursesDisplay(config),
+		channels:    grvChannels,
+		config:      config,
+		inputBuffer: NewInputBuffer(keyBindings),
 	}
 }
 
@@ -223,11 +223,11 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	for {
 		select {
 		case keyPressEvent := <-inputCh:
-			grv.inputHandler.Append(gc.KeyString(keyPressEvent.key))
+			grv.inputBuffer.Append(gc.KeyString(keyPressEvent.key))
 
 			for {
 				viewHierarchy := grv.view.ActiveViewHierarchy()
-				action, keystring := grv.inputHandler.Process(viewHierarchy)
+				action, keystring := grv.inputBuffer.Process(viewHierarchy)
 
 				if action != ACTION_NONE {
 					if err := grv.view.HandleAction(action); err != nil {
