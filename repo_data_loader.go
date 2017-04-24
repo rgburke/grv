@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"github.com/libgit2/git2go"
+	"gopkg.in/libgit2/git2go.v24"
 	"sync"
 )
 
