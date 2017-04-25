@@ -14,7 +14,7 @@ const (
 
 type GRVChannels struct {
 	exitCh    chan bool
-	inputCh   chan string
+	inputKeyCh   chan string
 	displayCh chan bool
 	errorCh   chan error
 }
@@ -68,7 +68,7 @@ func (channels *Channels) ReportError(err error) {
 func NewGRV() *GRV {
 	grvChannels := GRVChannels{
 		exitCh:    make(chan bool),
-		inputCh:   make(chan string, GRV_INPUT_BUFFER_SIZE),
+		inputKeyCh:   make(chan string, GRV_INPUT_BUFFER_SIZE),
 		displayCh: make(chan bool),
 		errorCh:   make(chan error, GRV_ERROR_BUFFER_SIZE),
 	}
@@ -132,11 +132,11 @@ func (grv *GRV) Run() {
 	channels := grv.channels
 
 	waitGroup.Add(1)
-	go grv.runInputLoop(&waitGroup, channels.exitCh, channels.inputCh, channels.errorCh)
+	go grv.runInputLoop(&waitGroup, channels.exitCh, channels.inputKeyCh, channels.errorCh)
 	waitGroup.Add(1)
 	go grv.runDisplayLoop(&waitGroup, channels.exitCh, channels.displayCh, channels.errorCh)
 	waitGroup.Add(1)
-	go grv.runHandlerLoop(&waitGroup, channels.exitCh, channels.displayCh, channels.inputCh, channels.errorCh)
+	go grv.runHandlerLoop(&waitGroup, channels.exitCh, channels.displayCh, channels.inputKeyCh, channels.errorCh)
 
 	channels.displayCh <- true
 
@@ -145,7 +145,7 @@ func (grv *GRV) Run() {
 	log.Info("All loops finished")
 }
 
-func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, inputCh chan<- string, errorCh chan<- error) {
+func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, inputKeyCh chan<- string, errorCh chan<- error) {
 	defer waitGroup.Done()
 	defer log.Info("Input loop stopping")
 	log.Info("Starting input loop")
@@ -162,7 +162,7 @@ func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, inpu
 			log.Debugf("Received keypress from UI %v", key)
 
 			select {
-			case inputCh <- key:
+			case inputKeyCh <- key:
 			default:
 				log.Errorf("Unable to add keypress %v to input channel", key)
 			}
@@ -217,14 +217,14 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	}
 }
 
-func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, displayCh chan<- bool, inputCh <-chan string, errorCh chan<- error) {
+func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, displayCh chan<- bool, inputKeyCh <-chan string, errorCh chan<- error) {
 	defer waitGroup.Done()
 	defer log.Info("Handler loop stopping")
 	log.Info("Starting handler loop")
 
 	for {
 		select {
-		case key := <-inputCh:
+		case key := <-inputKeyCh:
 			grv.inputBuffer.Append(key)
 
 			for {

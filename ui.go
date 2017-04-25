@@ -9,7 +9,6 @@ import "C"
 
 import (
 	"errors"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
 	"sync"
@@ -19,10 +18,13 @@ import (
 
 const (
 	INPUT_NO_WIN_SLEEP_MS = 50 * time.Millisecond
+	UI_NO_KEY             = -1
 )
 
+type Key int
+
 type InputUI interface {
-	GetInput() (KeyPressEvent, error)
+	GetInput() (Key, error)
 }
 
 type UI interface {
@@ -39,14 +41,6 @@ type NCursesUI struct {
 	stdscr      *gc.Window
 	config      Config
 	colors      map[ThemeColor]int16
-}
-
-type KeyPressEvent struct {
-	key gc.Key
-}
-
-func (keyPressEvent KeyPressEvent) String() string {
-	return fmt.Sprintf("%c:%v", keyPressEvent.key, keyPressEvent.key)
 }
 
 func NewNcursesDisplay(config Config) *NCursesUI {
@@ -231,7 +225,7 @@ func drawWindow(win *Window, nwin *gc.Window) {
 	nwin.NoutRefresh()
 }
 
-func (ui *NCursesUI) GetInput() (keyPressEvent KeyPressEvent, err error) {
+func (ui *NCursesUI) GetInput() (key Key, err error) {
 	var activeWin *gc.Window
 
 	ui.windowsLock.RLock()
@@ -244,9 +238,10 @@ func (ui *NCursesUI) GetInput() (keyPressEvent KeyPressEvent, err error) {
 	ui.windowsLock.RUnlock()
 
 	if activeWin != nil {
-		keyPressEvent = KeyPressEvent{key: activeWin.GetChar()}
+		key = Key(activeWin.GetChar())
 	} else {
 		time.Sleep(INPUT_NO_WIN_SLEEP_MS)
+		key = UI_NO_KEY
 	}
 
 	return

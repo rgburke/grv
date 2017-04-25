@@ -133,11 +133,13 @@ func (inputKeyMapper *InputKeyMapper) GetInput() (key string, err error) {
 		keyPressEvent, err := inputKeyMapper.ui.GetInput()
 		if err != nil {
 			break
+		} else if keyPressEvent == UI_NO_KEY {
+			continue
 		}
 
 		if inputKeyMapper.isProcessingUTF8Char() {
 			err = inputKeyMapper.processUTF8ContinuationByte(keyPressEvent)
-		} else if mappedKey, ok := keyMap[keyPressEvent.key]; ok {
+		} else if mappedKey, ok := keyMap[gc.Key(keyPressEvent)]; ok {
 			key = mappedKey
 			break
 		} else {
@@ -175,32 +177,32 @@ func (inputKeyMapper *InputKeyMapper) getAndClearChar() (char string) {
 	return
 }
 
-func (inputKeyMapper *InputKeyMapper) processUTF8ContinuationByte(keyPressEvent KeyPressEvent) (err error) {
-	if keyPressEvent.key>>6 != 0x02 {
-		err = fmt.Errorf("Invalid UTF-8 continuation byte: %b", keyPressEvent.key)
+func (inputKeyMapper *InputKeyMapper) processUTF8ContinuationByte(keyPressEvent Key) (err error) {
+	if keyPressEvent>>6 != 0x02 {
+		err = fmt.Errorf("Invalid UTF-8 continuation byte: %b", keyPressEvent)
 	} else {
-		inputKeyMapper.char.WriteByte(byte(keyPressEvent.key))
+		inputKeyMapper.char.WriteByte(byte(keyPressEvent))
 	}
 
 	return
 }
 
-func (inputKeyMapper *InputKeyMapper) processUTF8Char(keyPressEvent KeyPressEvent) (err error) {
+func (inputKeyMapper *InputKeyMapper) processUTF8Char(keyPressEvent Key) (err error) {
 	switch {
-	case keyPressEvent.key < 0x80:
+	case keyPressEvent < 0x80:
 		inputKeyMapper.expectedCharSize = 1
-		inputKeyMapper.char.WriteByte(byte(keyPressEvent.key))
-	case keyPressEvent.key>>5 == 0x06:
+		inputKeyMapper.char.WriteByte(byte(keyPressEvent))
+	case keyPressEvent>>5 == 0x06:
 		inputKeyMapper.expectedCharSize = 2
-		inputKeyMapper.char.WriteByte(byte(keyPressEvent.key))
-	case keyPressEvent.key>>4 == 0x0E:
+		inputKeyMapper.char.WriteByte(byte(keyPressEvent))
+	case keyPressEvent>>4 == 0x0E:
 		inputKeyMapper.expectedCharSize = 3
-		inputKeyMapper.char.WriteByte(byte(keyPressEvent.key))
-	case keyPressEvent.key>>3 == 0x1E:
+		inputKeyMapper.char.WriteByte(byte(keyPressEvent))
+	case keyPressEvent>>3 == 0x1E:
 		inputKeyMapper.expectedCharSize = 4
-		inputKeyMapper.char.WriteByte(byte(keyPressEvent.key))
+		inputKeyMapper.char.WriteByte(byte(keyPressEvent))
 	default:
-		err = fmt.Errorf("Invalid UTF-8 starting byte: %b", keyPressEvent.key)
+		err = fmt.Errorf("Invalid UTF-8 starting byte: %b", keyPressEvent)
 	}
 
 	return
