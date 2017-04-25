@@ -1,7 +1,6 @@
 package main
 
 import (
-	gc "github.com/rthornton128/goncurses"
 	pt "github.com/tchap/go-patricia/patricia"
 )
 
@@ -121,10 +120,10 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 		keyBindingManager.SetActionBinding(VIEW_ALL, actionKey, action)
 	}
 
-	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_UP), ACTION_PREV_LINE)
-	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_DOWN), ACTION_NEXT_LINE)
-	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_RIGHT), ACTION_SCROLL_RIGHT)
-	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_LEFT), ACTION_SCROLL_LEFT)
-	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_RETURN), ACTION_SELECT)
-	keyBindingManager.SetActionBinding(VIEW_ALL, gc.KeyString(gc.KEY_TAB), ACTION_NEXT_VIEW)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "<Up>", ACTION_PREV_LINE)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "<Down>", ACTION_NEXT_LINE)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "<Right>", ACTION_SCROLL_RIGHT)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "<Left>", ACTION_SCROLL_LEFT)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "<Return>", ACTION_SELECT)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "<Tab>", ACTION_NEXT_VIEW)
 }

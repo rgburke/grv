@@ -21,11 +21,14 @@ const (
 	INPUT_NO_WIN_SLEEP_MS = 50 * time.Millisecond
 )
 
+type InputUI interface {
+	GetInput() (KeyPressEvent, error)
+}
+
 type UI interface {
 	Initialise() error
 	ViewDimension() ViewDimension
 	Update([]*Window) error
-	GetInput() (KeyPressEvent, error)
 	ShowError(error)
 	Free()
 }

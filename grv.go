@@ -2,7 +2,6 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
-	gc "github.com/rthornton128/goncurses"
 	"sync"
 	"time"
 )
@@ -15,7 +14,7 @@ const (
 
 type GRVChannels struct {
 	exitCh    chan bool
-	inputCh   chan KeyPressEvent
+	inputCh   chan string
 	displayCh chan bool
 	errorCh   chan error
 }
@@ -33,6 +32,7 @@ type GRV struct {
 	channels    GRVChannels
 	config      *Configuration
 	inputBuffer *InputBuffer
+	input       *InputKeyMapper
 }
 
 func (channels *Channels) UpdateDisplay() {
@@ -68,7 +68,7 @@ func (channels *Channels) ReportError(err error) {
 func NewGRV() *GRV {
 	grvChannels := GRVChannels{
 		exitCh:    make(chan bool),
-		inputCh:   make(chan KeyPressEvent, GRV_INPUT_BUFFER_SIZE),
+		inputCh:   make(chan string, GRV_INPUT_BUFFER_SIZE),
 		displayCh: make(chan bool),
 		errorCh:   make(chan error, GRV_ERROR_BUFFER_SIZE),
 	}
@@ -83,14 +83,16 @@ func NewGRV() *GRV {
 	repoData := NewRepositoryData(repoDataLoader, channels)
 	keyBindings := NewKeyBindingManager()
 	config := NewConfiguration(keyBindings)
+	ui := NewNcursesDisplay(config)
 
 	return &GRV{
 		repoData:    repoData,
 		view:        NewView(repoData, channels, config),
-		ui:          NewNcursesDisplay(config),
+		ui:          ui,
 		channels:    grvChannels,
 		config:      config,
 		inputBuffer: NewInputBuffer(keyBindings),
+		input:       NewInputKeyMapper(ui),
 	}
 }
 
@@ -143,26 +145,26 @@ func (grv *GRV) Run() {
 	log.Info("All loops finished")
 }
 
-func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, inputCh chan<- KeyPressEvent, errorCh chan<- error) {
+func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, inputCh chan<- string, errorCh chan<- error) {
 	defer waitGroup.Done()
 	defer log.Info("Input loop stopping")
 	log.Info("Starting input loop")
 
 	for {
-		keyPressEvent, err := grv.ui.GetInput()
+		key, err := grv.input.GetInput()
 		if err != nil {
 			errorCh <- err
-		} else if keyPressEvent.key == 'q' {
-			log.Infof("Received exit key %v, now closing exit channel", keyPressEvent)
+		} else if key == "q" {
+			log.Infof("Received exit key %v, now closing exit channel", key)
 			close(exitCh)
 			return
-		} else if int(keyPressEvent.key) != 0 {
-			log.Debugf("Received keypress from UI %v", keyPressEvent)
+		} else {
+			log.Debugf("Received keypress from UI %v", key)
 
 			select {
-			case inputCh <- keyPressEvent:
+			case inputCh <- key:
 			default:
-				log.Errorf("Unable to add keypress %v to input channel", keyPressEvent)
+				log.Errorf("Unable to add keypress %v to input channel", key)
 			}
 		}
 	}
@@ -215,15 +217,15 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	}
 }
 
-func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, displayCh chan<- bool, inputCh <-chan KeyPressEvent, errorCh chan<- error) {
+func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, displayCh chan<- bool, inputCh <-chan string, errorCh chan<- error) {
 	defer waitGroup.Done()
 	defer log.Info("Handler loop stopping")
 	log.Info("Starting handler loop")
 
 	for {
 		select {
-		case keyPressEvent := <-inputCh:
-			grv.inputBuffer.Append(gc.KeyString(keyPressEvent.key))
+		case key := <-inputCh:
+			grv.inputBuffer.Append(key)
 
 			for {
 				viewHierarchy := grv.view.ActiveViewHierarchy()
