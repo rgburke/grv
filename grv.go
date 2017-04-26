@@ -13,10 +13,10 @@ const (
 )
 
 type GRVChannels struct {
-	exitCh    chan bool
-	inputKeyCh   chan string
-	displayCh chan bool
-	errorCh   chan error
+	exitCh     chan bool
+	inputKeyCh chan string
+	displayCh  chan bool
+	errorCh    chan error
 }
 
 type Channels struct {
@@ -67,10 +67,10 @@ func (channels *Channels) ReportError(err error) {
 
 func NewGRV() *GRV {
 	grvChannels := GRVChannels{
-		exitCh:    make(chan bool),
-		inputKeyCh:   make(chan string, GRV_INPUT_BUFFER_SIZE),
-		displayCh: make(chan bool),
-		errorCh:   make(chan error, GRV_ERROR_BUFFER_SIZE),
+		exitCh:     make(chan bool),
+		inputKeyCh: make(chan string, GRV_INPUT_BUFFER_SIZE),
+		displayCh:  make(chan bool),
+		errorCh:    make(chan error, GRV_ERROR_BUFFER_SIZE),
 	}
 
 	channels := &Channels{
@@ -151,7 +151,7 @@ func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, inpu
 	log.Info("Starting input loop")
 
 	for {
-		key, err := grv.input.GetInput()
+		key, err := grv.input.GetKeyInput()
 		if err != nil {
 			errorCh <- err
 		} else if key == "q" {

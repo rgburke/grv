@@ -24,7 +24,7 @@ const (
 type Key int
 
 type InputUI interface {
-	GetInput() (Key, error)
+	GetInput(force bool) (Key, error)
 }
 
 type UI interface {
@@ -225,7 +225,7 @@ func drawWindow(win *Window, nwin *gc.Window) {
 	nwin.NoutRefresh()
 }
 
-func (ui *NCursesUI) GetInput() (key Key, err error) {
+func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 	var activeWin *gc.Window
 
 	ui.windowsLock.RLock()
@@ -238,7 +238,15 @@ func (ui *NCursesUI) GetInput() (key Key, err error) {
 	ui.windowsLock.RUnlock()
 
 	if activeWin != nil {
+		if force {
+			activeWin.Timeout(0)
+		}
+
 		key = Key(activeWin.GetChar())
+
+		if force {
+			activeWin.Timeout(-1)
+		}
 	} else {
 		time.Sleep(INPUT_NO_WIN_SLEEP_MS)
 		key = UI_NO_KEY

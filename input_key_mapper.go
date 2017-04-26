@@ -5,10 +5,12 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
+	"unicode"
 )
 
 const (
 	IKM_ESCAPE_KEY = 0x1B
+	IKM_CTRL_MASK  = 0x1F
 )
 
 var keyMap = map[gc.Key]string{
@@ -128,21 +130,24 @@ func NewInputKeyMapper(ui InputUI) *InputKeyMapper {
 	}
 }
 
-func (inputKeyMapper *InputKeyMapper) GetInput() (key string, err error) {
+func (inputKeyMapper *InputKeyMapper) GetKeyInput() (key string, err error) {
 	for {
-		keyPressEvent, err := inputKeyMapper.ui.GetInput()
-		if err != nil {
-			break
-		} else if keyPressEvent == UI_NO_KEY {
-			continue
-		}
+		keyPressEvent, err := inputKeyMapper.ui.GetInput(false)
+		mappedKey, isMappedKey := keyMap[gc.Key(keyPressEvent)]
 
-		if inputKeyMapper.isProcessingUTF8Char() {
+		switch {
+		case err != nil:
+			return key, err
+		case keyPressEvent == UI_NO_KEY:
+		case inputKeyMapper.isProcessingUTF8Char():
 			err = inputKeyMapper.processUTF8ContinuationByte(keyPressEvent)
-		} else if mappedKey, ok := keyMap[gc.Key(keyPressEvent)]; ok {
-			key = mappedKey
-			break
-		} else {
+		case isMappedKey:
+			return mappedKey, err
+		case keyPressEvent == IKM_ESCAPE_KEY:
+			return inputKeyMapper.metaKeyString(), err
+		case isControlKey(keyPressEvent):
+			return controlKeyString(keyPressEvent), err
+		default:
 			err = inputKeyMapper.processUTF8Char(keyPressEvent)
 		}
 
@@ -150,8 +155,7 @@ func (inputKeyMapper *InputKeyMapper) GetInput() (key string, err error) {
 			log.Errorf("Discarding input character: %v", err)
 			inputKeyMapper.clearChar()
 		} else if inputKeyMapper.isUTF8CharComplete() {
-			key = inputKeyMapper.getAndClearChar()
-			break
+			return inputKeyMapper.getAndClearChar(), err
 		}
 	}
 
@@ -206,4 +210,22 @@ func (inputKeyMapper *InputKeyMapper) processUTF8Char(keyPressEvent Key) (err er
 	}
 
 	return
+}
+
+func (inputKeyMapper *InputKeyMapper) metaKeyString() string {
+	keyPressEvent, err := inputKeyMapper.ui.GetInput(true)
+
+	if err != nil || keyPressEvent == 0 {
+		return "<Escape>"
+	}
+
+	return fmt.Sprintf("<M-%c>", keyPressEvent)
+}
+
+func isControlKey(keyPressEvent Key) bool {
+	return keyPressEvent >= (IKM_CTRL_MASK&'@') && keyPressEvent <= (IKM_CTRL_MASK&'_')
+}
+
+func controlKeyString(keyPressEvent Key) string {
+	return fmt.Sprintf("<C-%c>", unicode.ToLower(rune(keyPressEvent|0x40)))
 }
