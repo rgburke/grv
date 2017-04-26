@@ -17,15 +17,15 @@ const (
 	ACTION_PREV_VIEW
 )
 
-var actionKeys = map[Action]string{
-	ACTION_NONE:         "<grv-nop>",
-	ACTION_NEXT_LINE:    "<grv-next-line>",
-	ACTION_PREV_LINE:    "<grv-prev-line>",
-	ACTION_SCROLL_RIGHT: "<grv-scroll-right>",
-	ACTION_SCROLL_LEFT:  "<grv-scroll-left>",
-	ACTION_SELECT:       "<grv-select>",
-	ACTION_NEXT_VIEW:    "<grv-next-view>",
-	ACTION_PREV_VIEW:    "<grv-prev-view>",
+var actionKeys = map[string]Action{
+	"<grv-nop>":          ACTION_NONE,
+	"<grv-next-line>":    ACTION_NEXT_LINE,
+	"<grv-prev-line>":    ACTION_PREV_LINE,
+	"<grv-scroll-right>": ACTION_SCROLL_RIGHT,
+	"<grv-scroll-left>":  ACTION_SCROLL_LEFT,
+	"<grv-select>":       ACTION_SELECT,
+	"<grv-next-view>":    ACTION_NEXT_VIEW,
+	"<grv-prev-view>":    ACTION_PREV_VIEW,
 }
 
 type ViewHierarchy []ViewId
@@ -116,7 +116,7 @@ func (keyBindingManager *KeyBindingManager) getOrCreateViewBindings(viewId ViewI
 }
 
 func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
-	for action, actionKey := range actionKeys {
+	for actionKey, action := range actionKeys {
 		keyBindingManager.SetActionBinding(VIEW_ALL, actionKey, action)
 	}
 
@@ -126,4 +126,9 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Left>", ACTION_SCROLL_LEFT)
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Return>", ACTION_SELECT)
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Tab>", ACTION_NEXT_VIEW)
+}
+
+func isValidAction(action string) bool {
+	_, valid := actionKeys[action]
+	return valid
 }

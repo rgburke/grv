@@ -5,6 +5,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
+	"regexp"
 	"unicode"
 )
 
@@ -228,4 +229,50 @@ func isControlKey(keyPressEvent Key) bool {
 
 func controlKeyString(keyPressEvent Key) string {
 	return fmt.Sprintf("<C-%c>", unicode.ToLower(rune(keyPressEvent|0x40)))
+}
+
+func TokeniseKeys(keysString string) (keys []string) {
+	for i := 0; i < len(keysString); i++ {
+		if keysString[i] == '<' {
+			if key, isSpecialKey := specialKeyString(keysString[i:len(keysString)]); isSpecialKey {
+				keys = append(keys, key)
+				i += len(key) - 1
+				continue
+			}
+		}
+
+		keys = append(keys, string(keysString[i]))
+	}
+
+	return
+}
+
+func specialKeyString(potentialKeyString string) (key string, isSpecialKey bool) {
+	endIndex := -1
+
+	for charIndex, char := range potentialKeyString {
+		if char == '>' {
+			endIndex = charIndex
+			break
+		}
+	}
+
+	if endIndex == -1 {
+		return
+	}
+
+	keyString := potentialKeyString[0 : endIndex+1]
+
+	matched, err := regexp.MatchString("^<(C|M)-.>$", keyString)
+	if err != nil {
+		log.Errorf("Invalid Regex: %v", err)
+		return
+	}
+
+	if matched || isValidAction(keyString) {
+		key = keyString
+		isSpecialKey = true
+	}
+
+	return
 }
