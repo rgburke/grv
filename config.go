@@ -14,12 +14,15 @@ const (
 	CV_TAB_WIDTH_MIN_VALUE = 1
 	CV_THEME_DEFALT_VALUE  = "default"
 
-	CV_ALL_VIEW     = "All"
-	CV_MAIN_VIEW    = "MainView"
-	CV_HISTORY_VIEW = "HistoryView"
-	CV_REF_VIEW     = "RefView"
-	CV_COMMIT_VIEW  = "CommitView"
-	CV_DIFF_VIEW    = "DiffView"
+	CV_ALL_VIEW        = "All"
+	CV_MAIN_VIEW       = "MainView"
+	CV_HISTORY_VIEW    = "HistoryView"
+	CV_STATUS_VIEW     = "StatusView"
+	CV_REF_VIEW        = "RefView"
+	CV_COMMIT_VIEW     = "CommitView"
+	CV_DIFF_VIEW       = "DiffView"
+	CV_STATUS_BAR_VIEW = "StatusBarView"
+	CV_HELP_BAR_VIEW   = "HelpBarView"
 )
 
 type ConfigVariable string
@@ -42,12 +45,15 @@ var themeColors = map[string]ThemeColor{
 }
 
 var viewIdNames = map[string]ViewId{
-	CV_ALL_VIEW:     VIEW_ALL,
-	CV_MAIN_VIEW:    VIEW_MAIN,
-	CV_HISTORY_VIEW: VIEW_HISTORY,
-	CV_REF_VIEW:     VIEW_REF,
-	CV_COMMIT_VIEW:  VIEW_COMMIT,
-	CV_DIFF_VIEW:    VIEW_DIFF,
+	CV_ALL_VIEW:        VIEW_ALL,
+	CV_MAIN_VIEW:       VIEW_MAIN,
+	CV_HISTORY_VIEW:    VIEW_HISTORY,
+	CV_STATUS_VIEW:     VIEW_STATUS,
+	CV_REF_VIEW:        VIEW_REF,
+	CV_COMMIT_VIEW:     VIEW_COMMIT,
+	CV_DIFF_VIEW:       VIEW_DIFF,
+	CV_STATUS_BAR_VIEW: VIEW_STATUS_BAR,
+	CV_HELP_BAR_VIEW:   VIEW_HELP_BAR,
 }
 
 var themeComponents = map[string]ThemeComponentId{

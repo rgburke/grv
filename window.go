@@ -184,6 +184,19 @@ func (win *Window) SetPosition(startRow, startCol uint) {
 	win.startCol = startCol
 }
 
+func (win *Window) OffsetPosition(rowOffset, colOffset int) {
+	win.startRow = applyOffset(win.startRow, rowOffset)
+	win.startCol = applyOffset(win.startCol, colOffset)
+}
+
+func applyOffset(value uint, offset int) uint {
+	if value < 0 {
+		return value - Min(value, Abs(offset))
+	}
+
+	return value + uint(offset)
+}
+
 func (win *Window) Id() string {
 	return win.id
 }

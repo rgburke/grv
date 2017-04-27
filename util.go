@@ -12,6 +12,14 @@ func Min(x, y uint) uint {
 	return y
 }
 
+func Abs(x int) uint {
+	if x < 0 {
+		x = -x
+	}
+
+	return uint(x)
+}
+
 func nonPrintableCharString(codePoint rune) string {
 	switch {
 	case codePoint < 32:

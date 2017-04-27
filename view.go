@@ -11,9 +11,12 @@ const (
 	VIEW_ALL ViewId = iota
 	VIEW_MAIN
 	VIEW_HISTORY
+	VIEW_STATUS
 	VIEW_REF
 	VIEW_COMMIT
 	VIEW_DIFF
+	VIEW_STATUS_BAR
+	VIEW_HELP_BAR
 )
 
 type AbstractView interface {
@@ -43,6 +46,7 @@ type ViewDimension struct {
 type View struct {
 	views         []WindowViewCollection
 	activeViewPos uint
+	statusView    WindowViewCollection
 }
 
 func (viewDimension ViewDimension) String() string {
@@ -50,12 +54,12 @@ func (viewDimension ViewDimension) String() string {
 }
 
 func NewView(repoData RepoData, channels *Channels, config Config) (view *View) {
-	view = &View{}
-	view.views = []WindowViewCollection{
-		NewHistoryView(repoData, channels, config),
+	return &View{
+		views: []WindowViewCollection{
+			NewHistoryView(repoData, channels, config),
+		},
+		statusView: NewStatusView(),
 	}
-
-	return
 }
 
 func (view *View) Initialise() (err error) {
@@ -70,9 +74,30 @@ func (view *View) Initialise() (err error) {
 	return
 }
 
-func (view *View) Render(viewDimension ViewDimension) ([]*Window, error) {
+func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error) {
 	log.Debug("Rendering View")
-	return view.views[view.activeViewPos].Render(viewDimension)
+
+	activeViewDim := viewDimension
+	activeViewDim.rows -= 2
+
+	statusViewDim := viewDimension
+	statusViewDim.rows = 2
+
+	activeViewWins, err := view.views[view.activeViewPos].Render(activeViewDim)
+	if err != nil {
+		return
+	}
+
+	statusViewWins, err := view.statusView.Render(statusViewDim)
+	if err != nil {
+		return
+	}
+
+	for _, win := range statusViewWins {
+		win.OffsetPosition(int(activeViewDim.rows), 0)
+	}
+
+	return append(activeViewWins, statusViewWins...), err
 }
 
 func (view *View) HandleKeyPress(keystring string) error {
