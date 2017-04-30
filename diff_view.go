@@ -170,6 +170,14 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	return
 }
 
+func (diffView *DiffView) RenderStatusBar(win RenderWindow) (err error) {
+	return
+}
+
+func (diffView *DiffView) RenderHelpBar(RenderWindow) (err error) {
+	return
+}
+
 func (diffView *DiffView) OnActiveChange(active bool) {
 	log.Debugf("DiffView active: %v", active)
 	diffView.lock.Lock()

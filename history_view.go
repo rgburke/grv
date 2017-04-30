@@ -2,6 +2,7 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
+	"sync"
 )
 
 const (
@@ -19,6 +20,7 @@ type HistoryView struct {
 	views         []WindowView
 	activeViewPos uint
 	active        bool
+	lock          sync.Mutex
 }
 
 func NewHistoryView(repoData RepoData, channels *Channels, config Config) *HistoryView {
@@ -54,6 +56,8 @@ func (historyView *HistoryView) Initialise() (err error) {
 
 func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Window, err error) {
 	log.Debug("Rendering HistoryView")
+	historyView.lock.Lock()
+	defer historyView.lock.Unlock()
 
 	refViewDim := viewDimension
 	refViewDim.cols = Min(HV_BRANCH_VIEW_WIDTH, viewDimension.cols/2)
@@ -97,9 +101,17 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 	return
 }
 
+func (historyView *HistoryView) RenderStatusBar(RenderWindow) (err error) {
+	return
+}
+
+func (historyView *HistoryView) RenderHelpBar(RenderWindow) (err error) {
+	return
+}
+
 func (historyView *HistoryView) HandleKeyPress(keystring string) (err error) {
 	log.Debugf("HistoryView handling keys %v", keystring)
-	activeChildView := historyView.views[historyView.activeViewPos]
+	activeChildView := historyView.ActiveView()
 	return activeChildView.HandleKeyPress(keystring)
 }
 
@@ -108,19 +120,23 @@ func (historyView *HistoryView) HandleAction(action Action) (err error) {
 
 	switch action {
 	case ACTION_NEXT_VIEW:
+		historyView.lock.Lock()
 		historyView.activeViewPos++
 		historyView.activeViewPos %= uint(len(historyView.views))
+		historyView.lock.Unlock()
 		historyView.OnActiveChange(true)
 		historyView.channels.UpdateDisplay()
 		return
 	}
 
-	activeChildView := historyView.views[historyView.activeViewPos]
+	activeChildView := historyView.ActiveView()
 	return activeChildView.HandleAction(action)
 }
 
 func (historyView *HistoryView) OnActiveChange(active bool) {
 	log.Debugf("History active set to %v", active)
+	historyView.lock.Lock()
+	defer historyView.lock.Unlock()
 
 	historyView.active = active
 
@@ -138,9 +154,19 @@ func (historyView *HistoryView) ViewId() ViewId {
 }
 
 func (historyView *HistoryView) ActiveViewHierarchy() []ViewId {
+	historyView.lock.Lock()
+	defer historyView.lock.Unlock()
+
 	if historyView.active {
 		return []ViewId{historyView.ViewId(), historyView.views[historyView.activeViewPos].ViewId()}
 	}
 
 	return []ViewId{}
+}
+
+func (historyView *HistoryView) ActiveView() WindowView {
+	historyView.lock.Lock()
+	defer historyView.lock.Unlock()
+
+	return historyView.views[historyView.activeViewPos]
 }

@@ -1,6 +1,13 @@
 package main
 
 type HelpBarView struct {
+	rootView RootView
+}
+
+func NewHelpBarView(rootView RootView) *HelpBarView {
+	return &HelpBarView{
+		rootView: rootView,
+	}
 }
 
 func (helpBarView *HelpBarView) Initialise() (err error) {
@@ -24,5 +31,13 @@ func (helpBarView *HelpBarView) ViewId() ViewId {
 }
 
 func (helpBarView *HelpBarView) Render(RenderWindow) (err error) {
+	return
+}
+
+func (helpBarView *HelpBarView) RenderStatusBar(RenderWindow) (err error) {
+	return
+}
+
+func (helpBarView *HelpBarView) RenderHelpBar(RenderWindow) (err error) {
 	return
 }

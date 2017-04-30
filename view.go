@@ -25,6 +25,8 @@ type AbstractView interface {
 	HandleAction(Action) error
 	OnActiveChange(bool)
 	ViewId() ViewId
+	RenderStatusBar(RenderWindow) error
+	RenderHelpBar(RenderWindow) error
 }
 
 type WindowView interface {
@@ -36,6 +38,11 @@ type WindowViewCollection interface {
 	AbstractView
 	Render(ViewDimension) ([]*Window, error)
 	ActiveViewHierarchy() []ViewId
+	ActiveView() WindowView
+}
+
+type RootView interface {
+	ActiveView() WindowView
 }
 
 type ViewDimension struct {
@@ -54,12 +61,15 @@ func (viewDimension ViewDimension) String() string {
 }
 
 func NewView(repoData RepoData, channels *Channels, config Config) (view *View) {
-	return &View{
+	view = &View{
 		views: []WindowViewCollection{
 			NewHistoryView(repoData, channels, config),
 		},
-		statusView: NewStatusView(),
 	}
+
+	view.statusView = NewStatusView(view, repoData, config)
+
+	return
 }
 
 func (view *View) Initialise() (err error) {
@@ -76,6 +86,11 @@ func (view *View) Initialise() (err error) {
 
 func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error) {
 	log.Debug("Rendering View")
+
+	if viewDimension.rows < 3 {
+		log.Errorf("Terminal is not large enough to render GRV")
+		return
+	}
 
 	activeViewDim := viewDimension
 	activeViewDim.rows -= 2
@@ -100,6 +115,14 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 	return append(activeViewWins, statusViewWins...), err
 }
 
+func (view *View) RenderStatusBar(RenderWindow) (err error) {
+	return
+}
+
+func (view *View) RenderHelpBar(RenderWindow) (err error) {
+	return
+}
+
 func (view *View) HandleKeyPress(keystring string) error {
 	log.Debugf("View handling keys %v", keystring)
 	return view.views[view.activeViewPos].HandleKeyPress(keystring)
@@ -121,4 +144,8 @@ func (view *View) ViewId() ViewId {
 
 func (view *View) ActiveViewHierarchy() []ViewId {
 	return append([]ViewId{view.ViewId()}, view.views[view.activeViewPos].ActiveViewHierarchy()...)
+}
+
+func (view *View) ActiveView() WindowView {
+	return view.views[view.activeViewPos].ActiveView()
 }

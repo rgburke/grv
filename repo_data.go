@@ -13,6 +13,7 @@ type OnBranchesLoaded func([]*Branch) error
 type OnTagsLoaded func([]*Tag) error
 
 type RepoData interface {
+	Path() string
 	LoadHead() error
 	LoadLocalBranches(OnBranchesLoaded) error
 	LoadLocalTags(OnTagsLoaded) error
@@ -94,6 +95,10 @@ func (repoData *RepositoryData) Initialise(repoPath string) (err error) {
 	}
 
 	return
+}
+
+func (repoData *RepositoryData) Path() string {
+	return repoData.repoDataLoader.Path()
 }
 
 func (repoData *RepositoryData) LoadHead() (err error) {

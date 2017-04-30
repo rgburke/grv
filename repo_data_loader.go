@@ -119,6 +119,10 @@ func (repoDataLoader *RepoDataLoader) Initialise(repoPath string) (err error) {
 	return
 }
 
+func (repoDataLoader *RepoDataLoader) Path() string {
+	return repoDataLoader.repo.Path()
+}
+
 func (repoDataLoader *RepoDataLoader) Head() (oid *Oid, branch *Branch, err error) {
 	log.Debug("Loading HEAD")
 	ref, err := repoDataLoader.repo.Head()

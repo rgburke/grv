@@ -27,6 +27,8 @@ const (
 	CMP_DIFFVIEW_DIFFLINE_LINE_ADDED
 	CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED
 
+	CMP_STATUSBARVIEW_INFO
+
 	CMP_COUNT
 )
 
@@ -185,6 +187,10 @@ func NewDefaultTheme() MutableTheme {
 			CMP_REFVIEW_TAG: &ThemeComponent{
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_NONE,
+			},
+			CMP_STATUSBARVIEW_INFO: &ThemeComponent{
+				bgcolor: COLOR_BLUE,
+				fgcolor: COLOR_YELLOW,
 			},
 		},
 	}

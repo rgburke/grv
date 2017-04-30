@@ -25,6 +25,7 @@ type RenderWindow interface {
 	SetSelectedRow(rowIndex uint, active bool) error
 	SetTitle(themeComponentId ThemeComponentId, format string, args ...interface{}) error
 	SetFooter(themeComponentId ThemeComponentId, format string, args ...interface{}) error
+	ApplyStyle(themeComponentId ThemeComponentId)
 	DrawBorder()
 	LineBuilder(rowIndex, startColumn uint) (*LineBuilder, error)
 }
@@ -350,6 +351,14 @@ func (win *Window) DrawBorder() {
 	}
 
 	lastLine.cells[win.cols-1].style.acs_char = gc.ACS_LRCORNER
+}
+
+func (win *Window) ApplyStyle(themeComponentId ThemeComponentId) {
+	for _, line := range win.lines {
+		for _, cell := range line.cells {
+			cell.style.componentId = themeComponentId
+		}
+	}
 }
 
 // For debugging

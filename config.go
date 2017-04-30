@@ -78,6 +78,8 @@ var themeComponents = map[string]ThemeComponentId{
 	CV_DIFF_VIEW + ".HunkHeader":            CMP_DIFFVIEW_DIFFLINE_HUNK_HEADER,
 	CV_DIFF_VIEW + ".AddedLine":             CMP_DIFFVIEW_DIFFLINE_LINE_ADDED,
 	CV_DIFF_VIEW + ".RemovedLine":           CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED,
+
+	CV_STATUS_BAR_VIEW + ".Info": CMP_STATUSBARVIEW_INFO,
 }
 
 type Config interface {

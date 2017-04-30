@@ -128,6 +128,14 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	return err
 }
 
+func (commitView *CommitView) RenderStatusBar(win RenderWindow) (err error) {
+	return
+}
+
+func (commitView *CommitView) RenderHelpBar(RenderWindow) (err error) {
+	return
+}
+
 func NewLoadingCommitsRefreshTask(refreshRate time.Duration, channels *Channels) *LoadingCommitsRefreshTask {
 	return &LoadingCommitsRefreshTask{
 		refreshRate: refreshRate,

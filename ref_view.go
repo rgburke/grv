@@ -220,6 +220,14 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	return
 }
 
+func (refView *RefView) RenderStatusBar(RenderWindow) (err error) {
+	return
+}
+
+func (refView *RefView) RenderHelpBar(RenderWindow) (err error) {
+	return
+}
+
 func (refView *RefView) renderFooter(win RenderWindow, selectedRenderedRef RenderedRef) (err error) {
 	var footer string
 
