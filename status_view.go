@@ -1,6 +1,7 @@
 package main
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"sync"
 )
 
@@ -13,9 +14,9 @@ type StatusView struct {
 	lock          sync.Mutex
 }
 
-func NewStatusView(rootView RootView, repoData RepoData, config Config) *StatusView {
+func NewStatusView(rootView RootView, repoData RepoData, channels *Channels, config ConfigSetter) *StatusView {
 	return &StatusView{
-		statusBarView: NewStatusBarView(rootView, repoData),
+		statusBarView: NewStatusBarView(rootView, repoData, channels, config),
 		helpBarView:   NewHelpBarView(rootView),
 		statusBarWin:  NewWindow("statusBarView", config),
 		helpBarWin:    NewWindow("helpBarView", config),
@@ -30,13 +31,21 @@ func (statusView *StatusView) HandleKeyPress(keystring string) (err error) {
 	return
 }
 
-func (statusView *StatusView) HandleAction(Action) (err error) {
+func (statusView *StatusView) HandleAction(action Action) (err error) {
+	if err = statusView.statusBarView.HandleAction(action); err != nil {
+		return
+	}
+
+	err = statusView.helpBarView.HandleAction(action)
+
 	return
 }
 
 func (statusView *StatusView) OnActiveChange(active bool) {
 	statusView.lock.Lock()
 	defer statusView.lock.Unlock()
+
+	log.Debugf("StatusView active: %v", active)
 
 	statusView.active = active
 	statusView.statusBarView.OnActiveChange(active)

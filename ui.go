@@ -25,6 +25,8 @@ type Key int
 
 type InputUI interface {
 	GetInput(force bool) (Key, error)
+	RegisterInputInterceptor(InputInterceptor)
+	DeRegisterInputInterceptor(InputInterceptor)
 }
 
 type UI interface {
@@ -35,18 +37,24 @@ type UI interface {
 	Free()
 }
 
+type InputInterceptor interface {
+	InputConsumed(Key) bool
+}
+
 type NCursesUI struct {
-	windows     map[*Window]*gc.Window
-	windowsLock sync.RWMutex
-	stdscr      *gc.Window
-	config      Config
-	colors      map[ThemeColor]int16
+	windows           map[*Window]*gc.Window
+	windowsLock       sync.RWMutex
+	stdscr            *gc.Window
+	config            Config
+	colors            map[ThemeColor]int16
+	inputInterceptors []InputInterceptor
 }
 
 func NewNcursesDisplay(config Config) *NCursesUI {
 	return &NCursesUI{
-		windows: make(map[*Window]*gc.Window),
-		config:  config,
+		windows:           make(map[*Window]*gc.Window),
+		config:            config,
+		inputInterceptors: make([]InputInterceptor, 0),
 		colors: map[ThemeColor]int16{
 			COLOR_NONE:    -1,
 			COLOR_BLACK:   gc.C_BLACK,
@@ -188,14 +196,28 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
 	ui.windowsLock.RLock()
 	defer ui.windowsLock.RUnlock()
+	var cursorWin *Window
 
 	for _, win := range wins {
 		if nwin, ok := ui.windows[win]; ok {
 			drawWindow(win, nwin)
+
+			if win.IsCursorSet() {
+				cursorWin = win
+			}
 		} else {
 			err = errors.New("Algorithm error")
 			break
 		}
+	}
+
+	if cursorWin == nil {
+		gc.Cursor(0)
+	} else {
+		gc.Cursor(1)
+		nwin := ui.windows[cursorWin]
+		nwin.Move(int(cursorWin.cursor.row), int(cursorWin.cursor.col))
+		nwin.NoutRefresh()
 	}
 
 	return
@@ -242,7 +264,16 @@ func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 			activeWin.Timeout(0)
 		}
 
-		key = Key(activeWin.GetChar())
+		for {
+			key = Key(activeWin.GetChar())
+
+			if !ui.inputHandledByInterceptor(key) {
+				break
+			} else if force {
+				activeWin.Timeout(-1)
+				force = false
+			}
+		}
 
 		if force {
 			activeWin.Timeout(-1)
@@ -267,4 +298,27 @@ func (ui *NCursesUI) onConfigVariableChange(configVariable ConfigVariable) {
 		bgcolor := ui.colors[themeComponent.bgcolor]
 		gc.InitPair(int16(themeComponentId), fgcolor, bgcolor)
 	}
+}
+
+func (ui *NCursesUI) RegisterInputInterceptor(interceptor InputInterceptor) {
+	ui.inputInterceptors = append(ui.inputInterceptors, interceptor)
+}
+
+func (ui *NCursesUI) DeRegisterInputInterceptor(removeInterceptor InputInterceptor) {
+	for index, interceptor := range ui.inputInterceptors {
+		if interceptor == removeInterceptor {
+			ui.inputInterceptors = append(ui.inputInterceptors[:index], ui.inputInterceptors[index+1:]...)
+			return
+		}
+	}
+}
+
+func (ui *NCursesUI) inputHandledByInterceptor(key Key) bool {
+	for _, interceptor := range ui.inputInterceptors {
+		if interceptor.InputConsumed(key) {
+			return true
+		}
+	}
+
+	return false
 }

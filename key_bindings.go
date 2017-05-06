@@ -15,6 +15,7 @@ const (
 	ACTION_SELECT
 	ACTION_NEXT_VIEW
 	ACTION_PREV_VIEW
+	ACTION_PROMPT
 )
 
 var actionKeys = map[string]Action{
@@ -26,6 +27,7 @@ var actionKeys = map[string]Action{
 	"<grv-select>":       ACTION_SELECT,
 	"<grv-next-view>":    ACTION_NEXT_VIEW,
 	"<grv-prev-view>":    ACTION_PREV_VIEW,
+	"<grv-prompt>":       ACTION_PROMPT,
 }
 
 type ViewHierarchy []ViewId
@@ -126,6 +128,8 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Left>", ACTION_SCROLL_LEFT)
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Return>", ACTION_SELECT)
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Tab>", ACTION_NEXT_VIEW)
+
+	keyBindingManager.SetActionBinding(VIEW_MAIN, PROMPT_TEXT, ACTION_PROMPT)
 }
 
 func isValidAction(action string) bool {

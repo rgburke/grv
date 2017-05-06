@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	GRV_INPUT_BUFFER_SIZE  = 100
-	GRV_ERROR_BUFFER_SIZE  = 100
-	GRV_MAX_DRAW_FREQUENCY = time.Millisecond * 50
+	GRV_INPUT_BUFFER_SIZE   = 100
+	GRV_ERROR_BUFFER_SIZE   = 100
+	GRV_DISPLAY_BUFFER_SIZE = 50
+	GRV_MAX_DRAW_FREQUENCY  = time.Millisecond * 50
 )
 
 type GRVChannels struct {
@@ -65,11 +66,21 @@ func (channels *Channels) ReportError(err error) {
 	}
 }
 
+func (channels *Channels) ReportErrors(errors []error) {
+	if errors == nil {
+		return
+	}
+
+	for _, err := range errors {
+		channels.ReportError(err)
+	}
+}
+
 func NewGRV() *GRV {
 	grvChannels := GRVChannels{
 		exitCh:     make(chan bool),
 		inputKeyCh: make(chan string, GRV_INPUT_BUFFER_SIZE),
-		displayCh:  make(chan bool),
+		displayCh:  make(chan bool, GRV_DISPLAY_BUFFER_SIZE),
 		errorCh:    make(chan error, GRV_ERROR_BUFFER_SIZE),
 	}
 
@@ -84,6 +95,7 @@ func NewGRV() *GRV {
 	keyBindings := NewKeyBindingManager()
 	config := NewConfiguration(keyBindings)
 	ui := NewNcursesDisplay(config)
+	InitReadLine(channels, ui)
 
 	return &GRV{
 		repoData:    repoData,

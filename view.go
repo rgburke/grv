@@ -54,20 +54,22 @@ type View struct {
 	views         []WindowViewCollection
 	activeViewPos uint
 	statusView    WindowViewCollection
+	channels      *Channels
 }
 
 func (viewDimension ViewDimension) String() string {
 	return fmt.Sprintf("rows:%v,cols:%v", viewDimension.rows, viewDimension.cols)
 }
 
-func NewView(repoData RepoData, channels *Channels, config Config) (view *View) {
+func NewView(repoData RepoData, channels *Channels, config ConfigSetter) (view *View) {
 	view = &View{
 		views: []WindowViewCollection{
 			NewHistoryView(repoData, channels, config),
 		},
+		channels: channels,
 	}
 
-	view.statusView = NewStatusView(view, repoData, config)
+	view.statusView = NewStatusView(view, repoData, channels, config)
 
 	return
 }
@@ -130,6 +132,13 @@ func (view *View) HandleKeyPress(keystring string) error {
 
 func (view *View) HandleAction(action Action) error {
 	log.Debugf("View handling action %v", action)
+
+	switch action {
+	case ACTION_PROMPT:
+		view.prompt(action)
+		return nil
+	}
+
 	return view.views[view.activeViewPos].HandleAction(action)
 }
 
@@ -148,4 +157,14 @@ func (view *View) ActiveViewHierarchy() []ViewId {
 
 func (view *View) ActiveView() WindowView {
 	return view.views[view.activeViewPos].ActiveView()
+}
+
+func (view *View) prompt(action Action) {
+	view.views[view.activeViewPos].OnActiveChange(false)
+	view.statusView.OnActiveChange(true)
+	view.statusView.HandleAction(action)
+	view.statusView.OnActiveChange(false)
+	view.views[view.activeViewPos].OnActiveChange(true)
+	log.Debug("view.go: Updating display")
+	view.channels.UpdateDisplay()
 }

@@ -23,6 +23,7 @@ type RenderWindow interface {
 	Clear()
 	SetRow(rowIndex, startColumn uint, themeComponentId ThemeComponentId, format string, args ...interface{}) error
 	SetSelectedRow(rowIndex uint, active bool) error
+	SetCursor(rowIndex, colIndex uint) error
 	SetTitle(themeComponentId ThemeComponentId, format string, args ...interface{}) error
 	SetFooter(themeComponentId ThemeComponentId, format string, args ...interface{}) error
 	ApplyStyle(themeComponentId ThemeComponentId)
@@ -53,6 +54,11 @@ type Cell struct {
 	style      CellStyle
 }
 
+type Cursor struct {
+	row uint
+	col uint
+}
+
 type Window struct {
 	id       string
 	rows     uint
@@ -61,6 +67,7 @@ type Window struct {
 	startRow uint
 	startCol uint
 	config   Config
+	cursor   *Cursor
 }
 
 func NewLine(cols uint) *Line {
@@ -229,6 +236,8 @@ func (win *Window) Clear() {
 			cell.style.acs_char = 0
 		}
 	}
+
+	win.cursor = nil
 }
 
 func (win *Window) LineBuilder(rowIndex, startColumn uint) (*LineBuilder, error) {
@@ -273,6 +282,25 @@ func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
 	}
 
 	return nil
+}
+
+func (win *Window) IsCursorSet() bool {
+	return win.cursor != nil
+}
+
+func (win *Window) SetCursor(rowIndex, colIndex uint) (err error) {
+	if rowIndex >= win.rows {
+		return fmt.Errorf("Invalid row index: %v >= %v rows", rowIndex, win.rows)
+	} else if colIndex >= win.cols {
+		return fmt.Errorf("Invalid col index: %v >= %v cols", colIndex, win.cols)
+	}
+
+	win.cursor = &Cursor{
+		row: rowIndex,
+		col: colIndex,
+	}
+
+	return
 }
 
 func (win *Window) SetTitle(componentId ThemeComponentId, format string, args ...interface{}) (err error) {

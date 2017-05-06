@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -89,6 +90,11 @@ type Config interface {
 	GetFloat(ConfigVariable) float64
 	GetTheme() Theme
 	AddOnChangeListener(ConfigVariable, ConfigVariableOnChangeListener)
+}
+
+type ConfigSetter interface {
+	Config
+	Evaluate(config string) []error
 }
 
 type ConfigVariableValidator interface {
@@ -179,6 +185,17 @@ func (config *Configuration) LoadFile(filePath string) []error {
 	log.Infof("Loading config file %v", filePath)
 
 	return config.processCommands(NewParser(file, filePath))
+}
+
+func (config *Configuration) Evaluate(configString string) (errs []error) {
+	if configString == "" {
+		return
+	}
+
+	reader := strings.NewReader(configString)
+	parser := NewParser(reader, "")
+
+	return config.processCommands(parser)
 }
 
 func (config *Configuration) processCommands(parser *Parser) []error {
