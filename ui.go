@@ -5,6 +5,19 @@ package main
 // #cgo pkg-config: ncursesw
 // #include <stdlib.h>
 // #include <locale.h>
+// #include <sys/select.h>
+//
+// static void grv_FD_ZERO(void *set) {
+// 	FD_ZERO((fd_set *)set);
+// }
+//
+// static void grv_FD_SET(int fd, void *set) {
+// 	FD_SET(fd, (fd_set *)set);
+// }
+//
+// static int grv_FD_ISSET(int fd, void *set) {
+// 	return FD_ISSET(fd, (fd_set *)set);
+// }
 import "C"
 
 import (
@@ -12,6 +25,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
 	"sync"
+	"syscall"
 	"time"
 	"unsafe"
 )
@@ -25,8 +39,6 @@ type Key int
 
 type InputUI interface {
 	GetInput(force bool) (Key, error)
-	RegisterInputInterceptor(InputInterceptor)
-	DeRegisterInputInterceptor(InputInterceptor)
 }
 
 type UI interface {
@@ -37,24 +49,18 @@ type UI interface {
 	Free()
 }
 
-type InputInterceptor interface {
-	InputConsumed(Key) bool
-}
-
 type NCursesUI struct {
-	windows           map[*Window]*gc.Window
-	windowsLock       sync.RWMutex
-	stdscr            *gc.Window
-	config            Config
-	colors            map[ThemeColor]int16
-	inputInterceptors []InputInterceptor
+	windows     map[*Window]*gc.Window
+	windowsLock sync.RWMutex
+	stdscr      *gc.Window
+	config      Config
+	colors      map[ThemeColor]int16
 }
 
 func NewNcursesDisplay(config Config) *NCursesUI {
 	return &NCursesUI{
-		windows:           make(map[*Window]*gc.Window),
-		config:            config,
-		inputInterceptors: make([]InputInterceptor, 0),
+		windows: make(map[*Window]*gc.Window),
+		config:  config,
 		colors: map[ThemeColor]int16{
 			COLOR_NONE:    -1,
 			COLOR_BLACK:   gc.C_BLACK,
@@ -248,6 +254,23 @@ func drawWindow(win *Window, nwin *gc.Window) {
 }
 
 func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
+	if !force {
+		rfds := &syscall.FdSet{}
+		fd := syscall.Stdin
+
+		for {
+			FD_ZERO(rfds)
+			FD_SET(fd, rfds)
+			_, err = syscall.Select(fd+1, rfds, nil, nil, nil)
+
+			if err != nil {
+				return
+			} else if FD_ISSET(fd, rfds) && !ReadLineActive() {
+				break
+			}
+		}
+	}
+
 	var activeWin *gc.Window
 
 	ui.windowsLock.RLock()
@@ -264,16 +287,7 @@ func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 			activeWin.Timeout(0)
 		}
 
-		for {
-			key = Key(activeWin.GetChar())
-
-			if !ui.inputHandledByInterceptor(key) {
-				break
-			} else if force {
-				activeWin.Timeout(-1)
-				force = false
-			}
-		}
+		key = Key(activeWin.GetChar())
 
 		if force {
 			activeWin.Timeout(-1)
@@ -300,25 +314,14 @@ func (ui *NCursesUI) onConfigVariableChange(configVariable ConfigVariable) {
 	}
 }
 
-func (ui *NCursesUI) RegisterInputInterceptor(interceptor InputInterceptor) {
-	ui.inputInterceptors = append(ui.inputInterceptors, interceptor)
+func FD_ZERO(set *syscall.FdSet) {
+	C.grv_FD_ZERO(unsafe.Pointer(set))
 }
 
-func (ui *NCursesUI) DeRegisterInputInterceptor(removeInterceptor InputInterceptor) {
-	for index, interceptor := range ui.inputInterceptors {
-		if interceptor == removeInterceptor {
-			ui.inputInterceptors = append(ui.inputInterceptors[:index], ui.inputInterceptors[index+1:]...)
-			return
-		}
-	}
+func FD_SET(fd int, set *syscall.FdSet) {
+	C.grv_FD_SET(C.int(fd), unsafe.Pointer(set))
 }
 
-func (ui *NCursesUI) inputHandledByInterceptor(key Key) bool {
-	for _, interceptor := range ui.inputInterceptors {
-		if interceptor.InputConsumed(key) {
-			return true
-		}
-	}
-
-	return false
+func FD_ISSET(fd int, set *syscall.FdSet) bool {
+	return C.grv_FD_ISSET(C.int(fd), unsafe.Pointer(set)) != 0
 }
