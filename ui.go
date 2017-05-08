@@ -6,6 +6,7 @@ package main
 // #include <stdlib.h>
 // #include <locale.h>
 // #include <sys/select.h>
+// #include <sys/ioctl.h>
 //
 // static void grv_FD_ZERO(void *set) {
 // 	FD_ZERO((fd_set *)set);
@@ -47,6 +48,7 @@ type InputUI interface {
 type UI interface {
 	InputUI
 	Initialise() error
+	Resize() error
 	ViewDimension() ViewDimension
 	Update([]*Window) error
 	ShowError(error)
@@ -96,6 +98,8 @@ func (ui *NCursesUI) Free() {
 		nwin.Delete()
 	}
 
+	ui.windows = make(map[*Window]*gc.Window)
+
 	log.Info("Ending NCurses")
 	gc.End()
 }
@@ -107,6 +111,26 @@ func (ui *NCursesUI) Initialise() (err error) {
 	C.setlocale(C.LC_ALL, emptyCString)
 	C.free(unsafe.Pointer(emptyCString))
 
+	if err = ui.initialiseNCurses(); err != nil {
+		return
+	}
+
+	ui.config.AddOnChangeListener(CV_THEME, ui)
+
+	read, write, err := os.Pipe()
+	if err != nil {
+		return
+	}
+
+	ui.pipe = SignalPipe{
+		read:  read,
+		write: write,
+	}
+
+	return
+}
+
+func (ui *NCursesUI) initialiseNCurses() (err error) {
 	ui.stdscr, err = gc.Init()
 	if err != nil {
 		return
@@ -129,19 +153,27 @@ func (ui *NCursesUI) Initialise() (err error) {
 		return
 	}
 
-	ui.config.AddOnChangeListener(CV_THEME, ui)
+	return
+}
 
-	read, write, err := os.Pipe()
-	if err != nil {
+func (ui *NCursesUI) Resize() (err error) {
+	ui.windowsLock.Lock()
+	defer ui.windowsLock.Unlock()
+
+	ui.Free()
+
+	var winSize C.struct_winsize
+
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, os.Stdin.Fd(), C.TIOCGWINSZ, uintptr(unsafe.Pointer(&winSize)))
+	if errno != 0 {
+		return errno
+	}
+
+	if err = gc.ResizeTerm(int(winSize.ws_row), int(winSize.ws_col)); err != nil {
 		return
 	}
 
-	ui.pipe = SignalPipe{
-		read:  read,
-		write: write,
-	}
-
-	return
+	return ui.initialiseNCurses()
 }
 
 func (ui *NCursesUI) ViewDimension() ViewDimension {

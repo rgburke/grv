@@ -300,6 +300,11 @@ func (grv *GRV) runSignalHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bo
 				grv.End()
 				return
 			case syscall.SIGWINCH:
+				if err := grv.ui.Resize(); err != nil {
+					log.Errorf("Unable to resize display: %v", err)
+				}
+
+				grv.channels.displayCh <- true
 			}
 		case _, ok := <-exitCh:
 			if !ok {
