@@ -18,12 +18,14 @@ package main
 // static int grv_FD_ISSET(int fd, void *set) {
 // 	return FD_ISSET(fd, (fd_set *)set);
 // }
+//
 import "C"
 
 import (
 	"errors"
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/rthornton128/goncurses"
+	"os"
 	"sync"
 	"syscall"
 	"time"
@@ -39,14 +41,25 @@ type Key int
 
 type InputUI interface {
 	GetInput(force bool) (Key, error)
+	CancelGetInput() error
 }
 
 type UI interface {
+	InputUI
 	Initialise() error
 	ViewDimension() ViewDimension
 	Update([]*Window) error
 	ShowError(error)
 	Free()
+}
+
+type SignalPipe struct {
+	read  *os.File
+	write *os.File
+}
+
+func (signalPipe SignalPipe) ReadFd() int {
+	return int(signalPipe.read.Fd())
 }
 
 type NCursesUI struct {
@@ -55,6 +68,7 @@ type NCursesUI struct {
 	stdscr      *gc.Window
 	config      Config
 	colors      map[ThemeColor]int16
+	pipe        SignalPipe
 }
 
 func NewNcursesDisplay(config Config) *NCursesUI {
@@ -116,6 +130,16 @@ func (ui *NCursesUI) Initialise() (err error) {
 	}
 
 	ui.config.AddOnChangeListener(CV_THEME, ui)
+
+	read, write, err := os.Pipe()
+	if err != nil {
+		return
+	}
+
+	ui.pipe = SignalPipe{
+		read:  read,
+		write: write,
+	}
 
 	return
 }
@@ -254,19 +278,28 @@ func drawWindow(win *Window, nwin *gc.Window) {
 }
 
 func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
+	key = UI_NO_KEY
+
 	if !force {
 		rfds := &syscall.FdSet{}
-		fd := syscall.Stdin
+		stdinFd := syscall.Stdin
+		pipeFd := ui.pipe.ReadFd()
 
+	OuterLoop:
 		for {
 			FD_ZERO(rfds)
-			FD_SET(fd, rfds)
-			_, err = syscall.Select(fd+1, rfds, nil, nil, nil)
+			FD_SET(stdinFd, rfds)
+			FD_SET(pipeFd, rfds)
+			_, err = syscall.Select(pipeFd+1, rfds, nil, nil, nil)
 
-			if err != nil {
+			switch {
+			case err != nil:
 				return
-			} else if FD_ISSET(fd, rfds) && !ReadLineActive() {
-				break
+			case FD_ISSET(pipeFd, rfds):
+				ui.pipe.read.Read(make([]byte, 8))
+				return
+			case FD_ISSET(stdinFd, rfds) && !ReadLineActive():
+				break OuterLoop
 			}
 		}
 	}
@@ -298,6 +331,11 @@ func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 	}
 
 	return
+}
+
+func (ui *NCursesUI) CancelGetInput() error {
+	_, err := ui.pipe.write.Write([]byte{0})
+	return err
 }
 
 func (ui *NCursesUI) ShowError(err error) {

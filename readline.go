@@ -10,6 +10,8 @@ package main
 //
 // static void grv_init_readline() {
 // 	rl_redisplay_function = grv_readline_update_display;
+//	rl_catch_signals = 0;
+//	rl_catch_sigwinch = 0;
 // }
 import "C"
 

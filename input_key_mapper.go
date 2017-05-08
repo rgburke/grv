@@ -140,6 +140,7 @@ func (inputKeyMapper *InputKeyMapper) GetKeyInput() (key string, err error) {
 		case err != nil:
 			return key, err
 		case keyPressEvent == UI_NO_KEY:
+			return key, err
 		case inputKeyMapper.isProcessingUTF8Char():
 			err = inputKeyMapper.processUTF8ContinuationByte(keyPressEvent)
 		case isMappedKey:

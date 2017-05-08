@@ -2,7 +2,10 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -139,6 +142,13 @@ func (grv *GRV) Free() {
 	grv.repoData.Free()
 }
 
+func (grv *GRV) End() {
+	log.Info("Stopping GRV")
+
+	close(grv.channels.exitCh)
+	grv.ui.CancelGetInput()
+}
+
 func (grv *GRV) Run() {
 	var waitGroup sync.WaitGroup
 	channels := grv.channels
@@ -149,6 +159,8 @@ func (grv *GRV) Run() {
 	go grv.runDisplayLoop(&waitGroup, channels.exitCh, channels.displayCh, channels.errorCh)
 	waitGroup.Add(1)
 	go grv.runHandlerLoop(&waitGroup, channels.exitCh, channels.displayCh, channels.inputKeyCh, channels.errorCh)
+	waitGroup.Add(1)
+	go grv.runSignalHandlerLoop(&waitGroup, channels.exitCh)
 
 	channels.displayCh <- true
 
@@ -157,7 +169,7 @@ func (grv *GRV) Run() {
 	log.Info("All loops finished")
 }
 
-func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, inputKeyCh chan<- string, errorCh chan<- error) {
+func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan bool, inputKeyCh chan<- string, errorCh chan<- error) {
 	defer waitGroup.Done()
 	defer log.Info("Input loop stopping")
 	log.Info("Starting input loop")
@@ -166,11 +178,7 @@ func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, inpu
 		key, err := grv.input.GetKeyInput()
 		if err != nil {
 			errorCh <- err
-		} else if key == "q" {
-			log.Infof("Received exit key %v, now closing exit channel", key)
-			close(exitCh)
-			return
-		} else {
+		} else if key != "" {
 			log.Debugf("Received keypress from UI %v", key)
 
 			select {
@@ -178,6 +186,14 @@ func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan<- bool, inpu
 			default:
 				log.Errorf("Unable to add keypress %v to input channel", key)
 			}
+		}
+
+		select {
+		case _, ok := <-exitCh:
+			if !ok {
+				return
+			}
+		default:
 		}
 	}
 }
@@ -244,7 +260,9 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 				action, keystring := grv.inputBuffer.Process(viewHierarchy)
 
 				if action != ACTION_NONE {
-					if err := grv.view.HandleAction(action); err != nil {
+					if action == ACTION_EXIT {
+						grv.End()
+					} else if err := grv.view.HandleAction(action); err != nil {
 						errorCh <- err
 					}
 				} else if keystring != "" {
@@ -254,6 +272,34 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 				} else {
 					break
 				}
+			}
+		case _, ok := <-exitCh:
+			if !ok {
+				return
+			}
+		}
+	}
+}
+
+func (grv *GRV) runSignalHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool) {
+	defer waitGroup.Done()
+	defer log.Info("Signal handler loop stopping")
+	log.Info("Signal handler loop starting")
+
+	signalCh := make(chan os.Signal, 1)
+
+	signal.Notify(signalCh, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGWINCH)
+
+	for {
+		select {
+		case signal := <-signalCh:
+			log.Debugf("Caught signal: %v", signal)
+
+			switch signal {
+			case syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP:
+				grv.End()
+				return
+			case syscall.SIGWINCH:
 			}
 		case _, ok := <-exitCh:
 			if !ok {

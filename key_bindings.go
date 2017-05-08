@@ -8,6 +8,8 @@ type Action int
 
 const (
 	ACTION_NONE Action = iota
+	ACTION_EXIT
+	ACTION_PROMPT
 	ACTION_NEXT_LINE
 	ACTION_PREV_LINE
 	ACTION_SCROLL_RIGHT
@@ -15,11 +17,12 @@ const (
 	ACTION_SELECT
 	ACTION_NEXT_VIEW
 	ACTION_PREV_VIEW
-	ACTION_PROMPT
 )
 
 var actionKeys = map[string]Action{
 	"<grv-nop>":          ACTION_NONE,
+	"<grv-exit>":         ACTION_EXIT,
+	"<grv-prompt>":       ACTION_PROMPT,
 	"<grv-next-line>":    ACTION_NEXT_LINE,
 	"<grv-prev-line>":    ACTION_PREV_LINE,
 	"<grv-scroll-right>": ACTION_SCROLL_RIGHT,
@@ -27,7 +30,6 @@ var actionKeys = map[string]Action{
 	"<grv-select>":       ACTION_SELECT,
 	"<grv-next-view>":    ACTION_NEXT_VIEW,
 	"<grv-prev-view>":    ACTION_PREV_VIEW,
-	"<grv-prompt>":       ACTION_PROMPT,
 }
 
 type ViewHierarchy []ViewId
@@ -122,6 +124,9 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 		keyBindingManager.SetActionBinding(VIEW_ALL, actionKey, action)
 	}
 
+	keyBindingManager.SetActionBinding(VIEW_MAIN, "q", ACTION_EXIT)
+	keyBindingManager.SetActionBinding(VIEW_MAIN, PROMPT_TEXT, ACTION_PROMPT)
+
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Up>", ACTION_PREV_LINE)
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Down>", ACTION_NEXT_LINE)
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Right>", ACTION_SCROLL_RIGHT)
@@ -129,7 +134,6 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Return>", ACTION_SELECT)
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Tab>", ACTION_NEXT_VIEW)
 
-	keyBindingManager.SetActionBinding(VIEW_MAIN, PROMPT_TEXT, ACTION_PROMPT)
 }
 
 func isValidAction(action string) bool {
