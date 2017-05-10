@@ -10,10 +10,11 @@ import (
 )
 
 const (
-	CF_DEFAULT_CONFIG_DIR  = "/.config"
-	CF_GRV_CONFIG_FILE     = "/grv/grvrc"
-	CV_TAB_WIDTH_MIN_VALUE = 1
-	CV_THEME_DEFALT_VALUE  = "default"
+	CF_DEFAULT_CONFIG_HOME_DIR = "/.config"
+	CF_GRV_CONFIG_DIR          = "/grv"
+	CF_GRVRC_FILE              = "/grvrc"
+	CV_TAB_WIDTH_MIN_VALUE     = 1
+	CV_THEME_DEFALT_VALUE      = "default"
 
 	CV_ALL_VIEW        = "All"
 	CV_MAIN_VIEW       = "MainView"
@@ -90,6 +91,7 @@ type Config interface {
 	GetFloat(ConfigVariable) float64
 	GetTheme() Theme
 	AddOnChangeListener(ConfigVariable, ConfigVariableOnChangeListener)
+	ConfigDir() string
 }
 
 type ConfigSetter interface {
@@ -112,9 +114,10 @@ type ConfigurationVariable struct {
 }
 
 type Configuration struct {
-	variables   map[ConfigVariable]*ConfigurationVariable
-	themes      map[string]MutableTheme
-	keyBindings KeyBindings
+	variables    map[ConfigVariable]*ConfigurationVariable
+	themes       map[string]MutableTheme
+	keyBindings  KeyBindings
+	grvConfigDir string
 }
 
 func NewConfiguration(keyBindings KeyBindings) *Configuration {
@@ -142,9 +145,9 @@ func NewConfiguration(keyBindings KeyBindings) *Configuration {
 }
 
 func (config *Configuration) Initialise() []error {
-	configHome, configHomeSet := os.LookupEnv("XDG_CONFIG_HOME")
+	configHomeDir, configHomeDirSet := os.LookupEnv("XDG_CONFIG_HOME")
 
-	if !configHomeSet {
+	if !configHomeDirSet {
 		log.Debug("XDG_CONFIG_HOME not set")
 		home, homeSet := os.LookupEnv("HOME")
 
@@ -154,12 +157,21 @@ func (config *Configuration) Initialise() []error {
 		}
 
 		log.Debugf("HOME directory: %v", home)
-		configHome = home + CF_DEFAULT_CONFIG_DIR
+		configHomeDir = home + CF_DEFAULT_CONFIG_HOME_DIR
 	} else {
-		log.Debugf("XDG_CONFIG_HOME: %v", configHome)
+		log.Debugf("XDG_CONFIG_HOME: %v", configHomeDir)
 	}
 
-	grvConfig := configHome + CF_GRV_CONFIG_FILE
+	grvConfigDir := configHomeDir + CF_GRV_CONFIG_DIR
+
+	if err := os.MkdirAll(grvConfigDir, 0755); err != nil {
+		log.Errorf("Unable to create config home directory %v: %v", grvConfigDir, err)
+		return nil
+	}
+
+	config.grvConfigDir = grvConfigDir
+
+	grvConfig := grvConfigDir + CF_GRVRC_FILE
 
 	if _, err := os.Stat(grvConfig); os.IsNotExist(err) {
 		log.Infof("No config file found at: %v", grvConfig)
@@ -173,6 +185,10 @@ func (config *Configuration) Initialise() []error {
 	}
 
 	return errors
+}
+
+func (config *Configuration) ConfigDir() string {
+	return config.grvConfigDir
 }
 
 func (config *Configuration) LoadFile(filePath string) []error {

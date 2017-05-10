@@ -23,6 +23,14 @@ type GRVChannels struct {
 	errorCh    chan error
 }
 
+func (grvChannels GRVChannels) Channels() *Channels {
+	return &Channels{
+		displayCh: grvChannels.displayCh,
+		exitCh:    grvChannels.exitCh,
+		errorCh:   grvChannels.errorCh,
+	}
+}
+
 type Channels struct {
 	displayCh chan<- bool
 	exitCh    <-chan bool
@@ -87,18 +95,13 @@ func NewGRV() *GRV {
 		errorCh:    make(chan error, GRV_ERROR_BUFFER_SIZE),
 	}
 
-	channels := &Channels{
-		displayCh: grvChannels.displayCh,
-		exitCh:    grvChannels.exitCh,
-		errorCh:   grvChannels.errorCh,
-	}
+	channels := grvChannels.Channels()
 
 	repoDataLoader := NewRepoDataLoader(channels)
 	repoData := NewRepositoryData(repoDataLoader, channels)
 	keyBindings := NewKeyBindingManager()
 	config := NewConfiguration(keyBindings)
 	ui := NewNcursesDisplay(config)
-	InitReadLine(channels, ui)
 
 	return &GRV{
 		repoData:    repoData,
@@ -132,12 +135,15 @@ func (grv *GRV) Initialise(repoPath string) (err error) {
 		}
 	}
 
+	InitReadLine(grv.channels.Channels(), grv.ui, grv.config)
+
 	return
 }
 
 func (grv *GRV) Free() {
 	log.Info("Freeing GRV")
 
+	FreeReadLine()
 	grv.ui.Free()
 	grv.repoData.Free()
 }
