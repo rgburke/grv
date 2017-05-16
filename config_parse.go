@@ -73,23 +73,34 @@ func (mapCommand *MapCommand) Equal(command Command) bool {
 			(mapCommand.view == nil && other.view == nil))
 }
 
+type QuitCommand struct{}
+
+func (quitCommand *QuitCommand) Equal(command Command) bool {
+	_, ok := command.(*QuitCommand)
+	return ok
+}
+
 type CommandDescriptor struct {
 	tokenTypes  []TokenType
 	constructor CommandConstructor
 }
 
-var commandDescriptors = map[string]CommandDescriptor{
-	"set": CommandDescriptor{
+var commandDescriptors = map[string]*CommandDescriptor{
+	"set": &CommandDescriptor{
 		tokenTypes:  []TokenType{TK_WORD, TK_WORD},
 		constructor: setCommandConstructor,
 	},
-	"theme": CommandDescriptor{
+	"theme": &CommandDescriptor{
 		tokenTypes:  []TokenType{TK_OPTION, TK_WORD, TK_OPTION, TK_WORD, TK_OPTION, TK_WORD, TK_OPTION, TK_WORD},
 		constructor: themeCommandConstructor,
 	},
-	"map": CommandDescriptor{
+	"map": &CommandDescriptor{
 		tokenTypes:  []TokenType{TK_WORD, TK_WORD, TK_WORD},
 		constructor: mapCommandConstructor,
+	},
+	"q": &CommandDescriptor{
+		tokenTypes:  []TokenType{},
+		constructor: quitCommandConstructor,
 	},
 }
 
@@ -267,4 +278,8 @@ func mapCommandConstructor(parser *Parser, tokens []*Token) (Command, error) {
 		from: tokens[1],
 		to:   tokens[2],
 	}, nil
+}
+
+func quitCommandConstructor(parser *Parser, tokens []*Token) (Command, error) {
+	return &QuitCommand{}, nil
 }

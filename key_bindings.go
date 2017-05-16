@@ -124,7 +124,6 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 		keyBindingManager.SetActionBinding(VIEW_ALL, actionKey, action)
 	}
 
-	keyBindingManager.SetActionBinding(VIEW_MAIN, "q", ACTION_EXIT)
 	keyBindingManager.SetActionBinding(VIEW_MAIN, PROMPT_TEXT, ACTION_PROMPT)
 
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Up>", ACTION_PREV_LINE)

@@ -118,14 +118,16 @@ type Configuration struct {
 	themes       map[string]MutableTheme
 	keyBindings  KeyBindings
 	grvConfigDir string
+	channels     *Channels
 }
 
-func NewConfiguration(keyBindings KeyBindings) *Configuration {
+func NewConfiguration(keyBindings KeyBindings, channels *Channels) *Configuration {
 	config := &Configuration{
 		keyBindings: keyBindings,
 		themes: map[string]MutableTheme{
 			CV_THEME_DEFALT_VALUE: NewDefaultTheme(),
 		},
+		channels: channels,
 	}
 
 	config.variables = map[ConfigVariable]*ConfigurationVariable{
@@ -246,6 +248,8 @@ func (config *Configuration) processCommand(command Command, inputSource string)
 		err = config.processThemeCommand(command, inputSource)
 	case *MapCommand:
 		err = config.processMapCommand(command, inputSource)
+	case *QuitCommand:
+		err = config.processQuitCommand(command)
 	default:
 		log.Errorf("Unknown command type %T", command)
 	}
@@ -358,6 +362,14 @@ func (config *Configuration) processMapCommand(mapCommand *MapCommand, inputSour
 
 	config.keyBindings.SetKeystringBinding(viewId, mapCommand.from.value, mapCommand.to.value)
 
+	log.Infof("Mapped \"%v\" to \"%v\" for view %v", mapCommand.from.value, mapCommand.to.value, mapCommand.view.value)
+
+	return
+}
+
+func (config *Configuration) processQuitCommand(quitCommand *QuitCommand) (err error) {
+	log.Info("Processed quit command")
+	config.channels.DoAction(ACTION_EXIT)
 	return
 }
 

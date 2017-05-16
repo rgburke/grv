@@ -11,6 +11,7 @@ import (
 
 const (
 	GRV_INPUT_BUFFER_SIZE   = 100
+	GRV_ACTION_BUFFER_SIZE  = 100
 	GRV_ERROR_BUFFER_SIZE   = 100
 	GRV_DISPLAY_BUFFER_SIZE = 50
 	GRV_MAX_DRAW_FREQUENCY  = time.Millisecond * 50
@@ -19,6 +20,7 @@ const (
 type GRVChannels struct {
 	exitCh     chan bool
 	inputKeyCh chan string
+	actionCh   chan Action
 	displayCh  chan bool
 	errorCh    chan error
 }
@@ -28,6 +30,7 @@ func (grvChannels GRVChannels) Channels() *Channels {
 		displayCh: grvChannels.displayCh,
 		exitCh:    grvChannels.exitCh,
 		errorCh:   grvChannels.errorCh,
+		actionCh:  grvChannels.actionCh,
 	}
 }
 
@@ -35,6 +38,7 @@ type Channels struct {
 	displayCh chan<- bool
 	exitCh    <-chan bool
 	errorCh   chan<- error
+	actionCh  chan<- Action
 }
 
 type GRV struct {
@@ -87,10 +91,17 @@ func (channels *Channels) ReportErrors(errors []error) {
 	}
 }
 
+func (channels *Channels) DoAction(action Action) {
+	if action != ACTION_NONE {
+		channels.actionCh <- action
+	}
+}
+
 func NewGRV() *GRV {
 	grvChannels := GRVChannels{
 		exitCh:     make(chan bool),
 		inputKeyCh: make(chan string, GRV_INPUT_BUFFER_SIZE),
+		actionCh:   make(chan Action, GRV_ACTION_BUFFER_SIZE),
 		displayCh:  make(chan bool, GRV_DISPLAY_BUFFER_SIZE),
 		errorCh:    make(chan error, GRV_ERROR_BUFFER_SIZE),
 	}
@@ -100,7 +111,7 @@ func NewGRV() *GRV {
 	repoDataLoader := NewRepoDataLoader(channels)
 	repoData := NewRepositoryData(repoDataLoader, channels)
 	keyBindings := NewKeyBindingManager()
-	config := NewConfiguration(keyBindings)
+	config := NewConfiguration(keyBindings, channels)
 	ui := NewNcursesDisplay(config)
 
 	return &GRV{
@@ -164,7 +175,7 @@ func (grv *GRV) Run() {
 	waitGroup.Add(1)
 	go grv.runDisplayLoop(&waitGroup, channels.exitCh, channels.displayCh, channels.errorCh)
 	waitGroup.Add(1)
-	go grv.runHandlerLoop(&waitGroup, channels.exitCh, channels.displayCh, channels.inputKeyCh, channels.errorCh)
+	go grv.runHandlerLoop(&waitGroup, channels.exitCh, channels.displayCh, channels.inputKeyCh, channels.actionCh, channels.errorCh)
 	waitGroup.Add(1)
 	go grv.runSignalHandlerLoop(&waitGroup, channels.exitCh)
 
@@ -251,7 +262,7 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	}
 }
 
-func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, displayCh chan<- bool, inputKeyCh <-chan string, errorCh chan<- error) {
+func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, displayCh chan<- bool, inputKeyCh <-chan string, actionCh chan Action, errorCh chan<- error) {
 	defer waitGroup.Done()
 	defer log.Info("Handler loop stopping")
 	log.Info("Starting handler loop")
@@ -266,11 +277,7 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 				action, keystring := grv.inputBuffer.Process(viewHierarchy)
 
 				if action != ACTION_NONE {
-					if action == ACTION_EXIT {
-						grv.End()
-					} else if err := grv.view.HandleAction(action); err != nil {
-						errorCh <- err
-					}
+					actionCh <- action
 				} else if keystring != "" {
 					if err := grv.view.HandleKeyPress(keystring); err != nil {
 						errorCh <- err
@@ -278,6 +285,12 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 				} else {
 					break
 				}
+			}
+		case action := <-actionCh:
+			if action == ACTION_EXIT {
+				grv.End()
+			} else if err := grv.view.HandleAction(action); err != nil {
+				errorCh <- err
 			}
 		case _, ok := <-exitCh:
 			if !ok {
