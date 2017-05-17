@@ -124,14 +124,26 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 		keyBindingManager.SetActionBinding(VIEW_ALL, actionKey, action)
 	}
 
+	// Main View
 	keyBindingManager.SetActionBinding(VIEW_MAIN, PROMPT_TEXT, ACTION_PROMPT)
 
+	// All Views
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Up>", ACTION_PREV_LINE)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "k", ACTION_PREV_LINE)
+
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Down>", ACTION_NEXT_LINE)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "j", ACTION_NEXT_LINE)
+
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Right>", ACTION_SCROLL_RIGHT)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "l", ACTION_SCROLL_RIGHT)
+
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Left>", ACTION_SCROLL_LEFT)
-	keyBindingManager.SetActionBinding(VIEW_ALL, "<Return>", ACTION_SELECT)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "h", ACTION_SCROLL_LEFT)
+
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Tab>", ACTION_NEXT_VIEW)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "<C-w><C-w>", ACTION_NEXT_VIEW)
+
+	keyBindingManager.SetActionBinding(VIEW_ALL, "<Return>", ACTION_SELECT)
 
 }
 
