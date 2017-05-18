@@ -60,3 +60,21 @@ func (viewPos *ViewPos) MovePageLeft(cols uint) (changed bool) {
 
 	return
 }
+
+func (viewPos *ViewPos) MoveToFirstLine() (changed bool) {
+	if viewPos.activeRowIndex > 0 {
+		viewPos.activeRowIndex = 0
+		changed = true
+	}
+
+	return
+}
+
+func (viewPos *ViewPos) MoveToLastLine(rows uint) (changed bool) {
+	if rows > 0 && viewPos.activeRowIndex+1 != rows {
+		viewPos.activeRowIndex = rows - 1
+		changed = true
+	}
+
+	return
+}

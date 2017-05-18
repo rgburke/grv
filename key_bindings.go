@@ -14,6 +14,8 @@ const (
 	ACTION_PREV_LINE
 	ACTION_SCROLL_RIGHT
 	ACTION_SCROLL_LEFT
+	ACTION_FIRST_LINE
+	ACTION_LAST_LINE
 	ACTION_SELECT
 	ACTION_NEXT_VIEW
 	ACTION_PREV_VIEW
@@ -27,6 +29,8 @@ var actionKeys = map[string]Action{
 	"<grv-prev-line>":    ACTION_PREV_LINE,
 	"<grv-scroll-right>": ACTION_SCROLL_RIGHT,
 	"<grv-scroll-left>":  ACTION_SCROLL_LEFT,
+	"<grv-first-line>":   ACTION_FIRST_LINE,
+	"<grv-last-line>":    ACTION_LAST_LINE,
 	"<grv-select>":       ACTION_SELECT,
 	"<grv-next-view>":    ACTION_NEXT_VIEW,
 	"<grv-prev-view>":    ACTION_PREV_VIEW,
@@ -139,6 +143,9 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Left>", ACTION_SCROLL_LEFT)
 	keyBindingManager.SetActionBinding(VIEW_ALL, "h", ACTION_SCROLL_LEFT)
+
+	keyBindingManager.SetActionBinding(VIEW_ALL, "gg", ACTION_FIRST_LINE)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "G", ACTION_LAST_LINE)
 
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Tab>", ACTION_NEXT_VIEW)
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<C-w><C-w>", ACTION_NEXT_VIEW)

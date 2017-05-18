@@ -49,6 +49,8 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 			ACTION_NEXT_LINE:    MoveDownCommit,
 			ACTION_SCROLL_RIGHT: ScrollCommitViewRight,
 			ACTION_SCROLL_LEFT:  ScrollCommitViewLeft,
+			ACTION_FIRST_LINE:   MoveToFirstCommit,
+			ACTION_LAST_LINE:    MoveToLastCommit,
 		},
 	}
 }
@@ -324,6 +326,31 @@ func ScrollCommitViewLeft(commitView *CommitView) (err error) {
 
 	if viewPos.MovePageLeft(commitView.viewDimension.cols) {
 		log.Debugf("Scrolling left. View starts at column %v", viewPos.viewStartColumn)
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func MoveToFirstCommit(commitView *CommitView) (err error) {
+	viewPos := commitView.commitViewPos[commitView.activeRef]
+
+	if viewPos.MoveToFirstLine() {
+		log.Debug("Moving up to first commit")
+		commitView.selectCommit(viewPos.activeRowIndex)
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func MoveToLastCommit(commitView *CommitView) (err error) {
+	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
+	viewPos := commitView.commitViewPos[commitView.activeRef]
+
+	if viewPos.MoveToLastLine(commitSetState.commitNum) {
+		log.Debug("Moving to last commit")
+		commitView.selectCommit(viewPos.activeRowIndex)
 		commitView.channels.UpdateDisplay()
 	}
 

@@ -96,10 +96,12 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 		viewPos:     NewViewPos(),
 		commitDiffs: make(map[*Commit]*Diff),
 		handlers: map[Action]DiffViewHandler{
-			ACTION_PREV_LINE:    MoveUpLine,
-			ACTION_NEXT_LINE:    MoveDownLine,
+			ACTION_PREV_LINE:    MoveUpDiffLine,
+			ACTION_NEXT_LINE:    MoveDownDiffLine,
 			ACTION_SCROLL_RIGHT: ScrollDiffViewRight,
 			ACTION_SCROLL_LEFT:  ScrollDiffViewLeft,
+			ACTION_FIRST_LINE:   MoveToFirstDiffLine,
+			ACTION_LAST_LINE:    MoveToLastDiffLine,
 		},
 	}
 }
@@ -247,7 +249,7 @@ func (diffView *DiffView) HandleAction(action Action) (err error) {
 	return
 }
 
-func MoveDownLine(diffView *DiffView) (err error) {
+func MoveDownDiffLine(diffView *DiffView) (err error) {
 	diff := diffView.commitDiffs[diffView.activeCommit]
 	lineNum := uint(len(diff.lines))
 	viewPos := diffView.viewPos
@@ -260,7 +262,7 @@ func MoveDownLine(diffView *DiffView) (err error) {
 	return
 }
 
-func MoveUpLine(diffView *DiffView) (err error) {
+func MoveUpDiffLine(diffView *DiffView) (err error) {
 	viewPos := diffView.viewPos
 
 	if viewPos.MoveLineUp() {
@@ -285,6 +287,30 @@ func ScrollDiffViewLeft(diffView *DiffView) (err error) {
 
 	if viewPos.MovePageLeft(diffView.viewDimension.cols) {
 		log.Debugf("Scrolling left. View starts at column %v", viewPos.viewStartColumn)
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func MoveToFirstDiffLine(diffView *DiffView) (err error) {
+	viewPos := diffView.viewPos
+
+	if viewPos.MoveToFirstLine() {
+		log.Debugf("Moving to first line in diff view")
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func MoveToLastDiffLine(diffView *DiffView) (err error) {
+	diff := diffView.commitDiffs[diffView.activeCommit]
+	lineNum := uint(len(diff.lines))
+	viewPos := diffView.viewPos
+
+	if viewPos.MoveToLastLine(lineNum) {
+		log.Debugf("Moving to last line in diff view")
 		diffView.channels.UpdateDisplay()
 	}
 

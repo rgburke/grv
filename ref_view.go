@@ -84,6 +84,8 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 			ACTION_NEXT_LINE:    MoveDownRef,
 			ACTION_SCROLL_RIGHT: ScrollRefViewRight,
 			ACTION_SCROLL_LEFT:  ScrollRefViewLeft,
+			ACTION_FIRST_LINE:   MoveToFirstRef,
+			ACTION_LAST_LINE:    MoveToLastRef,
 			ACTION_SELECT:       SelectRef,
 		},
 	}
@@ -459,6 +461,29 @@ func ScrollRefViewLeft(refView *RefView) (err error) {
 
 	if viewPos.MovePageLeft(refView.viewDimension.cols) {
 		log.Debugf("Scrolling left. View starts at column %v", viewPos.viewStartColumn)
+		refView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func MoveToFirstRef(refView *RefView) (err error) {
+	viewPos := refView.viewPos
+
+	if viewPos.MoveToFirstLine() {
+		log.Debugf("Moving to first ref")
+		refView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func MoveToLastRef(refView *RefView) (err error) {
+	viewPos := refView.viewPos
+	renderedRefNum := uint(len(refView.renderedRefs))
+
+	if viewPos.MoveToLastLine(renderedRefNum) {
+		log.Debugf("Moving to last ref")
 		refView.channels.UpdateDisplay()
 	}
 
