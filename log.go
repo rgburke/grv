@@ -95,7 +95,7 @@ func InitialiseLogging(logLevel, logFilePath string) {
 		log.Fatalf("Invalid logLevel: %v", logLevel)
 	}
 
-	file, err := os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
+	file, err := os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatalf("Unable to open log file %v for writing: %v", logFilePath, err)
 	}
