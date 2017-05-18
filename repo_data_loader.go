@@ -251,9 +251,41 @@ func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) 
 }
 
 func (repoDataLoader *RepoDataLoader) Commit(oid *Oid) (commit *Commit, err error) {
-	rawCommit, err := repoDataLoader.repo.LookupCommit(oid.oid)
+	object, err := repoDataLoader.repo.Lookup(oid.oid)
 	if err != nil {
-		log.Debugf("Error when attempting to lookup commit with ID %v", oid)
+		log.Debugf("Error when attempting to lookup object with ID %v", oid)
+		return
+	}
+
+	var rawCommit *git.Commit
+
+	switch object.Type() {
+	case git.ObjectCommit:
+		rawCommit, err = object.AsCommit()
+		if err != nil {
+			log.Debugf("Error when attempting convert object with ID %v to commit", oid)
+			return
+		}
+	case git.ObjectTag:
+		var tag *git.Tag
+		tag, err = object.AsTag()
+		if err != nil {
+			log.Debugf("Error when attempting convert object with ID %v to tag", oid)
+			return
+		}
+
+		if tag.TargetType() != git.ObjectCommit {
+			err = fmt.Errorf("Tag with ID %v does not point to a commit")
+			return
+		}
+
+		rawCommit, err = tag.Target().AsCommit()
+		if err != nil {
+			log.Debugf("Error when attempting convert tag with ID %v to commit", oid)
+			return
+		}
+	default:
+		log.Debugf("Unable to convert object with type %v and ID %v to a commit", object.Type().String(), oid)
 		return
 	}
 
