@@ -58,7 +58,7 @@ var keyMap = map[gc.Key]string{
 	gc.KEY_B2:        "<B2>",
 	gc.KEY_C1:        "<C1>",
 	gc.KEY_C3:        "<C3>",
-	gc.KEY_BTAB:      "<Btab>",
+	gc.KEY_BTAB:      "<S-Tab>",
 	gc.KEY_BEG:       "<Beg>",
 	gc.KEY_CANCEL:    "<Cancel>",
 	gc.KEY_CLOSE:     "<Close>",

@@ -150,10 +150,15 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 	keyBindingManager.SetActionBinding(VIEW_ALL, "G", ACTION_LAST_LINE)
 
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Tab>", ACTION_NEXT_VIEW)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "<C-w>w", ACTION_NEXT_VIEW)
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<C-w><C-w>", ACTION_NEXT_VIEW)
+
+	keyBindingManager.SetActionBinding(VIEW_ALL, "<S-Tab>", ACTION_PREV_VIEW)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "<C-w>W", ACTION_PREV_VIEW)
 
 	keyBindingManager.SetActionBinding(VIEW_ALL, "f", ACTION_FULL_SCREEN_VIEW)
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<C-w>o", ACTION_FULL_SCREEN_VIEW)
+	keyBindingManager.SetActionBinding(VIEW_ALL, "<C-w><C-o>", ACTION_FULL_SCREEN_VIEW)
 
 	keyBindingManager.SetActionBinding(VIEW_ALL, "<Return>", ACTION_SELECT)
 }

@@ -169,6 +169,19 @@ func (historyView *HistoryView) HandleAction(action Action) (err error) {
 		historyView.OnActiveChange(true)
 		historyView.channels.UpdateDisplay()
 		return
+	case ACTION_PREV_VIEW:
+		historyView.lock.Lock()
+
+		if historyView.activeViewPos == 0 {
+			historyView.activeViewPos = uint(len(historyView.views)) - 1
+		} else {
+			historyView.activeViewPos--
+		}
+
+		historyView.lock.Unlock()
+		historyView.OnActiveChange(true)
+		historyView.channels.UpdateDisplay()
+		return
 	case ACTION_FULL_SCREEN_VIEW:
 		historyView.lock.Lock()
 		defer historyView.lock.Unlock()
