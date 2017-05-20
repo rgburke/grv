@@ -64,10 +64,23 @@ func (signalPipe SignalPipe) ReadFd() int {
 	return int(signalPipe.read.Fd())
 }
 
+type NCursesWindow struct {
+	*gc.Window
+	hidden bool
+}
+
+func (nwin *NCursesWindow) Hidden() bool {
+	return nwin.hidden
+}
+
+func (nwin *NCursesWindow) SetHidden(hidden bool) {
+	nwin.hidden = hidden
+}
+
 type NCursesUI struct {
-	windows     map[*Window]*gc.Window
+	windows     map[*Window]*NCursesWindow
 	windowsLock sync.RWMutex
-	stdscr      *gc.Window
+	stdscr      *NCursesWindow
 	config      Config
 	colors      map[ThemeColor]int16
 	pipe        SignalPipe
@@ -75,7 +88,7 @@ type NCursesUI struct {
 
 func NewNcursesDisplay(config Config) *NCursesUI {
 	return &NCursesUI{
-		windows: make(map[*Window]*gc.Window),
+		windows: make(map[*Window]*NCursesWindow),
 		config:  config,
 		colors: map[ThemeColor]int16{
 			COLOR_NONE:    -1,
@@ -98,7 +111,7 @@ func (ui *NCursesUI) Free() {
 		nwin.Delete()
 	}
 
-	ui.windows = make(map[*Window]*gc.Window)
+	ui.windows = make(map[*Window]*NCursesWindow)
 
 	log.Info("Ending NCurses")
 	gc.End()
@@ -131,10 +144,12 @@ func (ui *NCursesUI) Initialise() (err error) {
 }
 
 func (ui *NCursesUI) initialiseNCurses() (err error) {
-	ui.stdscr, err = gc.Init()
+	stdscr, err := gc.Init()
 	if err != nil {
 		return
 	}
+
+	ui.stdscr = &NCursesWindow{Window: stdscr}
 
 	if gc.HasColors() {
 		gc.StartColor()
@@ -215,12 +230,14 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 		if _, ok := winMap[win]; ok {
 			nwin.Resize(int(win.rows), int(win.cols))
 			nwin.MoveWindow(int(win.startRow), int(win.startCol))
+			nwin.SetHidden(false)
 			log.Debugf("Moving NCurses window %v to row:%v,col:%v", win.Id(), win.startRow, win.startCol)
-		} else {
+		} else if !nwin.Hidden() {
+			nwin.Erase()
 			nwin.Resize(0, 0)
-			nwin.MoveWindow(0, 0)
 			nwin.NoutRefresh()
-			log.Debugf("Hiding NCurses window %v", win.Id())
+			nwin.SetHidden(true)
+			log.Debugf("Hiding NCurses window %v - %v:%v", win.Id())
 		}
 	}
 
@@ -236,13 +253,16 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 	if len(newWins) > 0 {
 		ui.windowsLock.Lock()
 		defer ui.windowsLock.Unlock()
-		var nwin *gc.Window
+		var nwinRaw *gc.Window
+		var nwin *NCursesWindow
 
 		for _, win := range newWins {
 			log.Debugf("Creating new NCurses window %v with position row:%v,col:%v and dimensions rows:%v,cols:%v", win.Id(), win.startRow, win.startCol, win.rows, win.cols)
-			if nwin, err = gc.NewWindow(int(win.rows), int(win.cols), int(win.startRow), int(win.startCol)); err != nil {
+			if nwinRaw, err = gc.NewWindow(int(win.rows), int(win.cols), int(win.startRow), int(win.startCol)); err != nil {
 				return
 			}
+
+			nwin = &NCursesWindow{Window: nwinRaw}
 
 			if err = nwin.Keypad(true); err != nil {
 				return
@@ -285,7 +305,7 @@ func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
 	return
 }
 
-func drawWindow(win *Window, nwin *gc.Window) {
+func drawWindow(win *Window, nwin *NCursesWindow) {
 	log.Debugf("Drawing window %v", win.Id())
 
 	for rowIndex := uint(0); rowIndex < win.rows; rowIndex++ {
@@ -336,7 +356,7 @@ func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 		}
 	}
 
-	var activeWin *gc.Window
+	var activeWin *NCursesWindow
 
 	ui.windowsLock.RLock()
 	for _, nwin := range ui.windows {

@@ -122,10 +122,10 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 
 	rows := win.Rows() - 2
 	viewPos := diffView.viewPos
-	viewPos.DetermineViewStartRow(rows)
-
 	diff := diffView.commitDiffs[diffView.activeCommit]
 	lineNum := uint(len(diff.lines))
+	viewPos.DetermineViewStartRow(rows, lineNum)
+
 	lineIndex := viewPos.viewStartRowIndex
 	startColumn := viewPos.viewStartColumn
 

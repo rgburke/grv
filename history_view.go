@@ -10,17 +10,22 @@ const (
 )
 
 type HistoryView struct {
-	channels      *Channels
-	refView       WindowView
-	commitView    WindowView
-	diffView      WindowView
-	refViewWin    *Window
-	commitViewWin *Window
-	diffViewWin   *Window
-	views         []WindowView
-	activeViewPos uint
-	active        bool
-	lock          sync.Mutex
+	channels             *Channels
+	refView              WindowView
+	commitView           WindowView
+	diffView             WindowView
+	views                []WindowView
+	viewWins             map[WindowView]*Window
+	activeViewPos        uint
+	active               bool
+	fullScreenActiveView bool
+	lock                 sync.Mutex
+}
+
+type ViewLayout struct {
+	viewDimension ViewDimension
+	startRow      uint
+	startCol      uint
 }
 
 func NewHistoryView(repoData RepoData, channels *Channels, config Config) *HistoryView {
@@ -28,18 +33,24 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 	commitView := NewCommitView(repoData, channels)
 	diffView := NewDiffView(repoData, channels)
 
+	refViewWin := NewWindow("refView", config)
+	commitViewWin := NewWindow("commitView", config)
+	diffViewWin := NewWindow("diffView", config)
+
 	refView.RegisterRefListener(commitView)
 	commitView.RegisterCommitListner(diffView)
 
 	return &HistoryView{
-		channels:      channels,
-		refView:       refView,
-		commitView:    commitView,
-		diffView:      diffView,
-		refViewWin:    NewWindow("refView", config),
-		commitViewWin: NewWindow("commitView", config),
-		diffViewWin:   NewWindow("diffView", config),
-		views:         []WindowView{refView, commitView, diffView},
+		channels:   channels,
+		refView:    refView,
+		commitView: commitView,
+		diffView:   diffView,
+		views:      []WindowView{refView, commitView, diffView},
+		viewWins: map[WindowView]*Window{
+			refView:    refViewWin,
+			commitView: commitViewWin,
+			diffView:   diffViewWin,
+		},
 		activeViewPos: 1,
 	}
 }
@@ -59,6 +70,29 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 	historyView.lock.Lock()
 	defer historyView.lock.Unlock()
 
+	if historyView.fullScreenActiveView {
+		return historyView.renderActiveViewFullScreen(viewDimension)
+	}
+
+	viewLayouts := historyView.determineViewDimensions(viewDimension)
+
+	for view, viewLayout := range viewLayouts {
+		win := historyView.viewWins[view]
+		win.Resize(viewLayout.viewDimension)
+		win.Clear()
+		win.SetPosition(viewLayout.startRow, viewLayout.startCol)
+
+		if err = view.Render(win); err != nil {
+			return
+		}
+
+		wins = append(wins, win)
+	}
+
+	return
+}
+
+func (historyView *HistoryView) determineViewDimensions(viewDimension ViewDimension) map[WindowView]ViewLayout {
 	refViewDim := viewDimension
 	refViewDim.cols = Min(HV_BRANCH_VIEW_WIDTH, viewDimension.cols/2)
 
@@ -73,31 +107,39 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 	log.Debugf("CommitView dimensions: %v", commitViewDim)
 	log.Debugf("DiffView dimensions: %v", diffViewDim)
 
-	historyView.refViewWin.Resize(refViewDim)
-	historyView.commitViewWin.Resize(commitViewDim)
-	historyView.diffViewWin.Resize(diffViewDim)
+	return map[WindowView]ViewLayout{
+		historyView.refView: ViewLayout{
+			viewDimension: refViewDim,
+			startRow:      0,
+			startCol:      0,
+		},
+		historyView.commitView: ViewLayout{
+			viewDimension: commitViewDim,
+			startRow:      0,
+			startCol:      refViewDim.cols,
+		},
+		historyView.diffView: ViewLayout{
+			viewDimension: diffViewDim,
+			startRow:      commitViewDim.rows,
+			startCol:      refViewDim.cols,
+		},
+	}
+}
 
-	historyView.refViewWin.Clear()
-	historyView.commitViewWin.Clear()
-	historyView.diffViewWin.Clear()
+func (historyView *HistoryView) renderActiveViewFullScreen(viewDimension ViewDimension) (wins []*Window, err error) {
+	view := historyView.views[historyView.activeViewPos]
+	win := historyView.viewWins[view]
 
-	if err = historyView.refView.Render(historyView.refViewWin); err != nil {
+	win.Resize(viewDimension)
+	win.Clear()
+	win.SetPosition(0, 0)
+
+	if err = view.Render(win); err != nil {
 		return
 	}
 
-	if err = historyView.commitView.Render(historyView.commitViewWin); err != nil {
-		return
-	}
+	wins = append(wins, win)
 
-	if err = historyView.diffView.Render(historyView.diffViewWin); err != nil {
-		return
-	}
-
-	historyView.refViewWin.SetPosition(0, 0)
-	historyView.commitViewWin.SetPosition(0, refViewDim.cols)
-	historyView.diffViewWin.SetPosition(commitViewDim.rows, refViewDim.cols)
-
-	wins = []*Window{historyView.refViewWin, historyView.commitViewWin, historyView.diffViewWin}
 	return
 }
 
@@ -125,6 +167,13 @@ func (historyView *HistoryView) HandleAction(action Action) (err error) {
 		historyView.activeViewPos %= uint(len(historyView.views))
 		historyView.lock.Unlock()
 		historyView.OnActiveChange(true)
+		historyView.channels.UpdateDisplay()
+		return
+	case ACTION_FULL_SCREEN_VIEW:
+		historyView.lock.Lock()
+		defer historyView.lock.Unlock()
+
+		historyView.fullScreenActiveView = !historyView.fullScreenActiveView
 		historyView.channels.UpdateDisplay()
 		return
 	}

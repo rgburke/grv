@@ -183,13 +183,14 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 
 	refView.viewDimension = win.ViewDimensions()
 
+	renderedRefNum := uint(len(refView.renderedRefs))
 	rows := win.Rows() - 2
 	viewPos := refView.viewPos
-	viewPos.DetermineViewStartRow(rows)
+	viewPos.DetermineViewStartRow(rows, renderedRefNum)
 	refIndex := viewPos.viewStartRowIndex
 	startColumn := viewPos.viewStartColumn
 
-	for winRowIndex := uint(0); winRowIndex < rows && refIndex < uint(len(refView.renderedRefs)); winRowIndex++ {
+	for winRowIndex := uint(0); winRowIndex < rows && refIndex < renderedRefNum; winRowIndex++ {
 		renderedRef := refView.renderedRefs[refIndex]
 
 		themeComponentId, ok := refToTheme[renderedRef.renderedRefType]

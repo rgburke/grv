@@ -73,8 +73,10 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		return fmt.Errorf("No ViewPos exists for oid %v", commitView.activeRef)
 	}
 
+	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
+
 	rows := win.Rows() - 2
-	viewPos.DetermineViewStartRow(rows)
+	viewPos.DetermineViewStartRow(rows, commitSetState.commitNum)
 
 	commitCh, err := commitView.repoData.Commits(commitView.activeRef, viewPos.viewStartRowIndex, rows)
 	if err != nil {
@@ -101,8 +103,6 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 
 		rowIndex++
 	}
-
-	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 
 	if commitSetState.commitNum > 0 {
 		if err = win.SetSelectedRow((viewPos.activeRowIndex-viewPos.viewStartRowIndex)+1, commitView.active); err != nil {
