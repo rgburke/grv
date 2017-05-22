@@ -273,7 +273,7 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 			grv.inputBuffer.Append(key)
 
 			for {
-				viewHierarchy := grv.view.ActiveViewHierarchy()
+				viewHierarchy := grv.view.ActiveViewIdHierarchy()
 				action, keystring := grv.inputBuffer.Process(viewHierarchy)
 
 				if action != ACTION_NONE {

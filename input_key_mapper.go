@@ -16,7 +16,7 @@ const (
 
 var keyMap = map[gc.Key]string{
 	gc.KEY_TAB:       "<Tab>",
-	gc.KEY_RETURN:    "<Return>",
+	gc.KEY_RETURN:    "<Enter>",
 	gc.KEY_DOWN:      "<Down>",
 	gc.KEY_UP:        "<Up>",
 	gc.KEY_LEFT:      "<Left>",

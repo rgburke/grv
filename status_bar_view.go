@@ -85,6 +85,6 @@ func (statusBarView *StatusBarView) RenderStatusBar(RenderWindow) (err error) {
 	return
 }
 
-func (statusBarView *StatusBarView) RenderHelpBar(RenderWindow) (err error) {
+func (statusBarView *StatusBarView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	return
 }

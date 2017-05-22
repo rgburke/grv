@@ -38,6 +38,42 @@ var actionKeys = map[string]Action{
 	"<grv-full-screen-view>": ACTION_FULL_SCREEN_VIEW,
 }
 
+var defaultKeyBindings = map[Action]map[ViewId][]string{
+	ACTION_PROMPT: map[ViewId][]string{
+		VIEW_MAIN: []string{PROMPT_TEXT},
+	},
+	ACTION_PREV_LINE: map[ViewId][]string{
+		VIEW_ALL: []string{"<Up>", "k"},
+	},
+	ACTION_NEXT_LINE: map[ViewId][]string{
+		VIEW_ALL: []string{"<Down>", "j"},
+	},
+	ACTION_SCROLL_RIGHT: map[ViewId][]string{
+		VIEW_ALL: []string{"<Right>", "l"},
+	},
+	ACTION_SCROLL_LEFT: map[ViewId][]string{
+		VIEW_ALL: []string{"<Left>", "h"},
+	},
+	ACTION_FIRST_LINE: map[ViewId][]string{
+		VIEW_ALL: []string{"gg"},
+	},
+	ACTION_LAST_LINE: map[ViewId][]string{
+		VIEW_ALL: []string{"G"},
+	},
+	ACTION_NEXT_VIEW: map[ViewId][]string{
+		VIEW_ALL: []string{"<Tab>", "<C-w>w", "<C-w><C-w>"},
+	},
+	ACTION_PREV_VIEW: map[ViewId][]string{
+		VIEW_ALL: []string{"<S-Tab>", "<C-w>W"},
+	},
+	ACTION_FULL_SCREEN_VIEW: map[ViewId][]string{
+		VIEW_ALL: []string{"f", "<C-w>o", "<C-w><C-o>"},
+	},
+	ACTION_SELECT: map[ViewId][]string{
+		VIEW_ALL: []string{"<Enter>"},
+	},
+}
+
 type ViewHierarchy []ViewId
 
 type BindingType int
@@ -130,40 +166,34 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 		keyBindingManager.SetActionBinding(VIEW_ALL, actionKey, action)
 	}
 
-	// Main View
-	keyBindingManager.SetActionBinding(VIEW_MAIN, PROMPT_TEXT, ACTION_PROMPT)
-
-	// All Views
-	keyBindingManager.SetActionBinding(VIEW_ALL, "<Up>", ACTION_PREV_LINE)
-	keyBindingManager.SetActionBinding(VIEW_ALL, "k", ACTION_PREV_LINE)
-
-	keyBindingManager.SetActionBinding(VIEW_ALL, "<Down>", ACTION_NEXT_LINE)
-	keyBindingManager.SetActionBinding(VIEW_ALL, "j", ACTION_NEXT_LINE)
-
-	keyBindingManager.SetActionBinding(VIEW_ALL, "<Right>", ACTION_SCROLL_RIGHT)
-	keyBindingManager.SetActionBinding(VIEW_ALL, "l", ACTION_SCROLL_RIGHT)
-
-	keyBindingManager.SetActionBinding(VIEW_ALL, "<Left>", ACTION_SCROLL_LEFT)
-	keyBindingManager.SetActionBinding(VIEW_ALL, "h", ACTION_SCROLL_LEFT)
-
-	keyBindingManager.SetActionBinding(VIEW_ALL, "gg", ACTION_FIRST_LINE)
-	keyBindingManager.SetActionBinding(VIEW_ALL, "G", ACTION_LAST_LINE)
-
-	keyBindingManager.SetActionBinding(VIEW_ALL, "<Tab>", ACTION_NEXT_VIEW)
-	keyBindingManager.SetActionBinding(VIEW_ALL, "<C-w>w", ACTION_NEXT_VIEW)
-	keyBindingManager.SetActionBinding(VIEW_ALL, "<C-w><C-w>", ACTION_NEXT_VIEW)
-
-	keyBindingManager.SetActionBinding(VIEW_ALL, "<S-Tab>", ACTION_PREV_VIEW)
-	keyBindingManager.SetActionBinding(VIEW_ALL, "<C-w>W", ACTION_PREV_VIEW)
-
-	keyBindingManager.SetActionBinding(VIEW_ALL, "f", ACTION_FULL_SCREEN_VIEW)
-	keyBindingManager.SetActionBinding(VIEW_ALL, "<C-w>o", ACTION_FULL_SCREEN_VIEW)
-	keyBindingManager.SetActionBinding(VIEW_ALL, "<C-w><C-o>", ACTION_FULL_SCREEN_VIEW)
-
-	keyBindingManager.SetActionBinding(VIEW_ALL, "<Return>", ACTION_SELECT)
+	for action, viewKeys := range defaultKeyBindings {
+		for viewId, keys := range viewKeys {
+			for _, key := range keys {
+				keyBindingManager.SetActionBinding(viewId, key, action)
+			}
+		}
+	}
 }
 
 func isValidAction(action string) bool {
 	_, valid := actionKeys[action]
 	return valid
+}
+
+func DefaultKeyBindings(action Action, viewId ViewId) (keyBindings []string) {
+	viewKeys, ok := defaultKeyBindings[action]
+	if !ok {
+		return
+	}
+
+	keys, ok := viewKeys[viewId]
+	if !ok {
+		keys, ok = viewKeys[VIEW_ALL]
+
+		if !ok {
+			return
+		}
+	}
+
+	return keys
 }

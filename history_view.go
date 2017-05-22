@@ -147,7 +147,16 @@ func (historyView *HistoryView) RenderStatusBar(RenderWindow) (err error) {
 	return
 }
 
-func (historyView *HistoryView) RenderHelpBar(RenderWindow) (err error) {
+func (historyView *HistoryView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
+	historyView.lock.Lock()
+	defer historyView.lock.Unlock()
+
+	RenderKeyBindingHelp(historyView.ViewId(), lineBuilder, []ActionMessage{
+		ActionMessage{action: ACTION_NEXT_VIEW, message: "Next View"},
+		ActionMessage{action: ACTION_PREV_VIEW, message: "Previous View"},
+		ActionMessage{action: ACTION_FULL_SCREEN_VIEW, message: "Toggle Full Screen"},
+	})
+
 	return
 }
 
@@ -215,18 +224,7 @@ func (historyView *HistoryView) ViewId() ViewId {
 	return VIEW_HISTORY
 }
 
-func (historyView *HistoryView) ActiveViewHierarchy() []ViewId {
-	historyView.lock.Lock()
-	defer historyView.lock.Unlock()
-
-	if historyView.active {
-		return []ViewId{historyView.ViewId(), historyView.views[historyView.activeViewPos].ViewId()}
-	}
-
-	return []ViewId{}
-}
-
-func (historyView *HistoryView) ActiveView() WindowView {
+func (historyView *HistoryView) ActiveView() AbstractView {
 	historyView.lock.Lock()
 	defer historyView.lock.Unlock()
 

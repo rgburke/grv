@@ -26,7 +26,7 @@ type AbstractView interface {
 	OnActiveChange(bool)
 	ViewId() ViewId
 	RenderStatusBar(RenderWindow) error
-	RenderHelpBar(RenderWindow) error
+	RenderHelpBar(*LineBuilder) error
 }
 
 type WindowView interface {
@@ -37,12 +37,12 @@ type WindowView interface {
 type WindowViewCollection interface {
 	AbstractView
 	Render(ViewDimension) ([]*Window, error)
-	ActiveViewHierarchy() []ViewId
-	ActiveView() WindowView
+	ActiveView() AbstractView
 }
 
 type RootView interface {
-	ActiveView() WindowView
+	ActiveViewHierarchy() []AbstractView
+	ActiveViewIdHierarchy() []ViewId
 }
 
 type ViewDimension struct {
@@ -121,7 +121,7 @@ func (view *View) RenderStatusBar(RenderWindow) (err error) {
 	return
 }
 
-func (view *View) RenderHelpBar(RenderWindow) (err error) {
+func (view *View) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
@@ -151,12 +151,35 @@ func (view *View) ViewId() ViewId {
 	return VIEW_MAIN
 }
 
-func (view *View) ActiveViewHierarchy() []ViewId {
-	return append([]ViewId{view.ViewId()}, view.views[view.activeViewPos].ActiveViewHierarchy()...)
+func (view *View) ActiveViewHierarchy() []AbstractView {
+	viewHierarchy := []AbstractView{view}
+	var parentView WindowViewCollection = view
+	var ok bool
+
+	for {
+		childView := parentView.ActiveView()
+		viewHierarchy = append(viewHierarchy, childView)
+
+		if parentView, ok = childView.(WindowViewCollection); !ok {
+			break
+		}
+	}
+
+	return viewHierarchy
 }
 
-func (view *View) ActiveView() WindowView {
-	return view.views[view.activeViewPos].ActiveView()
+func (view *View) ActiveViewIdHierarchy() (viewIds []ViewId) {
+	viewHierarchy := view.ActiveViewHierarchy()
+
+	for _, activeView := range viewHierarchy {
+		viewIds = append(viewIds, activeView.ViewId())
+	}
+
+	return
+}
+
+func (view *View) ActiveView() AbstractView {
+	return view.views[view.activeViewPos]
 }
 
 func (view *View) prompt(action Action) {

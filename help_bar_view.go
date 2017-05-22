@@ -1,7 +1,16 @@
 package main
 
+import (
+	log "github.com/Sirupsen/logrus"
+)
+
 type HelpBarView struct {
 	rootView RootView
+}
+
+type ActionMessage struct {
+	action  Action
+	message string
 }
 
 func NewHelpBarView(rootView RootView) *HelpBarView {
@@ -23,14 +32,31 @@ func (helpBarView *HelpBarView) HandleAction(Action) (err error) {
 }
 
 func (helpBarView *HelpBarView) OnActiveChange(active bool) {
-
+	return
 }
 
 func (helpBarView *HelpBarView) ViewId() ViewId {
 	return VIEW_HELP_BAR
 }
 
-func (helpBarView *HelpBarView) Render(RenderWindow) (err error) {
+func (helpBarView *HelpBarView) Render(win RenderWindow) (err error) {
+	log.Debug("Rendering HelpBarView")
+
+	lineBuilder, err := win.LineBuilder(0, 1)
+	if err != nil {
+		return
+	}
+
+	lineBuilder.Append(" ")
+
+	viewHierarchy := helpBarView.rootView.ActiveViewHierarchy()
+
+	for _, view := range viewHierarchy {
+		if err = view.RenderHelpBar(lineBuilder); err != nil {
+			return
+		}
+	}
+
 	return
 }
 
@@ -38,6 +64,20 @@ func (helpBarView *HelpBarView) RenderStatusBar(RenderWindow) (err error) {
 	return
 }
 
-func (helpBarView *HelpBarView) RenderHelpBar(RenderWindow) (err error) {
+func (helpBarView *HelpBarView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	return
+}
+
+func RenderKeyBindingHelp(viewId ViewId, lineBuilder *LineBuilder, actionMessages []ActionMessage) {
+	for _, actionMessage := range actionMessages {
+		keys := DefaultKeyBindings(actionMessage.action, viewId)
+
+		if len(keys) == 0 {
+			continue
+		}
+
+		lineBuilder.
+			AppendWithStyle(CMP_HELPBARVIEW_KEY, "%v ", keys[0]).
+			AppendWithStyle(CMP_HELPBARVIEW_KEY_MESSAGE, "%v     ", actionMessage.message)
+	}
 }

@@ -134,7 +134,10 @@ func (commitView *CommitView) RenderStatusBar(win RenderWindow) (err error) {
 	return
 }
 
-func (commitView *CommitView) RenderHelpBar(RenderWindow) (err error) {
+func (commitView *CommitView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
 	return
 }
 

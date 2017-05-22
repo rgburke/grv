@@ -88,14 +88,10 @@ func (statusView *StatusView) RenderStatusBar(RenderWindow) (err error) {
 	return
 }
 
-func (statusView *StatusView) RenderHelpBar(RenderWindow) (err error) {
+func (statusView *StatusView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
-func (statusView *StatusView) ActiveViewHierarchy() (viewIds []ViewId) {
-	return
-}
-
-func (statusView *StatusView) ActiveView() (windowView WindowView) {
+func (statusView *StatusView) ActiveView() (childView AbstractView) {
 	return
 }
