@@ -93,5 +93,5 @@ func (statusView *StatusView) RenderHelpBar(lineBuilder *LineBuilder) (err error
 }
 
 func (statusView *StatusView) ActiveView() (childView AbstractView) {
-	return
+	return statusView.statusBarView
 }

@@ -28,8 +28,8 @@ const (
 	CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED
 
 	CMP_STATUSBARVIEW_INFO
-	CMP_HELPBARVIEW_KEY
-	CMP_HELPBARVIEW_KEY_MESSAGE
+	CMP_HELPBARVIEW_SPECIAL
+	CMP_HELPBARVIEW_NORMAL
 
 	CMP_COUNT
 )
@@ -194,11 +194,11 @@ func NewDefaultTheme() MutableTheme {
 				bgcolor: COLOR_BLUE,
 				fgcolor: COLOR_YELLOW,
 			},
-			CMP_HELPBARVIEW_KEY: &ThemeComponent{
+			CMP_HELPBARVIEW_SPECIAL: &ThemeComponent{
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_MAGENTA,
 			},
-			CMP_HELPBARVIEW_KEY_MESSAGE: &ThemeComponent{
+			CMP_HELPBARVIEW_NORMAL: &ThemeComponent{
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_NONE,
 			},

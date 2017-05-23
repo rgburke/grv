@@ -228,9 +228,6 @@ func (refView *RefView) RenderStatusBar(RenderWindow) (err error) {
 }
 
 func (refView *RefView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
-	refView.lock.Lock()
-	defer refView.lock.Unlock()
-
 	RenderKeyBindingHelp(refView.ViewId(), lineBuilder, []ActionMessage{
 		ActionMessage{action: ACTION_SELECT, message: "Select"},
 	})

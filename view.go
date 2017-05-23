@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"sync"
 )
 
 type ViewId int
@@ -55,6 +56,8 @@ type View struct {
 	activeViewPos uint
 	statusView    WindowViewCollection
 	channels      *Channels
+	promptActive  bool
+	lock          sync.Mutex
 }
 
 func (viewDimension ViewDimension) String() string {
@@ -100,7 +103,11 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 	statusViewDim := viewDimension
 	statusViewDim.rows = 2
 
-	activeViewWins, err := view.views[view.activeViewPos].Render(activeViewDim)
+	view.lock.Lock()
+	childView := view.views[view.activeViewPos]
+	view.lock.Unlock()
+
+	activeViewWins, err := childView.Render(activeViewDim)
 	if err != nil {
 		return
 	}
@@ -122,29 +129,39 @@ func (view *View) RenderStatusBar(RenderWindow) (err error) {
 }
 
 func (view *View) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
+	view.lock.Lock()
+	promptActive := view.promptActive
+	view.lock.Unlock()
+
+	if !promptActive {
+		RenderKeyBindingHelp(view.ViewId(), lineBuilder, []ActionMessage{
+			ActionMessage{action: ACTION_PROMPT, message: "Command Prompt"},
+		})
+	}
+
 	return
 }
 
 func (view *View) HandleKeyPress(keystring string) error {
 	log.Debugf("View handling keys %v", keystring)
-	return view.views[view.activeViewPos].HandleKeyPress(keystring)
+	return view.ActiveView().HandleKeyPress(keystring)
 }
 
-func (view *View) HandleAction(action Action) error {
+func (view *View) HandleAction(action Action) (err error) {
 	log.Debugf("View handling action %v", action)
 
 	switch action {
 	case ACTION_PROMPT:
 		view.prompt(action)
-		return nil
+		return
 	}
 
-	return view.views[view.activeViewPos].HandleAction(action)
+	return view.ActiveView().HandleAction(action)
 }
 
 func (view *View) OnActiveChange(active bool) {
 	log.Debugf("View active %v", active)
-	view.views[view.activeViewPos].OnActiveChange(active)
+	view.ActiveView().OnActiveChange(active)
 }
 
 func (view *View) ViewId() ViewId {
@@ -179,15 +196,30 @@ func (view *View) ActiveViewIdHierarchy() (viewIds []ViewId) {
 }
 
 func (view *View) ActiveView() AbstractView {
+	view.lock.Lock()
+	defer view.lock.Unlock()
+
+	if view.promptActive {
+		return view.statusView
+	}
+
 	return view.views[view.activeViewPos]
 }
 
 func (view *View) prompt(action Action) {
+	view.lock.Lock()
 	view.views[view.activeViewPos].OnActiveChange(false)
 	view.statusView.OnActiveChange(true)
+	view.promptActive = true
+	view.lock.Unlock()
+
 	view.statusView.HandleAction(action)
+
+	view.lock.Lock()
+	view.promptActive = false
 	view.statusView.OnActiveChange(false)
 	view.views[view.activeViewPos].OnActiveChange(true)
-	log.Debug("view.go: Updating display")
+	view.lock.Unlock()
+
 	view.channels.UpdateDisplay()
 }

@@ -148,9 +148,6 @@ func (historyView *HistoryView) RenderStatusBar(RenderWindow) (err error) {
 }
 
 func (historyView *HistoryView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
-	historyView.lock.Lock()
-	defer historyView.lock.Unlock()
-
 	RenderKeyBindingHelp(historyView.ViewId(), lineBuilder, []ActionMessage{
 		ActionMessage{action: ACTION_NEXT_VIEW, message: "Next View"},
 		ActionMessage{action: ACTION_PREV_VIEW, message: "Previous View"},

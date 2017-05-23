@@ -156,6 +156,11 @@ func (lineBuilder *LineBuilder) Clear(cellNum uint) {
 	}
 }
 
+func (lineBuilder *LineBuilder) ToLineStart() {
+	lineBuilder.cellIndex = 0
+	lineBuilder.startColumn = 1
+}
+
 func (lineBuilder *LineBuilder) appendToPreviousCell(codePoint rune) {
 	if lineBuilder.cellIndex > 0 {
 		cell := lineBuilder.line.cells[lineBuilder.cellIndex-1]

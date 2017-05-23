@@ -77,7 +77,7 @@ func RenderKeyBindingHelp(viewId ViewId, lineBuilder *LineBuilder, actionMessage
 		}
 
 		lineBuilder.
-			AppendWithStyle(CMP_HELPBARVIEW_KEY, "%v ", keys[0]).
-			AppendWithStyle(CMP_HELPBARVIEW_KEY_MESSAGE, "%v     ", actionMessage.message)
+			AppendWithStyle(CMP_HELPBARVIEW_SPECIAL, "%v ", keys[0]).
+			AppendWithStyle(CMP_HELPBARVIEW_NORMAL, "%v     ", actionMessage.message)
 	}
 }

@@ -86,5 +86,7 @@ func (statusBarView *StatusBarView) RenderStatusBar(RenderWindow) (err error) {
 }
 
 func (statusBarView *StatusBarView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
+	lineBuilder.AppendWithStyle(CMP_HELPBARVIEW_SPECIAL, "Enter a command")
+
 	return
 }
