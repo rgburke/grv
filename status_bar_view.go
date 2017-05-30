@@ -9,6 +9,11 @@ const (
 	PROMPT_TEXT = ":"
 )
 
+type PropertyValue struct {
+	Property string
+	Value    string
+}
+
 type StatusBarView struct {
 	rootView RootView
 	repoData RepoData
@@ -75,13 +80,23 @@ func (statusBarView *StatusBarView) Render(win RenderWindow) (err error) {
 		win.SetCursor(0, uint(promptPoint+len(PROMPT_TEXT)))
 	} else {
 		lineBuilder.Append(" %v", statusBarView.repoData.Path())
+
+		/*lineBuilder.Append(" ")
+		viewHierarchy := statusBarView.rootView.ActiveViewHierarchy()
+
+		for _, view := range viewHierarchy {
+			if err = view.RenderStatusBar(lineBuilder); err != nil {
+				return
+			}
+		}*/
+
 		win.ApplyStyle(CMP_STATUSBARVIEW_INFO)
 	}
 
 	return
 }
 
-func (statusBarView *StatusBarView) RenderStatusBar(RenderWindow) (err error) {
+func (statusBarView *StatusBarView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
@@ -89,4 +104,10 @@ func (statusBarView *StatusBarView) RenderHelpBar(lineBuilder *LineBuilder) (err
 	lineBuilder.AppendWithStyle(CMP_HELPBARVIEW_SPECIAL, "Enter a command")
 
 	return
+}
+
+func RenderStatusProperties(lineBuilder *LineBuilder, propertyValues []PropertyValue) {
+	for _, propValue := range propertyValues {
+		lineBuilder.Append("%v: %v     ", propValue.Property, propValue.Value)
+	}
 }

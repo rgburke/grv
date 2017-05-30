@@ -143,7 +143,7 @@ func (historyView *HistoryView) renderActiveViewFullScreen(viewDimension ViewDim
 	return
 }
 
-func (historyView *HistoryView) RenderStatusBar(RenderWindow) (err error) {
+func (historyView *HistoryView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 

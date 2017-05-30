@@ -172,7 +172,7 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	return
 }
 
-func (diffView *DiffView) RenderStatusBar(win RenderWindow) (err error) {
+func (diffView *DiffView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 

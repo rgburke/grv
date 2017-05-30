@@ -60,7 +60,7 @@ func (helpBarView *HelpBarView) Render(win RenderWindow) (err error) {
 	return
 }
 
-func (helpBarView *HelpBarView) RenderStatusBar(RenderWindow) (err error) {
+func (helpBarView *HelpBarView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
@@ -73,6 +73,7 @@ func RenderKeyBindingHelp(viewId ViewId, lineBuilder *LineBuilder, actionMessage
 		keys := DefaultKeyBindings(actionMessage.action, viewId)
 
 		if len(keys) == 0 {
+			log.Debugf("No keys mapped for action %v", actionMessage.action)
 			continue
 		}
 

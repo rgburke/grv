@@ -33,7 +33,6 @@ type CommitView struct {
 	commitViewPos   map[*Oid]*ViewPos
 	handlers        map[Action]CommitViewHandler
 	refreshTask     *LoadingCommitsRefreshTask
-	displayCommits  []*Commit
 	commitListeners []CommitListener
 	viewDimension   ViewDimension
 	lock            sync.Mutex
@@ -130,7 +129,29 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	return err
 }
 
-func (commitView *CommitView) RenderStatusBar(win RenderWindow) (err error) {
+func (commitView *CommitView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
+	viewPos, ok := commitView.commitViewPos[commitView.activeRef]
+	if !ok {
+		return fmt.Errorf("No ViewPos exists for oid %v", commitView.activeRef)
+	}
+
+	selectedCommit, err := commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.activeRowIndex)
+	if err != nil {
+		return
+	} else if selectedCommit == nil {
+		log.Errorf("Unable to obtain commit view index %v for ref %v", viewPos.activeRowIndex, commitView.activeRef)
+		return
+	}
+
+	commitProperties := []PropertyValue{
+		PropertyValue{Property: "Commit Parent Count", Value: fmt.Sprintf("%v", selectedCommit.commit.ParentCount())},
+		PropertyValue{Property: "Author email", Value: selectedCommit.commit.Author().Email},
+		PropertyValue{Property: "Committer Name", Value: selectedCommit.commit.Committer().Name},
+		PropertyValue{Property: "Committer email", Value: selectedCommit.commit.Committer().Email},
+	}
+
+	RenderStatusProperties(lineBuilder, commitProperties)
+
 	return
 }
 

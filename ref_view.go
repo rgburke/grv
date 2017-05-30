@@ -223,7 +223,7 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	return
 }
 
-func (refView *RefView) RenderStatusBar(RenderWindow) (err error) {
+func (refView *RefView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 

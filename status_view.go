@@ -84,7 +84,7 @@ func (statusView *StatusView) Render(viewDimension ViewDimension) (wins []*Windo
 	return
 }
 
-func (statusView *StatusView) RenderStatusBar(RenderWindow) (err error) {
+func (statusView *StatusView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
