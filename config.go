@@ -25,6 +25,7 @@ const (
 	CV_DIFF_VIEW       = "DiffView"
 	CV_STATUS_BAR_VIEW = "StatusBarView"
 	CV_HELP_BAR_VIEW   = "HelpBarView"
+	CV_ERROR_VIEW      = "ErrorView"
 )
 
 type ConfigVariable string
@@ -56,6 +57,7 @@ var viewIdNames = map[string]ViewId{
 	CV_DIFF_VIEW:       VIEW_DIFF,
 	CV_STATUS_BAR_VIEW: VIEW_STATUS_BAR,
 	CV_HELP_BAR_VIEW:   VIEW_HELP_BAR,
+	CV_ERROR_VIEW:      VIEW_ERROR,
 }
 
 var themeComponents = map[string]ThemeComponentId{
@@ -81,7 +83,14 @@ var themeComponents = map[string]ThemeComponentId{
 	CV_DIFF_VIEW + ".AddedLine":             CMP_DIFFVIEW_DIFFLINE_LINE_ADDED,
 	CV_DIFF_VIEW + ".RemovedLine":           CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED,
 
-	CV_STATUS_BAR_VIEW + ".Info": CMP_STATUSBARVIEW_INFO,
+	CV_STATUS_BAR_VIEW + ".Normal": CMP_STATUSBARVIEW_NORMAL,
+
+	CV_HELP_BAR_VIEW + ".Special": CMP_HELPBARVIEW_SPECIAL,
+	CV_HELP_BAR_VIEW + ".Normal":  CMP_HELPBARVIEW_NORMAL,
+
+	CV_ERROR_VIEW + ".Title":  CMP_ERROR_VIEW_TITLE,
+	CV_ERROR_VIEW + ".Footer": CMP_ERROR_VIEW_FOOTER,
+	CV_ERROR_VIEW + ".Errors": CMP_ERROR_VIEW_ERRORS,
 }
 
 type Config interface {

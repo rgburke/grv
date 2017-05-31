@@ -27,9 +27,14 @@ const (
 	CMP_DIFFVIEW_DIFFLINE_LINE_ADDED
 	CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED
 
-	CMP_STATUSBARVIEW_INFO
+	CMP_STATUSBARVIEW_NORMAL
+
 	CMP_HELPBARVIEW_SPECIAL
 	CMP_HELPBARVIEW_NORMAL
+
+	CMP_ERROR_VIEW_TITLE
+	CMP_ERROR_VIEW_FOOTER
+	CMP_ERROR_VIEW_ERRORS
 
 	CMP_COUNT
 )
@@ -190,7 +195,7 @@ func NewDefaultTheme() MutableTheme {
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_NONE,
 			},
-			CMP_STATUSBARVIEW_INFO: &ThemeComponent{
+			CMP_STATUSBARVIEW_NORMAL: &ThemeComponent{
 				bgcolor: COLOR_BLUE,
 				fgcolor: COLOR_YELLOW,
 			},
@@ -201,6 +206,18 @@ func NewDefaultTheme() MutableTheme {
 			CMP_HELPBARVIEW_NORMAL: &ThemeComponent{
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_NONE,
+			},
+			CMP_ERROR_VIEW_TITLE: &ThemeComponent{
+				bgcolor: COLOR_NONE,
+				fgcolor: COLOR_CYAN,
+			},
+			CMP_ERROR_VIEW_FOOTER: &ThemeComponent{
+				bgcolor: COLOR_NONE,
+				fgcolor: COLOR_CYAN,
+			},
+			CMP_ERROR_VIEW_ERRORS: &ThemeComponent{
+				bgcolor: COLOR_RED,
+				fgcolor: COLOR_WHITE,
 			},
 		},
 	}

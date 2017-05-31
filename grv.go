@@ -49,6 +49,7 @@ type GRV struct {
 	config      *Configuration
 	inputBuffer *InputBuffer
 	input       *InputKeyMapper
+	initialised bool
 }
 
 func (channels *Channels) UpdateDisplay() {
@@ -146,7 +147,11 @@ func (grv *GRV) Initialise(repoPath string) (err error) {
 		}
 	}
 
-	InitReadLine(grv.channels.Channels(), grv.ui, grv.config)
+	channels := grv.channels.Channels()
+	InitReadLine(channels, grv.ui, grv.config)
+
+	grv.initialised = true
+	channels.UpdateDisplay()
 
 	return
 }
@@ -225,6 +230,8 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	refreshRequestReceived := false
 	channels := &Channels{errorCh: errorCh}
 
+	var errors []error
+
 	for {
 		select {
 		case <-displayCh:
@@ -233,6 +240,11 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 		case <-displayTimerCh.C:
 			if !refreshRequestReceived {
 				break
+			}
+
+			if grv.initialised && errors != nil {
+				grv.view.SetErrors(errors)
+				errors = nil
 			}
 
 			log.Debug("Refreshing display - Display refresh request received since last check")
@@ -253,7 +265,20 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 			refreshRequestReceived = false
 		case err := <-errorCh:
 			log.Errorf("Error channel received error: %v", err)
-			grv.ui.ShowError(err)
+			errors = append(errors, err)
+
+		OuterLoop:
+			for {
+				select {
+				case err := <-errorCh:
+					errors = append(errors, err)
+					log.Errorf("Error channel received error: %v", err)
+				default:
+					break OuterLoop
+				}
+			}
+
+			refreshRequestReceived = true
 		case _, ok := <-exitCh:
 			if !ok {
 				return

@@ -90,7 +90,7 @@ func (statusBarView *StatusBarView) Render(win RenderWindow) (err error) {
 			}
 		}*/
 
-		win.ApplyStyle(CMP_STATUSBARVIEW_INFO)
+		win.ApplyStyle(CMP_STATUSBARVIEW_NORMAL)
 	}
 
 	return

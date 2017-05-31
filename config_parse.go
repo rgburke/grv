@@ -179,9 +179,9 @@ func generateConfigError(inputSource string, token *Token, errorMessage string, 
 	if inputSource != "" {
 		buffer.WriteString(inputSource)
 		buffer.WriteRune(':')
+		buffer.WriteString(fmt.Sprintf("%v:%v ", token.startPos.line, token.startPos.col))
 	}
 
-	buffer.WriteString(fmt.Sprintf("%v:%v ", token.startPos.line, token.startPos.col))
 	buffer.WriteString(fmt.Sprintf(errorMessage, args...))
 
 	if token.err != nil {

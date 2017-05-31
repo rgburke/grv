@@ -18,6 +18,7 @@ const (
 	VIEW_DIFF
 	VIEW_STATUS_BAR
 	VIEW_HELP_BAR
+	VIEW_ERROR
 )
 
 type AbstractView interface {
@@ -57,6 +58,9 @@ type View struct {
 	statusView    WindowViewCollection
 	channels      *Channels
 	promptActive  bool
+	errorView     *ErrorView
+	errorViewWin  *Window
+	errors        []error
 	lock          sync.Mutex
 }
 
@@ -73,6 +77,8 @@ func NewView(repoData RepoData, channels *Channels, config ConfigSetter) (view *
 	}
 
 	view.statusView = NewStatusView(view, repoData, channels, config)
+	view.errorView = NewErrorView()
+	view.errorViewWin = NewWindow("errorView", config)
 
 	return
 }
@@ -103,6 +109,13 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 	statusViewDim := viewDimension
 	statusViewDim.rows = 2
 
+	errorViewDim := viewDimension
+	errorViewDim.rows = 0
+
+	if len(view.errors) > 0 {
+		view.determineErrorViewDimensions(&errorViewDim, &activeViewDim)
+	}
+
 	view.lock.Lock()
 	childView := view.views[view.activeViewPos]
 	view.lock.Unlock()
@@ -118,10 +131,44 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 	}
 
 	for _, win := range statusViewWins {
-		win.OffsetPosition(int(activeViewDim.rows), 0)
+		win.OffsetPosition(int(activeViewDim.rows+errorViewDim.rows), 0)
 	}
 
-	return append(activeViewWins, statusViewWins...), err
+	wins = append(activeViewWins, statusViewWins...)
+
+	if errorViewDim.rows > 0 {
+		wins, err = view.renderErrorView(wins, errorViewDim, activeViewDim)
+	}
+
+	return wins, err
+}
+
+func (view *View) determineErrorViewDimensions(errorViewDim, activeViewDim *ViewDimension) {
+	view.errorView.SetErrors(view.errors)
+	view.errors = nil
+
+	errorRowsRequired := view.errorView.DisplayRowsRequired()
+
+	if activeViewDim.rows > errorRowsRequired {
+		errorViewDim.rows = errorRowsRequired
+		activeViewDim.rows -= errorRowsRequired
+	} else {
+		log.Errorf("Unable to display %v errors, not enough space", errorRowsRequired)
+	}
+}
+
+func (view *View) renderErrorView(wins []*Window, errorViewDim, activeViewDim ViewDimension) (allWins []*Window, err error) {
+	view.errorViewWin.Resize(errorViewDim)
+	view.errorViewWin.Clear()
+	view.errorViewWin.SetPosition(activeViewDim.rows, 0)
+
+	if err = view.errorView.Render(view.errorViewWin); err != nil {
+		return
+	}
+
+	allWins = append(wins, view.errorViewWin)
+
+	return
 }
 
 func (view *View) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
@@ -222,4 +269,8 @@ func (view *View) prompt(action Action) {
 	view.lock.Unlock()
 
 	view.channels.UpdateDisplay()
+}
+
+func (view *View) SetErrors(errors []error) {
+	view.errors = errors
 }
