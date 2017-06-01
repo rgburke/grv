@@ -10,11 +10,12 @@ import (
 )
 
 const (
-	GRV_INPUT_BUFFER_SIZE   = 100
-	GRV_ACTION_BUFFER_SIZE  = 100
-	GRV_ERROR_BUFFER_SIZE   = 100
-	GRV_DISPLAY_BUFFER_SIZE = 50
-	GRV_MAX_DRAW_FREQUENCY  = time.Millisecond * 50
+	GRV_INPUT_BUFFER_SIZE     = 100
+	GRV_ACTION_BUFFER_SIZE    = 100
+	GRV_ERROR_BUFFER_SIZE     = 100
+	GRV_DISPLAY_BUFFER_SIZE   = 50
+	GRV_MAX_DRAW_FREQUENCY    = time.Millisecond * 50
+	GRV_MIN_ERROR_DISPLAY_SEC = time.Second * 2
 )
 
 type GRVChannels struct {
@@ -49,7 +50,6 @@ type GRV struct {
 	config      *Configuration
 	inputBuffer *InputBuffer
 	input       *InputKeyMapper
-	initialised bool
 }
 
 func (channels *Channels) UpdateDisplay() {
@@ -150,9 +150,6 @@ func (grv *GRV) Initialise(repoPath string) (err error) {
 	channels := grv.channels.Channels()
 	InitReadLine(channels, grv.ui, grv.config)
 
-	grv.initialised = true
-	channels.UpdateDisplay()
-
 	return
 }
 
@@ -231,6 +228,7 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	channels := &Channels{errorCh: errorCh}
 
 	var errors []error
+	lastErrorReceivedTime := time.Now()
 
 	for {
 		select {
@@ -242,9 +240,10 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 				break
 			}
 
-			if grv.initialised && errors != nil {
-				grv.view.SetErrors(errors)
+			if lastErrorReceivedTime.Before(time.Now().Add(-GRV_MIN_ERROR_DISPLAY_SEC)) {
 				errors = nil
+			} else if errors != nil {
+				grv.view.SetErrors(errors)
 			}
 
 			log.Debug("Refreshing display - Display refresh request received since last check")
@@ -278,6 +277,7 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 				}
 			}
 
+			lastErrorReceivedTime = time.Now()
 			refreshRequestReceived = true
 		case _, ok := <-exitCh:
 			if !ok {
