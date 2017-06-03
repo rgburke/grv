@@ -11,6 +11,7 @@ import (
 
 const (
 	RDL_COMMIT_BUFFER_SIZE = 100
+	RDL_DIFF_STATS_COLS    = 80
 )
 
 type InstanceCache struct {
@@ -43,6 +44,11 @@ type Tag struct {
 
 type Commit struct {
 	commit *git.Commit
+}
+
+type Diff struct {
+	diffText bytes.Buffer
+	stats    bytes.Buffer
 }
 
 func (oid Oid) String() string {
@@ -294,7 +300,9 @@ func (repoDataLoader *RepoDataLoader) Commit(oid *Oid) (commit *Commit, err erro
 	return
 }
 
-func (repoDataLoader *RepoDataLoader) Diff(commit *Commit) (buf bytes.Buffer, err error) {
+func (repoDataLoader *RepoDataLoader) Diff(commit *Commit) (diff *Diff, err error) {
+	diff = &Diff{}
+
 	if commit.commit.ParentCount() > 1 {
 		return
 	}
@@ -317,13 +325,25 @@ func (repoDataLoader *RepoDataLoader) Diff(commit *Commit) (buf bytes.Buffer, er
 		return
 	}
 
-	diff, err := repoDataLoader.repo.DiffTreeToTree(parentTree, commitTree, &options)
+	commitDiff, err := repoDataLoader.repo.DiffTreeToTree(parentTree, commitTree, &options)
 	if err != nil {
 		return
 	}
-	defer diff.Free()
+	defer commitDiff.Free()
 
-	numDeltas, err := diff.NumDeltas()
+	stats, err := commitDiff.Stats()
+	if err != nil {
+		return
+	}
+
+	statsText, err := stats.String(git.DiffStatsFull, RDL_DIFF_STATS_COLS)
+	if err != nil {
+		return
+	}
+
+	diff.stats.WriteString(statsText)
+
+	numDeltas, err := commitDiff.NumDeltas()
 	if err != nil {
 		return
 	}
@@ -332,7 +352,7 @@ func (repoDataLoader *RepoDataLoader) Diff(commit *Commit) (buf bytes.Buffer, er
 	var patchString string
 
 	for i := 0; i < numDeltas; i++ {
-		if patch, err = diff.Patch(i); err != nil {
+		if patch, err = commitDiff.Patch(i); err != nil {
 			return
 		}
 
@@ -340,7 +360,7 @@ func (repoDataLoader *RepoDataLoader) Diff(commit *Commit) (buf bytes.Buffer, er
 			return
 		}
 
-		buf.WriteString(patchString)
+		diff.diffText.WriteString(patchString)
 		patch.Free()
 	}
 

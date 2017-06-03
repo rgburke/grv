@@ -16,6 +16,12 @@ type DiffLineType int
 const (
 	DLT_UNSET DiffLineType = iota
 	DLT_NORMAL
+	DLT_DIFF_COMMIT_AUTHOR
+	DLT_DIFF_COMMIT_AUTHOR_DATE
+	DLT_DIFF_COMMIT_COMMITTER
+	DLT_DIFF_COMMIT_COMMITTER_DATE
+	DLT_DIFF_COMMIT_SUMMARY
+	DLT_DIFF_STATS_FILE
 	DLT_GIT_DIFF_HEADER
 	DLT_GIT_DIFF_EXTENDED_HEADER
 	DLT_UNIFIED_DIFF_HEADER
@@ -24,14 +30,24 @@ const (
 	DLT_LINE_REMOVED
 )
 
+const (
+	DV_DATE_FORMAT = "Mon Jan 2 15:04:05 2006 -0700"
+)
+
 var diffLineThemeComponentId = map[DiffLineType]ThemeComponentId{
-	DLT_NORMAL:                   CMP_DIFFVIEW_DIFFLINE_NORMAL,
-	DLT_GIT_DIFF_HEADER:          CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_HEADER,
-	DLT_GIT_DIFF_EXTENDED_HEADER: CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_EXTENDED_HEADER,
-	DLT_UNIFIED_DIFF_HEADER:      CMP_DIFFVIEW_DIFFLINE_UNIFIED_DIFF_HEADER,
-	DLT_HUNK_START:               CMP_DIFFVIEW_DIFFLINE_HUNK_START,
-	DLT_LINE_ADDED:               CMP_DIFFVIEW_DIFFLINE_LINE_ADDED,
-	DLT_LINE_REMOVED:             CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED,
+	DLT_NORMAL:                     CMP_DIFFVIEW_DIFFLINE_NORMAL,
+	DLT_DIFF_COMMIT_AUTHOR:         CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_AUTHOR,
+	DLT_DIFF_COMMIT_AUTHOR_DATE:    CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_AUTHOR_DATE,
+	DLT_DIFF_COMMIT_COMMITTER:      CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_COMMITTER,
+	DLT_DIFF_COMMIT_COMMITTER_DATE: CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_COMMITTER_DATE,
+	DLT_DIFF_COMMIT_SUMMARY:        CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_SUMMARY,
+	DLT_DIFF_STATS_FILE:            CMP_DIFFVIEW_DIFFLINE_DIFF_STATS_FILE,
+	DLT_GIT_DIFF_HEADER:            CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_HEADER,
+	DLT_GIT_DIFF_EXTENDED_HEADER:   CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_EXTENDED_HEADER,
+	DLT_UNIFIED_DIFF_HEADER:        CMP_DIFFVIEW_DIFFLINE_UNIFIED_DIFF_HEADER,
+	DLT_HUNK_START:                 CMP_DIFFVIEW_DIFFLINE_HUNK_START,
+	DLT_LINE_ADDED:                 CMP_DIFFVIEW_DIFFLINE_LINE_ADDED,
+	DLT_LINE_REMOVED:               CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED,
 }
 
 type DiffLine struct {
@@ -72,7 +88,7 @@ func (diffLine *DiffLine) DetermineDiffLineType() {
 	diffLine.diffLineType = diffLineType
 }
 
-type Diff struct {
+type DiffLines struct {
 	lines   []*DiffLine
 	viewPos *ViewPos
 }
@@ -81,7 +97,7 @@ type DiffView struct {
 	channels      *Channels
 	repoData      RepoData
 	activeCommit  *Commit
-	commitDiffs   map[*Commit]*Diff
+	commitDiffs   map[*Commit]*DiffLines
 	viewPos       *ViewPos
 	viewDimension ViewDimension
 	handlers      map[Action]DiffViewHandler
@@ -94,7 +110,7 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 		repoData:    repoData,
 		channels:    channels,
 		viewPos:     NewViewPos(),
-		commitDiffs: make(map[*Commit]*Diff),
+		commitDiffs: make(map[*Commit]*DiffLines),
 		handlers: map[Action]DiffViewHandler{
 			ACTION_PREV_LINE:    MoveUpDiffLine,
 			ACTION_NEXT_LINE:    MoveDownDiffLine,
@@ -122,15 +138,15 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 
 	rows := win.Rows() - 2
 	viewPos := diffView.viewPos
-	diff := diffView.commitDiffs[diffView.activeCommit]
-	lineNum := uint(len(diff.lines))
+	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	lineNum := uint(len(diffLines.lines))
 	viewPos.DetermineViewStartRow(rows, lineNum)
 
 	lineIndex := viewPos.viewStartRowIndex
 	startColumn := viewPos.viewStartColumn
 
 	for rowIndex := uint(0); rowIndex < rows && lineIndex < lineNum; rowIndex++ {
-		diffLine := diff.lines[lineIndex]
+		diffLine := diffLines.lines[lineIndex]
 		themeComponentId := diffLine.GetThemeComponentId()
 
 		if diffLine.diffLineType == DLT_HUNK_START {
@@ -146,9 +162,37 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 			}
 
 			lineBuilder.
-				AppendWithStyle(themeComponentId, "%v", strings.Join(lineParts[:2], "")).
+				AppendWithStyle(themeComponentId, " %v", strings.Join(lineParts[:2], "")).
 				AppendWithStyle(CMP_DIFFVIEW_DIFFLINE_HUNK_HEADER, "%v", lineParts[2])
-		} else if err = win.SetRow(rowIndex+1, startColumn, themeComponentId, " %v", diff.lines[lineIndex].line); err != nil {
+
+		} else if diffLine.diffLineType == DLT_DIFF_STATS_FILE {
+			sepIndex := strings.LastIndex(diffLine.line, "|")
+
+			if sepIndex == -1 || sepIndex >= len(diffLine.line)-1 {
+				return fmt.Errorf("Unable to display diff stats file line: %v", diffLine.line)
+			}
+
+			filePart := diffLine.line[0:sepIndex]
+			changePart := diffLine.line[sepIndex+1:]
+
+			var lineBuilder *LineBuilder
+			if lineBuilder, err = win.LineBuilder(rowIndex+1, startColumn); err != nil {
+				return
+			}
+
+			lineBuilder.AppendWithStyle(CMP_DIFFVIEW_DIFFLINE_DIFF_STATS_FILE, " %v |", filePart)
+
+			for _, char := range changePart {
+				switch char {
+				case '+':
+					lineBuilder.AppendWithStyle(CMP_DIFFVIEW_DIFFLINE_LINE_ADDED, "%c", char)
+				case '-':
+					lineBuilder.AppendWithStyle(CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED, "%c", char)
+				default:
+					lineBuilder.Append("%c", char)
+				}
+			}
+		} else if err = win.SetRow(rowIndex+1, startColumn, themeComponentId, " %v", diffLines.lines[lineIndex].line); err != nil {
 			return
 		}
 
@@ -199,24 +243,90 @@ func (diffView *DiffView) OnCommitSelect(commit *Commit) (err error) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
-	if diff, ok := diffView.commitDiffs[diffView.activeCommit]; ok {
-		diff.viewPos = diffView.viewPos
+	if diffLines, ok := diffView.commitDiffs[diffView.activeCommit]; ok {
+		diffLines.viewPos = diffView.viewPos
 	}
 
-	if diff, ok := diffView.commitDiffs[commit]; ok {
+	if diffLines, ok := diffView.commitDiffs[commit]; ok {
 		diffView.activeCommit = commit
-		diffView.viewPos = diff.viewPos
+		diffView.viewPos = diffLines.viewPos
 		diffView.channels.UpdateDisplay()
 		return
 	}
 
-	buf, err := diffView.repoData.Diff(commit)
+	if err = diffView.generateDiffLines(commit); err != nil {
+		return
+	}
+
+	diffView.activeCommit = commit
+	diffView.viewPos = NewViewPos()
+	diffView.channels.UpdateDisplay()
+
+	return
+}
+
+func (diffView *DiffView) generateDiffLines(commit *Commit) (err error) {
+	var lines []*DiffLine
+
+	author := commit.commit.Author()
+	committer := commit.commit.Committer()
+
+	lines = append(lines,
+		&DiffLine{
+			line:         fmt.Sprintf("Author:\t%v <%v>", author.Name, author.Email),
+			diffLineType: DLT_DIFF_COMMIT_AUTHOR,
+		},
+		&DiffLine{
+			line:         fmt.Sprintf("AuthorDate:\t%v", author.When.Format(DV_DATE_FORMAT)),
+			diffLineType: DLT_DIFF_COMMIT_AUTHOR_DATE,
+		},
+		&DiffLine{
+			line:         fmt.Sprintf("Comitter:\t%v <%v>", committer.Name, committer.Email),
+			diffLineType: DLT_DIFF_COMMIT_COMMITTER,
+		},
+		&DiffLine{
+			line:         fmt.Sprintf("ComitterDate:\t%v", committer.When.Format(DV_DATE_FORMAT)),
+			diffLineType: DLT_DIFF_COMMIT_COMMITTER_DATE,
+		},
+		&DiffLine{
+			diffLineType: DLT_NORMAL,
+		},
+		&DiffLine{
+			line:         commit.commit.Summary(),
+			diffLineType: DLT_DIFF_COMMIT_SUMMARY,
+		},
+		&DiffLine{
+			diffLineType: DLT_NORMAL,
+		},
+	)
+
+	diff, err := diffView.repoData.Diff(commit)
 	if err != nil {
 		return
 	}
 
-	scanner := bufio.NewScanner(bytes.NewReader(buf.Bytes()))
-	var lines []*DiffLine
+	scanner := bufio.NewScanner(bytes.NewReader(diff.stats.Bytes()))
+
+	for scanner.Scan() {
+		lines = append(lines, &DiffLine{
+			line:         strings.TrimPrefix(scanner.Text(), " "),
+			diffLineType: DLT_DIFF_STATS_FILE,
+		})
+	}
+
+	if len(lines) > 0 {
+		prevLine := lines[len(lines)-1]
+
+		if prevLine.diffLineType == DLT_DIFF_STATS_FILE {
+			prevLine.diffLineType = DLT_NORMAL
+		}
+	}
+
+	lines = append(lines, &DiffLine{
+		diffLineType: DLT_NORMAL,
+	})
+
+	scanner = bufio.NewScanner(bytes.NewReader(diff.diffText.Bytes()))
 
 	for scanner.Scan() {
 		lines = append(lines, &DiffLine{
@@ -224,13 +334,9 @@ func (diffView *DiffView) OnCommitSelect(commit *Commit) (err error) {
 		})
 	}
 
-	diffView.commitDiffs[commit] = &Diff{
+	diffView.commitDiffs[commit] = &DiffLines{
 		lines: lines,
 	}
-
-	diffView.activeCommit = commit
-	diffView.viewPos = NewViewPos()
-	diffView.channels.UpdateDisplay()
 
 	return
 }
@@ -253,8 +359,8 @@ func (diffView *DiffView) HandleAction(action Action) (err error) {
 }
 
 func MoveDownDiffLine(diffView *DiffView) (err error) {
-	diff := diffView.commitDiffs[diffView.activeCommit]
-	lineNum := uint(len(diff.lines))
+	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	lineNum := uint(len(diffLines.lines))
 	viewPos := diffView.viewPos
 
 	if viewPos.MoveLineDown(lineNum) {
@@ -308,8 +414,8 @@ func MoveToFirstDiffLine(diffView *DiffView) (err error) {
 }
 
 func MoveToLastDiffLine(diffView *DiffView) (err error) {
-	diff := diffView.commitDiffs[diffView.activeCommit]
-	lineNum := uint(len(diff.lines))
+	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	lineNum := uint(len(diffLines.lines))
 	viewPos := diffView.viewPos
 
 	if viewPos.MoveToLastLine(lineNum) {
