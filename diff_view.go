@@ -114,6 +114,8 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 		handlers: map[Action]DiffViewHandler{
 			ACTION_PREV_LINE:    MoveUpDiffLine,
 			ACTION_NEXT_LINE:    MoveDownDiffLine,
+			ACTION_PREV_PAGE:    MoveUpDiffPage,
+			ACTION_NEXT_PAGE:    MoveDownDiffPage,
 			ACTION_SCROLL_RIGHT: ScrollDiffViewRight,
 			ACTION_SCROLL_LEFT:  ScrollDiffViewLeft,
 			ACTION_FIRST_LINE:   MoveToFirstDiffLine,
@@ -376,6 +378,30 @@ func MoveUpDiffLine(diffView *DiffView) (err error) {
 
 	if viewPos.MoveLineUp() {
 		log.Debugf("Moving up one line in diff view")
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func MoveDownDiffPage(diffView *DiffView) (err error) {
+	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	lineNum := uint(len(diffLines.lines))
+	viewPos := diffView.viewPos
+
+	if viewPos.MovePageDown(diffView.viewDimension.rows-2, lineNum) {
+		log.Debugf("Moving down one page in diff view")
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func MoveUpDiffPage(diffView *DiffView) (err error) {
+	viewPos := diffView.viewPos
+
+	if viewPos.MovePageUp(diffView.viewDimension.rows - 2) {
+		log.Debugf("Moving up one page in diff view")
 		diffView.channels.UpdateDisplay()
 	}
 

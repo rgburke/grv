@@ -82,6 +82,8 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 		handlers: map[Action]RefViewHandler{
 			ACTION_PREV_LINE:    MoveUpRef,
 			ACTION_NEXT_LINE:    MoveDownRef,
+			ACTION_PREV_PAGE:    MoveUpRefPage,
+			ACTION_NEXT_PAGE:    MoveDownRefPage,
 			ACTION_SCROLL_RIGHT: ScrollRefViewRight,
 			ACTION_SCROLL_LEFT:  ScrollRefViewLeft,
 			ACTION_FIRST_LINE:   MoveToFirstRef,
@@ -447,6 +449,37 @@ func MoveDownRef(refView *RefView) (err error) {
 		log.Debug("No valid ref entry to move to")
 	} else {
 		refView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func MoveUpRefPage(refView *RefView) (err error) {
+	pageSize := refView.viewDimension.rows - 2
+	viewPos := refView.viewPos
+
+	for viewPos.activeRowIndex > 0 && pageSize > 0 {
+		if err = MoveUpRef(refView); err != nil {
+			break
+		} else {
+			pageSize--
+		}
+	}
+
+	return
+}
+
+func MoveDownRefPage(refView *RefView) (err error) {
+	renderedRefNum := uint(len(refView.renderedRefs))
+	pageSize := refView.viewDimension.rows - 2
+	viewPos := refView.viewPos
+
+	for viewPos.activeRowIndex+1 < renderedRefNum && pageSize > 0 {
+		if err = MoveDownRef(refView); err != nil {
+			break
+		} else {
+			pageSize--
+		}
 	}
 
 	return

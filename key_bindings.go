@@ -12,6 +12,8 @@ const (
 	ACTION_PROMPT
 	ACTION_NEXT_LINE
 	ACTION_PREV_LINE
+	ACTION_NEXT_PAGE
+	ACTION_PREV_PAGE
 	ACTION_SCROLL_RIGHT
 	ACTION_SCROLL_LEFT
 	ACTION_FIRST_LINE
@@ -28,6 +30,8 @@ var actionKeys = map[string]Action{
 	"<grv-prompt>":           ACTION_PROMPT,
 	"<grv-next-line>":        ACTION_NEXT_LINE,
 	"<grv-prev-line>":        ACTION_PREV_LINE,
+	"<grv-next-page>":        ACTION_NEXT_PAGE,
+	"<grv-prev-page>":        ACTION_PREV_PAGE,
 	"<grv-scroll-right>":     ACTION_SCROLL_RIGHT,
 	"<grv-scroll-left>":      ACTION_SCROLL_LEFT,
 	"<grv-first-line>":       ACTION_FIRST_LINE,
@@ -42,11 +46,17 @@ var defaultKeyBindings = map[Action]map[ViewId][]string{
 	ACTION_PROMPT: map[ViewId][]string{
 		VIEW_MAIN: []string{PROMPT_TEXT},
 	},
+	ACTION_NEXT_LINE: map[ViewId][]string{
+		VIEW_ALL: []string{"<Down>", "j"},
+	},
 	ACTION_PREV_LINE: map[ViewId][]string{
 		VIEW_ALL: []string{"<Up>", "k"},
 	},
-	ACTION_NEXT_LINE: map[ViewId][]string{
-		VIEW_ALL: []string{"<Down>", "j"},
+	ACTION_NEXT_PAGE: map[ViewId][]string{
+		VIEW_ALL: []string{"<PageDown>", "<C-f>"},
+	},
+	ACTION_PREV_PAGE: map[ViewId][]string{
+		VIEW_ALL: []string{"<PageUp>", "<C-b>"},
 	},
 	ACTION_SCROLL_RIGHT: map[ViewId][]string{
 		VIEW_ALL: []string{"<Right>", "l"},

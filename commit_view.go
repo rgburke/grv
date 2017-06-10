@@ -53,6 +53,8 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 		handlers: map[Action]CommitViewHandler{
 			ACTION_PREV_LINE:    MoveUpCommit,
 			ACTION_NEXT_LINE:    MoveDownCommit,
+			ACTION_PREV_PAGE:    MoveUpCommitPage,
+			ACTION_NEXT_PAGE:    MoveDownCommitPage,
 			ACTION_SCROLL_RIGHT: ScrollCommitViewRight,
 			ACTION_SCROLL_LEFT:  ScrollCommitViewLeft,
 			ACTION_FIRST_LINE:   MoveToFirstCommit,
@@ -320,6 +322,31 @@ func MoveDownCommit(commitView *CommitView) (err error) {
 
 	if viewPos.MoveLineDown(commitSetState.commitNum) {
 		log.Debug("Moving down one commit")
+		commitView.selectCommit(viewPos.activeRowIndex)
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func MoveUpCommitPage(commitView *CommitView) (err error) {
+	viewPos := commitView.activeViewPos()
+
+	if viewPos.MovePageUp(commitView.viewDimension.rows - 2) {
+		log.Debug("Moving up one page")
+		commitView.selectCommit(viewPos.activeRowIndex)
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func MoveDownCommitPage(commitView *CommitView) (err error) {
+	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
+	viewPos := commitView.activeViewPos()
+
+	if viewPos.MovePageDown(commitView.viewDimension.rows-2, commitSetState.commitNum) {
+		log.Debug("Moving down one page")
 		commitView.selectCommit(viewPos.activeRowIndex)
 		commitView.channels.UpdateDisplay()
 	}

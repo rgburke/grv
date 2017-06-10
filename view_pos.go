@@ -42,6 +42,26 @@ func (viewPos *ViewPos) MoveLineUp() (changed bool) {
 	return
 }
 
+func (viewPos *ViewPos) MovePageDown(pageRows, rows uint) (changed bool) {
+	if viewPos.activeRowIndex+1 < rows {
+		viewPos.activeRowIndex += Min(pageRows, rows-(viewPos.activeRowIndex+1))
+		viewPos.viewStartRowIndex = viewPos.activeRowIndex
+		changed = true
+	}
+
+	return
+}
+
+func (viewPos *ViewPos) MovePageUp(pageRows uint) (changed bool) {
+	if viewPos.activeRowIndex > 0 {
+		viewPos.activeRowIndex -= Min(pageRows, viewPos.activeRowIndex)
+		viewPos.viewStartRowIndex = viewPos.activeRowIndex
+		changed = true
+	}
+
+	return
+}
+
 func (viewPos *ViewPos) MovePageRight(cols uint) {
 	halfPage := cols / 2
 	viewPos.viewStartColumn += halfPage
