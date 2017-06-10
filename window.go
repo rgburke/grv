@@ -31,6 +31,11 @@ type RenderWindow interface {
 	LineBuilder(rowIndex, startColumn uint) (*LineBuilder, error)
 }
 
+type RenderedCodePoint struct {
+	width     uint
+	codePoint rune
+}
+
 type Line struct {
 	cells []*Cell
 }
@@ -98,32 +103,23 @@ func (lineBuilder *LineBuilder) Append(format string, args ...interface{}) *Line
 func (lineBuilder *LineBuilder) AppendWithStyle(componentId ThemeComponentId, format string, args ...interface{}) *LineBuilder {
 	str := fmt.Sprintf(format, args...)
 	line := lineBuilder.line
-	tabWidth := uint(lineBuilder.config.GetInt(CV_TAB_WIDTH))
 
 	for _, codePoint := range str {
-		if lineBuilder.cellIndex > uint(len(line.cells)) {
-			break
-		} else if !unicode.IsPrint(codePoint) {
-			if codePoint == '\t' {
-				width := tabWidth - ((lineBuilder.column - 1) % tabWidth)
+		renderedCodePoints := DetermineRenderedCodePoint(codePoint, lineBuilder.column, lineBuilder.config)
 
-				for i := uint(0); i < width; i++ {
-					lineBuilder.setCellAndAdvanceIndex(' ', 1, componentId)
-				}
-			} else if codePoint != '\n' && (codePoint < 32 || codePoint == 127) {
-				for _, char := range nonPrintableCharString(codePoint) {
-					lineBuilder.setCellAndAdvanceIndex(char, 1, componentId)
-				}
-			} else {
-				lineBuilder.setCellAndAdvanceIndex(codePoint, 1, componentId)
+		for _, renderedCodePoint := range renderedCodePoints {
+			if lineBuilder.cellIndex > uint(len(line.cells)) {
+				break
 			}
-		} else if width := uint(rw.RuneWidth(codePoint)); width == 0 {
-			lineBuilder.appendToPreviousCell(codePoint)
-		} else if width > 1 {
-			lineBuilder.setCellAndAdvanceIndex(codePoint, width, componentId)
-			lineBuilder.Clear(width - 1)
-		} else {
-			lineBuilder.setCellAndAdvanceIndex(codePoint, width, componentId)
+
+			if renderedCodePoint.width > 1 {
+				lineBuilder.setCellAndAdvanceIndex(renderedCodePoint.codePoint, renderedCodePoint.width, componentId)
+				lineBuilder.Clear(renderedCodePoint.width - 1)
+			} else if renderedCodePoint.width > 0 {
+				lineBuilder.setCellAndAdvanceIndex(renderedCodePoint.codePoint, renderedCodePoint.width, componentId)
+			} else {
+				lineBuilder.appendToPreviousCell(renderedCodePoint.codePoint)
+			}
 		}
 	}
 
@@ -392,6 +388,41 @@ func (win *Window) ApplyStyle(themeComponentId ThemeComponentId) {
 			cell.style.componentId = themeComponentId
 		}
 	}
+}
+
+func DetermineRenderedCodePoint(codePoint rune, column uint, config Config) (renderedCodePoints []RenderedCodePoint) {
+	if !unicode.IsPrint(codePoint) {
+		if codePoint == '\t' {
+			tabWidth := uint(config.GetInt(CV_TAB_WIDTH))
+			width := tabWidth - ((column - 1) % tabWidth)
+
+			for i := uint(0); i < width; i++ {
+				renderedCodePoints = append(renderedCodePoints, RenderedCodePoint{
+					width:     1,
+					codePoint: ' ',
+				})
+			}
+		} else if codePoint != '\n' && (codePoint < 32 || codePoint == 127) {
+			for _, char := range nonPrintableCharString(codePoint) {
+				renderedCodePoints = append(renderedCodePoints, RenderedCodePoint{
+					width:     1,
+					codePoint: char,
+				})
+			}
+		} else {
+			renderedCodePoints = append(renderedCodePoints, RenderedCodePoint{
+				width:     1,
+				codePoint: codePoint,
+			})
+		}
+	} else {
+		renderedCodePoints = append(renderedCodePoints, RenderedCodePoint{
+			width:     uint(rw.RuneWidth(codePoint)),
+			codePoint: codePoint,
+		})
+	}
+
+	return
 }
 
 // For debugging

@@ -9,6 +9,8 @@ import (
 
 const (
 	CV_LOAD_REFRESH_MS = 500
+	CV_COLUMN_NUM      = 3
+	CV_DATE_FORMAT     = "2006-01-02 15:04"
 )
 
 type CommitViewHandler func(*CommitView) error
@@ -24,13 +26,18 @@ type CommitListener interface {
 	OnCommitSelect(*Commit) error
 }
 
+type RefViewData struct {
+	viewPos        *ViewPos
+	tableFormatter *TableFormatter
+}
+
 type CommitView struct {
 	channels        *Channels
 	repoData        RepoData
 	activeRef       *Oid
 	activeRefName   string
 	active          bool
-	commitViewPos   map[*Oid]*ViewPos
+	refViewData     map[*Oid]*RefViewData
 	handlers        map[Action]CommitViewHandler
 	refreshTask     *LoadingCommitsRefreshTask
 	commitListeners []CommitListener
@@ -40,9 +47,9 @@ type CommitView struct {
 
 func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 	return &CommitView{
-		channels:      channels,
-		repoData:      repoData,
-		commitViewPos: make(map[*Oid]*ViewPos),
+		channels:    channels,
+		repoData:    repoData,
+		refViewData: make(map[*Oid]*RefViewData),
 		handlers: map[Action]CommitViewHandler{
 			ACTION_PREV_LINE:    MoveUpCommit,
 			ACTION_NEXT_LINE:    MoveDownCommit,
@@ -66,15 +73,15 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 
 	commitView.viewDimension = win.ViewDimensions()
 
-	var viewPos *ViewPos
-	var ok bool
-	if viewPos, ok = commitView.commitViewPos[commitView.activeRef]; !ok {
-		return fmt.Errorf("No ViewPos exists for oid %v", commitView.activeRef)
+	refViewData, ok := commitView.refViewData[commitView.activeRef]
+	if !ok {
+		return fmt.Errorf("No RefViewData exists for oid %v", commitView.activeRef)
 	}
 
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 
 	rows := win.Rows() - 2
+	viewPos := refViewData.viewPos
 	viewPos.DetermineViewStartRow(rows, commitSetState.commitNum)
 
 	commitCh, err := commitView.repoData.Commits(commitView.activeRef, viewPos.viewStartRowIndex, rows)
@@ -82,25 +89,28 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		return err
 	}
 
-	var lineBuilder *LineBuilder
-	rowIndex := uint(1)
+	tableFormatter := refViewData.tableFormatter
+	tableFormatter.Resize(rows)
+	tableFormatter.Clear()
+
+	rowIndex := uint(0)
 
 	for commit := range commitCh {
-		if lineBuilder, err = win.LineBuilder(rowIndex, viewPos.viewStartColumn); err != nil {
+		author := commit.commit.Author()
+
+		if err = tableFormatter.SetCellWithStyle(rowIndex, 0, CMP_COMMITVIEW_DATE, "%v", author.When.Format(CV_DATE_FORMAT)); err != nil {
+			return
+		} else if err = tableFormatter.SetCellWithStyle(rowIndex, 1, CMP_COMMITVIEW_AUTHOR, "%v", author.Name); err != nil {
+			return
+		} else if err = tableFormatter.SetCellWithStyle(rowIndex, 2, CMP_COMMITVIEW_SUMMARY, "%v", commit.commit.Summary()); err != nil {
 			return
 		}
 
-		author := commit.commit.Author()
-
-		lineBuilder.
-			Append(" ").
-			AppendWithStyle(CMP_COMMITVIEW_DATE, "%v", author.When.Format("2006-01-02 15:04")).
-			Append(" ").
-			AppendWithStyle(CMP_COMMITVIEW_AUTHOR, "%v", author.Name).
-			Append(" ").
-			AppendWithStyle(CMP_COMMITVIEW_SUMMARY, "%v", commit.commit.Summary())
-
 		rowIndex++
+	}
+
+	if err = tableFormatter.Render(win, viewPos.viewStartColumn, true); err != nil {
+		return
 	}
 
 	if commitSetState.commitNum > 0 {
@@ -108,8 +118,6 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 			return
 		}
 	}
-
-	win.DrawBorder()
 
 	if err = win.SetTitle(CMP_COMMITVIEW_TITLE, "Commits for %v", commitView.activeRefName); err != nil {
 		return
@@ -130,35 +138,10 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 }
 
 func (commitView *CommitView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
-	viewPos, ok := commitView.commitViewPos[commitView.activeRef]
-	if !ok {
-		return fmt.Errorf("No ViewPos exists for oid %v", commitView.activeRef)
-	}
-
-	selectedCommit, err := commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.activeRowIndex)
-	if err != nil {
-		return
-	} else if selectedCommit == nil {
-		log.Errorf("Unable to obtain commit view index %v for ref %v", viewPos.activeRowIndex, commitView.activeRef)
-		return
-	}
-
-	commitProperties := []PropertyValue{
-		PropertyValue{Property: "Commit Parent Count", Value: fmt.Sprintf("%v", selectedCommit.commit.ParentCount())},
-		PropertyValue{Property: "Author email", Value: selectedCommit.commit.Author().Email},
-		PropertyValue{Property: "Committer Name", Value: selectedCommit.commit.Committer().Name},
-		PropertyValue{Property: "Committer email", Value: selectedCommit.commit.Committer().Email},
-	}
-
-	RenderStatusProperties(lineBuilder, commitProperties)
-
 	return
 }
 
 func (commitView *CommitView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
-	commitView.lock.Lock()
-	defer commitView.lock.Unlock()
-
 	return
 }
 
@@ -223,8 +206,11 @@ func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) 
 	commitView.activeRef = oid
 	commitView.activeRefName = refName
 
-	if _, ok := commitView.commitViewPos[oid]; !ok {
-		commitView.commitViewPos[oid] = NewViewPos()
+	if _, ok := commitView.refViewData[oid]; !ok {
+		commitView.refViewData[oid] = &RefViewData{
+			viewPos:        NewViewPos(),
+			tableFormatter: NewTableFormatter(CV_COLUMN_NUM),
+		}
 	}
 
 	commitSetState := commitView.repoData.CommitSetState(oid)
@@ -294,6 +280,11 @@ func (commitView *CommitView) selectCommit(commitIndex uint) (err error) {
 	return
 }
 
+func (commitView *CommitView) activeViewPos() *ViewPos {
+	refViewData := commitView.refViewData[commitView.activeRef]
+	return refViewData.viewPos
+}
+
 func (commitView *CommitView) HandleKeyPress(keystring string) (err error) {
 	log.Debugf("CommitView handling key %v - NOP", keystring)
 	return
@@ -312,7 +303,7 @@ func (commitView *CommitView) HandleAction(action Action) (err error) {
 }
 
 func MoveUpCommit(commitView *CommitView) (err error) {
-	viewPos := commitView.commitViewPos[commitView.activeRef]
+	viewPos := commitView.activeViewPos()
 
 	if viewPos.MoveLineUp() {
 		log.Debug("Moving up one commit")
@@ -325,7 +316,7 @@ func MoveUpCommit(commitView *CommitView) (err error) {
 
 func MoveDownCommit(commitView *CommitView) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
-	viewPos := commitView.commitViewPos[commitView.activeRef]
+	viewPos := commitView.activeViewPos()
 
 	if viewPos.MoveLineDown(commitSetState.commitNum) {
 		log.Debug("Moving down one commit")
@@ -337,7 +328,7 @@ func MoveDownCommit(commitView *CommitView) (err error) {
 }
 
 func ScrollCommitViewRight(commitView *CommitView) (err error) {
-	viewPos := commitView.commitViewPos[commitView.activeRef]
+	viewPos := commitView.activeViewPos()
 	viewPos.MovePageRight(commitView.viewDimension.cols)
 	log.Debugf("Scrolling right. View starts at column %v", viewPos.viewStartColumn)
 	commitView.channels.UpdateDisplay()
@@ -346,7 +337,7 @@ func ScrollCommitViewRight(commitView *CommitView) (err error) {
 }
 
 func ScrollCommitViewLeft(commitView *CommitView) (err error) {
-	viewPos := commitView.commitViewPos[commitView.activeRef]
+	viewPos := commitView.activeViewPos()
 
 	if viewPos.MovePageLeft(commitView.viewDimension.cols) {
 		log.Debugf("Scrolling left. View starts at column %v", viewPos.viewStartColumn)
@@ -357,7 +348,7 @@ func ScrollCommitViewLeft(commitView *CommitView) (err error) {
 }
 
 func MoveToFirstCommit(commitView *CommitView) (err error) {
-	viewPos := commitView.commitViewPos[commitView.activeRef]
+	viewPos := commitView.activeViewPos()
 
 	if viewPos.MoveToFirstLine() {
 		log.Debug("Moving up to first commit")
@@ -370,7 +361,7 @@ func MoveToFirstCommit(commitView *CommitView) (err error) {
 
 func MoveToLastCommit(commitView *CommitView) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
-	viewPos := commitView.commitViewPos[commitView.activeRef]
+	viewPos := commitView.activeViewPos()
 
 	if viewPos.MoveToLastLine(commitSetState.commitNum) {
 		log.Debug("Moving to last commit")
