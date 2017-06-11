@@ -22,24 +22,26 @@ const (
 	ACTION_NEXT_VIEW
 	ACTION_PREV_VIEW
 	ACTION_FULL_SCREEN_VIEW
+	ACTION_TOGGLE_VIEW_LAYOUT
 )
 
 var actionKeys = map[string]Action{
-	"<grv-nop>":              ACTION_NONE,
-	"<grv-exit>":             ACTION_EXIT,
-	"<grv-prompt>":           ACTION_PROMPT,
-	"<grv-next-line>":        ACTION_NEXT_LINE,
-	"<grv-prev-line>":        ACTION_PREV_LINE,
-	"<grv-next-page>":        ACTION_NEXT_PAGE,
-	"<grv-prev-page>":        ACTION_PREV_PAGE,
-	"<grv-scroll-right>":     ACTION_SCROLL_RIGHT,
-	"<grv-scroll-left>":      ACTION_SCROLL_LEFT,
-	"<grv-first-line>":       ACTION_FIRST_LINE,
-	"<grv-last-line>":        ACTION_LAST_LINE,
-	"<grv-select>":           ACTION_SELECT,
-	"<grv-next-view>":        ACTION_NEXT_VIEW,
-	"<grv-prev-view>":        ACTION_PREV_VIEW,
-	"<grv-full-screen-view>": ACTION_FULL_SCREEN_VIEW,
+	"<grv-nop>":                ACTION_NONE,
+	"<grv-exit>":               ACTION_EXIT,
+	"<grv-prompt>":             ACTION_PROMPT,
+	"<grv-next-line>":          ACTION_NEXT_LINE,
+	"<grv-prev-line>":          ACTION_PREV_LINE,
+	"<grv-next-page>":          ACTION_NEXT_PAGE,
+	"<grv-prev-page>":          ACTION_PREV_PAGE,
+	"<grv-scroll-right>":       ACTION_SCROLL_RIGHT,
+	"<grv-scroll-left>":        ACTION_SCROLL_LEFT,
+	"<grv-first-line>":         ACTION_FIRST_LINE,
+	"<grv-last-line>":          ACTION_LAST_LINE,
+	"<grv-select>":             ACTION_SELECT,
+	"<grv-next-view>":          ACTION_NEXT_VIEW,
+	"<grv-prev-view>":          ACTION_PREV_VIEW,
+	"<grv-full-screen-view>":   ACTION_FULL_SCREEN_VIEW,
+	"<grv-toggle-view-layout>": ACTION_TOGGLE_VIEW_LAYOUT,
 }
 
 var defaultKeyBindings = map[Action]map[ViewId][]string{
@@ -78,6 +80,9 @@ var defaultKeyBindings = map[Action]map[ViewId][]string{
 	},
 	ACTION_FULL_SCREEN_VIEW: map[ViewId][]string{
 		VIEW_ALL: []string{"f", "<C-w>o", "<C-w><C-o>"},
+	},
+	ACTION_TOGGLE_VIEW_LAYOUT: map[ViewId][]string{
+		VIEW_ALL: []string{"<C-w>t"},
 	},
 	ACTION_SELECT: map[ViewId][]string{
 		VIEW_ALL: []string{"<Enter>"},
