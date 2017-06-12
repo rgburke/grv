@@ -10,6 +10,8 @@ const (
 	ACTION_NONE ActionType = iota
 	ACTION_EXIT
 	ACTION_PROMPT
+	ACTION_SEARCH_PROMPT
+	ACTION_SEARCH
 	ACTION_NEXT_LINE
 	ACTION_PREV_LINE
 	ACTION_NEXT_PAGE
@@ -34,6 +36,8 @@ var actionKeys = map[string]ActionType{
 	"<grv-nop>":                ACTION_NONE,
 	"<grv-exit>":               ACTION_EXIT,
 	"<grv-prompt>":             ACTION_PROMPT,
+	"<grv-search-prompt>":      ACTION_SEARCH_PROMPT,
+	"<grv-search>":             ACTION_SEARCH,
 	"<grv-next-line>":          ACTION_NEXT_LINE,
 	"<grv-prev-line>":          ACTION_PREV_LINE,
 	"<grv-next-page>":          ACTION_NEXT_PAGE,
@@ -52,6 +56,9 @@ var actionKeys = map[string]ActionType{
 var defaultKeyBindings = map[ActionType]map[ViewId][]string{
 	ACTION_PROMPT: map[ViewId][]string{
 		VIEW_MAIN: []string{PROMPT_TEXT},
+	},
+	ACTION_SEARCH_PROMPT: map[ViewId][]string{
+		VIEW_MAIN: []string{SEARCH_PROMPT_TEXT},
 	},
 	ACTION_NEXT_LINE: map[ViewId][]string{
 		VIEW_ALL: []string{"<Down>", "j"},
