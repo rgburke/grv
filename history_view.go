@@ -179,7 +179,7 @@ func (historyView *HistoryView) HandleKeyPress(keystring string) (err error) {
 func (historyView *HistoryView) HandleAction(action Action) (err error) {
 	log.Debugf("HistoryView handling action %v", action)
 
-	switch action {
+	switch action.ActionType {
 	case ACTION_NEXT_VIEW:
 		historyView.lock.Lock()
 		historyView.activeViewPos++

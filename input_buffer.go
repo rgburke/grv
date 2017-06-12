@@ -58,8 +58,8 @@ OuterLoop:
 				isPrefix = true
 			}
 		case binding.bindingType == BT_ACTION:
-			if binding.action != ACTION_NONE {
-				action = binding.action
+			if binding.actionType != ACTION_NONE {
+				action = Action{ActionType: binding.actionType}
 			} else if isPrefix {
 				inputBuffer.prepend(keyBuffer[1:])
 				keyBuffer = keyBuffer[0:1]

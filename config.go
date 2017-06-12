@@ -384,7 +384,7 @@ func (config *Configuration) processMapCommand(mapCommand *MapCommand, inputSour
 
 func (config *Configuration) processQuitCommand(quitCommand *QuitCommand) (err error) {
 	log.Info("Processed quit command")
-	config.channels.DoAction(ACTION_EXIT)
+	config.channels.DoAction(Action{ActionType: ACTION_EXIT})
 	return
 }
 

@@ -38,7 +38,7 @@ type CommitView struct {
 	activeRefName   string
 	active          bool
 	refViewData     map[*Oid]*RefViewData
-	handlers        map[Action]CommitViewHandler
+	handlers        map[ActionType]CommitViewHandler
 	refreshTask     *LoadingCommitsRefreshTask
 	commitListeners []CommitListener
 	viewDimension   ViewDimension
@@ -50,7 +50,7 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 		channels:    channels,
 		repoData:    repoData,
 		refViewData: make(map[*Oid]*RefViewData),
-		handlers: map[Action]CommitViewHandler{
+		handlers: map[ActionType]CommitViewHandler{
 			ACTION_PREV_LINE:    MoveUpCommit,
 			ACTION_NEXT_LINE:    MoveDownCommit,
 			ACTION_PREV_PAGE:    MoveUpCommitPage,
@@ -297,7 +297,7 @@ func (commitView *CommitView) HandleAction(action Action) (err error) {
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
-	if handler, ok := commitView.handlers[action]; ok {
+	if handler, ok := commitView.handlers[action.ActionType]; ok {
 		err = handler(commitView)
 	}
 

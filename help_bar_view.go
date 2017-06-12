@@ -9,7 +9,7 @@ type HelpBarView struct {
 }
 
 type ActionMessage struct {
-	action  Action
+	action  ActionType
 	message string
 }
 

@@ -197,7 +197,7 @@ func (view *View) HandleKeyPress(keystring string) error {
 func (view *View) HandleAction(action Action) (err error) {
 	log.Debugf("View handling action %v", action)
 
-	switch action {
+	switch action.ActionType {
 	case ACTION_PROMPT:
 		view.prompt(action)
 		return

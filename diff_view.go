@@ -100,7 +100,7 @@ type DiffView struct {
 	commitDiffs   map[*Commit]*DiffLines
 	viewPos       *ViewPos
 	viewDimension ViewDimension
-	handlers      map[Action]DiffViewHandler
+	handlers      map[ActionType]DiffViewHandler
 	active        bool
 	lock          sync.Mutex
 }
@@ -111,7 +111,7 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 		channels:    channels,
 		viewPos:     NewViewPos(),
 		commitDiffs: make(map[*Commit]*DiffLines),
-		handlers: map[Action]DiffViewHandler{
+		handlers: map[ActionType]DiffViewHandler{
 			ACTION_PREV_LINE:    MoveUpDiffLine,
 			ACTION_NEXT_LINE:    MoveDownDiffLine,
 			ACTION_PREV_PAGE:    MoveUpDiffPage,
@@ -353,7 +353,7 @@ func (diffView *DiffView) HandleAction(action Action) (err error) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
-	if handler, ok := diffView.handlers[action]; ok {
+	if handler, ok := diffView.handlers[action.ActionType]; ok {
 		err = handler(diffView)
 	}
 

@@ -53,7 +53,7 @@ type RefView struct {
 	renderedRefs  []RenderedRef
 	viewPos       *ViewPos
 	viewDimension ViewDimension
-	handlers      map[Action]RefViewHandler
+	handlers      map[ActionType]RefViewHandler
 	lock          sync.Mutex
 }
 
@@ -79,7 +79,7 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 				renderedRefType: RV_TAG_GROUP,
 			},
 		},
-		handlers: map[Action]RefViewHandler{
+		handlers: map[ActionType]RefViewHandler{
 			ACTION_PREV_LINE:    MoveUpRef,
 			ACTION_NEXT_LINE:    MoveDownRef,
 			ACTION_PREV_PAGE:    MoveUpRefPage,
@@ -380,7 +380,7 @@ func (refView *RefView) HandleAction(action Action) (err error) {
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
 
-	if handler, ok := refView.handlers[action]; ok {
+	if handler, ok := refView.handlers[action.ActionType]; ok {
 		err = handler(refView)
 	}
 

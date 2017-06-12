@@ -4,10 +4,10 @@ import (
 	pt "github.com/tchap/go-patricia/patricia"
 )
 
-type Action int
+type ActionType int
 
 const (
-	ACTION_NONE Action = iota
+	ACTION_NONE ActionType = iota
 	ACTION_EXIT
 	ACTION_PROMPT
 	ACTION_NEXT_LINE
@@ -25,7 +25,12 @@ const (
 	ACTION_TOGGLE_VIEW_LAYOUT
 )
 
-var actionKeys = map[string]Action{
+type Action struct {
+	ActionType ActionType
+	Args       []interface{}
+}
+
+var actionKeys = map[string]ActionType{
 	"<grv-nop>":                ACTION_NONE,
 	"<grv-exit>":               ACTION_EXIT,
 	"<grv-prompt>":             ACTION_PROMPT,
@@ -44,7 +49,7 @@ var actionKeys = map[string]Action{
 	"<grv-toggle-view-layout>": ACTION_TOGGLE_VIEW_LAYOUT,
 }
 
-var defaultKeyBindings = map[Action]map[ViewId][]string{
+var defaultKeyBindings = map[ActionType]map[ViewId][]string{
 	ACTION_PROMPT: map[ViewId][]string{
 		VIEW_MAIN: []string{PROMPT_TEXT},
 	},
@@ -100,14 +105,14 @@ const (
 
 type Binding struct {
 	bindingType BindingType
-	action      Action
+	actionType  ActionType
 	keystring   string
 }
 
-func NewActionBinding(action Action) Binding {
+func NewActionBinding(actionType ActionType) Binding {
 	return Binding{
 		bindingType: BT_ACTION,
-		action:      action,
+		actionType:  actionType,
 	}
 }
 
@@ -115,13 +120,13 @@ func NewKeystringBinding(keystring string) Binding {
 	return Binding{
 		bindingType: BT_KEYSTRING,
 		keystring:   keystring,
-		action:      ACTION_NONE,
+		actionType:  ACTION_NONE,
 	}
 }
 
 type KeyBindings interface {
 	Binding(viewHierarchy ViewHierarchy, keystring string) (binding Binding, isPrefix bool)
-	SetActionBinding(viewId ViewId, keystring string, action Action)
+	SetActionBinding(viewId ViewId, keystring string, actionType ActionType)
 	SetKeystringBinding(viewId ViewId, keystring, mappedKeystring string)
 }
 
@@ -156,9 +161,9 @@ func (keyBindingManager *KeyBindingManager) Binding(viewHierarchy ViewHierarchy,
 	return NewActionBinding(ACTION_NONE), isPrefix
 }
 
-func (keyBindingManager *KeyBindingManager) SetActionBinding(viewId ViewId, keystring string, action Action) {
+func (keyBindingManager *KeyBindingManager) SetActionBinding(viewId ViewId, keystring string, actionType ActionType) {
 	viewBindings := keyBindingManager.getOrCreateViewBindings(viewId)
-	viewBindings.Set(pt.Prefix(keystring), NewActionBinding(action))
+	viewBindings.Set(pt.Prefix(keystring), NewActionBinding(actionType))
 }
 
 func (keyBindingManager *KeyBindingManager) SetKeystringBinding(viewId ViewId, keystring, mappedKeystring string) {
@@ -177,14 +182,14 @@ func (keyBindingManager *KeyBindingManager) getOrCreateViewBindings(viewId ViewI
 }
 
 func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
-	for actionKey, action := range actionKeys {
-		keyBindingManager.SetActionBinding(VIEW_ALL, actionKey, action)
+	for actionKey, actionType := range actionKeys {
+		keyBindingManager.SetActionBinding(VIEW_ALL, actionKey, actionType)
 	}
 
-	for action, viewKeys := range defaultKeyBindings {
+	for actionType, viewKeys := range defaultKeyBindings {
 		for viewId, keys := range viewKeys {
 			for _, key := range keys {
-				keyBindingManager.SetActionBinding(viewId, key, action)
+				keyBindingManager.SetActionBinding(viewId, key, actionType)
 			}
 		}
 	}
@@ -195,8 +200,8 @@ func isValidAction(action string) bool {
 	return valid
 }
 
-func DefaultKeyBindings(action Action, viewId ViewId) (keyBindings []string) {
-	viewKeys, ok := defaultKeyBindings[action]
+func DefaultKeyBindings(actionType ActionType, viewId ViewId) (keyBindings []string) {
+	viewKeys, ok := defaultKeyBindings[actionType]
 	if !ok {
 		return
 	}

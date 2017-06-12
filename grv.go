@@ -93,7 +93,7 @@ func (channels *Channels) ReportErrors(errors []error) {
 }
 
 func (channels *Channels) DoAction(action Action) {
-	if action != ACTION_NONE {
+	if action.ActionType != ACTION_NONE {
 		channels.actionCh <- action
 	}
 }
@@ -301,7 +301,7 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 				viewHierarchy := grv.view.ActiveViewIdHierarchy()
 				action, keystring := grv.inputBuffer.Process(viewHierarchy)
 
-				if action != ACTION_NONE {
+				if action.ActionType != ACTION_NONE {
 					actionCh <- action
 				} else if keystring != "" {
 					if err := grv.view.HandleKeyPress(keystring); err != nil {
@@ -312,7 +312,7 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 				}
 			}
 		case action := <-actionCh:
-			if action == ACTION_EXIT {
+			if action.ActionType == ACTION_EXIT {
 				grv.End()
 			} else if err := grv.view.HandleAction(action); err != nil {
 				errorCh <- err

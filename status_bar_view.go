@@ -41,7 +41,7 @@ func (statusBarView *StatusBarView) HandleKeyPress(keystring string) (err error)
 }
 
 func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
-	switch action {
+	switch action.ActionType {
 	case ACTION_PROMPT:
 		input := Prompt(PROMPT_TEXT)
 		errors := statusBarView.config.Evaluate(input)
