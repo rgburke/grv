@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-type DiffViewHandler func(*DiffView) error
+type DiffViewHandler func(*DiffView, Action) error
 
 type DiffLineType int
 
@@ -102,6 +102,7 @@ type DiffView struct {
 	viewDimension ViewDimension
 	handlers      map[ActionType]DiffViewHandler
 	active        bool
+	search        *Search
 	lock          sync.Mutex
 }
 
@@ -120,6 +121,7 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 			ACTION_SCROLL_LEFT:  ScrollDiffViewLeft,
 			ACTION_FIRST_LINE:   MoveToFirstDiffLine,
 			ACTION_LAST_LINE:    MoveToLastDiffLine,
+			ACTION_SEARCH:       DoDiffSearch,
 		},
 	}
 }
@@ -354,13 +356,26 @@ func (diffView *DiffView) HandleAction(action Action) (err error) {
 	defer diffView.lock.Unlock()
 
 	if handler, ok := diffView.handlers[action.ActionType]; ok {
-		err = handler(diffView)
+		err = handler(diffView, action)
 	}
 
 	return
 }
 
-func MoveDownDiffLine(diffView *DiffView) (err error) {
+func (diffView *DiffView) Line(lineIndex uint) (line string, lineExists bool) {
+	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	lineNum := uint(len(diffLines.lines))
+
+	if lineIndex < lineNum {
+		diffLine := diffLines.lines[lineIndex]
+		line = diffLine.line
+		lineExists = true
+	}
+
+	return
+}
+
+func MoveDownDiffLine(diffView *DiffView, action Action) (err error) {
 	diffLines := diffView.commitDiffs[diffView.activeCommit]
 	lineNum := uint(len(diffLines.lines))
 	viewPos := diffView.viewPos
@@ -373,7 +388,7 @@ func MoveDownDiffLine(diffView *DiffView) (err error) {
 	return
 }
 
-func MoveUpDiffLine(diffView *DiffView) (err error) {
+func MoveUpDiffLine(diffView *DiffView, action Action) (err error) {
 	viewPos := diffView.viewPos
 
 	if viewPos.MoveLineUp() {
@@ -384,7 +399,7 @@ func MoveUpDiffLine(diffView *DiffView) (err error) {
 	return
 }
 
-func MoveDownDiffPage(diffView *DiffView) (err error) {
+func MoveDownDiffPage(diffView *DiffView, action Action) (err error) {
 	diffLines := diffView.commitDiffs[diffView.activeCommit]
 	lineNum := uint(len(diffLines.lines))
 	viewPos := diffView.viewPos
@@ -397,7 +412,7 @@ func MoveDownDiffPage(diffView *DiffView) (err error) {
 	return
 }
 
-func MoveUpDiffPage(diffView *DiffView) (err error) {
+func MoveUpDiffPage(diffView *DiffView, action Action) (err error) {
 	viewPos := diffView.viewPos
 
 	if viewPos.MovePageUp(diffView.viewDimension.rows - 2) {
@@ -408,7 +423,7 @@ func MoveUpDiffPage(diffView *DiffView) (err error) {
 	return
 }
 
-func ScrollDiffViewRight(diffView *DiffView) (err error) {
+func ScrollDiffViewRight(diffView *DiffView, action Action) (err error) {
 	viewPos := diffView.viewPos
 	viewPos.MovePageRight(diffView.viewDimension.cols)
 	log.Debugf("Scrolling right. View starts at column %v", viewPos.viewStartColumn)
@@ -417,7 +432,7 @@ func ScrollDiffViewRight(diffView *DiffView) (err error) {
 	return
 }
 
-func ScrollDiffViewLeft(diffView *DiffView) (err error) {
+func ScrollDiffViewLeft(diffView *DiffView, action Action) (err error) {
 	viewPos := diffView.viewPos
 
 	if viewPos.MovePageLeft(diffView.viewDimension.cols) {
@@ -428,7 +443,7 @@ func ScrollDiffViewLeft(diffView *DiffView) (err error) {
 	return
 }
 
-func MoveToFirstDiffLine(diffView *DiffView) (err error) {
+func MoveToFirstDiffLine(diffView *DiffView, action Action) (err error) {
 	viewPos := diffView.viewPos
 
 	if viewPos.MoveToFirstLine() {
@@ -439,13 +454,49 @@ func MoveToFirstDiffLine(diffView *DiffView) (err error) {
 	return
 }
 
-func MoveToLastDiffLine(diffView *DiffView) (err error) {
+func MoveToLastDiffLine(diffView *DiffView, action Action) (err error) {
 	diffLines := diffView.commitDiffs[diffView.activeCommit]
 	lineNum := uint(len(diffLines.lines))
 	viewPos := diffView.viewPos
 
 	if viewPos.MoveToLastLine(lineNum) {
 		log.Debugf("Moving to last line in diff view")
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func DoDiffSearch(diffView *DiffView, action Action) (err error) {
+	if !(len(action.Args) > 0) {
+		return fmt.Errorf("Expected search pattern")
+	}
+
+	pattern, ok := action.Args[0].(string)
+	if !ok {
+		return fmt.Errorf("Expected search pattern")
+	}
+
+	search, err := NewSearch(pattern, diffView)
+	if err != nil {
+		return
+	}
+
+	diffView.search = search
+
+	return FindNextDiffMatch(diffView, action)
+}
+
+func FindNextDiffMatch(diffView *DiffView, action Action) (err error) {
+	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	lineNum := uint(len(diffLines.lines))
+	viewPos := diffView.viewPos
+	lineIndex := (viewPos.activeRowIndex + 1) % lineNum
+
+	matchLineIndex, found := diffView.search.FindNext(lineIndex)
+
+	if found {
+		viewPos.activeRowIndex = matchLineIndex
 		diffView.channels.UpdateDisplay()
 	}
 

@@ -61,10 +61,14 @@ func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
 	case ACTION_SEARCH_PROMPT:
 		statusBarView.promptType = PT_SEARCH
 		input := Prompt(SEARCH_PROMPT_TEXT)
-		statusBarView.channels.DoAction(Action{
-			ActionType: ACTION_SEARCH,
-			Args:       []interface{}{input},
-		})
+
+		if input != "" {
+			statusBarView.channels.DoAction(Action{
+				ActionType: ACTION_SEARCH,
+				Args:       []interface{}{input},
+			})
+		}
+
 		statusBarView.promptType = PT_NONE
 	}
 
