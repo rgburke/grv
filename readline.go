@@ -14,6 +14,9 @@ package main
 //	rl_catch_signals = 0;
 //	rl_catch_sigwinch = 0;
 //	rl_change_environment = 0;
+//
+//	history_write_timestamps = 1;
+//	history_comment_char = '#';
 //	using_history();
 // }
 import "C"
@@ -26,19 +29,26 @@ import (
 )
 
 const (
-	RL_COMMAND_HISTORY_FILE = "/history"
+	RL_COMMAND_HISTORY_FILE = "/command_history"
+	RL_SEARCH_HISTORY_FILE  = "/search_history"
 )
+
+var historyFilePrompts = map[string]string{
+	PROMPT_TEXT:        RL_COMMAND_HISTORY_FILE,
+	SEARCH_PROMPT_TEXT: RL_SEARCH_HISTORY_FILE,
+}
 
 var readLine ReadLine
 
 type ReadLine struct {
-	channels    *Channels
-	ui          InputUI
-	config      Config
-	promptText  string
-	promptPoint int
-	active      bool
-	lock        sync.Mutex
+	channels       *Channels
+	ui             InputUI
+	config         Config
+	promptText     string
+	promptPoint    int
+	active         bool
+	lastPromptText string
+	lock           sync.Mutex
 }
 
 func InitReadLine(channels *Channels, ui InputUI, config Config) {
@@ -49,20 +59,23 @@ func InitReadLine(channels *Channels, ui InputUI, config Config) {
 	}
 
 	C.grv_init_readline()
-	readHistoryFile()
 }
 
 func FreeReadLine() {
-	writeHistoryFile()
+	historyFile, hasHistoryFile := historyFilePrompts[readLine.lastPromptText]
+
+	if hasHistoryFile {
+		writeHistoryFile(historyFile)
+	}
 }
 
-func readHistoryFile() {
+func readHistoryFile(file string) {
 	configDir := readLine.config.ConfigDir()
 	if configDir == "" {
 		return
 	}
 
-	historyFilePath := configDir + RL_COMMAND_HISTORY_FILE
+	historyFilePath := configDir + file
 	if _, err := os.Stat(historyFilePath); os.IsNotExist(err) {
 		return
 	}
@@ -76,13 +89,13 @@ func readHistoryFile() {
 	C.free(unsafe.Pointer(cHistoryFilePath))
 }
 
-func writeHistoryFile() {
+func writeHistoryFile(file string) {
 	configDir := readLine.config.ConfigDir()
 	if configDir == "" {
 		return
 	}
 
-	cHistoryFilePath := C.CString(configDir + RL_COMMAND_HISTORY_FILE)
+	cHistoryFilePath := C.CString(configDir + file)
 
 	if C.write_history(cHistoryFilePath) != 0 {
 		log.Errorf("Failed to write command history to file %v", cHistoryFilePath)
@@ -94,13 +107,14 @@ func writeHistoryFile() {
 func Prompt(prompt string) string {
 	cPrompt := C.CString(prompt)
 
+	readLineSetupPromptHistory(prompt)
 	readLineSetActive(true)
 	cInput := C.readline(cPrompt)
 	readLineSetActive(false)
 
 	C.free(unsafe.Pointer(cPrompt))
+	readLineAddPromptHistory(prompt, cInput)
 	input := C.GoString(cInput)
-	C.add_history(cInput)
 	C.free(unsafe.Pointer(cInput))
 
 	return input
@@ -125,6 +139,44 @@ func readLineSetActive(active bool) {
 	defer readLine.lock.Unlock()
 
 	readLine.active = active
+}
+
+func readLineSetupPromptHistory(prompt string) {
+	readLine.lock.Lock()
+	defer readLine.lock.Unlock()
+
+	if prompt == readLine.lastPromptText {
+		return
+	}
+
+	prevHistoryFile, ok := historyFilePrompts[readLine.lastPromptText]
+	if ok {
+		writeHistoryFile(prevHistoryFile)
+	}
+
+	C.clear_history()
+
+	historyFile, ok := historyFilePrompts[prompt]
+	if ok {
+		readHistoryFile(historyFile)
+	}
+}
+
+func readLineAddPromptHistory(prompt string, cInput *C.char) {
+	readLine.lock.Lock()
+	defer readLine.lock.Unlock()
+
+	readLine.lastPromptText = prompt
+
+	if C.GoString(cInput) == "" {
+		return
+	}
+
+	_, hasHistoryFile := historyFilePrompts[readLine.lastPromptText]
+
+	if hasHistoryFile {
+		C.add_history(cInput)
+	}
 }
 
 //export grv_readline_update_display
