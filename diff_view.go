@@ -113,15 +113,17 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 		viewPos:     NewViewPos(),
 		commitDiffs: make(map[*Commit]*DiffLines),
 		handlers: map[ActionType]DiffViewHandler{
-			ACTION_PREV_LINE:    MoveUpDiffLine,
-			ACTION_NEXT_LINE:    MoveDownDiffLine,
-			ACTION_PREV_PAGE:    MoveUpDiffPage,
-			ACTION_NEXT_PAGE:    MoveDownDiffPage,
-			ACTION_SCROLL_RIGHT: ScrollDiffViewRight,
-			ACTION_SCROLL_LEFT:  ScrollDiffViewLeft,
-			ACTION_FIRST_LINE:   MoveToFirstDiffLine,
-			ACTION_LAST_LINE:    MoveToLastDiffLine,
-			ACTION_SEARCH:       DoDiffSearch,
+			ACTION_PREV_LINE:        MoveUpDiffLine,
+			ACTION_NEXT_LINE:        MoveDownDiffLine,
+			ACTION_PREV_PAGE:        MoveUpDiffPage,
+			ACTION_NEXT_PAGE:        MoveDownDiffPage,
+			ACTION_SCROLL_RIGHT:     ScrollDiffViewRight,
+			ACTION_SCROLL_LEFT:      ScrollDiffViewLeft,
+			ACTION_FIRST_LINE:       MoveToFirstDiffLine,
+			ACTION_LAST_LINE:        MoveToLastDiffLine,
+			ACTION_SEARCH:           DoDiffSearch,
+			ACTION_SEARCH_FIND_NEXT: FindNextDiffMatch,
+			ACTION_SEARCH_FIND_PREV: FindPrevDiffMatch,
 		},
 	}
 }
@@ -375,6 +377,12 @@ func (diffView *DiffView) Line(lineIndex uint) (line string, lineExists bool) {
 	return
 }
 
+func (diffView *DiffView) LineNumber() (lineNumber uint) {
+	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	lineNum := uint(len(diffLines.lines))
+	return lineNum
+}
+
 func MoveDownDiffLine(diffView *DiffView, action Action) (err error) {
 	diffLines := diffView.commitDiffs[diffView.activeCommit]
 	lineNum := uint(len(diffLines.lines))
@@ -488,12 +496,35 @@ func DoDiffSearch(diffView *DiffView, action Action) (err error) {
 }
 
 func FindNextDiffMatch(diffView *DiffView, action Action) (err error) {
+	if diffView.search == nil {
+		return
+	}
+
 	diffLines := diffView.commitDiffs[diffView.activeCommit]
 	lineNum := uint(len(diffLines.lines))
 	viewPos := diffView.viewPos
 	lineIndex := (viewPos.activeRowIndex + 1) % lineNum
 
 	matchLineIndex, found := diffView.search.FindNext(lineIndex)
+
+	if found {
+		viewPos.activeRowIndex = matchLineIndex
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func FindPrevDiffMatch(diffView *DiffView, action Action) (err error) {
+	if diffView.search == nil {
+		return
+	}
+
+	viewPos := diffView.viewPos
+
+	matchLineIndex, found := diffView.search.FindPrev(viewPos.activeRowIndex)
+
+	log.Debugf("FindPrev: startIndex: %v, matchLineIndex: %v, found: %v", viewPos.activeRowIndex, matchLineIndex, found)
 
 	if found {
 		viewPos.activeRowIndex = matchLineIndex

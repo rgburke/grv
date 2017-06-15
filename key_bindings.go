@@ -12,6 +12,8 @@ const (
 	ACTION_PROMPT
 	ACTION_SEARCH_PROMPT
 	ACTION_SEARCH
+	ACTION_SEARCH_FIND_NEXT
+	ACTION_SEARCH_FIND_PREV
 	ACTION_NEXT_LINE
 	ACTION_PREV_LINE
 	ACTION_NEXT_PAGE
@@ -38,6 +40,8 @@ var actionKeys = map[string]ActionType{
 	"<grv-prompt>":             ACTION_PROMPT,
 	"<grv-search-prompt>":      ACTION_SEARCH_PROMPT,
 	"<grv-search>":             ACTION_SEARCH,
+	"<grv-search-find-next>":   ACTION_SEARCH_FIND_NEXT,
+	"<grv-search-find-prev>":   ACTION_SEARCH_FIND_PREV,
 	"<grv-next-line>":          ACTION_NEXT_LINE,
 	"<grv-prev-line>":          ACTION_PREV_LINE,
 	"<grv-next-page>":          ACTION_NEXT_PAGE,
@@ -59,6 +63,12 @@ var defaultKeyBindings = map[ActionType]map[ViewId][]string{
 	},
 	ACTION_SEARCH_PROMPT: map[ViewId][]string{
 		VIEW_MAIN: []string{SEARCH_PROMPT_TEXT},
+	},
+	ACTION_SEARCH_FIND_NEXT: map[ViewId][]string{
+		VIEW_ALL: []string{"n"},
+	},
+	ACTION_SEARCH_FIND_PREV: map[ViewId][]string{
+		VIEW_ALL: []string{"N"},
 	},
 	ACTION_NEXT_LINE: map[ViewId][]string{
 		VIEW_ALL: []string{"<Down>", "j"},
