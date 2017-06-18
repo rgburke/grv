@@ -122,6 +122,7 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 			ACTION_FIRST_LINE:       MoveToFirstDiffLine,
 			ACTION_LAST_LINE:        MoveToLastDiffLine,
 			ACTION_SEARCH:           DoDiffSearch,
+			ACTION_REVERSE_SEARCH:   DoDiffSearch,
 			ACTION_SEARCH_FIND_NEXT: FindNextDiffMatch,
 			ACTION_SEARCH_FIND_PREV: FindPrevDiffMatch,
 		},
@@ -476,16 +477,7 @@ func MoveToLastDiffLine(diffView *DiffView, action Action) (err error) {
 }
 
 func DoDiffSearch(diffView *DiffView, action Action) (err error) {
-	if !(len(action.Args) > 0) {
-		return fmt.Errorf("Expected search pattern")
-	}
-
-	pattern, ok := action.Args[0].(string)
-	if !ok {
-		return fmt.Errorf("Expected search pattern")
-	}
-
-	search, err := NewSearch(pattern, diffView)
+	search, err := CreateSearchFromAction(action, diffView)
 	if err != nil {
 		return
 	}
@@ -500,12 +492,8 @@ func FindNextDiffMatch(diffView *DiffView, action Action) (err error) {
 		return
 	}
 
-	diffLines := diffView.commitDiffs[diffView.activeCommit]
-	lineNum := uint(len(diffLines.lines))
 	viewPos := diffView.viewPos
-	lineIndex := (viewPos.activeRowIndex + 1) % lineNum
-
-	matchLineIndex, found := diffView.search.FindNext(lineIndex)
+	matchLineIndex, found := diffView.search.FindNext(viewPos.activeRowIndex)
 
 	if found {
 		viewPos.activeRowIndex = matchLineIndex
@@ -521,10 +509,7 @@ func FindPrevDiffMatch(diffView *DiffView, action Action) (err error) {
 	}
 
 	viewPos := diffView.viewPos
-
 	matchLineIndex, found := diffView.search.FindPrev(viewPos.activeRowIndex)
-
-	log.Debugf("FindPrev: startIndex: %v, matchLineIndex: %v, found: %v", viewPos.activeRowIndex, matchLineIndex, found)
 
 	if found {
 		viewPos.activeRowIndex = matchLineIndex

@@ -11,7 +11,9 @@ const (
 	ACTION_EXIT
 	ACTION_PROMPT
 	ACTION_SEARCH_PROMPT
+	ACTION_REVERSE_SEARCH_PROMPT
 	ACTION_SEARCH
+	ACTION_REVERSE_SEARCH
 	ACTION_SEARCH_FIND_NEXT
 	ACTION_SEARCH_FIND_PREV
 	ACTION_NEXT_LINE
@@ -35,26 +37,28 @@ type Action struct {
 }
 
 var actionKeys = map[string]ActionType{
-	"<grv-nop>":                ACTION_NONE,
-	"<grv-exit>":               ACTION_EXIT,
-	"<grv-prompt>":             ACTION_PROMPT,
-	"<grv-search-prompt>":      ACTION_SEARCH_PROMPT,
-	"<grv-search>":             ACTION_SEARCH,
-	"<grv-search-find-next>":   ACTION_SEARCH_FIND_NEXT,
-	"<grv-search-find-prev>":   ACTION_SEARCH_FIND_PREV,
-	"<grv-next-line>":          ACTION_NEXT_LINE,
-	"<grv-prev-line>":          ACTION_PREV_LINE,
-	"<grv-next-page>":          ACTION_NEXT_PAGE,
-	"<grv-prev-page>":          ACTION_PREV_PAGE,
-	"<grv-scroll-right>":       ACTION_SCROLL_RIGHT,
-	"<grv-scroll-left>":        ACTION_SCROLL_LEFT,
-	"<grv-first-line>":         ACTION_FIRST_LINE,
-	"<grv-last-line>":          ACTION_LAST_LINE,
-	"<grv-select>":             ACTION_SELECT,
-	"<grv-next-view>":          ACTION_NEXT_VIEW,
-	"<grv-prev-view>":          ACTION_PREV_VIEW,
-	"<grv-full-screen-view>":   ACTION_FULL_SCREEN_VIEW,
-	"<grv-toggle-view-layout>": ACTION_TOGGLE_VIEW_LAYOUT,
+	"<grv-nop>":                   ACTION_NONE,
+	"<grv-exit>":                  ACTION_EXIT,
+	"<grv-prompt>":                ACTION_PROMPT,
+	"<grv-search-prompt>":         ACTION_SEARCH_PROMPT,
+	"<grv-reverse-search-prompt>": ACTION_REVERSE_SEARCH_PROMPT,
+	"<grv-search>":                ACTION_SEARCH,
+	"<grv-reverse-search>":        ACTION_REVERSE_SEARCH,
+	"<grv-search-find-next>":      ACTION_SEARCH_FIND_NEXT,
+	"<grv-search-find-prev>":      ACTION_SEARCH_FIND_PREV,
+	"<grv-next-line>":             ACTION_NEXT_LINE,
+	"<grv-prev-line>":             ACTION_PREV_LINE,
+	"<grv-next-page>":             ACTION_NEXT_PAGE,
+	"<grv-prev-page>":             ACTION_PREV_PAGE,
+	"<grv-scroll-right>":          ACTION_SCROLL_RIGHT,
+	"<grv-scroll-left>":           ACTION_SCROLL_LEFT,
+	"<grv-first-line>":            ACTION_FIRST_LINE,
+	"<grv-last-line>":             ACTION_LAST_LINE,
+	"<grv-select>":                ACTION_SELECT,
+	"<grv-next-view>":             ACTION_NEXT_VIEW,
+	"<grv-prev-view>":             ACTION_PREV_VIEW,
+	"<grv-full-screen-view>":      ACTION_FULL_SCREEN_VIEW,
+	"<grv-toggle-view-layout>":    ACTION_TOGGLE_VIEW_LAYOUT,
 }
 
 var defaultKeyBindings = map[ActionType]map[ViewId][]string{
@@ -63,6 +67,9 @@ var defaultKeyBindings = map[ActionType]map[ViewId][]string{
 	},
 	ACTION_SEARCH_PROMPT: map[ViewId][]string{
 		VIEW_MAIN: []string{SEARCH_PROMPT_TEXT},
+	},
+	ACTION_REVERSE_SEARCH_PROMPT: map[ViewId][]string{
+		VIEW_MAIN: []string{REVERSE_SEARCH_PROMPT_TEXT},
 	},
 	ACTION_SEARCH_FIND_NEXT: map[ViewId][]string{
 		VIEW_ALL: []string{"n"},

@@ -1,9 +1,22 @@
 package main
 
 import (
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"regexp"
 )
+
+type SearchDirection int
+
+const (
+	SD_FORWARD SearchDirection = iota
+	SD_BACKWARD
+)
+
+var actionSearchDirection = map[ActionType]SearchDirection{
+	ACTION_SEARCH:         SD_FORWARD,
+	ACTION_REVERSE_SEARCH: SD_BACKWARD,
+}
 
 type SearchInputProvidor interface {
 	Line(lineIndex uint) (line string, lineExists bool)
@@ -11,13 +24,33 @@ type SearchInputProvidor interface {
 }
 
 type Search struct {
+	direction     SearchDirection
 	pattern       string
 	regex         *regexp.Regexp
 	inputProvidor SearchInputProvidor
 }
 
-func NewSearch(pattern string, inputProvidor SearchInputProvidor) (search *Search, err error) {
+func CreateSearchFromAction(action Action, inputProvidor SearchInputProvidor) (search *Search, err error) {
+	direction, ok := actionSearchDirection[action.ActionType]
+	if !ok {
+		return search, fmt.Errorf("Invalid ActionType: %v", action.ActionType)
+	}
+
+	if !(len(action.Args) > 0) {
+		return search, fmt.Errorf("Expected search pattern")
+	}
+
+	pattern, ok := action.Args[0].(string)
+	if !ok {
+		return search, fmt.Errorf("Expected search pattern")
+	}
+
+	return NewSearch(direction, pattern, inputProvidor)
+}
+
+func NewSearch(direction SearchDirection, pattern string, inputProvidor SearchInputProvidor) (search *Search, err error) {
 	search = &Search{
+		direction:     direction,
 		pattern:       pattern,
 		inputProvidor: inputProvidor,
 	}
@@ -30,7 +63,29 @@ func NewSearch(pattern string, inputProvidor SearchInputProvidor) (search *Searc
 }
 
 func (search *Search) FindNext(startLineIndex uint) (matchedLineIndex uint, found bool) {
-	currentLineIndex := startLineIndex
+	switch search.direction {
+	case SD_FORWARD:
+		return search.findNext(startLineIndex)
+	case SD_BACKWARD:
+		return search.findPrev(startLineIndex)
+	}
+
+	panic(fmt.Sprintf("Invalid search direction: %v", search.direction))
+}
+
+func (search *Search) FindPrev(startLineIndex uint) (matchedLineIndex uint, found bool) {
+	switch search.direction {
+	case SD_FORWARD:
+		return search.findPrev(startLineIndex)
+	case SD_BACKWARD:
+		return search.findNext(startLineIndex)
+	}
+
+	panic(fmt.Sprintf("Invalid search direction: %v", search.direction))
+}
+
+func (search *Search) findNext(startLineIndex uint) (matchedLineIndex uint, found bool) {
+	currentLineIndex := startLineIndex + 1
 	wrapped := false
 
 	for !wrapped || currentLineIndex != startLineIndex {
@@ -53,7 +108,7 @@ func (search *Search) FindNext(startLineIndex uint) (matchedLineIndex uint, foun
 	return
 }
 
-func (search *Search) FindPrev(startLineIndex uint) (matchedLineIndex uint, found bool) {
+func (search *Search) findPrev(startLineIndex uint) (matchedLineIndex uint, found bool) {
 	currentLineIndex := startLineIndex
 	wrapped := false
 

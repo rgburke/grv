@@ -198,7 +198,7 @@ func (view *View) HandleAction(action Action) (err error) {
 	log.Debugf("View handling action %v", action)
 
 	switch action.ActionType {
-	case ACTION_PROMPT, ACTION_SEARCH_PROMPT:
+	case ACTION_PROMPT, ACTION_SEARCH_PROMPT, ACTION_REVERSE_SEARCH_PROMPT:
 		view.prompt(action)
 		return
 	}

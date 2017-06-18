@@ -6,8 +6,9 @@ import (
 )
 
 const (
-	PROMPT_TEXT        = ":"
-	SEARCH_PROMPT_TEXT = "/"
+	PROMPT_TEXT                = ":"
+	SEARCH_PROMPT_TEXT         = "/"
+	REVERSE_SEARCH_PROMPT_TEXT = "?"
 )
 
 type PromptType int
@@ -59,20 +60,26 @@ func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
 		statusBarView.channels.ReportErrors(errors)
 		statusBarView.promptType = PT_NONE
 	case ACTION_SEARCH_PROMPT:
-		statusBarView.promptType = PT_SEARCH
-		input := Prompt(SEARCH_PROMPT_TEXT)
-
-		if input != "" {
-			statusBarView.channels.DoAction(Action{
-				ActionType: ACTION_SEARCH,
-				Args:       []interface{}{input},
-			})
-		}
-
-		statusBarView.promptType = PT_NONE
+		statusBarView.showSearchPrompt(SEARCH_PROMPT_TEXT, ACTION_SEARCH)
+	case ACTION_REVERSE_SEARCH_PROMPT:
+		statusBarView.showSearchPrompt(REVERSE_SEARCH_PROMPT_TEXT, ACTION_REVERSE_SEARCH)
 	}
 
 	return
+}
+
+func (statusBarView *StatusBarView) showSearchPrompt(prompt string, actionType ActionType) {
+	statusBarView.promptType = PT_SEARCH
+	input := Prompt(prompt)
+
+	if input != "" {
+		statusBarView.channels.DoAction(Action{
+			ActionType: actionType,
+			Args:       []interface{}{input},
+		})
+	}
+
+	statusBarView.promptType = PT_NONE
 }
 
 func (statusBarView *StatusBarView) OnActiveChange(active bool) {
