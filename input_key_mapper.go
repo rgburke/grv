@@ -160,8 +160,6 @@ func (inputKeyMapper *InputKeyMapper) GetKeyInput() (key string, err error) {
 			return inputKeyMapper.getAndClearChar(), err
 		}
 	}
-
-	return
 }
 
 func (inputKeyMapper *InputKeyMapper) isProcessingUTF8Char() bool {

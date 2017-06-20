@@ -281,7 +281,7 @@ func (repoDataLoader *RepoDataLoader) Commit(oid *Oid) (commit *Commit, err erro
 		}
 
 		if tag.TargetType() != git.ObjectCommit {
-			err = fmt.Errorf("Tag with ID %v does not point to a commit")
+			err = fmt.Errorf("Tag with ID %v does not point to a commit", oid)
 			return
 		}
 
