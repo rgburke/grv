@@ -207,6 +207,7 @@ func (historyView *HistoryView) HandleAction(action Action) (err error) {
 
 		historyView.fullScreenActiveView = !historyView.fullScreenActiveView
 		historyView.channels.UpdateDisplay()
+		return
 	case ACTION_TOGGLE_VIEW_LAYOUT:
 		historyView.lock.Lock()
 		defer historyView.lock.Unlock()
