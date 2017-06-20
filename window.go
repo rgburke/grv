@@ -6,13 +6,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	rw "github.com/mattn/go-runewidth"
 	gc "github.com/rthornton128/goncurses"
-	"os"
-	"time"
 	"unicode"
-)
-
-const (
-	WN_WINDOW_DUMP_FILE = "grv-window.log"
 )
 
 type RenderWindow interface {
@@ -27,6 +21,7 @@ type RenderWindow interface {
 	SetTitle(themeComponentId ThemeComponentId, format string, args ...interface{}) error
 	SetFooter(themeComponentId ThemeComponentId, format string, args ...interface{}) error
 	ApplyStyle(themeComponentId ThemeComponentId)
+	Highlight(pattern string, themeComponentId ThemeComponentId) error
 	DrawBorder()
 	LineBuilder(rowIndex, startColumn uint) (*LineBuilder, error)
 }
@@ -71,6 +66,7 @@ type Window struct {
 	lines    []*Line
 	startRow uint
 	startCol uint
+	border   bool
 	config   Config
 	cursor   *Cursor
 }
@@ -85,6 +81,16 @@ func NewLine(cols uint) *Line {
 	}
 
 	return line
+}
+
+func (line *Line) String() string {
+	var buf bytes.Buffer
+
+	for _, cell := range line.cells {
+		buf.Write(cell.codePoints.Bytes())
+	}
+
+	return buf.String()
 }
 
 func NewLineBuilder(line *Line, config Config, startColumn uint) *LineBuilder {
@@ -239,6 +245,7 @@ func (win *Window) Clear() {
 	}
 
 	win.cursor = nil
+	win.border = false
 }
 
 func (win *Window) LineBuilder(rowIndex, startColumn uint) (*LineBuilder, error) {
@@ -380,6 +387,8 @@ func (win *Window) DrawBorder() {
 	}
 
 	lastLine.cells[win.cols-1].style.acs_char = gc.ACS_LRCORNER
+
+	win.border = true
 }
 
 func (win *Window) ApplyStyle(themeComponentId ThemeComponentId) {
@@ -425,42 +434,70 @@ func DetermineRenderedCodePoint(codePoint rune, column uint, config Config) (ren
 	return
 }
 
-// For debugging
-func (win *Window) DumpContent() error {
-	borderMap := map[gc.Char]rune{
-		gc.ACS_HLINE:    0x2500,
-		gc.ACS_VLINE:    0x2502,
-		gc.ACS_ULCORNER: 0x250C,
-		gc.ACS_URCORNER: 0x2510,
-		gc.ACS_LLCORNER: 0x2514,
-		gc.ACS_LRCORNER: 0x2518,
-	}
-	var buffer bytes.Buffer
-
-	buffer.WriteString(fmt.Sprintf("%v Dumping window %v\n", time.Now().Format("2006/01/02 15:04:05.000"), win.id))
-
-	for _, line := range win.lines {
-		for _, cell := range line.cells {
-			if cell.style.acs_char != 0 {
-				buffer.WriteRune(borderMap[cell.style.acs_char])
-			} else if cell.codePoints.Len() > 0 {
-				buffer.Write(cell.codePoints.Bytes())
-			}
+func (win *Window) Line(lineIndex uint) (line string, lineExists bool) {
+	if lineIndex < win.rows {
+		if win.border && lineIndex == 0 || lineIndex+1 == win.rows {
+			lineExists = true
+			return
 		}
 
-		buffer.WriteString("\n")
+		line = win.lines[lineIndex].String()
+
+		if win.border && len(line) > 0 {
+			line = line[1:]
+		}
+
+		lineExists = true
 	}
 
-	buffer.WriteString("\n")
+	return
+}
 
-	file, err := os.OpenFile(WN_WINDOW_DUMP_FILE, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	defer file.Close()
+func (win *Window) LineNumber() (lineNumber uint) {
+	return win.rows
+}
 
+func (win *Window) Highlight(pattern string, themeComponentId ThemeComponentId) (err error) {
+	search, err := NewSearch(SD_FORWARD, pattern, win)
 	if err != nil {
-		return err
+		return
 	}
 
-	buffer.WriteTo(file)
+	lineMatches := search.FindAll()
 
-	return nil
+	for _, lineMatch := range lineMatches {
+		line := win.lines[lineMatch.RowIndex]
+		bytes := uint(0)
+		index := 0
+		lineMatchIndex := lineMatch.MatchIndexes[index]
+		cellIndex := 0
+
+		if win.border {
+			cellIndex++
+		}
+
+		for cellIndex < len(line.cells) {
+			cell := line.cells[cellIndex]
+
+			if bytes >= lineMatchIndex.ByteEndIndex {
+				if index++; index < len(lineMatch.MatchIndexes) {
+					lineMatchIndex = lineMatch.MatchIndexes[index]
+				} else {
+					break
+				}
+			}
+
+			if bytes >= lineMatchIndex.ByteStartIndex {
+				attr := int(cell.style.attr)
+				attr &= ^gc.A_REVERSE
+				cell.style.attr = gc.Char(attr)
+				cell.style.componentId = themeComponentId
+			}
+
+			bytes += uint(cell.codePoints.Len())
+			cellIndex++
+		}
+	}
+
+	return
 }

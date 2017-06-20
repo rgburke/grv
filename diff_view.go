@@ -220,6 +220,12 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 		return
 	}
 
+	if diffView.search != nil {
+		if err = win.Highlight(diffView.search.pattern, CMP_ALLVIEW_SEARCH_MATCH); err != nil {
+			return
+		}
+	}
+
 	return
 }
 

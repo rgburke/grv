@@ -23,6 +23,16 @@ type SearchInputProvidor interface {
 	LineNumber() (lineNumber uint)
 }
 
+type SearchMatchIndex struct {
+	ByteStartIndex uint
+	ByteEndIndex   uint
+}
+
+type SearchMatch struct {
+	RowIndex     uint
+	MatchIndexes []SearchMatchIndex
+}
+
 type Search struct {
 	direction     SearchDirection
 	pattern       string
@@ -136,6 +146,38 @@ func (search *Search) findPrev(startLineIndex uint) (matchedLineIndex uint, foun
 			found = true
 			break
 		}
+	}
+
+	return
+}
+
+func (search *Search) FindAll() (matches []SearchMatch) {
+	lineIndex := uint(0)
+
+	for {
+		line, lineExists := search.inputProvidor.Line(lineIndex)
+		if !lineExists {
+			break
+		}
+
+		lineMatches := search.regex.FindAllStringIndex(line, -1)
+
+		if len(lineMatches) > 0 {
+			searchMatch := SearchMatch{
+				RowIndex: lineIndex,
+			}
+
+			for _, lineMatch := range lineMatches {
+				searchMatch.MatchIndexes = append(searchMatch.MatchIndexes, SearchMatchIndex{
+					ByteStartIndex: uint(lineMatch[0]),
+					ByteEndIndex:   uint(lineMatch[1]),
+				})
+			}
+
+			matches = append(matches, searchMatch)
+		}
+
+		lineIndex++
 	}
 
 	return
