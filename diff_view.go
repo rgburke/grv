@@ -125,6 +125,7 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 			ACTION_REVERSE_SEARCH:   DoDiffSearch,
 			ACTION_SEARCH_FIND_NEXT: FindNextDiffMatch,
 			ACTION_SEARCH_FIND_PREV: FindPrevDiffMatch,
+			ACTION_CLEAR_SEARCH:     ClearDiffSearch,
 		},
 	}
 }
@@ -522,5 +523,10 @@ func FindPrevDiffMatch(diffView *DiffView, action Action) (err error) {
 		diffView.channels.UpdateDisplay()
 	}
 
+	return
+}
+
+func ClearDiffSearch(diffView *DiffView, action Action) (err error) {
+	diffView.search = nil
 	return
 }

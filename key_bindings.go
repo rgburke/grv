@@ -16,6 +16,7 @@ const (
 	ACTION_REVERSE_SEARCH
 	ACTION_SEARCH_FIND_NEXT
 	ACTION_SEARCH_FIND_PREV
+	ACTION_CLEAR_SEARCH
 	ACTION_NEXT_LINE
 	ACTION_PREV_LINE
 	ACTION_NEXT_PAGE
@@ -46,6 +47,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-reverse-search>":        ACTION_REVERSE_SEARCH,
 	"<grv-search-find-next>":      ACTION_SEARCH_FIND_NEXT,
 	"<grv-search-find-prev>":      ACTION_SEARCH_FIND_PREV,
+	"<grv-clear-search>":          ACTION_CLEAR_SEARCH,
 	"<grv-next-line>":             ACTION_NEXT_LINE,
 	"<grv-prev-line>":             ACTION_PREV_LINE,
 	"<grv-next-page>":             ACTION_NEXT_PAGE,

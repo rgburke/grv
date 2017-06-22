@@ -72,7 +72,11 @@ func (statusBarView *StatusBarView) showSearchPrompt(prompt string, actionType A
 	statusBarView.promptType = PT_SEARCH
 	input := Prompt(prompt)
 
-	if input != "" {
+	if input == "" {
+		statusBarView.channels.DoAction(Action{
+			ActionType: ACTION_CLEAR_SEARCH,
+		})
+	} else {
 		statusBarView.channels.DoAction(Action{
 			ActionType: actionType,
 			Args:       []interface{}{input},
