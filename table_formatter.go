@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 )
@@ -77,6 +78,22 @@ func (tableFormatter *TableFormatter) SetCellWithStyle(rowIndex, colIndex uint, 
 	tableCell.text = fmt.Sprintf(format, args...)
 	tableCell.themeComponentId = themeComponentId
 
+	return
+}
+
+func (tableFormatter *TableFormatter) RowString(rowIndex uint) (rowString string, err error) {
+	if rowIndex >= tableFormatter.Rows() {
+		err = fmt.Errorf("Invalid rowIndex: %v, total rows %v", rowIndex, tableFormatter.Rows())
+		return
+	}
+
+	var buf bytes.Buffer
+
+	for colIndex := range tableFormatter.cells[rowIndex] {
+		buf.WriteString(tableFormatter.cells[rowIndex][colIndex].text)
+	}
+
+	rowString = buf.String()
 	return
 }
 

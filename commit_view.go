@@ -13,7 +13,7 @@ const (
 	CV_DATE_FORMAT     = "2006-01-02 15:04"
 )
 
-type CommitViewHandler func(*CommitView) error
+type CommitViewHandler func(*CommitView, Action) error
 
 type LoadingCommitsRefreshTask struct {
 	refreshRate time.Duration
@@ -42,6 +42,7 @@ type CommitView struct {
 	refreshTask     *LoadingCommitsRefreshTask
 	commitListeners []CommitListener
 	viewDimension   ViewDimension
+	search          *Search
 	lock            sync.Mutex
 }
 
@@ -51,14 +52,19 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 		repoData:    repoData,
 		refViewData: make(map[*Oid]*RefViewData),
 		handlers: map[ActionType]CommitViewHandler{
-			ACTION_PREV_LINE:    MoveUpCommit,
-			ACTION_NEXT_LINE:    MoveDownCommit,
-			ACTION_PREV_PAGE:    MoveUpCommitPage,
-			ACTION_NEXT_PAGE:    MoveDownCommitPage,
-			ACTION_SCROLL_RIGHT: ScrollCommitViewRight,
-			ACTION_SCROLL_LEFT:  ScrollCommitViewLeft,
-			ACTION_FIRST_LINE:   MoveToFirstCommit,
-			ACTION_LAST_LINE:    MoveToLastCommit,
+			ACTION_PREV_LINE:        MoveUpCommit,
+			ACTION_NEXT_LINE:        MoveDownCommit,
+			ACTION_PREV_PAGE:        MoveUpCommitPage,
+			ACTION_NEXT_PAGE:        MoveDownCommitPage,
+			ACTION_SCROLL_RIGHT:     ScrollCommitViewRight,
+			ACTION_SCROLL_LEFT:      ScrollCommitViewLeft,
+			ACTION_FIRST_LINE:       MoveToFirstCommit,
+			ACTION_LAST_LINE:        MoveToLastCommit,
+			ACTION_SEARCH:           DoCommitSearch,
+			ACTION_REVERSE_SEARCH:   DoCommitSearch,
+			ACTION_SEARCH_FIND_NEXT: FindNextCommitMatch,
+			ACTION_SEARCH_FIND_PREV: FindPrevCommitMatch,
+			ACTION_CLEAR_SEARCH:     ClearCommitSearch,
 		},
 	}
 }
@@ -98,13 +104,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	rowIndex := uint(0)
 
 	for commit := range commitCh {
-		author := commit.commit.Author()
-
-		if err = tableFormatter.SetCellWithStyle(rowIndex, 0, CMP_COMMITVIEW_DATE, "%v", author.When.Format(CV_DATE_FORMAT)); err != nil {
-			return
-		} else if err = tableFormatter.SetCellWithStyle(rowIndex, 1, CMP_COMMITVIEW_AUTHOR, "%v", author.Name); err != nil {
-			return
-		} else if err = tableFormatter.SetCellWithStyle(rowIndex, 2, CMP_COMMITVIEW_SUMMARY, "%v", commit.commit.Summary()); err != nil {
+		if err = commitView.renderCommit(tableFormatter, rowIndex, commit); err != nil {
 			return
 		}
 
@@ -136,7 +136,27 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		return
 	}
 
+	if commitView.search != nil {
+		if err = win.Highlight(commitView.search.pattern, CMP_ALLVIEW_SEARCH_MATCH); err != nil {
+			return
+		}
+	}
+
 	return err
+}
+
+func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIndex uint, commit *Commit) (err error) {
+	author := commit.commit.Author()
+
+	if err = tableFormatter.SetCellWithStyle(rowIndex, 0, CMP_COMMITVIEW_DATE, "%v", author.When.Format(CV_DATE_FORMAT)); err != nil {
+		return
+	} else if err = tableFormatter.SetCellWithStyle(rowIndex, 1, CMP_COMMITVIEW_AUTHOR, "%v", author.Name); err != nil {
+		return
+	} else if err = tableFormatter.SetCellWithStyle(rowIndex, 2, CMP_COMMITVIEW_SUMMARY, "%v", commit.commit.Summary()); err != nil {
+		return
+	}
+
+	return
 }
 
 func (commitView *CommitView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
@@ -287,6 +307,50 @@ func (commitView *CommitView) activeViewPos() *ViewPos {
 	return refViewData.viewPos
 }
 
+func (commitView *CommitView) Line(lineIndex uint) (line string, lineExists bool) {
+	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
+
+	if lineIndex >= commitSetState.commitNum {
+		return
+	}
+
+	commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, lineIndex)
+
+	if err != nil {
+		log.Errorf("Error when retrieving commit during search: %v", err)
+		return
+	}
+
+	refViewData, ok := commitView.refViewData[commitView.activeRef]
+	if !ok {
+		log.Errorf("Not refViewData for ref %v", commitView.activeRef)
+		return
+	}
+
+	tableFormatter := refViewData.tableFormatter
+	tableFormatter.Clear()
+
+	if err = commitView.renderCommit(tableFormatter, 0, commit); err != nil {
+		log.Errorf("Error when rendering commit: %v", err)
+		return
+	}
+
+	line, err = tableFormatter.RowString(0)
+	if err != nil {
+		log.Errorf("Error when retrieving row string: %v", err)
+		return
+	}
+
+	lineExists = true
+
+	return
+}
+
+func (commitView *CommitView) LineNumber() (lineNumber uint) {
+	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
+	return commitSetState.commitNum
+}
+
 func (commitView *CommitView) HandleKeyPress(keystring string) (err error) {
 	log.Debugf("CommitView handling key %v - NOP", keystring)
 	return
@@ -298,13 +362,13 @@ func (commitView *CommitView) HandleAction(action Action) (err error) {
 	defer commitView.lock.Unlock()
 
 	if handler, ok := commitView.handlers[action.ActionType]; ok {
-		err = handler(commitView)
+		err = handler(commitView, action)
 	}
 
 	return
 }
 
-func MoveUpCommit(commitView *CommitView) (err error) {
+func MoveUpCommit(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.activeViewPos()
 
 	if viewPos.MoveLineUp() {
@@ -316,7 +380,7 @@ func MoveUpCommit(commitView *CommitView) (err error) {
 	return
 }
 
-func MoveDownCommit(commitView *CommitView) (err error) {
+func MoveDownCommit(commitView *CommitView, action Action) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 	viewPos := commitView.activeViewPos()
 
@@ -329,7 +393,7 @@ func MoveDownCommit(commitView *CommitView) (err error) {
 	return
 }
 
-func MoveUpCommitPage(commitView *CommitView) (err error) {
+func MoveUpCommitPage(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.activeViewPos()
 
 	if viewPos.MovePageUp(commitView.viewDimension.rows - 2) {
@@ -341,7 +405,7 @@ func MoveUpCommitPage(commitView *CommitView) (err error) {
 	return
 }
 
-func MoveDownCommitPage(commitView *CommitView) (err error) {
+func MoveDownCommitPage(commitView *CommitView, action Action) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 	viewPos := commitView.activeViewPos()
 
@@ -354,7 +418,7 @@ func MoveDownCommitPage(commitView *CommitView) (err error) {
 	return
 }
 
-func ScrollCommitViewRight(commitView *CommitView) (err error) {
+func ScrollCommitViewRight(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.activeViewPos()
 	viewPos.MovePageRight(commitView.viewDimension.cols)
 	log.Debugf("Scrolling right. View starts at column %v", viewPos.viewStartColumn)
@@ -363,7 +427,7 @@ func ScrollCommitViewRight(commitView *CommitView) (err error) {
 	return
 }
 
-func ScrollCommitViewLeft(commitView *CommitView) (err error) {
+func ScrollCommitViewLeft(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.activeViewPos()
 
 	if viewPos.MovePageLeft(commitView.viewDimension.cols) {
@@ -374,7 +438,7 @@ func ScrollCommitViewLeft(commitView *CommitView) (err error) {
 	return
 }
 
-func MoveToFirstCommit(commitView *CommitView) (err error) {
+func MoveToFirstCommit(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.activeViewPos()
 
 	if viewPos.MoveToFirstLine() {
@@ -386,7 +450,7 @@ func MoveToFirstCommit(commitView *CommitView) (err error) {
 	return
 }
 
-func MoveToLastCommit(commitView *CommitView) (err error) {
+func MoveToLastCommit(commitView *CommitView, action Action) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 	viewPos := commitView.activeViewPos()
 
@@ -396,5 +460,53 @@ func MoveToLastCommit(commitView *CommitView) (err error) {
 		commitView.channels.UpdateDisplay()
 	}
 
+	return
+}
+
+func DoCommitSearch(commitView *CommitView, action Action) (err error) {
+	search, err := CreateSearchFromAction(action, commitView)
+	if err != nil {
+		return
+	}
+
+	commitView.search = search
+
+	return FindNextCommitMatch(commitView, action)
+}
+
+func FindNextCommitMatch(commitView *CommitView, action Action) (err error) {
+	if commitView.search == nil {
+		return
+	}
+
+	viewPos := commitView.activeViewPos()
+	matchLineIndex, found := commitView.search.FindNext(viewPos.activeRowIndex)
+
+	if found {
+		viewPos.activeRowIndex = matchLineIndex
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func FindPrevCommitMatch(commitView *CommitView, action Action) (err error) {
+	if commitView.search == nil {
+		return
+	}
+
+	viewPos := commitView.activeViewPos()
+	matchLineIndex, found := commitView.search.FindPrev(viewPos.activeRowIndex)
+
+	if found {
+		viewPos.activeRowIndex = matchLineIndex
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func ClearCommitSearch(commitView *CommitView, action Action) (err error) {
+	commitView.search = nil
 	return
 }
