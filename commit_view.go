@@ -335,6 +335,8 @@ func (commitView *CommitView) Line(lineIndex uint) (line string, lineExists bool
 		return
 	}
 
+	tableFormatter.PadCells(false)
+
 	line, err = tableFormatter.RowString(0)
 	if err != nil {
 		log.Errorf("Error when retrieving row string: %v", err)

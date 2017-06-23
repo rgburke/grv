@@ -91,6 +91,7 @@ func (tableFormatter *TableFormatter) RowString(rowIndex uint) (rowString string
 
 	for colIndex := range tableFormatter.cells[rowIndex] {
 		buf.WriteString(tableFormatter.cells[rowIndex][colIndex].text)
+		buf.WriteString(TF_SEPARATOR)
 	}
 
 	rowString = buf.String()
@@ -98,7 +99,7 @@ func (tableFormatter *TableFormatter) RowString(rowIndex uint) (rowString string
 }
 
 func (tableFormatter *TableFormatter) Render(win RenderWindow, viewStartColumn uint, border bool) (err error) {
-	tableFormatter.padCells(border)
+	tableFormatter.PadCells(border)
 
 	var lineBuilder *LineBuilder
 
@@ -131,7 +132,7 @@ func (tableFormatter *TableFormatter) Render(win RenderWindow, viewStartColumn u
 	return
 }
 
-func (tableFormatter *TableFormatter) padCells(border bool) {
+func (tableFormatter *TableFormatter) PadCells(border bool) {
 	tableFormatter.determineMaxColWidths(border)
 
 	for rowIndex := range tableFormatter.cells {
@@ -150,10 +151,8 @@ func (tableFormatter *TableFormatter) padCells(border bool) {
 				tableCell.text += strings.Repeat(" ", int(maxColWidth-width))
 			}
 
-			column += maxColWidth
+			column += maxColWidth + uint(len(TF_SEPARATOR))
 		}
-
-		column += uint(len(TF_SEPARATOR))
 	}
 }
 
