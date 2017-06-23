@@ -2,7 +2,9 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
+	rw "github.com/mattn/go-runewidth"
 	"sync"
+	"unicode/utf8"
 )
 
 const (
@@ -112,7 +114,22 @@ func (statusBarView *StatusBarView) Render(win RenderWindow) (err error) {
 	if statusBarView.active {
 		promptText, promptPoint := PromptState()
 		lineBuilder.Append("%v", promptText)
-		win.SetCursor(0, uint(promptPoint+len(PROMPT_TEXT)))
+		bytes := 0
+		characters := 0
+
+		for _, char := range promptText {
+			bytes += utf8.RuneLen(char)
+
+			if bytes > promptPoint {
+				break
+			}
+
+			if rw.RuneWidth(char) > 0 {
+				characters++
+			}
+		}
+
+		win.SetCursor(0, uint(characters+1))
 	} else {
 		lineBuilder.Append(" %v", statusBarView.repoData.Path())
 
