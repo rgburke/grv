@@ -24,6 +24,7 @@ func main() {
 	grv := NewGRV()
 
 	if err := grv.Initialise(args.repoFilePath); err != nil {
+		grv.Free()
 		log.Fatal(err)
 	}
 

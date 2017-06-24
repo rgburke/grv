@@ -228,11 +228,14 @@ func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) 
 	commitView.activeRef = oid
 	commitView.activeRefName = refName
 
-	if _, ok := commitView.refViewData[oid]; !ok {
-		commitView.refViewData[oid] = &RefViewData{
+	refViewData, refViewDataExists := commitView.refViewData[oid]
+	if !refViewDataExists {
+		refViewData = &RefViewData{
 			viewPos:        NewViewPos(),
 			tableFormatter: NewTableFormatter(CV_COLUMN_NUM),
 		}
+
+		commitView.refViewData[oid] = refViewData
 	}
 
 	commitSetState := commitView.repoData.CommitSetState(oid)
@@ -243,7 +246,14 @@ func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) 
 		commitView.refreshTask.Stop()
 	}
 
-	commit, err := commitView.repoData.Commit(oid)
+	var commit *Commit
+
+	if refViewDataExists {
+		commit, err = commitView.repoData.CommitByIndex(commitView.activeRef, refViewData.viewPos.activeRowIndex)
+	} else {
+		commit, err = commitView.repoData.Commit(commitView.activeRef)
+	}
+
 	if err != nil {
 		return
 	}

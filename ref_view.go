@@ -153,7 +153,7 @@ func (refView *RefView) Initialise() (err error) {
 		branchName = branch.name
 	}
 
-	refView.notifyRefListeners(branchName, head)
+	err = refView.notifyRefListeners(branchName, head)
 
 	return
 }

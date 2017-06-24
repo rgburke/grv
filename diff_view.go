@@ -254,6 +254,8 @@ func (diffView *DiffView) ViewId() ViewId {
 }
 
 func (diffView *DiffView) OnCommitSelect(commit *Commit) (err error) {
+	log.Debugf("DiffView loading diff for selected commit %v", commit.commit.Id())
+
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
