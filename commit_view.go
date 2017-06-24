@@ -220,6 +220,9 @@ func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) 
 
 		refreshTask.Stop()
 
+		commitSetState := commitView.repoData.CommitSetState(oid)
+		commitView.channels.ReportStatus("Loaded %v commits for ref %v", commitSetState.commitNum, refName)
+
 		return nil
 	}); err != nil {
 		return
@@ -242,6 +245,7 @@ func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) 
 
 	if commitSetState.loading {
 		commitView.refreshTask.Start()
+		commitView.channels.ReportStatus("Loading commits for ref %v", refName)
 	} else {
 		commitView.refreshTask.Stop()
 	}
@@ -497,6 +501,8 @@ func FindNextCommitMatch(commitView *CommitView, action Action) (err error) {
 	if found {
 		viewPos.activeRowIndex = matchLineIndex
 		commitView.channels.UpdateDisplay()
+	} else {
+		commitView.channels.ReportStatus("No matches found")
 	}
 
 	return

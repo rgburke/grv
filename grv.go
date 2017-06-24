@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"os"
 	"os/signal"
@@ -95,6 +96,17 @@ func (channels *Channels) ReportErrors(errors []error) {
 func (channels *Channels) DoAction(action Action) {
 	if action.ActionType != ACTION_NONE {
 		channels.actionCh <- action
+	}
+}
+
+func (channels *Channels) ReportStatus(format string, args ...interface{}) {
+	status := fmt.Sprintf(format, args...)
+
+	if status != "" {
+		channels.DoAction(Action{
+			ActionType: ACTION_SHOW_STATUS,
+			Args:       []interface{}{status},
+		})
 	}
 }
 

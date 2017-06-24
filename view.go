@@ -201,6 +201,9 @@ func (view *View) HandleAction(action Action) (err error) {
 	case ACTION_PROMPT, ACTION_SEARCH_PROMPT, ACTION_REVERSE_SEARCH_PROMPT:
 		view.prompt(action)
 		return
+	case ACTION_SHOW_STATUS:
+		view.statusView.HandleAction(action)
+		return
 	}
 
 	return view.ActiveView().HandleAction(action)

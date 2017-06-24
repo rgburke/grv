@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	rw "github.com/mattn/go-runewidth"
 	"sync"
@@ -27,13 +28,14 @@ type PropertyValue struct {
 }
 
 type StatusBarView struct {
-	rootView   RootView
-	repoData   RepoData
-	channels   *Channels
-	config     ConfigSetter
-	active     bool
-	promptType PromptType
-	lock       sync.Mutex
+	rootView      RootView
+	repoData      RepoData
+	channels      *Channels
+	config        ConfigSetter
+	active        bool
+	promptType    PromptType
+	pendingStatus string
+	lock          sync.Mutex
 }
 
 func NewStatusBarView(rootView RootView, repoData RepoData, channels *Channels, config ConfigSetter) *StatusBarView {
@@ -65,6 +67,21 @@ func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
 		statusBarView.showSearchPrompt(SEARCH_PROMPT_TEXT, ACTION_SEARCH)
 	case ACTION_REVERSE_SEARCH_PROMPT:
 		statusBarView.showSearchPrompt(REVERSE_SEARCH_PROMPT_TEXT, ACTION_REVERSE_SEARCH)
+	case ACTION_SHOW_STATUS:
+		statusBarView.lock.Lock()
+		defer statusBarView.lock.Unlock()
+
+		if len(action.Args) > 0 {
+			status, ok := action.Args[0].(string)
+			if ok {
+				statusBarView.pendingStatus = status
+				log.Infof("Received status: %v", status)
+				statusBarView.channels.UpdateDisplay()
+				return
+			}
+		}
+
+		err = fmt.Errorf("Expected status argument but received: %v", action.Args)
 	}
 
 	return
@@ -131,17 +148,7 @@ func (statusBarView *StatusBarView) Render(win RenderWindow) (err error) {
 
 		win.SetCursor(0, uint(characters+1))
 	} else {
-		lineBuilder.Append(" %v", statusBarView.repoData.Path())
-
-		/*lineBuilder.Append(" ")
-		viewHierarchy := statusBarView.rootView.ActiveViewHierarchy()
-
-		for _, view := range viewHierarchy {
-			if err = view.RenderStatusBar(lineBuilder); err != nil {
-				return
-			}
-		}*/
-
+		lineBuilder.Append(" %v", statusBarView.pendingStatus)
 		win.ApplyStyle(CMP_STATUSBARVIEW_NORMAL)
 	}
 
