@@ -42,31 +42,30 @@ type CommitView struct {
 	refreshTask     *LoadingCommitsRefreshTask
 	commitListeners []CommitListener
 	viewDimension   ViewDimension
-	search          *Search
+	viewSearch      *ViewSearch
 	lock            sync.Mutex
 }
 
 func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
-	return &CommitView{
+	commitView := &CommitView{
 		channels:    channels,
 		repoData:    repoData,
 		refViewData: make(map[*Oid]*RefViewData),
 		handlers: map[ActionType]CommitViewHandler{
-			ACTION_PREV_LINE:        MoveUpCommit,
-			ACTION_NEXT_LINE:        MoveDownCommit,
-			ACTION_PREV_PAGE:        MoveUpCommitPage,
-			ACTION_NEXT_PAGE:        MoveDownCommitPage,
-			ACTION_SCROLL_RIGHT:     ScrollCommitViewRight,
-			ACTION_SCROLL_LEFT:      ScrollCommitViewLeft,
-			ACTION_FIRST_LINE:       MoveToFirstCommit,
-			ACTION_LAST_LINE:        MoveToLastCommit,
-			ACTION_SEARCH:           DoCommitSearch,
-			ACTION_REVERSE_SEARCH:   DoCommitSearch,
-			ACTION_SEARCH_FIND_NEXT: FindNextCommitMatch,
-			ACTION_SEARCH_FIND_PREV: FindPrevCommitMatch,
-			ACTION_CLEAR_SEARCH:     ClearCommitSearch,
+			ACTION_PREV_LINE:    MoveUpCommit,
+			ACTION_NEXT_LINE:    MoveDownCommit,
+			ACTION_PREV_PAGE:    MoveUpCommitPage,
+			ACTION_NEXT_PAGE:    MoveDownCommitPage,
+			ACTION_SCROLL_RIGHT: ScrollCommitViewRight,
+			ACTION_SCROLL_LEFT:  ScrollCommitViewLeft,
+			ACTION_FIRST_LINE:   MoveToFirstCommit,
+			ACTION_LAST_LINE:    MoveToLastCommit,
 		},
 	}
+
+	commitView.viewSearch = NewViewSearch(commitView, channels)
+
+	return commitView
 }
 
 func (commitView *CommitView) Initialise() (err error) {
@@ -136,8 +135,8 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		return
 	}
 
-	if commitView.search != nil {
-		if err = win.Highlight(commitView.search.pattern, CMP_ALLVIEW_SEARCH_MATCH); err != nil {
+	if searchActive, searchPattern := commitView.viewSearch.SearchActive(); searchActive {
+		if err = win.Highlight(searchPattern, CMP_ALLVIEW_SEARCH_MATCH); err != nil {
 			return
 		}
 	}
@@ -316,7 +315,7 @@ func (commitView *CommitView) selectCommit(commitIndex uint) (err error) {
 	return
 }
 
-func (commitView *CommitView) activeViewPos() *ViewPos {
+func (commitView *CommitView) ViewPos() *ViewPos {
 	refViewData := commitView.refViewData[commitView.activeRef]
 	return refViewData.viewPos
 }
@@ -379,13 +378,15 @@ func (commitView *CommitView) HandleAction(action Action) (err error) {
 
 	if handler, ok := commitView.handlers[action.ActionType]; ok {
 		err = handler(commitView, action)
+	} else {
+		_, err = commitView.viewSearch.HandleAction(action)
 	}
 
 	return
 }
 
 func MoveUpCommit(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.activeViewPos()
+	viewPos := commitView.ViewPos()
 
 	if viewPos.MoveLineUp() {
 		log.Debug("Moving up one commit")
@@ -398,7 +399,7 @@ func MoveUpCommit(commitView *CommitView, action Action) (err error) {
 
 func MoveDownCommit(commitView *CommitView, action Action) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
-	viewPos := commitView.activeViewPos()
+	viewPos := commitView.ViewPos()
 
 	if viewPos.MoveLineDown(commitSetState.commitNum) {
 		log.Debug("Moving down one commit")
@@ -410,7 +411,7 @@ func MoveDownCommit(commitView *CommitView, action Action) (err error) {
 }
 
 func MoveUpCommitPage(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.activeViewPos()
+	viewPos := commitView.ViewPos()
 
 	if viewPos.MovePageUp(commitView.viewDimension.rows - 2) {
 		log.Debug("Moving up one page")
@@ -423,7 +424,7 @@ func MoveUpCommitPage(commitView *CommitView, action Action) (err error) {
 
 func MoveDownCommitPage(commitView *CommitView, action Action) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
-	viewPos := commitView.activeViewPos()
+	viewPos := commitView.ViewPos()
 
 	if viewPos.MovePageDown(commitView.viewDimension.rows-2, commitSetState.commitNum) {
 		log.Debug("Moving down one page")
@@ -435,7 +436,7 @@ func MoveDownCommitPage(commitView *CommitView, action Action) (err error) {
 }
 
 func ScrollCommitViewRight(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.activeViewPos()
+	viewPos := commitView.ViewPos()
 	viewPos.MovePageRight(commitView.viewDimension.cols)
 	log.Debugf("Scrolling right. View starts at column %v", viewPos.viewStartColumn)
 	commitView.channels.UpdateDisplay()
@@ -444,7 +445,7 @@ func ScrollCommitViewRight(commitView *CommitView, action Action) (err error) {
 }
 
 func ScrollCommitViewLeft(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.activeViewPos()
+	viewPos := commitView.ViewPos()
 
 	if viewPos.MovePageLeft(commitView.viewDimension.cols) {
 		log.Debugf("Scrolling left. View starts at column %v", viewPos.viewStartColumn)
@@ -455,7 +456,7 @@ func ScrollCommitViewLeft(commitView *CommitView, action Action) (err error) {
 }
 
 func MoveToFirstCommit(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.activeViewPos()
+	viewPos := commitView.ViewPos()
 
 	if viewPos.MoveToFirstLine() {
 		log.Debug("Moving up to first commit")
@@ -468,7 +469,7 @@ func MoveToFirstCommit(commitView *CommitView, action Action) (err error) {
 
 func MoveToLastCommit(commitView *CommitView, action Action) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
-	viewPos := commitView.activeViewPos()
+	viewPos := commitView.ViewPos()
 
 	if viewPos.MoveToLastLine(commitSetState.commitNum) {
 		log.Debug("Moving to last commit")
@@ -476,55 +477,5 @@ func MoveToLastCommit(commitView *CommitView, action Action) (err error) {
 		commitView.channels.UpdateDisplay()
 	}
 
-	return
-}
-
-func DoCommitSearch(commitView *CommitView, action Action) (err error) {
-	search, err := CreateSearchFromAction(action, commitView)
-	if err != nil {
-		return
-	}
-
-	commitView.search = search
-
-	return FindNextCommitMatch(commitView, action)
-}
-
-func FindNextCommitMatch(commitView *CommitView, action Action) (err error) {
-	if commitView.search == nil {
-		return
-	}
-
-	viewPos := commitView.activeViewPos()
-	matchLineIndex, found := commitView.search.FindNext(viewPos.activeRowIndex)
-
-	if found {
-		viewPos.activeRowIndex = matchLineIndex
-		commitView.channels.UpdateDisplay()
-	} else {
-		commitView.channels.ReportStatus("No matches found")
-	}
-
-	return
-}
-
-func FindPrevCommitMatch(commitView *CommitView, action Action) (err error) {
-	if commitView.search == nil {
-		return
-	}
-
-	viewPos := commitView.activeViewPos()
-	matchLineIndex, found := commitView.search.FindPrev(viewPos.activeRowIndex)
-
-	if found {
-		viewPos.activeRowIndex = matchLineIndex
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func ClearCommitSearch(commitView *CommitView, action Action) (err error) {
-	commitView.search = nil
 	return
 }

@@ -102,32 +102,31 @@ type DiffView struct {
 	viewDimension ViewDimension
 	handlers      map[ActionType]DiffViewHandler
 	active        bool
-	search        *Search
+	viewSearch    *ViewSearch
 	lock          sync.Mutex
 }
 
 func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
-	return &DiffView{
+	diffView := &DiffView{
 		repoData:    repoData,
 		channels:    channels,
 		viewPos:     NewViewPos(),
 		commitDiffs: make(map[*Commit]*DiffLines),
 		handlers: map[ActionType]DiffViewHandler{
-			ACTION_PREV_LINE:        MoveUpDiffLine,
-			ACTION_NEXT_LINE:        MoveDownDiffLine,
-			ACTION_PREV_PAGE:        MoveUpDiffPage,
-			ACTION_NEXT_PAGE:        MoveDownDiffPage,
-			ACTION_SCROLL_RIGHT:     ScrollDiffViewRight,
-			ACTION_SCROLL_LEFT:      ScrollDiffViewLeft,
-			ACTION_FIRST_LINE:       MoveToFirstDiffLine,
-			ACTION_LAST_LINE:        MoveToLastDiffLine,
-			ACTION_SEARCH:           DoDiffSearch,
-			ACTION_REVERSE_SEARCH:   DoDiffSearch,
-			ACTION_SEARCH_FIND_NEXT: FindNextDiffMatch,
-			ACTION_SEARCH_FIND_PREV: FindPrevDiffMatch,
-			ACTION_CLEAR_SEARCH:     ClearDiffSearch,
+			ACTION_PREV_LINE:    MoveUpDiffLine,
+			ACTION_NEXT_LINE:    MoveDownDiffLine,
+			ACTION_PREV_PAGE:    MoveUpDiffPage,
+			ACTION_NEXT_PAGE:    MoveDownDiffPage,
+			ACTION_SCROLL_RIGHT: ScrollDiffViewRight,
+			ACTION_SCROLL_LEFT:  ScrollDiffViewLeft,
+			ACTION_FIRST_LINE:   MoveToFirstDiffLine,
+			ACTION_LAST_LINE:    MoveToLastDiffLine,
 		},
 	}
+
+	diffView.viewSearch = NewViewSearch(diffView, channels)
+
+	return diffView
 }
 
 func (diffView *DiffView) Initialise() (err error) {
@@ -221,8 +220,8 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 		return
 	}
 
-	if diffView.search != nil {
-		if err = win.Highlight(diffView.search.pattern, CMP_ALLVIEW_SEARCH_MATCH); err != nil {
+	if searchActive, searchPattern := diffView.viewSearch.SearchActive(); searchActive {
+		if err = win.Highlight(searchPattern, CMP_ALLVIEW_SEARCH_MATCH); err != nil {
 			return
 		}
 	}
@@ -362,6 +361,10 @@ func (diffView *DiffView) HandleKeyPress(keystring string) (err error) {
 	return
 }
 
+func (diffView *DiffView) ViewPos() *ViewPos {
+	return diffView.viewPos
+}
+
 func (diffView *DiffView) HandleAction(action Action) (err error) {
 	log.Debugf("DiffView handling action %v", action)
 	diffView.lock.Lock()
@@ -369,6 +372,8 @@ func (diffView *DiffView) HandleAction(action Action) (err error) {
 
 	if handler, ok := diffView.handlers[action.ActionType]; ok {
 		err = handler(diffView, action)
+	} else {
+		_, err = diffView.viewSearch.HandleAction(action)
 	}
 
 	return
@@ -482,53 +487,5 @@ func MoveToLastDiffLine(diffView *DiffView, action Action) (err error) {
 		diffView.channels.UpdateDisplay()
 	}
 
-	return
-}
-
-func DoDiffSearch(diffView *DiffView, action Action) (err error) {
-	search, err := CreateSearchFromAction(action, diffView)
-	if err != nil {
-		return
-	}
-
-	diffView.search = search
-
-	return FindNextDiffMatch(diffView, action)
-}
-
-func FindNextDiffMatch(diffView *DiffView, action Action) (err error) {
-	if diffView.search == nil {
-		return
-	}
-
-	viewPos := diffView.viewPos
-	matchLineIndex, found := diffView.search.FindNext(viewPos.activeRowIndex)
-
-	if found {
-		viewPos.activeRowIndex = matchLineIndex
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func FindPrevDiffMatch(diffView *DiffView, action Action) (err error) {
-	if diffView.search == nil {
-		return
-	}
-
-	viewPos := diffView.viewPos
-	matchLineIndex, found := diffView.search.FindPrev(viewPos.activeRowIndex)
-
-	if found {
-		viewPos.activeRowIndex = matchLineIndex
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func ClearDiffSearch(diffView *DiffView, action Action) (err error) {
-	diffView.search = nil
 	return
 }
