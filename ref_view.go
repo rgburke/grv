@@ -54,6 +54,7 @@ type RefView struct {
 	viewPos       *ViewPos
 	viewDimension ViewDimension
 	handlers      map[ActionType]RefViewHandler
+	viewSearch    *ViewSearch
 	lock          sync.Mutex
 }
 
@@ -62,7 +63,7 @@ type RefListener interface {
 }
 
 func NewRefView(repoData RepoData, channels *Channels) *RefView {
-	return &RefView{
+	refView := &RefView{
 		channels: channels,
 		repoData: repoData,
 		viewPos:  NewViewPos(),
@@ -91,6 +92,10 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 			ACTION_SELECT:       SelectRef,
 		},
 	}
+
+	refView.viewSearch = NewViewSearch(refView, channels)
+
+	return refView
 }
 
 func (refView *RefView) Initialise() (err error) {
@@ -162,6 +167,10 @@ func getDetachedHeadDisplayValue(oid *Oid) string {
 	return fmt.Sprintf("HEAD detached at %s", oid.String()[0:7])
 }
 
+func isSelectableRenderedRef(renderedRefType RenderedRefType) bool {
+	return renderedRefType != RV_SPACE && renderedRefType != RV_LOADING
+}
+
 func (refView *RefView) RegisterRefListener(refListener RefListener) {
 	refView.refListeners = append(refView.refListeners, refListener)
 }
@@ -220,6 +229,12 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	selectedRenderedRef := refView.renderedRefs[viewPos.activeRowIndex]
 	if err = refView.renderFooter(win, selectedRenderedRef); err != nil {
 		return
+	}
+
+	if searchActive, searchPattern := refView.viewSearch.SearchActive(); searchActive {
+		if err = win.Highlight(searchPattern, CMP_ALLVIEW_SEARCH_MATCH); err != nil {
+			return
+		}
 	}
 
 	return
@@ -370,6 +385,46 @@ func (refView *RefView) ViewId() ViewId {
 	return VIEW_REF
 }
 
+func (refView *RefView) ViewPos() *ViewPos {
+	return refView.viewPos
+}
+
+func (refView *RefView) OnSearchMatch(startPos *ViewPos, matchLineIndex uint) {
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
+
+	renderedRef := refView.renderedRefs[matchLineIndex]
+
+	if isSelectableRenderedRef(renderedRef.renderedRefType) {
+		refView.viewPos.activeRowIndex = matchLineIndex
+	} else {
+		log.Debugf("Unable to select search match at index %v as it is not a selectable type", matchLineIndex)
+	}
+}
+
+func (refView *RefView) Line(lineIndex uint) (line string, lineExists bool) {
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
+
+	renderedRefNum := uint(len(refView.renderedRefs))
+
+	if lineIndex < renderedRefNum {
+		renderedRef := refView.renderedRefs[lineIndex]
+		line = renderedRef.value
+		lineExists = true
+	}
+
+	return
+}
+
+func (refView *RefView) LineNumber() (lineNumber uint) {
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
+
+	renderedRefNum := uint(len(refView.renderedRefs))
+	return renderedRefNum
+}
+
 func (refView *RefView) HandleKeyPress(keystring string) (err error) {
 	log.Debugf("RefView handling key %v - NOP", keystring)
 	return
@@ -382,6 +437,8 @@ func (refView *RefView) HandleAction(action Action) (err error) {
 
 	if handler, ok := refView.handlers[action.ActionType]; ok {
 		err = handler(refView)
+	} else {
+		_, err = refView.viewSearch.HandleAction(action)
 	}
 
 	return
@@ -402,7 +459,7 @@ func MoveUpRef(refView *RefView) (err error) {
 	for viewPos.activeRowIndex > 0 {
 		renderedRef := refView.renderedRefs[viewPos.activeRowIndex]
 
-		if renderedRef.renderedRefType != RV_SPACE && renderedRef.renderedRefType != RV_LOADING {
+		if isSelectableRenderedRef(renderedRef.renderedRefType) {
 			break
 		}
 
@@ -410,11 +467,11 @@ func MoveUpRef(refView *RefView) (err error) {
 	}
 
 	renderedRef := refView.renderedRefs[viewPos.activeRowIndex]
-	if renderedRef.renderedRefType == RV_SPACE || renderedRef.renderedRefType == RV_LOADING {
+	if isSelectableRenderedRef(renderedRef.renderedRefType) {
+		refView.channels.UpdateDisplay()
+	} else {
 		viewPos.activeRowIndex = startIndex
 		log.Debug("No valid ref entry to move to")
-	} else {
-		refView.channels.UpdateDisplay()
 	}
 
 	return
@@ -436,7 +493,7 @@ func MoveDownRef(refView *RefView) (err error) {
 	for viewPos.activeRowIndex < renderedRefNum-1 {
 		renderedRef := refView.renderedRefs[viewPos.activeRowIndex]
 
-		if renderedRef.renderedRefType != RV_SPACE && renderedRef.renderedRefType != RV_LOADING {
+		if isSelectableRenderedRef(renderedRef.renderedRefType) {
 			break
 		}
 
@@ -444,11 +501,11 @@ func MoveDownRef(refView *RefView) (err error) {
 	}
 
 	renderedRef := refView.renderedRefs[viewPos.activeRowIndex]
-	if renderedRef.renderedRefType == RV_SPACE || renderedRef.renderedRefType == RV_LOADING {
+	if isSelectableRenderedRef(renderedRef.renderedRefType) {
+		refView.channels.UpdateDisplay()
+	} else {
 		viewPos.activeRowIndex = startIndex
 		log.Debug("No valid ref entry to move to")
-	} else {
-		refView.channels.UpdateDisplay()
 	}
 
 	return
