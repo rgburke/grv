@@ -365,6 +365,20 @@ func (diffView *DiffView) ViewPos() *ViewPos {
 	return diffView.viewPos
 }
 
+func (diffView *DiffView) OnSearchMatch(startPos *ViewPos, matchLineIndex uint) {
+	diffView.lock.Lock()
+	defer diffView.lock.Unlock()
+
+	viewPos := diffView.ViewPos()
+
+	if viewPos != startPos {
+		log.Debugf("Selected ref has changed since search started")
+		return
+	}
+
+	viewPos.activeRowIndex = matchLineIndex
+}
+
 func (diffView *DiffView) HandleAction(action Action) (err error) {
 	log.Debugf("DiffView handling action %v", action)
 	diffView.lock.Lock()
@@ -380,6 +394,9 @@ func (diffView *DiffView) HandleAction(action Action) (err error) {
 }
 
 func (diffView *DiffView) Line(lineIndex uint) (line string, lineExists bool) {
+	diffView.lock.Lock()
+	defer diffView.lock.Unlock()
+
 	diffLines := diffView.commitDiffs[diffView.activeCommit]
 	lineNum := uint(len(diffLines.lines))
 
@@ -393,8 +410,12 @@ func (diffView *DiffView) Line(lineIndex uint) (line string, lineExists bool) {
 }
 
 func (diffView *DiffView) LineNumber() (lineNumber uint) {
+	diffView.lock.Lock()
+	defer diffView.lock.Unlock()
+
 	diffLines := diffView.commitDiffs[diffView.activeCommit]
 	lineNum := uint(len(diffLines.lines))
+
 	return lineNum
 }
 

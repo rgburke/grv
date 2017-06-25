@@ -7,6 +7,7 @@ import (
 type SearchableView interface {
 	SearchInputProvidor
 	ViewPos() *ViewPos
+	OnSearchMatch(startPos *ViewPos, matchLineIndex uint)
 }
 
 type ViewSearch struct {
@@ -73,15 +74,16 @@ func (viewSearch *ViewSearch) findNextMatch() (err error) {
 	log.Debugf("Searching for next occurence of pattern %v starting from row index :%v",
 		pattern, viewPos.activeRowIndex)
 
-	matchLineIndex, found := viewSearch.search.FindNext(viewPos.activeRowIndex)
+	go func() {
+		matchLineIndex, found := viewSearch.search.FindNext(viewPos.activeRowIndex)
 
-	if found {
-		viewPos.activeRowIndex = matchLineIndex
-		viewSearch.channels.ReportStatus("Match found")
-		viewSearch.channels.UpdateDisplay()
-	} else {
-		viewSearch.channels.ReportStatus("No matches found")
-	}
+		if found {
+			viewSearch.searchableView.OnSearchMatch(viewPos, matchLineIndex)
+			viewSearch.channels.ReportStatus("Match found")
+		} else {
+			viewSearch.channels.ReportStatus("No matches found")
+		}
+	}()
 
 	return
 }
@@ -98,12 +100,16 @@ func (viewSearch *ViewSearch) findPrevMatch() (err error) {
 	log.Debugf("Searching for previous occurence of pattern %v starting from row index :%v",
 		pattern, viewPos.activeRowIndex)
 
-	matchLineIndex, found := viewSearch.search.FindPrev(viewPos.activeRowIndex)
+	go func() {
+		matchLineIndex, found := viewSearch.search.FindPrev(viewPos.activeRowIndex)
 
-	if found {
-		viewPos.activeRowIndex = matchLineIndex
-		viewSearch.channels.UpdateDisplay()
-	}
+		if found {
+			viewSearch.searchableView.OnSearchMatch(viewPos, matchLineIndex)
+			viewSearch.channels.ReportStatus("Match found")
+		} else {
+			viewSearch.channels.ReportStatus("No matches found")
+		}
+	}()
 
 	return
 }

@@ -320,7 +320,24 @@ func (commitView *CommitView) ViewPos() *ViewPos {
 	return refViewData.viewPos
 }
 
+func (commitView *CommitView) OnSearchMatch(startPos *ViewPos, matchLineIndex uint) {
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
+	viewPos := commitView.ViewPos()
+
+	if viewPos != startPos {
+		log.Debugf("Selected ref has changed since search started")
+		return
+	}
+
+	viewPos.activeRowIndex = matchLineIndex
+}
+
 func (commitView *CommitView) Line(lineIndex uint) (line string, lineExists bool) {
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 
 	if lineIndex >= commitSetState.commitNum {
@@ -362,6 +379,9 @@ func (commitView *CommitView) Line(lineIndex uint) (line string, lineExists bool
 }
 
 func (commitView *CommitView) LineNumber() (lineNumber uint) {
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 	return commitSetState.commitNum
 }
