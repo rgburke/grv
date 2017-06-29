@@ -4,6 +4,11 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"regexp"
+	"runtime"
+)
+
+const (
+	SEARCH_MAX_ITERATIONS_BEFORE_YEILD = 1000
 )
 
 type SearchDirection int
@@ -113,6 +118,10 @@ func (search *Search) findNext(startLineIndex uint) (matchedLineIndex uint, foun
 		}
 
 		currentLineIndex++
+
+		if currentLineIndex%SEARCH_MAX_ITERATIONS_BEFORE_YEILD == 0 {
+			runtime.Gosched()
+		}
 	}
 
 	return
@@ -146,6 +155,10 @@ func (search *Search) findPrev(startLineIndex uint) (matchedLineIndex uint, foun
 			found = true
 			break
 		}
+
+		if currentLineIndex%SEARCH_MAX_ITERATIONS_BEFORE_YEILD == 0 {
+			runtime.Gosched()
+		}
 	}
 
 	return
@@ -178,6 +191,10 @@ func (search *Search) FindAll() (matches []SearchMatch) {
 		}
 
 		lineIndex++
+
+		if lineIndex%SEARCH_MAX_ITERATIONS_BEFORE_YEILD == 0 {
+			runtime.Gosched()
+		}
 	}
 
 	return
