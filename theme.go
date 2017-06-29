@@ -19,6 +19,7 @@ const (
 	CMP_COMMITVIEW_DATE
 	CMP_COMMITVIEW_AUTHOR
 	CMP_COMMITVIEW_SUMMARY
+	CMP_COMMITVIEW_TAG
 
 	CMP_DIFFVIEW_DIFFLINE_NORMAL
 	CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_AUTHOR
@@ -150,6 +151,10 @@ func NewDefaultTheme() MutableTheme {
 			CMP_COMMITVIEW_SUMMARY: &ThemeComponent{
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_YELLOW,
+			},
+			CMP_COMMITVIEW_TAG: &ThemeComponent{
+				bgcolor: COLOR_NONE,
+				fgcolor: COLOR_WHITE,
 			},
 			CMP_DIFFVIEW_DIFFLINE_NORMAL: &ThemeComponent{
 				bgcolor: COLOR_NONE,

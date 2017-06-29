@@ -43,6 +43,7 @@ type Tag struct {
 }
 
 type Commit struct {
+	oid    *Oid
 	commit *git.Commit
 }
 
@@ -96,7 +97,10 @@ func (cache *InstanceCache) getCommit(rawCommit *git.Commit) *Commit {
 		return commit
 	}
 
-	commit := &Commit{commit: rawCommit}
+	commit := &Commit{
+		oid:    cache.getOid(rawCommit.Id()),
+		commit: rawCommit,
+	}
 	cache.commits[oidStr] = commit
 
 	return commit

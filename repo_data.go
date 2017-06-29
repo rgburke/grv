@@ -20,6 +20,7 @@ type RepoData interface {
 	Head() (*Oid, *Branch)
 	LocalBranches() (branches []*Branch, loading bool)
 	LocalTags() (tags []*Tag, loading bool)
+	RefsForCommit(*Commit) *CommitRefs
 	CommitSetState(*Oid) CommitSetState
 	Commits(oid *Oid, startIndex, count uint) (<-chan *Commit, error)
 	CommitByIndex(oid *Oid, index uint) (*Commit, error)
@@ -52,6 +53,16 @@ type TagSet struct {
 	lock     sync.Mutex
 }
 
+type CommitRefs struct {
+	tags     []*Tag
+	branches []*Branch
+}
+
+type CommitRefSet struct {
+	commitRefs map[*Oid]*CommitRefs
+	lock       sync.Mutex
+}
+
 type RepositoryData struct {
 	channels       *Channels
 	repoDataLoader *RepoDataLoader
@@ -59,6 +70,7 @@ type RepositoryData struct {
 	headBranch     *Branch
 	localBranches  *BranchSet
 	localTags      *TagSet
+	commitRefSet   *CommitRefSet
 	commits        map[*Oid]*CommitSet
 }
 
@@ -74,12 +86,53 @@ func NewTagSet() *TagSet {
 	}
 }
 
+func NewCommitRefSet() *CommitRefSet {
+	return &CommitRefSet{
+		commitRefs: make(map[*Oid]*CommitRefs),
+	}
+}
+
+func (commitRefSet *CommitRefSet) AddTagForCommit(commit *Commit, tag *Tag) {
+	commitRefSet.lock.Lock()
+	defer commitRefSet.lock.Unlock()
+
+	commitRefs, ok := commitRefSet.commitRefs[commit.oid]
+	if !ok {
+		commitRefs = &CommitRefs{}
+		commitRefSet.commitRefs[commit.oid] = commitRefs
+	}
+
+	for _, tag := range commitRefs.tags {
+		if tag.oid.oid.Equal(tag.oid.oid) {
+			return
+		}
+	}
+
+	commitRefs.tags = append(commitRefs.tags, tag)
+}
+
+func (commitRefSet *CommitRefSet) RefsForCommit(commit *Commit) (commitRefsCopy *CommitRefs) {
+	commitRefSet.lock.Lock()
+	defer commitRefSet.lock.Unlock()
+
+	commitRefsCopy = &CommitRefs{}
+
+	commitRefs, ok := commitRefSet.commitRefs[commit.oid]
+	if ok {
+		commitRefsCopy.tags = append([]*Tag(nil), commitRefs.tags...)
+		commitRefsCopy.branches = append([]*Branch(nil), commitRefs.branches...)
+	}
+
+	return commitRefsCopy
+}
+
 func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *RepositoryData {
 	return &RepositoryData{
 		channels:       channels,
 		repoDataLoader: repoDataLoader,
 		localBranches:  NewBranchSet(),
 		localTags:      NewTagSet(),
+		commitRefSet:   NewCommitRefSet(),
 		commits:        make(map[*Oid]*CommitSet),
 	}
 }
@@ -184,10 +237,31 @@ func (repoData *RepositoryData) LoadLocalTags(onTagsLoaded OnTagsLoaded) (err er
 		tagSet.loading = false
 		tagSet.lock.Unlock()
 
+		repoData.channels.ReportError(repoData.mapTagsToCommits())
 		repoData.channels.ReportError(onTagsLoaded(tags))
 	}()
 
 	tagSet.loading = true
+
+	return
+}
+
+func (repoData *RepositoryData) mapTagsToCommits() (err error) {
+	tagSet := repoData.localTags
+	tagSet.lock.Lock()
+	defer tagSet.lock.Unlock()
+
+	commitRefSet := repoData.commitRefSet
+
+	for _, tag := range tagSet.tagsList {
+		var commit *Commit
+		commit, err = repoData.repoDataLoader.Commit(tag.oid)
+		if err != nil {
+			return
+		}
+
+		commitRefSet.AddTagForCommit(commit, tag)
+	}
 
 	return
 }
@@ -253,6 +327,10 @@ func (repoData *RepositoryData) LocalTags() (tags []*Tag, loading bool) {
 	loading = tagSet.loading
 
 	return
+}
+
+func (repoData *RepositoryData) RefsForCommit(commit *Commit) *CommitRefs {
+	return repoData.commitRefSet.RefsForCommit(commit)
 }
 
 func (repoData *RepositoryData) CommitSetState(oid *Oid) CommitSetState {

@@ -146,12 +146,29 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 
 func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIndex uint, commit *Commit) (err error) {
 	author := commit.commit.Author()
+	commitRefs := commitView.repoData.RefsForCommit(commit)
 
 	if err = tableFormatter.SetCellWithStyle(rowIndex, 0, CMP_COMMITVIEW_DATE, "%v", author.When.Format(CV_DATE_FORMAT)); err != nil {
 		return
-	} else if err = tableFormatter.SetCellWithStyle(rowIndex, 1, CMP_COMMITVIEW_AUTHOR, "%v", author.Name); err != nil {
+	}
+
+	if err = tableFormatter.SetCellWithStyle(rowIndex, 1, CMP_COMMITVIEW_AUTHOR, "%v", author.Name); err != nil {
 		return
-	} else if err = tableFormatter.SetCellWithStyle(rowIndex, 2, CMP_COMMITVIEW_SUMMARY, "%v", commit.commit.Summary()); err != nil {
+	}
+
+	if len(commitRefs.tags) > 0 {
+		for _, tag := range commitRefs.tags {
+			if err = tableFormatter.AppendToCellWithStyle(rowIndex, 2, CMP_COMMITVIEW_TAG, "<%v>", tag.name); err != nil {
+				return
+			}
+
+			if err = tableFormatter.AppendToCell(rowIndex, 2, " "); err != nil {
+				return
+			}
+		}
+	}
+
+	if err = tableFormatter.AppendToCellWithStyle(rowIndex, 2, CMP_COMMITVIEW_SUMMARY, "%v", commit.commit.Summary()); err != nil {
 		return
 	}
 

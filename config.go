@@ -75,6 +75,7 @@ var themeComponents = map[string]ThemeComponentId{
 	CV_COMMIT_VIEW + ".Date":    CMP_COMMITVIEW_DATE,
 	CV_COMMIT_VIEW + ".Author":  CMP_COMMITVIEW_AUTHOR,
 	CV_COMMIT_VIEW + ".Summary": CMP_COMMITVIEW_SUMMARY,
+	CV_COMMIT_VIEW + ".Tag":     CMP_COMMITVIEW_TAG,
 
 	CV_DIFF_VIEW + ".Normal":                CMP_DIFFVIEW_DIFFLINE_NORMAL,
 	CV_DIFF_VIEW + ".CommitAuthor":          CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_AUTHOR,

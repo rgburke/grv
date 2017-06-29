@@ -10,9 +10,13 @@ const (
 	TF_SEPARATOR = " "
 )
 
-type TableCell struct {
+type TableCellText struct {
 	text             string
 	themeComponentId ThemeComponentId
+}
+
+type TableCell struct {
+	textEntries []TableCellText
 }
 
 type TableFormatter struct {
@@ -57,8 +61,7 @@ func (tableFormatter *TableFormatter) Resize(newRows uint) {
 func (tableFormatter *TableFormatter) Clear() {
 	for rowIndex := range tableFormatter.cells {
 		for colIndex := range tableFormatter.cells[rowIndex] {
-			tableFormatter.cells[rowIndex][colIndex].text = ""
-			tableFormatter.cells[rowIndex][colIndex].themeComponentId = CMP_NONE
+			tableFormatter.cells[rowIndex][colIndex].textEntries = nil
 		}
 	}
 }
@@ -75,8 +78,32 @@ func (tableFormatter *TableFormatter) SetCellWithStyle(rowIndex, colIndex uint, 
 
 	tableCell := &tableFormatter.cells[rowIndex][colIndex]
 
-	tableCell.text = fmt.Sprintf(format, args...)
-	tableCell.themeComponentId = themeComponentId
+	tableCell.textEntries = []TableCellText{
+		TableCellText{
+			text:             fmt.Sprintf(format, args...),
+			themeComponentId: themeComponentId,
+		},
+	}
+
+	return
+}
+
+func (tableFormatter *TableFormatter) AppendToCell(rowIndex, colIndex uint, format string, args ...interface{}) (err error) {
+	return tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CMP_NONE, format, args...)
+}
+
+func (tableFormatter *TableFormatter) AppendToCellWithStyle(rowIndex, colIndex uint, themeComponentId ThemeComponentId, format string, args ...interface{}) (err error) {
+	if !(rowIndex < tableFormatter.Rows() && colIndex < tableFormatter.Cols()) {
+		return fmt.Errorf("Invalid rowIndex (%v), colIndex (%v) for dimensions rows (%v), cols (%v)",
+			rowIndex, colIndex, tableFormatter.Rows(), tableFormatter.Cols())
+	}
+
+	tableCell := &tableFormatter.cells[rowIndex][colIndex]
+
+	tableCell.textEntries = append(tableCell.textEntries, TableCellText{
+		text:             fmt.Sprintf(format, args...),
+		themeComponentId: themeComponentId,
+	})
 
 	return
 }
@@ -90,7 +117,10 @@ func (tableFormatter *TableFormatter) RowString(rowIndex uint) (rowString string
 	var buf bytes.Buffer
 
 	for colIndex := range tableFormatter.cells[rowIndex] {
-		buf.WriteString(tableFormatter.cells[rowIndex][colIndex].text)
+		for _, textEntry := range tableFormatter.cells[rowIndex][colIndex].textEntries {
+			buf.WriteString(textEntry.text)
+		}
+
 		buf.WriteString(TF_SEPARATOR)
 	}
 
@@ -119,9 +149,12 @@ func (tableFormatter *TableFormatter) Render(win RenderWindow, viewStartColumn u
 
 		for colIndex := range tableFormatter.cells[rowIndex] {
 			tableCell := &tableFormatter.cells[rowIndex][colIndex]
-			lineBuilder.
-				AppendWithStyle(tableCell.themeComponentId, "%v", tableCell.text).
-				Append(TF_SEPARATOR)
+
+			for _, textEntry := range tableCell.textEntries {
+				lineBuilder.AppendWithStyle(textEntry.themeComponentId, "%v", textEntry.text)
+			}
+
+			lineBuilder.Append(TF_SEPARATOR)
 		}
 	}
 
@@ -147,8 +180,7 @@ func (tableFormatter *TableFormatter) PadCells(border bool) {
 			maxColWidth := tableFormatter.maxColWidths[colIndex]
 
 			if width < maxColWidth {
-				tableCell := &tableFormatter.cells[rowIndex][colIndex]
-				tableCell.text += strings.Repeat(" ", int(maxColWidth-width))
+				tableFormatter.AppendToCell(uint(rowIndex), uint(colIndex), strings.Repeat(" ", int(maxColWidth-width)))
 			}
 
 			column += maxColWidth + uint(len(TF_SEPARATOR))
@@ -181,14 +213,16 @@ func (tableFormatter *TableFormatter) determineMaxColWidths(border bool) {
 }
 
 func (tableFormatter *TableFormatter) textWidth(rowIndex, colIndex int, column uint) (width uint) {
-	text := tableFormatter.cells[rowIndex][colIndex].text
+	textEntries := tableFormatter.cells[rowIndex][colIndex].textEntries
 
-	for _, codePoint := range text {
-		renderedCodePoints := DetermineRenderedCodePoint(codePoint, column, tableFormatter.config)
+	for _, textEntry := range textEntries {
+		for _, codePoint := range textEntry.text {
+			renderedCodePoints := DetermineRenderedCodePoint(codePoint, column, tableFormatter.config)
 
-		for _, renderedCodePoint := range renderedCodePoints {
-			width += renderedCodePoint.width
-			column += renderedCodePoint.width
+			for _, renderedCodePoint := range renderedCodePoints {
+				width += renderedCodePoint.width
+				column += renderedCodePoint.width
+			}
 		}
 	}
 
