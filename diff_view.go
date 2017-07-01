@@ -220,7 +220,7 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 		return
 	}
 
-	if searchActive, searchPattern := diffView.viewSearch.SearchActive(); searchActive {
+	if searchActive, searchPattern, lastSearchFoundMatch := diffView.viewSearch.SearchActive(); searchActive && lastSearchFoundMatch {
 		if err = win.Highlight(searchPattern, CMP_ALLVIEW_SEARCH_MATCH); err != nil {
 			return
 		}

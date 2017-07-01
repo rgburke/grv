@@ -103,7 +103,7 @@ func (search *Search) findNext(startLineIndex uint) (matchedLineIndex uint, foun
 	currentLineIndex := startLineIndex + 1
 	wrapped := false
 
-	for !wrapped || currentLineIndex != startLineIndex {
+	for !wrapped || currentLineIndex <= startLineIndex {
 		line, lineExists := search.inputProvidor.Line(currentLineIndex)
 		if !lineExists {
 			currentLineIndex = 0
@@ -131,7 +131,7 @@ func (search *Search) findPrev(startLineIndex uint) (matchedLineIndex uint, foun
 	currentLineIndex := startLineIndex
 	wrapped := false
 
-	for !wrapped || currentLineIndex != startLineIndex {
+	for !wrapped || currentLineIndex >= startLineIndex {
 		if currentLineIndex == 0 {
 			currentLineIndex = search.inputProvidor.LineNumber()
 

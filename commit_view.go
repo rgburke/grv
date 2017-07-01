@@ -135,7 +135,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		return
 	}
 
-	if searchActive, searchPattern := commitView.viewSearch.SearchActive(); searchActive {
+	if searchActive, searchPattern, lastSearchFoundMatch := commitView.viewSearch.SearchActive(); searchActive && lastSearchFoundMatch {
 		if err = win.Highlight(searchPattern, CMP_ALLVIEW_SEARCH_MATCH); err != nil {
 			return
 		}
@@ -399,8 +399,6 @@ func (commitView *CommitView) Line(lineIndex uint) (line string, lineExists bool
 		log.Errorf("Error when rendering commit: %v", err)
 		return
 	}
-
-	tableFormatter.PadCells(false)
 
 	line, err = tableFormatter.RowString(0)
 	if err != nil {

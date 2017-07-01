@@ -2,6 +2,7 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
+	"sync"
 )
 
 type SearchableView interface {
@@ -11,9 +12,11 @@ type SearchableView interface {
 }
 
 type ViewSearch struct {
-	search         *Search
-	searchableView SearchableView
-	channels       *Channels
+	search               *Search
+	searchableView       SearchableView
+	channels             *Channels
+	lastSearchFoundMatch bool
+	lock                 sync.Mutex
 }
 
 func NewViewSearch(searchableView SearchableView, channels *Channels) *ViewSearch {
@@ -23,7 +26,27 @@ func NewViewSearch(searchableView SearchableView, channels *Channels) *ViewSearc
 	}
 }
 
+func (viewSearch *ViewSearch) SearchActive() (active bool, pattern string, lastSearchFoundMatch bool) {
+	viewSearch.lock.Lock()
+	defer viewSearch.lock.Unlock()
+
+	return viewSearch.searchActive()
+}
+
+func (viewSearch *ViewSearch) searchActive() (active bool, pattern string, lastSearchFoundMatch bool) {
+	if viewSearch.search != nil {
+		active = true
+		pattern = viewSearch.search.pattern
+		lastSearchFoundMatch = viewSearch.lastSearchFoundMatch
+	}
+
+	return
+}
+
 func (viewSearch *ViewSearch) HandleAction(action Action) (handled bool, err error) {
+	viewSearch.lock.Lock()
+	defer viewSearch.lock.Unlock()
+
 	handled = true
 
 	switch action.ActionType {
@@ -42,15 +65,6 @@ func (viewSearch *ViewSearch) HandleAction(action Action) (handled bool, err err
 	return
 }
 
-func (viewSearch *ViewSearch) SearchActive() (active bool, pattern string) {
-	if viewSearch.search != nil {
-		active = true
-		pattern = viewSearch.search.pattern
-	}
-
-	return
-}
-
 func (viewSearch *ViewSearch) doSearch(action Action) (err error) {
 	search, err := CreateSearchFromAction(action, viewSearch.searchableView)
 	if err != nil {
@@ -63,7 +77,7 @@ func (viewSearch *ViewSearch) doSearch(action Action) (err error) {
 }
 
 func (viewSearch *ViewSearch) findNextMatch() (err error) {
-	active, pattern := viewSearch.SearchActive()
+	active, pattern, _ := viewSearch.searchActive()
 	if !active {
 		return
 	}
@@ -77,6 +91,10 @@ func (viewSearch *ViewSearch) findNextMatch() (err error) {
 	go func() {
 		matchLineIndex, found := viewSearch.search.FindNext(viewPos.activeRowIndex)
 
+		viewSearch.lock.Lock()
+		viewSearch.lastSearchFoundMatch = found
+		viewSearch.lock.Unlock()
+
 		if found {
 			viewSearch.searchableView.OnSearchMatch(viewPos, matchLineIndex)
 			viewSearch.channels.ReportStatus("Match found")
@@ -89,7 +107,7 @@ func (viewSearch *ViewSearch) findNextMatch() (err error) {
 }
 
 func (viewSearch *ViewSearch) findPrevMatch() (err error) {
-	active, pattern := viewSearch.SearchActive()
+	active, pattern, _ := viewSearch.searchActive()
 	if !active {
 		return
 	}
@@ -103,22 +121,28 @@ func (viewSearch *ViewSearch) findPrevMatch() (err error) {
 	go func() {
 		matchLineIndex, found := viewSearch.search.FindPrev(viewPos.activeRowIndex)
 
+		viewSearch.lock.Lock()
+		viewSearch.lastSearchFoundMatch = found
+		viewSearch.lock.Unlock()
+
 		if found {
 			viewSearch.searchableView.OnSearchMatch(viewPos, matchLineIndex)
 			viewSearch.channels.ReportStatus("Match found")
 		} else {
 			viewSearch.channels.ReportStatus("No matches found")
 		}
+
 	}()
 
 	return
 }
 
 func (viewSearch *ViewSearch) clearSearch() (err error) {
-	if active, pattern := viewSearch.SearchActive(); active {
+	if active, pattern, _ := viewSearch.searchActive(); active {
 		viewSearch.channels.ReportStatus("Cleared search")
 		log.Debugf("Clearing search with pattern %v", pattern)
 		viewSearch.search = nil
+		viewSearch.lastSearchFoundMatch = false
 	}
 
 	return
