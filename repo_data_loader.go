@@ -32,8 +32,9 @@ type Oid struct {
 }
 
 type Branch struct {
-	oid  *Oid
-	name string
+	oid      *Oid
+	name     string
+	isRemote bool
 }
 
 type Tag struct {
@@ -161,13 +162,8 @@ func (repoDataLoader *RepoDataLoader) Head() (oid *Oid, branch *Branch, err erro
 	return
 }
 
-func (repoDataLoader *RepoDataLoader) LocalBranches() (branches []*Branch, err error) {
-	log.Debug("Loading local branches")
-	return repoDataLoader.LoadBranches(git.BranchLocal)
-}
-
-func (repoDataLoader *RepoDataLoader) LoadBranches(branchType git.BranchType) (branches []*Branch, err error) {
-	branchIter, err := repoDataLoader.repo.NewBranchIterator(branchType)
+func (repoDataLoader *RepoDataLoader) LoadBranches() (branches []*Branch, err error) {
+	branchIter, err := repoDataLoader.repo.NewBranchIterator(git.BranchAll)
 	if err != nil {
 		return
 	}
@@ -175,16 +171,33 @@ func (repoDataLoader *RepoDataLoader) LoadBranches(branchType git.BranchType) (b
 
 	err = branchIter.ForEach(func(branch *git.Branch, branchType git.BranchType) error {
 		if repoDataLoader.channels.Exit() {
-			return errors.New("Program exiting - Aborting loading local branches")
+			return errors.New("Program exiting - Aborting loading branches")
 		}
 
 		branchName, err := branch.Name()
 		if err != nil {
 			return err
 		}
-		oid := repoDataLoader.cache.getOid(branch.Target())
 
-		newBranch := &Branch{oid, branchName}
+		rawOid := branch.Target()
+
+		if rawOid == nil {
+			ref, err := branch.Resolve()
+			if err != nil {
+				return err
+			}
+
+			rawOid = ref.Target()
+		}
+
+		oid := repoDataLoader.cache.getOid(rawOid)
+
+		newBranch := &Branch{
+			oid:      oid,
+			name:     branchName,
+			isRemote: branch.IsRemote(),
+		}
+
 		branches = append(branches, newBranch)
 		log.Debugf("Loaded branch %v", newBranch)
 

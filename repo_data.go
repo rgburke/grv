@@ -8,17 +8,17 @@ import (
 )
 
 type OnCommitsLoaded func(*Oid) error
-type OnBranchesLoaded func([]*Branch) error
+type OnBranchesLoaded func(localBranches, remoteBranches []*Branch) error
 type OnTagsLoaded func([]*Tag) error
 
 type RepoData interface {
 	Path() string
 	LoadHead() error
-	LoadLocalBranches(OnBranchesLoaded) error
+	LoadBranches(OnBranchesLoaded) error
 	LoadLocalTags(OnTagsLoaded) error
 	LoadCommits(*Oid, OnCommitsLoaded) error
 	Head() (*Oid, *Branch)
-	LocalBranches() (branches []*Branch, loading bool)
+	Branches() (localBranches, remoteBranches []*Branch, loading bool)
 	LocalTags() (tags []*Tag, loading bool)
 	RefsForCommit(*Commit) *CommitRefs
 	CommitSetState(*Oid) CommitSetState
@@ -40,10 +40,11 @@ type CommitSetState struct {
 }
 
 type BranchSet struct {
-	branches     map[*Oid]*Branch
-	branchesList []*Branch
-	loading      bool
-	lock         sync.Mutex
+	branches           map[*Oid]*Branch
+	localBranchesList  []*Branch
+	remoteBranchesList []*Branch
+	loading            bool
+	lock               sync.Mutex
 }
 
 type TagSet struct {
@@ -68,7 +69,7 @@ type RepositoryData struct {
 	repoDataLoader *RepoDataLoader
 	head           *Oid
 	headBranch     *Branch
-	localBranches  *BranchSet
+	branches       *BranchSet
 	localTags      *TagSet
 	commitRefSet   *CommitRefSet
 	commits        map[*Oid]*CommitSet
@@ -149,7 +150,7 @@ func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *Repo
 	return &RepositoryData{
 		channels:       channels,
 		repoDataLoader: repoDataLoader,
-		localBranches:  NewBranchSet(),
+		branches:       NewBranchSet(),
 		localTags:      NewTagSet(),
 		commitRefSet:   NewCommitRefSet(),
 		commits:        make(map[*Oid]*CommitSet),
@@ -184,8 +185,8 @@ func (repoData *RepositoryData) LoadHead() (err error) {
 	return
 }
 
-func (repoData *RepositoryData) LoadLocalBranches(onBranchesLoaded OnBranchesLoaded) (err error) {
-	branchSet := repoData.localBranches
+func (repoData *RepositoryData) LoadBranches(onBranchesLoaded OnBranchesLoaded) (err error) {
+	branchSet := repoData.branches
 	branchSet.lock.Lock()
 	defer branchSet.lock.Unlock()
 
@@ -195,7 +196,7 @@ func (repoData *RepositoryData) LoadLocalBranches(onBranchesLoaded OnBranchesLoa
 	}
 
 	go func() {
-		branches, err := repoData.repoDataLoader.LocalBranches()
+		branches, err := repoData.repoDataLoader.LoadBranches()
 		if err != nil {
 			repoData.channels.ReportError(err)
 			return
@@ -205,6 +206,17 @@ func (repoData *RepositoryData) LoadLocalBranches(onBranchesLoaded OnBranchesLoa
 			return branches[i].name < branches[j].name
 		})
 
+		var localBranchesList []*Branch
+		var remoteBranchesList []*Branch
+
+		for _, branch := range branches {
+			if branch.isRemote {
+				remoteBranchesList = append(remoteBranchesList, branch)
+			} else {
+				localBranchesList = append(localBranchesList, branch)
+			}
+		}
+
 		branchMap := make(map[*Oid]*Branch)
 		for _, branch := range branches {
 			branchMap[branch.oid] = branch
@@ -212,12 +224,13 @@ func (repoData *RepositoryData) LoadLocalBranches(onBranchesLoaded OnBranchesLoa
 
 		branchSet.lock.Lock()
 		branchSet.branches = branchMap
-		branchSet.branchesList = branches
+		branchSet.localBranchesList = localBranchesList
+		branchSet.remoteBranchesList = remoteBranchesList
 		branchSet.loading = false
 		branchSet.lock.Unlock()
 
 		repoData.channels.ReportError(repoData.mapBranchesToCommits())
-		repoData.channels.ReportError(onBranchesLoaded(branches))
+		repoData.channels.ReportError(onBranchesLoaded(localBranchesList, remoteBranchesList))
 	}()
 
 	branchSet.loading = true
@@ -226,13 +239,15 @@ func (repoData *RepositoryData) LoadLocalBranches(onBranchesLoaded OnBranchesLoa
 }
 
 func (repoData *RepositoryData) mapBranchesToCommits() (err error) {
-	branchSet := repoData.localBranches
+	branchSet := repoData.branches
 	branchSet.lock.Lock()
 	defer branchSet.lock.Unlock()
 
 	commitRefSet := repoData.commitRefSet
 
-	for _, branch := range branchSet.branchesList {
+	branches := append(branchSet.localBranchesList, branchSet.remoteBranchesList...)
+
+	for _, branch := range branches {
 		var commit *Commit
 		commit, err = repoData.repoDataLoader.Commit(branch.oid)
 		if err != nil {
@@ -347,12 +362,13 @@ func (repoData *RepositoryData) Head() (*Oid, *Branch) {
 	return repoData.head, repoData.headBranch
 }
 
-func (repoData *RepositoryData) LocalBranches() (branches []*Branch, loading bool) {
-	branchSet := repoData.localBranches
+func (repoData *RepositoryData) Branches() (localBranches []*Branch, remoteBranches []*Branch, loading bool) {
+	branchSet := repoData.branches
 	branchSet.lock.Lock()
 	defer branchSet.lock.Unlock()
 
-	branches = branchSet.branchesList
+	localBranches = branchSet.localBranchesList
+	remoteBranches = branchSet.remoteBranchesList
 	loading = branchSet.loading
 
 	return

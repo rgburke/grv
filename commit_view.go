@@ -170,8 +170,14 @@ func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIn
 
 	if len(commitRefs.branches) > 0 {
 		for _, branch := range commitRefs.branches {
-			if err = tableFormatter.AppendToCellWithStyle(rowIndex, 2, CMP_COMMITVIEW_TAG, "[%v]", branch.name); err != nil {
-				return
+			if branch.isRemote {
+				if err = tableFormatter.AppendToCellWithStyle(rowIndex, 2, CMP_COMMITVIEW_LOCAL_BRANCH, "{%v}", branch.name); err != nil {
+					return
+				}
+			} else {
+				if err = tableFormatter.AppendToCellWithStyle(rowIndex, 2, CMP_COMMITVIEW_REMOTE_BRANCH, "[%v]", branch.name); err != nil {
+					return
+				}
 			}
 
 			if err = tableFormatter.AppendToCell(rowIndex, 2, " "); err != nil {

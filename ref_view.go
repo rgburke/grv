@@ -12,8 +12,10 @@ type RefViewHandler func(*RefView) error
 type RenderedRefType int
 
 const (
-	RV_BRANCH_GROUP RenderedRefType = iota
-	RV_BRANCH
+	RV_LOCAL_BRANCH_GROUP RenderedRefType = iota
+	RV_REMOTE_BRANCH_GROUP
+	RV_LOCAL_BRANCH
+	RV_REMOTE_BRANCH
 	RV_TAG_GROUP
 	RV_TAG
 	RV_SPACE
@@ -21,10 +23,12 @@ const (
 )
 
 var refToTheme = map[RenderedRefType]ThemeComponentId{
-	RV_BRANCH_GROUP: CMP_REFVIEW_BRANCHES_HEADER,
-	RV_BRANCH:       CMP_REFVIEW_BRANCH,
-	RV_TAG_GROUP:    CMP_REFVIEW_TAGS_HEADER,
-	RV_TAG:          CMP_REFVIEW_TAG,
+	RV_LOCAL_BRANCH_GROUP:  CMP_REFVIEW_LOCAL_BRANCHES_HEADER,
+	RV_REMOTE_BRANCH_GROUP: CMP_REFVIEW_REMOTE_BRANCHES_HEADER,
+	RV_LOCAL_BRANCH:        CMP_REFVIEW_LOCAL_BRANCH,
+	RV_REMOTE_BRANCH:       CMP_REFVIEW_REMOTE_BRANCH,
+	RV_TAG_GROUP:           CMP_REFVIEW_TAGS_HEADER,
+	RV_TAG:                 CMP_REFVIEW_TAG,
 }
 
 type RenderedRefGenerator func(*RefView, *RefList, *[]RenderedRef)
@@ -72,7 +76,12 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 				name:            "Branches",
 				renderer:        GenerateBranches,
 				expanded:        true,
-				renderedRefType: RV_BRANCH_GROUP,
+				renderedRefType: RV_LOCAL_BRANCH_GROUP,
+			},
+			&RefList{
+				name:            "Remote Branches",
+				renderer:        GenerateBranches,
+				renderedRefType: RV_REMOTE_BRANCH_GROUP,
 			},
 			&RefList{
 				name:            "Tags",
@@ -105,8 +114,8 @@ func (refView *RefView) Initialise() (err error) {
 		return
 	}
 
-	if err = refView.repoData.LoadLocalBranches(func(branches []*Branch) error {
-		log.Debug("Local branches loaded")
+	if err = refView.repoData.LoadBranches(func(localBranches, remoteBranches []*Branch) error {
+		log.Debug("Branches loaded")
 		refView.lock.Lock()
 		defer refView.lock.Unlock()
 
@@ -119,8 +128,9 @@ func (refView *RefView) Initialise() (err error) {
 		if headBranch != nil {
 			viewPos.activeRowIndex = 1
 
-			for _, branch := range branches {
+			for _, branch := range localBranches {
 				if branch.name == headBranch.name {
+					log.Debugf("Setting branch %v as selected branch", branch.name)
 					break
 				}
 
@@ -256,15 +266,24 @@ func (refView *RefView) renderFooter(win RenderWindow, selectedRenderedRef Rende
 	var footer string
 
 	switch selectedRenderedRef.renderedRefType {
-	case RV_BRANCH_GROUP:
-		if branches, loading := refView.repoData.LocalBranches(); loading {
+	case RV_LOCAL_BRANCH_GROUP:
+		if localBranches, _, loading := refView.repoData.Branches(); loading {
 			footer = "Branches: Loading..."
 		} else {
-			footer = fmt.Sprintf("Branches: %v", len(branches))
+			footer = fmt.Sprintf("Branches: %v", len(localBranches))
 		}
-	case RV_BRANCH:
-		branches, _ := refView.repoData.LocalBranches()
-		footer = fmt.Sprintf("Branch %v of %v", selectedRenderedRef.refNum, len(branches))
+	case RV_REMOTE_BRANCH_GROUP:
+		if _, remoteBranches, loading := refView.repoData.Branches(); loading {
+			footer = "Remote Branches: Loading..."
+		} else {
+			footer = fmt.Sprintf("Remote Branches: %v", len(remoteBranches))
+		}
+	case RV_LOCAL_BRANCH:
+		localBranches, _, _ := refView.repoData.Branches()
+		footer = fmt.Sprintf("Branch %v of %v", selectedRenderedRef.refNum, len(localBranches))
+	case RV_REMOTE_BRANCH:
+		_, remoteBranches, _ := refView.repoData.Branches()
+		footer = fmt.Sprintf("Remote Branch %v of %v", selectedRenderedRef.refNum, len(remoteBranches))
 	case RV_TAG_GROUP:
 		if tags, loading := refView.repoData.LocalTags(); loading {
 			footer = "Tags: Loading"
@@ -315,7 +334,7 @@ func (refView *RefView) GenerateRenderedRefs() {
 }
 
 func GenerateBranches(refView *RefView, refList *RefList, renderedRefs *[]RenderedRef) {
-	branches, loading := refView.repoData.LocalBranches()
+	localBranches, remoteBranches, loading := refView.repoData.Branches()
 
 	if loading {
 		*renderedRefs = append(*renderedRefs, RenderedRef{
@@ -327,23 +346,33 @@ func GenerateBranches(refView *RefView, refList *RefList, renderedRefs *[]Render
 	}
 
 	branchNum := uint(1)
+	var branches []*Branch
+	var branchRenderedRefType RenderedRefType
 
-	if head, headBranch := refView.repoData.Head(); headBranch == nil {
-		*renderedRefs = append(*renderedRefs, RenderedRef{
-			value:           fmt.Sprintf("   %s", getDetachedHeadDisplayValue(head)),
-			oid:             head,
-			renderedRefType: RV_BRANCH,
-			refNum:          branchNum,
-		})
+	if refList.renderedRefType == RV_LOCAL_BRANCH_GROUP {
+		branchRenderedRefType = RV_LOCAL_BRANCH
+		branches = localBranches
 
-		branchNum++
+		if head, headBranch := refView.repoData.Head(); headBranch == nil {
+			*renderedRefs = append(*renderedRefs, RenderedRef{
+				value:           fmt.Sprintf("   %s", getDetachedHeadDisplayValue(head)),
+				oid:             head,
+				renderedRefType: branchRenderedRefType,
+				refNum:          branchNum,
+			})
+
+			branchNum++
+		}
+	} else {
+		branchRenderedRefType = RV_REMOTE_BRANCH
+		branches = remoteBranches
 	}
 
 	for _, branch := range branches {
 		*renderedRefs = append(*renderedRefs, RenderedRef{
 			value:           fmt.Sprintf("   %s", branch.name),
 			oid:             branch.oid,
-			renderedRefType: RV_BRANCH,
+			renderedRefType: branchRenderedRefType,
 			refNum:          branchNum,
 		})
 
@@ -589,12 +618,12 @@ func SelectRef(refView *RefView) (err error) {
 	renderedRef := refView.renderedRefs[refView.viewPos.activeRowIndex]
 
 	switch renderedRef.renderedRefType {
-	case RV_BRANCH_GROUP, RV_TAG_GROUP:
+	case RV_LOCAL_BRANCH_GROUP, RV_REMOTE_BRANCH_GROUP, RV_TAG_GROUP:
 		renderedRef.refList.expanded = !renderedRef.refList.expanded
 		log.Debugf("Setting ref group %v to expanded %v", renderedRef.refList.name, renderedRef.refList.expanded)
 		refView.GenerateRenderedRefs()
 		refView.channels.UpdateDisplay()
-	case RV_BRANCH, RV_TAG:
+	case RV_LOCAL_BRANCH, RV_REMOTE_BRANCH, RV_TAG:
 		log.Debugf("Selecting ref %v:%v", renderedRef.value, renderedRef.oid)
 		if err = refView.notifyRefListeners(strings.TrimLeft(renderedRef.value, " "), renderedRef.oid); err != nil {
 			return
