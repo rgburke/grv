@@ -92,7 +92,7 @@ func NewCommitRefSet() *CommitRefSet {
 	}
 }
 
-func (commitRefSet *CommitRefSet) AddTagForCommit(commit *Commit, tag *Tag) {
+func (commitRefSet *CommitRefSet) AddTagForCommit(commit *Commit, newTag *Tag) {
 	commitRefSet.lock.Lock()
 	defer commitRefSet.lock.Unlock()
 
@@ -103,12 +103,31 @@ func (commitRefSet *CommitRefSet) AddTagForCommit(commit *Commit, tag *Tag) {
 	}
 
 	for _, tag := range commitRefs.tags {
-		if tag.oid.oid.Equal(tag.oid.oid) {
+		if tag.name == newTag.name {
 			return
 		}
 	}
 
-	commitRefs.tags = append(commitRefs.tags, tag)
+	commitRefs.tags = append(commitRefs.tags, newTag)
+}
+
+func (commitRefSet *CommitRefSet) AddBranchForCommit(commit *Commit, newBranch *Branch) {
+	commitRefSet.lock.Lock()
+	defer commitRefSet.lock.Unlock()
+
+	commitRefs, ok := commitRefSet.commitRefs[commit.oid]
+	if !ok {
+		commitRefs = &CommitRefs{}
+		commitRefSet.commitRefs[commit.oid] = commitRefs
+	}
+
+	for _, branch := range commitRefs.branches {
+		if branch.name == newBranch.name {
+			return
+		}
+	}
+
+	commitRefs.branches = append(commitRefs.branches, newBranch)
 }
 
 func (commitRefSet *CommitRefSet) RefsForCommit(commit *Commit) (commitRefsCopy *CommitRefs) {
@@ -197,10 +216,31 @@ func (repoData *RepositoryData) LoadLocalBranches(onBranchesLoaded OnBranchesLoa
 		branchSet.loading = false
 		branchSet.lock.Unlock()
 
+		repoData.channels.ReportError(repoData.mapBranchesToCommits())
 		repoData.channels.ReportError(onBranchesLoaded(branches))
 	}()
 
 	branchSet.loading = true
+
+	return
+}
+
+func (repoData *RepositoryData) mapBranchesToCommits() (err error) {
+	branchSet := repoData.localBranches
+	branchSet.lock.Lock()
+	defer branchSet.lock.Unlock()
+
+	commitRefSet := repoData.commitRefSet
+
+	for _, branch := range branchSet.branchesList {
+		var commit *Commit
+		commit, err = repoData.repoDataLoader.Commit(branch.oid)
+		if err != nil {
+			return
+		}
+
+		commitRefSet.AddBranchForCommit(commit, branch)
+	}
 
 	return
 }
