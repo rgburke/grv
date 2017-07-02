@@ -352,7 +352,7 @@ func (config *Configuration) processThemeCommand(themeCommand *ThemeCommand, inp
 	return
 }
 
-func getThemeColor(color *Token, inputSource string) (ThemeColor, error) {
+func getThemeColor(color *ConfigToken, inputSource string) (ThemeColor, error) {
 	themeColor, ok := themeColors[color.value]
 
 	if !ok {

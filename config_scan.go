@@ -9,49 +9,49 @@ import (
 	"unicode"
 )
 
-type TokenType int
+type ConfigTokenType int
 
 const (
-	TK_INVALID TokenType = iota
-	TK_WORD
-	TK_OPTION
-	TK_WHITE_SPACE
-	TK_COMMENT
-	TK_TERMINATOR
-	TK_EOF
+	CTK_INVALID ConfigTokenType = iota
+	CTK_WORD
+	CTK_OPTION
+	CTK_WHITE_SPACE
+	CTK_COMMENT
+	CTK_TERMINATOR
+	CTK_EOF
 )
 
-var tokenNames = map[TokenType]string{
-	TK_INVALID:     "Invalid",
-	TK_WORD:        "Word",
-	TK_OPTION:      "Option",
-	TK_WHITE_SPACE: "White Space",
-	TK_COMMENT:     "Comment",
-	TK_TERMINATOR:  "Terminator",
-	TK_EOF:         "EOF",
+var configTokenNames = map[ConfigTokenType]string{
+	CTK_INVALID:     "Invalid",
+	CTK_WORD:        "Word",
+	CTK_OPTION:      "Option",
+	CTK_WHITE_SPACE: "White Space",
+	CTK_COMMENT:     "Comment",
+	CTK_TERMINATOR:  "Terminator",
+	CTK_EOF:         "EOF",
 }
 
-type ScannerPos struct {
+type ConfigScannerPos struct {
 	line uint
 	col  uint
 }
 
-type Token struct {
-	tokenType TokenType
+type ConfigToken struct {
+	tokenType ConfigTokenType
 	value     string
-	startPos  ScannerPos
-	endPos    ScannerPos
+	startPos  ConfigScannerPos
+	endPos    ConfigScannerPos
 	err       error
 }
 
-type Scanner struct {
+type ConfigScanner struct {
 	reader          *bufio.Reader
-	pos             ScannerPos
+	pos             ConfigScannerPos
 	lastCharLineEnd bool
 	lastLineEndCol  uint
 }
 
-func (token *Token) Equal(other *Token) bool {
+func (token *ConfigToken) Equal(other *ConfigToken) bool {
 	if other == nil {
 		return false
 	}
@@ -65,21 +65,21 @@ func (token *Token) Equal(other *Token) bool {
 				token.err.Error() == other.err.Error()))
 }
 
-func TokenName(tokenType TokenType) string {
-	return tokenNames[tokenType]
+func ConfigTokenName(tokenType ConfigTokenType) string {
+	return configTokenNames[tokenType]
 }
 
-func NewScanner(reader io.Reader) *Scanner {
-	return &Scanner{
+func NewConfigScanner(reader io.Reader) *ConfigScanner {
+	return &ConfigScanner{
 		reader: bufio.NewReader(reader),
-		pos: ScannerPos{
+		pos: ConfigScannerPos{
 			line: 1,
 			col:  0,
 		},
 	}
 }
 
-func (scanner *Scanner) read() (char rune, eof bool, err error) {
+func (scanner *ConfigScanner) read() (char rune, eof bool, err error) {
 	char, _, err = scanner.reader.ReadRune()
 
 	if err == io.EOF {
@@ -104,7 +104,7 @@ func (scanner *Scanner) read() (char rune, eof bool, err error) {
 	return
 }
 
-func (scanner *Scanner) unread() (err error) {
+func (scanner *ConfigScanner) unread() (err error) {
 	if err = scanner.reader.UnreadRune(); err != nil {
 		return
 	}
@@ -121,20 +121,20 @@ func (scanner *Scanner) unread() (err error) {
 	return
 }
 
-func (scanner *Scanner) Scan() (token *Token, err error) {
+func (scanner *ConfigScanner) Scan() (token *ConfigToken, err error) {
 	char, eof, err := scanner.read()
 	startPos := scanner.pos
 
 	switch {
 	case err != nil:
 	case eof:
-		token = &Token{
-			tokenType: TK_EOF,
+		token = &ConfigToken{
+			tokenType: CTK_EOF,
 			endPos:    scanner.pos,
 		}
 	case char == '\n':
-		token = &Token{
-			tokenType: TK_TERMINATOR,
+		token = &ConfigToken{
+			tokenType: CTK_TERMINATOR,
 			value:     string(char),
 			endPos:    scanner.pos,
 		}
@@ -159,8 +159,8 @@ func (scanner *Scanner) Scan() (token *Token, err error) {
 		} else if len(nextBytes) == 1 && nextBytes[0] == '-' {
 			token, err = scanner.scanWord()
 
-			if token != nil && token.tokenType != TK_INVALID {
-				token.tokenType = TK_OPTION
+			if token != nil && token.tokenType != CTK_INVALID {
+				token.tokenType = CTK_OPTION
 				token.value = "-" + token.value
 			}
 
@@ -193,7 +193,7 @@ func (scanner *Scanner) Scan() (token *Token, err error) {
 	return
 }
 
-func (scanner *Scanner) scanWhiteSpace() (token *Token, err error) {
+func (scanner *ConfigScanner) scanWhiteSpace() (token *ConfigToken, err error) {
 	var buffer bytes.Buffer
 	var char rune
 	var eof bool
@@ -248,8 +248,8 @@ OuterLoop:
 		escape = false
 	}
 
-	token = &Token{
-		tokenType: TK_WHITE_SPACE,
+	token = &ConfigToken{
+		tokenType: CTK_WHITE_SPACE,
 		value:     buffer.String(),
 		endPos:    scanner.pos,
 	}
@@ -257,7 +257,7 @@ OuterLoop:
 	return
 }
 
-func (scanner *Scanner) scanComment() (token *Token, err error) {
+func (scanner *ConfigScanner) scanComment() (token *ConfigToken, err error) {
 	var buffer bytes.Buffer
 	var char rune
 	var eof bool
@@ -284,8 +284,8 @@ OuterLoop:
 		}
 	}
 
-	token = &Token{
-		tokenType: TK_COMMENT,
+	token = &ConfigToken{
+		tokenType: CTK_COMMENT,
 		value:     buffer.String(),
 		endPos:    scanner.pos,
 	}
@@ -293,7 +293,7 @@ OuterLoop:
 	return
 }
 
-func (scanner *Scanner) scanWord() (token *Token, err error) {
+func (scanner *ConfigScanner) scanWord() (token *ConfigToken, err error) {
 	var buffer bytes.Buffer
 	var char rune
 	var eof bool
@@ -320,8 +320,8 @@ OuterLoop:
 		}
 	}
 
-	token = &Token{
-		tokenType: TK_WORD,
+	token = &ConfigToken{
+		tokenType: CTK_WORD,
 		value:     buffer.String(),
 		endPos:    scanner.pos,
 	}
@@ -329,7 +329,7 @@ OuterLoop:
 	return
 }
 
-func (scanner *Scanner) scanStringWord() (token *Token, err error) {
+func (scanner *ConfigScanner) scanStringWord() (token *ConfigToken, err error) {
 	var buffer bytes.Buffer
 	var char rune
 	var eof bool
@@ -385,14 +385,14 @@ OuterLoop:
 			return
 		}
 
-		token = &Token{
-			tokenType: TK_WORD,
+		token = &ConfigToken{
+			tokenType: CTK_WORD,
 			value:     word,
 			endPos:    scanner.pos,
 		}
 	} else {
-		token = &Token{
-			tokenType: TK_INVALID,
+		token = &ConfigToken{
+			tokenType: CTK_INVALID,
 			value:     buffer.String(),
 			endPos:    scanner.pos,
 			err:       errors.New("Unterminated string"),
@@ -402,7 +402,7 @@ OuterLoop:
 	return
 }
 
-func (scanner *Scanner) processStringWord(str string) (string, error) {
+func (scanner *ConfigScanner) processStringWord(str string) (string, error) {
 	var buffer bytes.Buffer
 	chars := []rune(str)
 

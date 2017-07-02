@@ -6,21 +6,21 @@ import (
 	"testing"
 )
 
-func TestScanSingleToken(t *testing.T) {
+func TestScanSingleConfigToken(t *testing.T) {
 	var singleTokenTests = []struct {
 		input         string
-		expectedToken Token
+		expectedToken ConfigToken
 	}{
 		{
 			input: "-!\"word1世界",
-			expectedToken: Token{
-				tokenType: TK_WORD,
+			expectedToken: ConfigToken{
+				tokenType: CTK_WORD,
 				value:     "-!\"word1世界",
-				startPos: ScannerPos{
+				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
 				},
-				endPos: ScannerPos{
+				endPos: ConfigScannerPos{
 					line: 1,
 					col:  10,
 				},
@@ -28,14 +28,14 @@ func TestScanSingleToken(t *testing.T) {
 		},
 		{
 			input: "\"word \\t\\\"with\\\"\\n spaces\"",
-			expectedToken: Token{
-				tokenType: TK_WORD,
+			expectedToken: ConfigToken{
+				tokenType: CTK_WORD,
 				value:     "word \t\"with\"\n spaces",
-				startPos: ScannerPos{
+				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
 				},
-				endPos: ScannerPos{
+				endPos: ConfigScannerPos{
 					line: 1,
 					col:  26,
 				},
@@ -43,14 +43,14 @@ func TestScanSingleToken(t *testing.T) {
 		},
 		{
 			input: " \t\r\v\f",
-			expectedToken: Token{
-				tokenType: TK_WHITE_SPACE,
+			expectedToken: ConfigToken{
+				tokenType: CTK_WHITE_SPACE,
 				value:     " \t\r\v\f",
-				startPos: ScannerPos{
+				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
 				},
-				endPos: ScannerPos{
+				endPos: ConfigScannerPos{
 					line: 1,
 					col:  5,
 				},
@@ -58,14 +58,14 @@ func TestScanSingleToken(t *testing.T) {
 		},
 		{
 			input: "# Comment",
-			expectedToken: Token{
-				tokenType: TK_COMMENT,
+			expectedToken: ConfigToken{
+				tokenType: CTK_COMMENT,
 				value:     "# Comment",
-				startPos: ScannerPos{
+				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
 				},
-				endPos: ScannerPos{
+				endPos: ConfigScannerPos{
 					line: 1,
 					col:  9,
 				},
@@ -73,14 +73,14 @@ func TestScanSingleToken(t *testing.T) {
 		},
 		{
 			input: "--option",
-			expectedToken: Token{
-				tokenType: TK_OPTION,
+			expectedToken: ConfigToken{
+				tokenType: CTK_OPTION,
 				value:     "--option",
-				startPos: ScannerPos{
+				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
 				},
-				endPos: ScannerPos{
+				endPos: ConfigScannerPos{
 					line: 1,
 					col:  8,
 				},
@@ -88,14 +88,14 @@ func TestScanSingleToken(t *testing.T) {
 		},
 		{
 			input: "\n",
-			expectedToken: Token{
-				tokenType: TK_TERMINATOR,
+			expectedToken: ConfigToken{
+				tokenType: CTK_TERMINATOR,
 				value:     "\n",
-				startPos: ScannerPos{
+				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
 				},
-				endPos: ScannerPos{
+				endPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
 				},
@@ -103,13 +103,13 @@ func TestScanSingleToken(t *testing.T) {
 		},
 		{
 			input: "",
-			expectedToken: Token{
-				tokenType: TK_EOF,
-				startPos: ScannerPos{
+			expectedToken: ConfigToken{
+				tokenType: CTK_EOF,
+				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
 				},
-				endPos: ScannerPos{
+				endPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
 				},
@@ -117,14 +117,14 @@ func TestScanSingleToken(t *testing.T) {
 		},
 		{
 			input: "\"Unterminated string",
-			expectedToken: Token{
-				tokenType: TK_INVALID,
+			expectedToken: ConfigToken{
+				tokenType: CTK_INVALID,
 				value:     "\"Unterminated string",
-				startPos: ScannerPos{
+				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
 				},
-				endPos: ScannerPos{
+				endPos: ConfigScannerPos{
 					line: 1,
 					col:  20,
 				},
@@ -134,104 +134,104 @@ func TestScanSingleToken(t *testing.T) {
 	}
 
 	for _, singleTokenTest := range singleTokenTests {
-		scanner := NewScanner(strings.NewReader(singleTokenTest.input))
+		scanner := NewConfigScanner(strings.NewReader(singleTokenTest.input))
 		token, err := scanner.Scan()
 
 		if err != nil {
 			t.Errorf("Scan failed with error %v", err)
 		} else if !token.Equal(&singleTokenTest.expectedToken) {
-			t.Errorf("Token does not match expected value. Expected %v, Actual %v", singleTokenTest.expectedToken, *token)
+			t.Errorf("ConfigToken does not match expected value. Expected %v, Actual %v", singleTokenTest.expectedToken, *token)
 		}
 	}
 }
 
-func TestScanMultipleTokens(t *testing.T) {
+func TestScanMultipleConfigTokens(t *testing.T) {
 	var multiTokenTests = []struct {
 		input          string
-		expectedTokens []Token
+		expectedTokens []ConfigToken
 	}{
 		{
 			input: "theme --create \"my theme\"\n",
-			expectedTokens: []Token{
-				Token{
-					tokenType: TK_WORD,
+			expectedTokens: []ConfigToken{
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "theme",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  1,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  5,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  6,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  6,
 					},
 				},
-				Token{
-					tokenType: TK_OPTION,
+				ConfigToken{
+					tokenType: CTK_OPTION,
 					value:     "--create",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  7,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  14,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  15,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  15,
 					},
 				},
-				Token{
-					tokenType: TK_WORD,
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "my theme",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  16,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  25,
 					},
 				},
-				Token{
-					tokenType: TK_TERMINATOR,
+				ConfigToken{
+					tokenType: CTK_TERMINATOR,
 					value:     "\n",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  26,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  26,
 					},
 				},
-				Token{
-					tokenType: TK_EOF,
-					startPos: ScannerPos{
+				ConfigToken{
+					tokenType: CTK_EOF,
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  26,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  26,
 					},
@@ -240,158 +240,158 @@ func TestScanMultipleTokens(t *testing.T) {
 		},
 		{
 			input: "set theme mytheme\nset\tCommitView.dateformat \"%yyyy-mm-dd HH:MM\"\n",
-			expectedTokens: []Token{
-				Token{
-					tokenType: TK_WORD,
+			expectedTokens: []ConfigToken{
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "set",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  1,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  3,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  4,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  4,
 					},
 				},
-				Token{
-					tokenType: TK_WORD,
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "theme",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  5,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  9,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  10,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  10,
 					},
 				},
-				Token{
-					tokenType: TK_WORD,
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "mytheme",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  11,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  17,
 					},
 				},
-				Token{
-					tokenType: TK_TERMINATOR,
+				ConfigToken{
+					tokenType: CTK_TERMINATOR,
 					value:     "\n",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  18,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  18,
 					},
 				},
-				Token{
-					tokenType: TK_WORD,
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "set",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  1,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  3,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     "\t",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  4,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  4,
 					},
 				},
-				Token{
-					tokenType: TK_WORD,
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "CommitView.dateformat",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  5,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  25,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  26,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  26,
 					},
 				},
-				Token{
-					tokenType: TK_WORD,
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "%yyyy-mm-dd HH:MM",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  27,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  45,
 					},
 				},
-				Token{
-					tokenType: TK_TERMINATOR,
+				ConfigToken{
+					tokenType: CTK_TERMINATOR,
 					value:     "\n",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  46,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  46,
 					},
 				},
-				Token{
-					tokenType: TK_EOF,
-					startPos: ScannerPos{
+				ConfigToken{
+					tokenType: CTK_EOF,
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  46,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  46,
 					},
@@ -400,86 +400,86 @@ func TestScanMultipleTokens(t *testing.T) {
 		},
 		{
 			input: "theme --create \\\n\tmytheme\n",
-			expectedTokens: []Token{
-				Token{
-					tokenType: TK_WORD,
+			expectedTokens: []ConfigToken{
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "theme",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  1,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  5,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  6,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  6,
 					},
 				},
-				Token{
-					tokenType: TK_OPTION,
+				ConfigToken{
+					tokenType: CTK_OPTION,
 					value:     "--create",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  7,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  14,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " \t",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  15,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  1,
 					},
 				},
-				Token{
-					tokenType: TK_WORD,
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "mytheme",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  2,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  8,
 					},
 				},
-				Token{
-					tokenType: TK_TERMINATOR,
+				ConfigToken{
+					tokenType: CTK_TERMINATOR,
 					value:     "\n",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  9,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  9,
 					},
 				},
-				Token{
-					tokenType: TK_EOF,
-					startPos: ScannerPos{
+				ConfigToken{
+					tokenType: CTK_EOF,
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  9,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  9,
 					},
@@ -488,75 +488,75 @@ func TestScanMultipleTokens(t *testing.T) {
 		},
 		{
 			input: "theme --create \"my theme\nset theme mytheme\n",
-			expectedTokens: []Token{
-				Token{
-					tokenType: TK_WORD,
+			expectedTokens: []ConfigToken{
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "theme",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  1,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  5,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  6,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  6,
 					},
 				},
-				Token{
-					tokenType: TK_OPTION,
+				ConfigToken{
+					tokenType: CTK_OPTION,
 					value:     "--create",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  7,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  14,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  15,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  15,
 					},
 				},
-				Token{
-					tokenType: TK_INVALID,
+				ConfigToken{
+					tokenType: CTK_INVALID,
 					value:     "\"my theme\nset theme mytheme\n",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  16,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  18,
 					},
 					err: errors.New("Unterminated string"),
 				},
-				Token{
-					tokenType: TK_EOF,
-					startPos: ScannerPos{
+				ConfigToken{
+					tokenType: CTK_EOF,
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  18,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  18,
 					},
@@ -565,230 +565,230 @@ func TestScanMultipleTokens(t *testing.T) {
 		},
 		{
 			input: "set theme mytheme # Set theme \n # set theme again\nset theme mytheme #EOF",
-			expectedTokens: []Token{
-				Token{
-					tokenType: TK_WORD,
+			expectedTokens: []ConfigToken{
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "set",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  1,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  3,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  4,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  4,
 					},
 				},
-				Token{
-					tokenType: TK_WORD,
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "theme",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  5,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  9,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  10,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  10,
 					},
 				},
-				Token{
-					tokenType: TK_WORD,
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "mytheme",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  11,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  17,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  18,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  18,
 					},
 				},
-				Token{
-					tokenType: TK_COMMENT,
+				ConfigToken{
+					tokenType: CTK_COMMENT,
 					value:     "# Set theme ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  19,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  30,
 					},
 				},
-				Token{
-					tokenType: TK_TERMINATOR,
+				ConfigToken{
+					tokenType: CTK_TERMINATOR,
 					value:     "\n",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 1,
 						col:  31,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 1,
 						col:  31,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  1,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  1,
 					},
 				},
-				Token{
-					tokenType: TK_COMMENT,
+				ConfigToken{
+					tokenType: CTK_COMMENT,
 					value:     "# set theme again",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  2,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  18,
 					},
 				},
-				Token{
-					tokenType: TK_TERMINATOR,
+				ConfigToken{
+					tokenType: CTK_TERMINATOR,
 					value:     "\n",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 2,
 						col:  19,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 2,
 						col:  19,
 					},
 				},
-				Token{
-					tokenType: TK_WORD,
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "set",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 3,
 						col:  1,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 3,
 						col:  3,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 3,
 						col:  4,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 3,
 						col:  4,
 					},
 				},
-				Token{
-					tokenType: TK_WORD,
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "theme",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 3,
 						col:  5,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 3,
 						col:  9,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 3,
 						col:  10,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 3,
 						col:  10,
 					},
 				},
-				Token{
-					tokenType: TK_WORD,
+				ConfigToken{
+					tokenType: CTK_WORD,
 					value:     "mytheme",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 3,
 						col:  11,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 3,
 						col:  17,
 					},
 				},
-				Token{
-					tokenType: TK_WHITE_SPACE,
+				ConfigToken{
+					tokenType: CTK_WHITE_SPACE,
 					value:     " ",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 3,
 						col:  18,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 3,
 						col:  18,
 					},
 				},
-				Token{
-					tokenType: TK_COMMENT,
+				ConfigToken{
+					tokenType: CTK_COMMENT,
 					value:     "#EOF",
-					startPos: ScannerPos{
+					startPos: ConfigScannerPos{
 						line: 3,
 						col:  19,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 3,
 						col:  22,
 					},
 				},
-				Token{
-					tokenType: TK_EOF,
-					startPos: ScannerPos{
+				ConfigToken{
+					tokenType: CTK_EOF,
+					startPos: ConfigScannerPos{
 						line: 3,
 						col:  22,
 					},
-					endPos: ScannerPos{
+					endPos: ConfigScannerPos{
 						line: 3,
 						col:  22,
 					},
@@ -798,7 +798,7 @@ func TestScanMultipleTokens(t *testing.T) {
 	}
 
 	for _, multiTokenTest := range multiTokenTests {
-		scanner := NewScanner(strings.NewReader(multiTokenTest.input))
+		scanner := NewConfigScanner(strings.NewReader(multiTokenTest.input))
 
 		for _, expectedToken := range multiTokenTest.expectedTokens {
 			token, err := scanner.Scan()
@@ -806,7 +806,7 @@ func TestScanMultipleTokens(t *testing.T) {
 			if err != nil {
 				t.Errorf("Scan failed with error %v", err)
 			} else if !token.Equal(&expectedToken) {
-				t.Errorf("Token does not match expected value. Expected %v, Actual %v", expectedToken, *token)
+				t.Errorf("ConfigToken does not match expected value. Expected %v, Actual %v", expectedToken, *token)
 			}
 		}
 	}
