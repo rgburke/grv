@@ -224,7 +224,7 @@ func (config *Configuration) LoadFile(filePath string) []error {
 
 	log.Infof("Loading config file %v", filePath)
 
-	return config.processCommands(NewParser(file, filePath))
+	return config.processCommands(NewConfigParser(file, filePath))
 }
 
 func (config *Configuration) Evaluate(configString string) (errs []error) {
@@ -233,12 +233,12 @@ func (config *Configuration) Evaluate(configString string) (errs []error) {
 	}
 
 	reader := strings.NewReader(configString)
-	parser := NewParser(reader, "")
+	parser := NewConfigParser(reader, "")
 
 	return config.processCommands(parser)
 }
 
-func (config *Configuration) processCommands(parser *Parser) []error {
+func (config *Configuration) processCommands(parser *ConfigParser) []error {
 	var configErrors []error
 
 OuterLoop:

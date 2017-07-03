@@ -84,7 +84,7 @@ func TestParseSingleCommand(t *testing.T) {
 
 	for _, singleCommandTest := range singleCommandTests {
 		expectedCommand := singleCommandTest.expectedCommand
-		parser := NewParser(strings.NewReader(singleCommandTest.input), CONFIG_FILE)
+		parser := NewConfigParser(strings.NewReader(singleCommandTest.input), CONFIG_FILE)
 		command, _, err := parser.Parse()
 
 		if err != nil {
@@ -111,7 +111,7 @@ func TestEOFIsSet(t *testing.T) {
 	}
 
 	for _, eofTest := range eofTests {
-		parser := NewParser(strings.NewReader(eofTest.input), CONFIG_FILE)
+		parser := NewConfigParser(strings.NewReader(eofTest.input), CONFIG_FILE)
 		_, _, err := parser.Parse()
 
 		if err != nil {
@@ -165,7 +165,7 @@ func TestParseMultipleCommands(t *testing.T) {
 	}
 
 	for _, multipleCommandsTest := range multipleCommandsTests {
-		parser := NewParser(strings.NewReader(multipleCommandsTest.input), CONFIG_FILE)
+		parser := NewConfigParser(strings.NewReader(multipleCommandsTest.input), CONFIG_FILE)
 
 		for _, expectedCommand := range multipleCommandsTest.expectedCommands {
 			command, _, err := parser.Parse()
@@ -215,7 +215,7 @@ func TestErrorsAreReceivedForInvalidTokenSequences(t *testing.T) {
 	}
 
 	for _, errorTest := range errorTests {
-		parser := NewParser(strings.NewReader(errorTest.input), CONFIG_FILE)
+		parser := NewConfigParser(strings.NewReader(errorTest.input), CONFIG_FILE)
 		_, _, err := parser.Parse()
 
 		if err == nil {
@@ -256,7 +256,7 @@ func TestInvalidCommandsAreDiscardedAndParsingContinuesOnNextLine(t *testing.T) 
 	}
 
 	for _, invalidCommandTest := range invalidCommandTests {
-		parser := NewParser(strings.NewReader(invalidCommandTest.input), CONFIG_FILE)
+		parser := NewConfigParser(strings.NewReader(invalidCommandTest.input), CONFIG_FILE)
 
 		var commands []Command
 

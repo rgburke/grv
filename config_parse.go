@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-type CommandConstructor func(*Parser, []*ConfigToken) (Command, error)
+type CommandConstructor func(*ConfigParser, []*ConfigToken) (Command, error)
 
 type Command interface {
 	Equal(Command) bool
@@ -104,19 +104,19 @@ var commandDescriptors = map[string]*CommandDescriptor{
 	},
 }
 
-type Parser struct {
+type ConfigParser struct {
 	scanner     *ConfigScanner
 	inputSource string
 }
 
-func NewParser(reader io.Reader, inputSource string) *Parser {
-	return &Parser{
+func NewConfigParser(reader io.Reader, inputSource string) *ConfigParser {
+	return &ConfigParser{
 		scanner:     NewConfigScanner(reader),
 		inputSource: inputSource,
 	}
 }
 
-func (parser *Parser) Parse() (command Command, eof bool, err error) {
+func (parser *ConfigParser) Parse() (command Command, eof bool, err error) {
 	var token *ConfigToken
 
 	for {
@@ -150,11 +150,11 @@ func (parser *Parser) Parse() (command Command, eof bool, err error) {
 	return
 }
 
-func (parser *Parser) InputSource() string {
+func (parser *ConfigParser) InputSource() string {
 	return parser.inputSource
 }
 
-func (parser *Parser) scan() (token *ConfigToken, err error) {
+func (parser *ConfigParser) scan() (token *ConfigToken, err error) {
 	for {
 		token, err = parser.scanner.Scan()
 		if err != nil {
@@ -169,7 +169,7 @@ func (parser *Parser) scan() (token *ConfigToken, err error) {
 	return
 }
 
-func (parser *Parser) generateParseError(token *ConfigToken, errorMessage string, args ...interface{}) error {
+func (parser *ConfigParser) generateParseError(token *ConfigToken, errorMessage string, args ...interface{}) error {
 	return generateConfigError(parser.inputSource, token, errorMessage, args...)
 }
 
@@ -192,7 +192,7 @@ func generateConfigError(inputSource string, token *ConfigToken, errorMessage st
 	return errors.New(buffer.String())
 }
 
-func (parser *Parser) discardTokensUntilNextCommand() {
+func (parser *ConfigParser) discardTokensUntilNextCommand() {
 	for {
 		token, err := parser.scan()
 
@@ -204,7 +204,7 @@ func (parser *Parser) discardTokensUntilNextCommand() {
 	}
 }
 
-func (parser *Parser) parseCommand(token *ConfigToken) (command Command, eof bool, err error) {
+func (parser *ConfigParser) parseCommand(token *ConfigToken) (command Command, eof bool, err error) {
 	commandDescriptor, ok := commandDescriptors[token.value]
 	if !ok {
 		err = parser.generateParseError(token, "Invalid command \"%v\"", token.value)
@@ -241,14 +241,14 @@ func (parser *Parser) parseCommand(token *ConfigToken) (command Command, eof boo
 	return
 }
 
-func setCommandConstructor(parser *Parser, tokens []*ConfigToken) (Command, error) {
+func setCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (Command, error) {
 	return &SetCommand{
 		variable: tokens[0],
 		value:    tokens[1],
 	}, nil
 }
 
-func themeCommandConstructor(parser *Parser, tokens []*ConfigToken) (Command, error) {
+func themeCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (Command, error) {
 	themeCommand := &ThemeCommand{}
 
 	optionSetters := map[string]func(*ConfigToken){
@@ -272,7 +272,7 @@ func themeCommandConstructor(parser *Parser, tokens []*ConfigToken) (Command, er
 	return themeCommand, nil
 }
 
-func mapCommandConstructor(parser *Parser, tokens []*ConfigToken) (Command, error) {
+func mapCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (Command, error) {
 	return &MapCommand{
 		view: tokens[0],
 		from: tokens[1],
@@ -280,6 +280,6 @@ func mapCommandConstructor(parser *Parser, tokens []*ConfigToken) (Command, erro
 	}, nil
 }
 
-func quitCommandConstructor(parser *Parser, tokens []*ConfigToken) (Command, error) {
+func quitCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (Command, error) {
 	return &QuitCommand{}, nil
 }
