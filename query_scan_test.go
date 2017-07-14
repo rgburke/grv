@@ -41,10 +41,10 @@ func TestScanSingleQueryToken(t *testing.T) {
 			},
 		},
 		{
-			input: "authorName",
+			input: "AuthorName",
 			expectedToken: QueryToken{
 				tokenType: QTK_IDENTIFIER,
-				value:     "authorName",
+				value:     "AuthorName",
 				startPos: QueryScannerPos{
 					line: 1,
 					col:  1,
@@ -250,21 +250,6 @@ func TestScanSingleQueryToken(t *testing.T) {
 				endPos: QueryScannerPos{
 					line: 1,
 					col:  2,
-				},
-			},
-		},
-		{
-			input: "NOT",
-			expectedToken: QueryToken{
-				tokenType: QTK_NOT,
-				value:     "NOT",
-				startPos: QueryScannerPos{
-					line: 1,
-					col:  1,
-				},
-				endPos: QueryScannerPos{
-					line: 1,
-					col:  3,
 				},
 			},
 		},

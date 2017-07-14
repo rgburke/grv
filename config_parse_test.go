@@ -95,7 +95,7 @@ func TestParseSingleCommand(t *testing.T) {
 	}
 }
 
-func TestEOFIsSet(t *testing.T) {
+func TestEOFIsSetByConfigParser(t *testing.T) {
 	var eofTests = []struct {
 		input string
 		eof   bool
@@ -179,7 +179,7 @@ func TestParseMultipleCommands(t *testing.T) {
 	}
 }
 
-func TestErrorsAreReceivedForInvalidTokenSequences(t *testing.T) {
+func TestErrorsAreReceivedForInvalidConfigTokenSequences(t *testing.T) {
 	var errorTests = []struct {
 		input                string
 		expectedErrorMessage string

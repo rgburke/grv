@@ -25,7 +25,6 @@ const (
 
 	QTK_AND
 	QTK_OR
-	QTK_NOT
 
 	QTK_CMP_EQ
 	QTK_CMP_NE
@@ -37,25 +36,6 @@ const (
 	QTK_LPAREN
 	QTK_RPAREN
 )
-
-var queryTokenNames = map[QueryTokenType]string{
-	QTK_WHITE_SPACE: "White Space",
-	QTK_EOF:         "EOF",
-	QTK_IDENTIFIER:  "Identifier",
-	QTK_CMP_EQ:      "=",
-	QTK_CMP_NE:      "!=",
-	QTK_CMP_GT:      ">",
-	QTK_CMP_GE:      ">=",
-	QTK_CMP_LT:      "<",
-	QTK_CMP_LE:      "<=",
-	QTK_NUMBER:      "Number",
-	QTK_STRING:      "String",
-	QTK_AND:         "AND",
-	QTK_OR:          "OR",
-	QTK_NOT:         "NOT",
-	QTK_LPAREN:      "(",
-	QTK_RPAREN:      ")",
-}
 
 type QueryScannerPos struct {
 	line uint
@@ -91,8 +71,12 @@ func (token *QueryToken) Equal(other *QueryToken) bool {
 				token.err.Error() == other.err.Error()))
 }
 
-func QueryTokenName(tokenType QueryTokenType) string {
-	return queryTokenNames[tokenType]
+func (token *QueryToken) Value() string {
+	if token.tokenType == QTK_EOF {
+		return "EOF"
+	}
+
+	return token.value
 }
 
 func NewQueryScanner(reader io.Reader) *QueryScanner {
@@ -180,8 +164,6 @@ func (scanner *QueryScanner) Scan() (token *QueryToken, err error) {
 			token.tokenType = QTK_AND
 		case "OR":
 			token.tokenType = QTK_OR
-		case "NOT":
-			token.tokenType = QTK_NOT
 		}
 	case char == '"':
 		if err = scanner.unread(); err != nil {
