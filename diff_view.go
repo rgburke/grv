@@ -296,11 +296,11 @@ func (diffView *DiffView) generateDiffLines(commit *Commit) (err error) {
 			diffLineType: DLT_DIFF_COMMIT_AUTHOR_DATE,
 		},
 		&DiffLine{
-			line:         fmt.Sprintf("Comitter:\t%v <%v>", committer.Name, committer.Email),
+			line:         fmt.Sprintf("Committer:\t%v <%v>", committer.Name, committer.Email),
 			diffLineType: DLT_DIFF_COMMIT_COMMITTER,
 		},
 		&DiffLine{
-			line:         fmt.Sprintf("ComitterDate:\t%v", committer.When.Format(DV_DATE_FORMAT)),
+			line:         fmt.Sprintf("CommitterDate:\t%v", committer.When.Format(DV_DATE_FORMAT)),
 			diffLineType: DLT_DIFF_COMMIT_COMMITTER_DATE,
 		},
 		&DiffLine{
