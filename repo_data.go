@@ -34,6 +34,53 @@ type CommitSet struct {
 	lock    sync.Mutex
 }
 
+func NewCommitSet() *CommitSet {
+	return &CommitSet{
+		commits: make([]*Commit, 0),
+	}
+}
+
+func (commitSet *CommitSet) AddCommit(commit *Commit) (err error) {
+	commitSet.lock.Lock()
+	defer commitSet.lock.Unlock()
+
+	if commitSet.loading {
+		commitSet.commits = append(commitSet.commits, commit)
+	} else {
+		err = fmt.Errorf("Cannot add commit when CommitSet is not in loading state")
+	}
+
+	return
+}
+
+func (commitSet *CommitSet) Commit(index uint) (commit *Commit) {
+	commitSet.lock.Lock()
+	defer commitSet.lock.Unlock()
+
+	if index < uint(len(commitSet.commits)) {
+		commit = commitSet.commits[index]
+	}
+
+	return
+}
+
+func (commitSet *CommitSet) SetLoading(loading bool) {
+	commitSet.lock.Lock()
+	defer commitSet.lock.Unlock()
+
+	commitSet.loading = loading
+}
+
+func (commitSet *CommitSet) CommitSetState() CommitSetState {
+	commitSet.lock.Lock()
+	defer commitSet.lock.Unlock()
+
+	return CommitSetState{
+		loading:   commitSet.loading,
+		commitNum: uint(len(commitSet.commits)),
+	}
+}
+
 type CommitSetState struct {
 	loading   bool
 	commitNum uint
@@ -332,24 +379,22 @@ func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsL
 		return
 	}
 
-	commitSet := &CommitSet{
-		loading: true,
-		commits: make([]*Commit, 0),
-	}
+	commitSet := NewCommitSet()
+	commitSet.SetLoading(true)
 	repoData.commits[oid] = commitSet
 
 	go func() {
 		log.Debugf("Receiving commits from RepoDataLoader for oid %v", oid)
 
 		for commit := range commitCh {
-			commitSet.lock.Lock()
-			commitSet.commits = append(commitSet.commits, commit)
-			commitSet.lock.Unlock()
+			if err := commitSet.AddCommit(commit); err != nil {
+				repoData.channels.ReportError(err)
+				log.Debugf("Error when loading commits for oid %v", oid)
+				return
+			}
 		}
 
-		commitSet.lock.Lock()
-		commitSet.loading = false
-		commitSet.lock.Unlock()
+		commitSet.SetLoading(false)
 		log.Debugf("Finished loading commits for oid %v", oid)
 
 		repoData.channels.ReportError(onCommitsLoaded(oid))
@@ -390,23 +435,14 @@ func (repoData *RepositoryData) RefsForCommit(commit *Commit) *CommitRefs {
 }
 
 func (repoData *RepositoryData) CommitSetState(oid *Oid) CommitSetState {
-	var commitSetState CommitSetState
-
-	if commitSet, ok := repoData.commits[oid]; !ok {
-		commitSetState = CommitSetState{
-			loading:   false,
-			commitNum: 0,
-		}
-	} else {
-		commitSet.lock.Lock()
-		commitSetState = CommitSetState{
-			loading:   commitSet.loading,
-			commitNum: uint(len(commitSet.commits)),
-		}
-		commitSet.lock.Unlock()
+	if commitSet, ok := repoData.commits[oid]; ok {
+		return commitSet.CommitSetState()
 	}
 
-	return commitSetState
+	return CommitSetState{
+		loading:   false,
+		commitNum: 0,
+	}
 }
 
 func (repoData *RepositoryData) Commits(oid *Oid, startIndex, count uint) (<-chan *Commit, error) {
@@ -425,18 +461,14 @@ func (repoData *RepositoryData) Commits(oid *Oid, startIndex, count uint) (<-cha
 		index := startIndex
 
 		for {
-			commit = nil
-			commitSet.lock.Lock()
-
-			if index < uint(len(commitSet.commits)) && index-startIndex < count {
-				commit = commitSet.commits[index]
-				index++
+			if index-startIndex < count {
+				commit = commitSet.Commit(index)
 			}
-
-			commitSet.lock.Unlock()
 
 			if commit != nil {
 				commitCh <- commit
+				index++
+				commit = nil
 			} else {
 				return
 			}
@@ -452,15 +484,8 @@ func (repoData *RepositoryData) CommitByIndex(oid *Oid, index uint) (commit *Com
 		return nil, fmt.Errorf("No commits loaded for oid %v", oid)
 	}
 
-	commitSet.lock.Lock()
-	defer commitSet.lock.Unlock()
-
-	commitNum := uint(len(commitSet.commits))
-
-	if index < commitNum {
-		commit = commitSet.commits[index]
-	} else {
-		err = fmt.Errorf("Commit index %v is invalid for branch %v with %v commits", index, oid, commitNum)
+	if commit = commitSet.Commit(index); commit == nil {
+		err = fmt.Errorf("Commit index %v is invalid for branch %v", index, oid)
 	}
 
 	return
