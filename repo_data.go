@@ -28,24 +28,32 @@ type RepoData interface {
 	Diff(commit *Commit) (*Diff, error)
 }
 
-type CommitSet struct {
+type CommitSet interface {
+	AddCommit(commit *Commit) (err error)
+	Commit(index uint) (commit *Commit)
+	CommitStream() <-chan *Commit
+	SetLoading(loading bool)
+	CommitSetState() CommitSetState
+}
+
+type RawCommitSet struct {
 	commits []*Commit
 	loading bool
 	lock    sync.Mutex
 }
 
-func NewCommitSet() *CommitSet {
-	return &CommitSet{
+func NewRawCommitSet() *RawCommitSet {
+	return &RawCommitSet{
 		commits: make([]*Commit, 0),
 	}
 }
 
-func (commitSet *CommitSet) AddCommit(commit *Commit) (err error) {
-	commitSet.lock.Lock()
-	defer commitSet.lock.Unlock()
+func (rawCommitSet *RawCommitSet) AddCommit(commit *Commit) (err error) {
+	rawCommitSet.lock.Lock()
+	defer rawCommitSet.lock.Unlock()
 
-	if commitSet.loading {
-		commitSet.commits = append(commitSet.commits, commit)
+	if rawCommitSet.loading {
+		rawCommitSet.commits = append(rawCommitSet.commits, commit)
 	} else {
 		err = fmt.Errorf("Cannot add commit when CommitSet is not in loading state")
 	}
@@ -53,37 +61,147 @@ func (commitSet *CommitSet) AddCommit(commit *Commit) (err error) {
 	return
 }
 
-func (commitSet *CommitSet) Commit(index uint) (commit *Commit) {
-	commitSet.lock.Lock()
-	defer commitSet.lock.Unlock()
+func (rawCommitSet *RawCommitSet) Commit(index uint) (commit *Commit) {
+	rawCommitSet.lock.Lock()
+	defer rawCommitSet.lock.Unlock()
 
-	if index < uint(len(commitSet.commits)) {
-		commit = commitSet.commits[index]
+	if index < uint(len(rawCommitSet.commits)) {
+		commit = rawCommitSet.commits[index]
 	}
 
 	return
 }
 
-func (commitSet *CommitSet) SetLoading(loading bool) {
-	commitSet.lock.Lock()
-	defer commitSet.lock.Unlock()
+func (rawCommitSet *RawCommitSet) CommitStream() <-chan *Commit {
+	rawCommitSet.lock.Lock()
 
-	commitSet.loading = loading
+	ch := make(chan *Commit)
+
+	go func() {
+		defer rawCommitSet.lock.Unlock()
+
+		for _, commit := range rawCommitSet.commits {
+			ch <- commit
+		}
+	}()
+
+	return ch
 }
 
-func (commitSet *CommitSet) CommitSetState() CommitSetState {
-	commitSet.lock.Lock()
-	defer commitSet.lock.Unlock()
+func (rawCommitSet *RawCommitSet) SetLoading(loading bool) {
+	rawCommitSet.lock.Lock()
+	defer rawCommitSet.lock.Unlock()
+
+	rawCommitSet.loading = loading
+}
+
+func (rawCommitSet *RawCommitSet) CommitSetState() CommitSetState {
+	rawCommitSet.lock.Lock()
+	defer rawCommitSet.lock.Unlock()
 
 	return CommitSetState{
-		loading:   commitSet.loading,
-		commitNum: uint(len(commitSet.commits)),
+		loading:   rawCommitSet.loading,
+		commitNum: uint(len(rawCommitSet.commits)),
 	}
 }
 
+type FilteredCommitSet struct {
+	commits      []*Commit
+	commitSet    CommitSet
+	commitFilter *CommitFilter
+	lock         sync.Mutex
+}
+
+func NewFilteredCommitSet(commitSet CommitSet, commitFilter *CommitFilter) *FilteredCommitSet {
+	filteredCommitSet := &FilteredCommitSet{
+		commits:      make([]*Commit, 0),
+		commitSet:    commitSet,
+		commitFilter: commitFilter,
+	}
+
+	filteredCommitSet.initialiseFromCommitSet()
+
+	return filteredCommitSet
+}
+
+func (filteredCommitSet *FilteredCommitSet) initialiseFromCommitSet() {
+	for commit := range filteredCommitSet.commitSet.CommitStream() {
+		filteredCommitSet.addCommitIfFilterMatches(commit)
+	}
+}
+
+func (filteredCommitSet *FilteredCommitSet) AddCommit(commit *Commit) (err error) {
+	filteredCommitSet.lock.Lock()
+	defer filteredCommitSet.lock.Unlock()
+
+	if err = filteredCommitSet.commitSet.AddCommit(commit); err != nil {
+		return
+	}
+
+	filteredCommitSet.addCommitIfFilterMatches(commit)
+
+	return
+}
+
+func (filteredCommitSet *FilteredCommitSet) addCommitIfFilterMatches(commit *Commit) {
+	if filteredCommitSet.commitFilter.MatchesFilter(commit) {
+		filteredCommitSet.commits = append(filteredCommitSet.commits, commit)
+	}
+
+	return
+}
+
+func (filteredCommitSet *FilteredCommitSet) Commit(index uint) (commit *Commit) {
+	filteredCommitSet.lock.Lock()
+	defer filteredCommitSet.lock.Unlock()
+
+	if index < uint(len(filteredCommitSet.commits)) {
+		commit = filteredCommitSet.commits[index]
+	}
+
+	return
+}
+
+func (filteredCommitSet *FilteredCommitSet) CommitStream() <-chan *Commit {
+	filteredCommitSet.lock.Lock()
+
+	ch := make(chan *Commit)
+
+	go func() {
+		defer filteredCommitSet.lock.Unlock()
+
+		for _, commit := range filteredCommitSet.commits {
+			ch <- commit
+		}
+	}()
+
+	return ch
+}
+
+func (filteredCommitSet *FilteredCommitSet) SetLoading(loading bool) {
+	filteredCommitSet.commitSet.SetLoading(loading)
+}
+
+func (filteredCommitSet *FilteredCommitSet) CommitSetState() CommitSetState {
+	filteredCommitSet.lock.Lock()
+	defer filteredCommitSet.lock.Unlock()
+
+	commitSetState := filteredCommitSet.commitSet.CommitSetState()
+	commitSetState.filterState = &CommitSetFilterState{
+		filteredCommitNum: uint(len(filteredCommitSet.commits)),
+	}
+
+	return commitSetState
+}
+
 type CommitSetState struct {
-	loading   bool
-	commitNum uint
+	loading     bool
+	commitNum   uint
+	filterState *CommitSetFilterState
+}
+
+type CommitSetFilterState struct {
+	filteredCommitNum uint
 }
 
 type BranchSet struct {
@@ -119,7 +237,7 @@ type RepositoryData struct {
 	branches       *BranchSet
 	localTags      *TagSet
 	commitRefSet   *CommitRefSet
-	commits        map[*Oid]*CommitSet
+	commits        map[*Oid]CommitSet
 }
 
 func NewBranchSet() *BranchSet {
@@ -200,7 +318,7 @@ func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *Repo
 		branches:       NewBranchSet(),
 		localTags:      NewTagSet(),
 		commitRefSet:   NewCommitRefSet(),
-		commits:        make(map[*Oid]*CommitSet),
+		commits:        make(map[*Oid]CommitSet),
 	}
 }
 
@@ -379,7 +497,7 @@ func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsL
 		return
 	}
 
-	commitSet := NewCommitSet()
+	commitSet := NewRawCommitSet()
 	commitSet.SetLoading(true)
 	repoData.commits[oid] = commitSet
 
@@ -446,7 +564,7 @@ func (repoData *RepositoryData) CommitSetState(oid *Oid) CommitSetState {
 }
 
 func (repoData *RepositoryData) Commits(oid *Oid, startIndex, count uint) (<-chan *Commit, error) {
-	var commitSet *CommitSet
+	var commitSet CommitSet
 	var ok bool
 
 	if commitSet, ok = repoData.commits[oid]; !ok {
