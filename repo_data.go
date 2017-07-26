@@ -212,11 +212,23 @@ type BranchSet struct {
 	lock               sync.Mutex
 }
 
+func NewBranchSet() *BranchSet {
+	return &BranchSet{
+		branches: make(map[*Oid]*Branch),
+	}
+}
+
 type TagSet struct {
 	tags     map[*Oid]*Tag
 	tagsList []*Tag
 	loading  bool
 	lock     sync.Mutex
+}
+
+func NewTagSet() *TagSet {
+	return &TagSet{
+		tags: make(map[*Oid]*Tag),
+	}
 }
 
 type CommitRefs struct {
@@ -227,29 +239,6 @@ type CommitRefs struct {
 type CommitRefSet struct {
 	commitRefs map[*Oid]*CommitRefs
 	lock       sync.Mutex
-}
-
-type RepositoryData struct {
-	channels       *Channels
-	repoDataLoader *RepoDataLoader
-	head           *Oid
-	headBranch     *Branch
-	branches       *BranchSet
-	localTags      *TagSet
-	commitRefSet   *CommitRefSet
-	commits        map[*Oid]CommitSet
-}
-
-func NewBranchSet() *BranchSet {
-	return &BranchSet{
-		branches: make(map[*Oid]*Branch),
-	}
-}
-
-func NewTagSet() *TagSet {
-	return &TagSet{
-		tags: make(map[*Oid]*Tag),
-	}
 }
 
 func NewCommitRefSet() *CommitRefSet {
@@ -311,6 +300,43 @@ func (commitRefSet *CommitRefSet) RefsForCommit(commit *Commit) (commitRefsCopy 
 	return commitRefsCopy
 }
 
+type RefCommitSets struct {
+	commits map[*Oid]CommitSet
+	lock    sync.Mutex
+}
+
+func NewRefCommitSets() *RefCommitSets {
+	return &RefCommitSets{
+		commits: make(map[*Oid]CommitSet),
+	}
+}
+
+func (refCommitSets *RefCommitSets) CommitSet(oid *Oid) (commitSet CommitSet, exists bool) {
+	refCommitSets.lock.Lock()
+	defer refCommitSets.lock.Unlock()
+
+	commitSet, exists = refCommitSets.commits[oid]
+	return
+}
+
+func (refCommitSets *RefCommitSets) SetCommitSet(oid *Oid, commitSet CommitSet) {
+	refCommitSets.lock.Lock()
+	defer refCommitSets.lock.Unlock()
+
+	refCommitSets.commits[oid] = commitSet
+}
+
+type RepositoryData struct {
+	channels       *Channels
+	repoDataLoader *RepoDataLoader
+	head           *Oid
+	headBranch     *Branch
+	branches       *BranchSet
+	localTags      *TagSet
+	commitRefSet   *CommitRefSet
+	refCommitSets  *RefCommitSets
+}
+
 func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *RepositoryData {
 	return &RepositoryData{
 		channels:       channels,
@@ -318,7 +344,7 @@ func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *Repo
 		branches:       NewBranchSet(),
 		localTags:      NewTagSet(),
 		commitRefSet:   NewCommitRefSet(),
-		commits:        make(map[*Oid]CommitSet),
+		refCommitSets:  NewRefCommitSets(),
 	}
 }
 
@@ -487,7 +513,7 @@ func (repoData *RepositoryData) mapTagsToCommits() (err error) {
 }
 
 func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsLoaded) (err error) {
-	if _, ok := repoData.commits[oid]; ok {
+	if _, ok := repoData.refCommitSets.CommitSet(oid); ok {
 		log.Debugf("Commits already loading/loaded for oid %v", oid)
 		return
 	}
@@ -499,15 +525,20 @@ func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsL
 
 	commitSet := NewRawCommitSet()
 	commitSet.SetLoading(true)
-	repoData.commits[oid] = commitSet
+	repoData.refCommitSets.SetCommitSet(oid, commitSet)
 
 	go func() {
 		log.Debugf("Receiving commits from RepoDataLoader for oid %v", oid)
 
 		for commit := range commitCh {
+			commitSet, ok := repoData.refCommitSets.CommitSet(oid)
+			if !ok {
+				log.Errorf("Error when loading commits for oid %v: No CommitSet exists", oid)
+				return
+			}
+
 			if err := commitSet.AddCommit(commit); err != nil {
-				repoData.channels.ReportError(err)
-				log.Debugf("Error when loading commits for oid %v", oid)
+				log.Errorf("Error when loading commits for oid %v: %v", oid, err)
 				return
 			}
 		}
@@ -553,7 +584,7 @@ func (repoData *RepositoryData) RefsForCommit(commit *Commit) *CommitRefs {
 }
 
 func (repoData *RepositoryData) CommitSetState(oid *Oid) CommitSetState {
-	if commitSet, ok := repoData.commits[oid]; ok {
+	if commitSet, ok := repoData.refCommitSets.CommitSet(oid); ok {
 		return commitSet.CommitSetState()
 	}
 
@@ -564,10 +595,8 @@ func (repoData *RepositoryData) CommitSetState(oid *Oid) CommitSetState {
 }
 
 func (repoData *RepositoryData) Commits(oid *Oid, startIndex, count uint) (<-chan *Commit, error) {
-	var commitSet CommitSet
-	var ok bool
-
-	if commitSet, ok = repoData.commits[oid]; !ok {
+	commitSet, ok := repoData.refCommitSets.CommitSet(oid)
+	if !ok {
 		return nil, fmt.Errorf("No commits loaded for oid %v", oid)
 	}
 
@@ -597,7 +626,7 @@ func (repoData *RepositoryData) Commits(oid *Oid, startIndex, count uint) (<-cha
 }
 
 func (repoData *RepositoryData) CommitByIndex(oid *Oid, index uint) (commit *Commit, err error) {
-	commitSet, ok := repoData.commits[oid]
+	commitSet, ok := repoData.refCommitSets.CommitSet(oid)
 	if !ok {
 		return nil, fmt.Errorf("No commits loaded for oid %v", oid)
 	}
