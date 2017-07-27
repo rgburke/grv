@@ -25,6 +25,8 @@ type RepoData interface {
 	Commits(oid *Oid, startIndex, count uint) (<-chan *Commit, error)
 	CommitByIndex(oid *Oid, index uint) (*Commit, error)
 	Commit(oid *Oid) (*Commit, error)
+	AddCommitFilter(*Oid, *CommitFilter) error
+	RemoveCommitFilter(*Oid) error
 	Diff(commit *Commit) (*Diff, error)
 }
 
@@ -79,6 +81,7 @@ func (rawCommitSet *RawCommitSet) CommitStream() <-chan *Commit {
 
 	go func() {
 		defer rawCommitSet.lock.Unlock()
+		defer close(ch)
 
 		for _, commit := range rawCommitSet.commits {
 			ch <- commit
@@ -113,21 +116,27 @@ type FilteredCommitSet struct {
 }
 
 func NewFilteredCommitSet(commitSet CommitSet, commitFilter *CommitFilter) *FilteredCommitSet {
-	filteredCommitSet := &FilteredCommitSet{
+	return &FilteredCommitSet{
 		commits:      make([]*Commit, 0),
 		commitSet:    commitSet,
 		commitFilter: commitFilter,
 	}
-
-	filteredCommitSet.initialiseFromCommitSet()
-
-	return filteredCommitSet
 }
 
-func (filteredCommitSet *FilteredCommitSet) initialiseFromCommitSet() {
+func (filteredCommitSet *FilteredCommitSet) InitialiseFromCommitSet() {
+	filteredCommitSet.lock.Lock()
+	defer filteredCommitSet.lock.Unlock()
+
 	for commit := range filteredCommitSet.commitSet.CommitStream() {
 		filteredCommitSet.addCommitIfFilterMatches(commit)
 	}
+}
+
+func (filteredCommitSet *FilteredCommitSet) CommitSet() CommitSet {
+	filteredCommitSet.lock.Lock()
+	defer filteredCommitSet.lock.Unlock()
+
+	return filteredCommitSet.commitSet
 }
 
 func (filteredCommitSet *FilteredCommitSet) AddCommit(commit *Commit) (err error) {
@@ -169,6 +178,7 @@ func (filteredCommitSet *FilteredCommitSet) CommitStream() <-chan *Commit {
 
 	go func() {
 		defer filteredCommitSet.lock.Unlock()
+		defer close(ch)
 
 		for _, commit := range filteredCommitSet.commits {
 			ch <- commit
@@ -324,6 +334,56 @@ func (refCommitSets *RefCommitSets) SetCommitSet(oid *Oid, commitSet CommitSet) 
 	defer refCommitSets.lock.Unlock()
 
 	refCommitSets.commits[oid] = commitSet
+}
+
+func (refCommitSets *RefCommitSets) AddCommitToCommitSet(oid *Oid, commit *Commit) (err error) {
+	refCommitSets.lock.Lock()
+	defer refCommitSets.lock.Unlock()
+
+	commitSet, ok := refCommitSets.commits[oid]
+	if !ok {
+		return fmt.Errorf("No CommitSet exists for ref with id: %v", oid)
+	}
+
+	return commitSet.AddCommit(commit)
+}
+
+func (refCommitSets *RefCommitSets) AddCommitFilter(oid *Oid, commitFilter *CommitFilter) (err error) {
+	refCommitSets.lock.Lock()
+	defer refCommitSets.lock.Unlock()
+
+	commitSet, ok := refCommitSets.commits[oid]
+	if !ok {
+		return fmt.Errorf("No CommitSet exists for ref with id: %v", oid)
+	}
+
+	filteredCommitSet := NewFilteredCommitSet(commitSet, commitFilter)
+	refCommitSets.commits[oid] = filteredCommitSet
+
+	go func() {
+		filteredCommitSet.InitialiseFromCommitSet()
+	}()
+
+	return
+}
+
+func (refCommitSets *RefCommitSets) RemoveCommitFilter(oid *Oid) (err error) {
+	refCommitSets.lock.Lock()
+	defer refCommitSets.lock.Unlock()
+
+	commitSet, ok := refCommitSets.commits[oid]
+	if !ok {
+		return fmt.Errorf("No CommitSet exists for ref with id: %v", oid)
+	}
+
+	filteredCommitSet, ok := commitSet.(*FilteredCommitSet)
+	if !ok {
+		return fmt.Errorf("No filter to remove for ref with id: %v", oid)
+	}
+
+	refCommitSets.commits[oid] = filteredCommitSet.CommitSet()
+
+	return
 }
 
 type RepositoryData struct {
@@ -531,16 +591,16 @@ func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsL
 		log.Debugf("Receiving commits from RepoDataLoader for oid %v", oid)
 
 		for commit := range commitCh {
-			commitSet, ok := repoData.refCommitSets.CommitSet(oid)
-			if !ok {
-				log.Errorf("Error when loading commits for oid %v: No CommitSet exists", oid)
-				return
-			}
-
-			if err := commitSet.AddCommit(commit); err != nil {
+			if err := repoData.refCommitSets.AddCommitToCommitSet(oid, commit); err != nil {
 				log.Errorf("Error when loading commits for oid %v: %v", oid, err)
 				return
 			}
+		}
+
+		commitSet, ok := repoData.refCommitSets.CommitSet(oid)
+		if !ok {
+			log.Errorf("No CommitSet exists for ref with id: %v", oid)
+			return
 		}
 
 		commitSet.SetLoading(false)
@@ -640,6 +700,14 @@ func (repoData *RepositoryData) CommitByIndex(oid *Oid, index uint) (commit *Com
 
 func (repoData *RepositoryData) Commit(oid *Oid) (*Commit, error) {
 	return repoData.repoDataLoader.Commit(oid)
+}
+
+func (repoData *RepositoryData) AddCommitFilter(oid *Oid, commitFilter *CommitFilter) error {
+	return repoData.refCommitSets.AddCommitFilter(oid, commitFilter)
+}
+
+func (repoData *RepositoryData) RemoveCommitFilter(oid *Oid) error {
+	return repoData.refCommitSets.RemoveCommitFilter(oid)
 }
 
 func (repoData *RepositoryData) Diff(commit *Commit) (*Diff, error) {
