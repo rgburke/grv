@@ -31,12 +31,14 @@ import (
 const (
 	RL_COMMAND_HISTORY_FILE = "/command_history"
 	RL_SEARCH_HISTORY_FILE  = "/search_history"
+	RL_FILTER_HISTORY_FILE  = "/filter_history"
 )
 
 var historyFilePrompts = map[string]string{
 	PROMPT_TEXT:                RL_COMMAND_HISTORY_FILE,
 	SEARCH_PROMPT_TEXT:         RL_SEARCH_HISTORY_FILE,
 	REVERSE_SEARCH_PROMPT_TEXT: RL_SEARCH_HISTORY_FILE,
+	FILTER_PROMPT_TEXT:         RL_FILTER_HISTORY_FILE,
 }
 
 var readLine ReadLine
@@ -46,6 +48,7 @@ type ReadLine struct {
 	ui             InputUI
 	config         Config
 	promptText     string
+	promptInput    string
 	promptPoint    int
 	active         bool
 	lastPromptText string
@@ -121,11 +124,11 @@ func Prompt(prompt string) string {
 	return input
 }
 
-func PromptState() (string, int) {
+func PromptState() (string, string, int) {
 	readLine.lock.Lock()
 	defer readLine.lock.Unlock()
 
-	return readLine.promptText, readLine.promptPoint
+	return readLine.promptText, readLine.promptInput, readLine.promptPoint
 }
 
 func ReadLineActive() bool {
@@ -189,11 +192,12 @@ func grv_readline_update_display() {
 	lineBuffer := C.GoString(C.rl_line_buffer)
 	point := int(C.rl_point)
 
-	readLine.promptText = displayPrompt + lineBuffer
+	readLine.promptText = displayPrompt
+	readLine.promptInput = lineBuffer
 	readLine.promptPoint = point
 
-	log.Debugf("ReadLine update display - prompt: %v, point: %v",
-		readLine.promptText, readLine.promptPoint)
+	log.Debugf("ReadLine update display - prompt: %v%v, point: %v",
+		readLine.promptText, readLine.promptInput, readLine.promptPoint)
 
 	readLine.channels.UpdateDisplay()
 }

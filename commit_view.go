@@ -52,14 +52,16 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 		repoData:    repoData,
 		refViewData: make(map[*Oid]*RefViewData),
 		handlers: map[ActionType]CommitViewHandler{
-			ACTION_PREV_LINE:    MoveUpCommit,
-			ACTION_NEXT_LINE:    MoveDownCommit,
-			ACTION_PREV_PAGE:    MoveUpCommitPage,
-			ACTION_NEXT_PAGE:    MoveDownCommitPage,
-			ACTION_SCROLL_RIGHT: ScrollCommitViewRight,
-			ACTION_SCROLL_LEFT:  ScrollCommitViewLeft,
-			ACTION_FIRST_LINE:   MoveToFirstCommit,
-			ACTION_LAST_LINE:    MoveToLastCommit,
+			ACTION_PREV_LINE:     MoveUpCommit,
+			ACTION_NEXT_LINE:     MoveDownCommit,
+			ACTION_PREV_PAGE:     MoveUpCommitPage,
+			ACTION_NEXT_PAGE:     MoveDownCommitPage,
+			ACTION_SCROLL_RIGHT:  ScrollCommitViewRight,
+			ACTION_SCROLL_LEFT:   ScrollCommitViewLeft,
+			ACTION_FIRST_LINE:    MoveToFirstCommit,
+			ACTION_LAST_LINE:     MoveToLastCommit,
+			ACTION_ADD_FILTER:    AddCommitFilter,
+			ACTION_REMOVE_FILTER: RemoveCommitFilter,
 		},
 	}
 
@@ -198,6 +200,11 @@ func (commitView *CommitView) RenderStatusBar(lineBuilder *LineBuilder) (err err
 }
 
 func (commitView *CommitView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
+	RenderKeyBindingHelp(commitView.ViewId(), lineBuilder, []ActionMessage{
+		ActionMessage{action: ACTION_FILTER_PROMPT, message: "Add Filter"},
+		ActionMessage{action: ACTION_REMOVE_FILTER, message: "Remove Filter"},
+	})
+
 	return
 }
 
@@ -529,6 +536,35 @@ func MoveToLastCommit(commitView *CommitView, action Action) (err error) {
 		commitView.selectCommit(viewPos.activeRowIndex)
 		commitView.channels.UpdateDisplay()
 	}
+
+	return
+}
+
+func AddCommitFilter(commitView *CommitView, action Action) (err error) {
+	if !(len(action.Args) > 0) {
+		return fmt.Errorf("Expected filter query argument")
+	}
+
+	query, ok := action.Args[0].(string)
+	if !ok {
+		return fmt.Errorf("Expected filter query argument to have type string")
+	}
+
+	commitFilter, errors := CreateCommitFilter(query)
+	if len(errors) > 0 {
+		commitView.channels.ReportErrors(errors)
+		return
+	}
+
+	err = commitView.repoData.AddCommitFilter(commitView.activeRef, commitFilter)
+	commitView.channels.UpdateDisplay()
+
+	return
+}
+
+func RemoveCommitFilter(commitView *CommitView, action Action) (err error) {
+	err = commitView.repoData.RemoveCommitFilter(commitView.activeRef)
+	commitView.channels.UpdateDisplay()
 
 	return
 }

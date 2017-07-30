@@ -12,6 +12,7 @@ const (
 	ACTION_PROMPT
 	ACTION_SEARCH_PROMPT
 	ACTION_REVERSE_SEARCH_PROMPT
+	ACTION_FILTER_PROMPT
 	ACTION_SEARCH
 	ACTION_REVERSE_SEARCH
 	ACTION_SEARCH_FIND_NEXT
@@ -31,6 +32,8 @@ const (
 	ACTION_PREV_VIEW
 	ACTION_FULL_SCREEN_VIEW
 	ACTION_TOGGLE_VIEW_LAYOUT
+	ACTION_ADD_FILTER
+	ACTION_REMOVE_FILTER
 )
 
 type Action struct {
@@ -44,6 +47,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-prompt>":                ACTION_PROMPT,
 	"<grv-search-prompt>":         ACTION_SEARCH_PROMPT,
 	"<grv-reverse-search-prompt>": ACTION_REVERSE_SEARCH_PROMPT,
+	"<grv-filter-prompt>":         ACTION_FILTER_PROMPT,
 	"<grv-search>":                ACTION_SEARCH,
 	"<grv-reverse-search>":        ACTION_REVERSE_SEARCH,
 	"<grv-search-find-next>":      ACTION_SEARCH_FIND_NEXT,
@@ -63,6 +67,8 @@ var actionKeys = map[string]ActionType{
 	"<grv-prev-view>":             ACTION_PREV_VIEW,
 	"<grv-full-screen-view>":      ACTION_FULL_SCREEN_VIEW,
 	"<grv-toggle-view-layout>":    ACTION_TOGGLE_VIEW_LAYOUT,
+	"<grv-add-filter>":            ACTION_ADD_FILTER,
+	"<grv-remove-filter>":         ACTION_REMOVE_FILTER,
 }
 
 var defaultKeyBindings = map[ActionType]map[ViewId][]string{
@@ -119,6 +125,12 @@ var defaultKeyBindings = map[ActionType]map[ViewId][]string{
 	},
 	ACTION_SELECT: map[ViewId][]string{
 		VIEW_ALL: []string{"<Enter>"},
+	},
+	ACTION_FILTER_PROMPT: map[ViewId][]string{
+		VIEW_COMMIT: []string{"<C-q>"},
+	},
+	ACTION_REMOVE_FILTER: map[ViewId][]string{
+		VIEW_COMMIT: []string{"<C-r>"},
 	},
 }
 

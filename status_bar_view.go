@@ -12,6 +12,7 @@ const (
 	PROMPT_TEXT                = ":"
 	SEARCH_PROMPT_TEXT         = "/"
 	REVERSE_SEARCH_PROMPT_TEXT = "?"
+	FILTER_PROMPT_TEXT         = "query: "
 )
 
 type PromptType int
@@ -20,6 +21,7 @@ const (
 	PT_NONE PromptType = iota
 	PT_COMMAND
 	PT_SEARCH
+	PT_FILTER
 )
 
 type PropertyValue struct {
@@ -58,15 +60,13 @@ func (statusBarView *StatusBarView) HandleKeyPress(keystring string) (err error)
 func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
 	switch action.ActionType {
 	case ACTION_PROMPT:
-		statusBarView.promptType = PT_COMMAND
-		input := Prompt(PROMPT_TEXT)
-		errors := statusBarView.config.Evaluate(input)
-		statusBarView.channels.ReportErrors(errors)
-		statusBarView.promptType = PT_NONE
+		statusBarView.showCommandPrompt()
 	case ACTION_SEARCH_PROMPT:
 		statusBarView.showSearchPrompt(SEARCH_PROMPT_TEXT, ACTION_SEARCH)
 	case ACTION_REVERSE_SEARCH_PROMPT:
 		statusBarView.showSearchPrompt(REVERSE_SEARCH_PROMPT_TEXT, ACTION_REVERSE_SEARCH)
+	case ACTION_FILTER_PROMPT:
+		statusBarView.showFilterPrompt()
 	case ACTION_SHOW_STATUS:
 		statusBarView.lock.Lock()
 		defer statusBarView.lock.Unlock()
@@ -87,6 +87,14 @@ func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
 	return
 }
 
+func (statusBarView *StatusBarView) showCommandPrompt() {
+	statusBarView.promptType = PT_COMMAND
+	input := Prompt(PROMPT_TEXT)
+	errors := statusBarView.config.Evaluate(input)
+	statusBarView.channels.ReportErrors(errors)
+	statusBarView.promptType = PT_NONE
+}
+
 func (statusBarView *StatusBarView) showSearchPrompt(prompt string, actionType ActionType) {
 	statusBarView.promptType = PT_SEARCH
 	input := Prompt(prompt)
@@ -98,6 +106,20 @@ func (statusBarView *StatusBarView) showSearchPrompt(prompt string, actionType A
 	} else {
 		statusBarView.channels.DoAction(Action{
 			ActionType: actionType,
+			Args:       []interface{}{input},
+		})
+	}
+
+	statusBarView.promptType = PT_NONE
+}
+
+func (statusBarView *StatusBarView) showFilterPrompt() {
+	statusBarView.promptType = PT_FILTER
+	input := Prompt(FILTER_PROMPT_TEXT)
+
+	if input != "" {
+		statusBarView.channels.DoAction(Action{
+			ActionType: ACTION_ADD_FILTER,
 			Args:       []interface{}{input},
 		})
 	}
@@ -129,12 +151,12 @@ func (statusBarView *StatusBarView) Render(win RenderWindow) (err error) {
 	}
 
 	if statusBarView.active {
-		promptText, promptPoint := PromptState()
-		lineBuilder.Append("%v", promptText)
+		promptText, promptInput, promptPoint := PromptState()
+		lineBuilder.Append("%v%v", promptText, promptInput)
 		bytes := 0
-		characters := 0
+		characters := len(promptText)
 
-		for _, char := range promptText {
+		for _, char := range promptInput {
 			bytes += utf8.RuneLen(char)
 
 			if bytes > promptPoint {
@@ -146,7 +168,7 @@ func (statusBarView *StatusBarView) Render(win RenderWindow) (err error) {
 			}
 		}
 
-		win.SetCursor(0, uint(characters+1))
+		win.SetCursor(0, uint(characters))
 	} else {
 		lineBuilder.Append(" %v", statusBarView.pendingStatus)
 		win.ApplyStyle(CMP_STATUSBARVIEW_NORMAL)
@@ -167,6 +189,8 @@ func (statusBarView *StatusBarView) RenderHelpBar(lineBuilder *LineBuilder) (err
 		message = "Enter a command"
 	case PT_SEARCH:
 		message = "Enter a regex pattern"
+	case PT_FILTER:
+		message = "Enter a filter query"
 	}
 
 	if message != "" {
