@@ -225,9 +225,15 @@ func (filteredCommitSet *FilteredCommitSet) CommitSetState() CommitSetState {
 	defer filteredCommitSet.lock.Unlock()
 
 	commitSetState := filteredCommitSet.commitSet.CommitSetState()
-	commitSetState.filterState = &CommitSetFilterState{
-		filteredCommitNum: uint(len(filteredCommitSet.commits)),
+
+	if commitSetState.filterState == nil {
+		commitSetState.filterState = &CommitSetFilterState{
+			unfilteredCommitNum: commitSetState.commitNum,
+		}
 	}
+
+	commitSetState.commitNum = uint(len(filteredCommitSet.commits))
+	commitSetState.filterState.filtersApplied++
 
 	return commitSetState
 }
@@ -239,7 +245,8 @@ type CommitSetState struct {
 }
 
 type CommitSetFilterState struct {
-	filteredCommitNum uint
+	unfilteredCommitNum uint
+	filtersApplied      uint
 }
 
 type BranchSet struct {
@@ -339,13 +346,15 @@ func (commitRefSet *CommitRefSet) RefsForCommit(commit *Commit) (commitRefsCopy 
 }
 
 type RefCommitSets struct {
-	commits map[*Oid]CommitSet
-	lock    sync.Mutex
+	commits  map[*Oid]CommitSet
+	channels *Channels
+	lock     sync.Mutex
 }
 
-func NewRefCommitSets() *RefCommitSets {
+func NewRefCommitSets(channels *Channels) *RefCommitSets {
 	return &RefCommitSets{
-		commits: make(map[*Oid]CommitSet),
+		commits:  make(map[*Oid]CommitSet),
+		channels: channels,
 	}
 }
 
@@ -377,8 +386,23 @@ func (refCommitSets *RefCommitSets) AddCommitFilter(oid *Oid, commitFilter *Comm
 	refCommitSets.commits[oid] = filteredCommitSet
 
 	go func() {
+		beforeState := commitSet.CommitSetState()
 		filteredCommitSet.InitialiseFromCommitSet()
+
+		if !beforeState.loading {
+			afterState := filteredCommitSet.CommitSetState()
+
+			if afterState.commitNum < beforeState.commitNum {
+				refCommitSets.channels.ReportStatus("Filter reduced %v commits to %v commits",
+					beforeState.commitNum, afterState.commitNum)
+			} else {
+				refCommitSets.channels.ReportStatus("Filter had no effect")
+			}
+		}
+
 	}()
+
+	refCommitSets.channels.ReportStatus("Applying commit filter...")
 
 	return
 }
@@ -394,10 +418,12 @@ func (refCommitSets *RefCommitSets) RemoveCommitFilter(oid *Oid) (err error) {
 
 	filteredCommitSet, ok := commitSet.(*FilteredCommitSet)
 	if !ok {
-		return fmt.Errorf("No filter to remove for ref with id: %v", oid)
+		refCommitSets.channels.ReportStatus("No commit filter applied to remove")
+		return
 	}
 
 	refCommitSets.commits[oid] = filteredCommitSet.CommitSet()
+	refCommitSets.channels.ReportStatus("Removed commit filter")
 
 	return
 }
@@ -420,7 +446,7 @@ func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *Repo
 		branches:       NewBranchSet(),
 		localTags:      NewTagSet(),
 		commitRefSet:   NewCommitRefSet(),
-		refCommitSets:  NewRefCommitSets(),
+		refCommitSets:  NewRefCommitSets(channels),
 	}
 }
 

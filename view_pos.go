@@ -22,6 +22,10 @@ func (viewPos *ViewPos) DetermineViewStartRow(viewRows, rows uint) {
 	} else if visibleRows := rows - (viewPos.viewStartRowIndex + 1); visibleRows < viewRows && viewPos.viewStartRowIndex > 0 {
 		viewPos.viewStartRowIndex -= Min(viewPos.viewStartRowIndex, (viewRows-visibleRows)-1)
 	}
+
+	if rows > 0 && viewPos.activeRowIndex >= rows {
+		viewPos.activeRowIndex = rows - 1
+	}
 }
 
 func (viewPos *ViewPos) MoveLineDown(rows uint) (changed bool) {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"sync"
@@ -133,7 +134,22 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		selectedCommit = viewPos.activeRowIndex + 1
 	}
 
-	if err = win.SetFooter(CMP_COMMITVIEW_FOOTER, "Commit %v of %v", selectedCommit, commitSetState.commitNum); err != nil {
+	var footerText bytes.Buffer
+
+	footerText.WriteString(fmt.Sprintf("Commit %v of %v", selectedCommit, commitSetState.commitNum))
+
+	if commitSetState.filterState != nil {
+		filtersApplied := commitSetState.filterState.filtersApplied
+		filtersTextSuffix := ""
+
+		if filtersApplied > 1 {
+			filtersTextSuffix = "s"
+		}
+
+		footerText.WriteString(fmt.Sprintf(" (%v filter%v applied)", commitSetState.filterState.filtersApplied, filtersTextSuffix))
+	}
+
+	if err = win.SetFooter(CMP_COMMITVIEW_FOOTER, "%v", footerText.String()); err != nil {
 		return
 	}
 
