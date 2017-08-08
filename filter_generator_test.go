@@ -61,27 +61,27 @@ func TestValueComparators(t *testing.T) {
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "\"test1\" = \"test1\"",
+			inputQuery:           `"test1" = "test1"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "\"test1\" = \"test2\"",
+			inputQuery:           `"test1" = "test2"`,
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "LastUpdated = \"2017-07-16\"",
+			inputQuery:           `LastUpdated = "2017-07-16"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "LastUpdated = \"2017-07-18\"",
+			inputQuery:           `LastUpdated = "2017-07-18"`,
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "LastUpdated = \"2017-07-16 00:00:00\"",
+			inputQuery:           `LastUpdated = "2017-07-16 00:00:00"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "LastUpdated = \"2017-07-16 10:00:00\"",
+			inputQuery:           `LastUpdated = "2017-07-16 10:00:00"`,
 			expectedFilterOutput: false,
 		},
 		// NE
@@ -94,27 +94,27 @@ func TestValueComparators(t *testing.T) {
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "\"test1\" != \"test2\"",
+			inputQuery:           `"test1" != "test2"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "\"test1\" != \"test1\"",
+			inputQuery:           `"test1" != "test1"`,
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "LastUpdated != \"2017-07-18\"",
+			inputQuery:           `LastUpdated != "2017-07-18"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "LastUpdated != \"2017-07-16\"",
+			inputQuery:           `LastUpdated != "2017-07-16"`,
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "LastUpdated != \"2017-07-16 10:00:00\"",
+			inputQuery:           `LastUpdated != "2017-07-16 10:00:00"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "LastUpdated != \"2017-07-16 00:00:00\"",
+			inputQuery:           `LastUpdated != "2017-07-16 00:00:00"`,
 			expectedFilterOutput: false,
 		},
 		// GT
@@ -127,27 +127,27 @@ func TestValueComparators(t *testing.T) {
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "\"test2\" > \"test1\"",
+			inputQuery:           `"test2" > "test1"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "\"test1\" > \"test1\"",
+			inputQuery:           `"test1" > "test1"`,
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "LastUpdated > \"2017-07-15\"",
+			inputQuery:           `LastUpdated > "2017-07-15"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "LastUpdated > \"2017-07-16\"",
+			inputQuery:           `LastUpdated > "2017-07-16"`,
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "LastUpdated > \"2017-07-15 23:59:59\"",
+			inputQuery:           `LastUpdated > "2017-07-15 23:59:59"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "LastUpdated > \"2017-07-16 00:00:00\"",
+			inputQuery:           `LastUpdated > "2017-07-16 00:00:00"`,
 			expectedFilterOutput: false,
 		},
 		// GE
@@ -160,27 +160,27 @@ func TestValueComparators(t *testing.T) {
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "\"test1\" >= \"test1\"",
+			inputQuery:           `"test1" >= "test1"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "\"test1\" >= \"test2\"",
+			inputQuery:           `"test1" >= "test2"`,
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "LastUpdated >= \"2017-07-16\"",
+			inputQuery:           `LastUpdated >= "2017-07-16"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "LastUpdated >= \"2017-07-18\"",
+			inputQuery:           `LastUpdated >= "2017-07-18"`,
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "LastUpdated >= \"2017-07-16 00:00:00\"",
+			inputQuery:           `LastUpdated >= "2017-07-16 00:00:00"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "LastUpdated >= \"2017-07-16 10:00:00\"",
+			inputQuery:           `LastUpdated >= "2017-07-16 10:00:00"`,
 			expectedFilterOutput: false,
 		},
 		// LT
@@ -193,27 +193,27 @@ func TestValueComparators(t *testing.T) {
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "\"test1\" < \"test2\"",
+			inputQuery:           `"test1" < "test2"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "\"test1\" < \"test1\"",
+			inputQuery:           `"test1" < "test1"`,
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "LastUpdated < \"2017-07-18\"",
+			inputQuery:           `LastUpdated < "2017-07-18"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "LastUpdated < \"2017-07-16\"",
+			inputQuery:           `LastUpdated < "2017-07-16"`,
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "LastUpdated < \"2017-07-16 10:00:00\"",
+			inputQuery:           `LastUpdated < "2017-07-16 10:00:00"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "LastUpdated < \"2017-07-16 00:00:00\"",
+			inputQuery:           `LastUpdated < "2017-07-16 00:00:00"`,
 			expectedFilterOutput: false,
 		},
 		// LE
@@ -226,27 +226,27 @@ func TestValueComparators(t *testing.T) {
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "\"test1\" <= \"test1\"",
+			inputQuery:           `"test1" <= "test1"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "\"test2\" <= \"test1\"",
+			inputQuery:           `"test2" <= "test1"`,
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "LastUpdated <= \"2017-07-16\"",
+			inputQuery:           `LastUpdated <= "2017-07-16"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "LastUpdated <= \"2017-07-15\"",
+			inputQuery:           `LastUpdated <= "2017-07-15"`,
 			expectedFilterOutput: false,
 		},
 		{
-			inputQuery:           "LastUpdated <= \"2017-07-16 00:00:00\"",
+			inputQuery:           `LastUpdated <= "2017-07-16 00:00:00"`,
 			expectedFilterOutput: true,
 		},
 		{
-			inputQuery:           "LastUpdated <= \"2017-07-15 00:00:00\"",
+			inputQuery:           `LastUpdated <= "2017-07-15 00:00:00"`,
 			expectedFilterOutput: false,
 		},
 	}
@@ -258,6 +258,97 @@ func TestValueComparators(t *testing.T) {
 	for _, valueComparatorTest := range valueComparatorTests {
 		inputQuery := valueComparatorTest.inputQuery
 		expectedFilterOutput := valueComparatorTest.expectedFilterOutput
+
+		filter, errors := CreateFilter(inputQuery, &TestRecordFieldDescriptor{})
+
+		if len(errors) > 0 {
+			t.Errorf("CreateFilter failed with errors %v", errors)
+		} else {
+			actualFilterOutput := filter(testRecord)
+
+			if expectedFilterOutput != actualFilterOutput {
+				t.Errorf("Filter ouput does not match expected value for query \"%v\". Expected: %v, Actual: %v", inputQuery, expectedFilterOutput, actualFilterOutput)
+			}
+		}
+	}
+}
+
+func TestPatternComparators(t *testing.T) {
+	var patternComparatorTests = []struct {
+		inputQuery           string
+		expectedFilterOutput bool
+	}{
+		// GLOB
+		{
+			inputQuery:           `Name GLOB "John*"`,
+			expectedFilterOutput: true,
+		},
+		{
+			inputQuery:           `Name GLOB "Johny*"`,
+			expectedFilterOutput: false,
+		},
+		{
+			inputQuery:           `Name GLOB "John?Smith"`,
+			expectedFilterOutput: true,
+		},
+		{
+			inputQuery:           `Name GLOB "?John?Smith"`,
+			expectedFilterOutput: false,
+		},
+		{
+			inputQuery:           `Name GLOB "[IJK]ohn*"`,
+			expectedFilterOutput: true,
+		},
+		{
+			inputQuery:           `Name GLOB "[IK]ohn*"`,
+			expectedFilterOutput: false,
+		},
+		{
+			inputQuery:           `Name GLOB "[IK]ohn*"`,
+			expectedFilterOutput: false,
+		},
+		{
+			inputQuery:           `Name GLOB "[I-K]ohn*"`,
+			expectedFilterOutput: true,
+		},
+		{
+			inputQuery:           `Name GLOB "[A-C]ohn*"`,
+			expectedFilterOutput: false,
+		},
+		{
+			inputQuery:           `Name GLOB "[!A-C]ohn*"`,
+			expectedFilterOutput: true,
+		},
+		{
+			inputQuery:           `Name GLOB "[!I-K]ohn*"`,
+			expectedFilterOutput: false,
+		},
+		{
+			inputQuery:           `Name GLOB "{Jo,Bo}hn*"`,
+			expectedFilterOutput: true,
+		},
+		{
+			inputQuery:           `Name GLOB "{Ho,Bo}hn*"`,
+			expectedFilterOutput: false,
+		},
+		// REGEX
+		{
+			inputQuery:           `Name REGEXP "^[Jj]ohn\\s\\w+$"`,
+			expectedFilterOutput: true,
+		},
+		{
+			inputQuery:           `Name REGEXP "\w+\s+\w+\s+\w+"`,
+			expectedFilterOutput: false,
+		},
+	}
+
+	testRecord := &TestRecord{
+		name: "John Smith",
+	}
+
+	for _, patternComparatorTest := range patternComparatorTests {
+		inputQuery := patternComparatorTest.inputQuery
+		expectedFilterOutput := patternComparatorTest.expectedFilterOutput
 
 		filter, errors := CreateFilter(inputQuery, &TestRecordFieldDescriptor{})
 
@@ -333,10 +424,10 @@ func TestLogicalComparators(t *testing.T) {
 func TestFieldValuesAreRetrievedFromInput(t *testing.T) {
 	var fieldValueTestQueries = []string{
 		"Id = 1",
-		"Name = \"test1\"",
-		"LastUpdated = \"2017-07-16\"",
-		"Id < 3 AND Name <= \"test1\"",
-		"Id < 3 AND (Name >= \"test3\" OR LastUpdated < \"2017-07-18\")",
+		`Name = "test1"`,
+		`LastUpdated = "2017-07-16"`,
+		`Id < 3 AND Name <= "test1"`,
+		`Id < 3 AND (Name >= "test3" OR LastUpdated < "2017-07-18")`,
 	}
 
 	matchRecord := &TestRecord{

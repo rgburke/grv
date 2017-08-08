@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"reflect"
+	"regexp"
 	"testing"
 	"time"
 )
@@ -17,6 +18,9 @@ func (testFieldTypeDescriptor *TestFieldTypeDescriptor) FieldType(fieldName stri
 	case "AuthorDate", "CommitterDate":
 		fieldType = FT_DATE
 		fieldExists = true
+	case "ParentCount":
+		fieldType = FT_NUMBER
+		fieldExists = true
 	}
 
 	return
@@ -24,7 +28,7 @@ func (testFieldTypeDescriptor *TestFieldTypeDescriptor) FieldType(fieldName stri
 
 func TestErrorReturnedIfExpressionNotRefinable(t *testing.T) {
 	var expression Expression = &StringLiteral{}
-	expectedErrorMessage := "Expected refinable expression but received expression of type *main.StringLiteral"
+	expectedErrorMessage := "Expected logical expression but received expression of type StringLiteral"
 
 	expressionProcessor := NewExpressionProcessor(expression, &TestFieldTypeDescriptor{})
 
@@ -237,6 +241,124 @@ func TestDateStringsAreConvertedToDateLiteralsInDateFieldContext(t *testing.T) {
 	}
 }
 
+func TestGlobStringsAreConvertedToGlobLiteralsInGlobFieldContext(t *testing.T) {
+	var typeConversionTests = []struct {
+		inputExpression    Expression
+		expectedExpression Expression
+	}{
+		{
+			inputExpression: &BinaryExpression{
+				operator: &Operator{
+					operator: &QueryToken{
+						value:     "GLOB",
+						tokenType: QTK_CMP_GLOB,
+					},
+				},
+				lhs: &Identifier{
+					identifier: &QueryToken{
+						value: "Summary",
+					},
+				},
+				rhs: &StringLiteral{
+					value: &QueryToken{
+						value: "Added*",
+					},
+				},
+			},
+			expectedExpression: &BinaryExpression{
+				operator: &Operator{
+					operator: &QueryToken{
+						value:     "GLOB",
+						tokenType: QTK_CMP_GLOB,
+					},
+				},
+				lhs: &Identifier{
+					identifier: &QueryToken{
+						value: "Summary",
+					},
+				},
+				rhs: &GlobLiteral{
+					globString: &QueryToken{
+						value: "Added*",
+					},
+				},
+			},
+		},
+	}
+
+	for _, typeConversionTest := range typeConversionTests {
+		inputExpression := typeConversionTest.inputExpression
+		expectedExpression := typeConversionTest.expectedExpression
+
+		expressionProcessor := NewExpressionProcessor(inputExpression, &TestFieldTypeDescriptor{})
+		actualExpression, errors := expressionProcessor.Process()
+
+		if len(errors) > 0 {
+			t.Errorf("Process failed with errors: %v", errors)
+		} else if !expectedExpression.Equal(actualExpression) {
+			t.Errorf("Expression does not match expected value. Expected: %v, Actual: %v", expectedExpression, actualExpression)
+		}
+	}
+}
+
+func TestRegexStringsAreConvertedToRegexLiteralsInRegexFieldContext(t *testing.T) {
+	var typeConversionTests = []struct {
+		inputExpression    Expression
+		expectedExpression Expression
+	}{
+		{
+			inputExpression: &BinaryExpression{
+				operator: &Operator{
+					operator: &QueryToken{
+						value:     "REGEXP",
+						tokenType: QTK_CMP_REGEXP,
+					},
+				},
+				lhs: &Identifier{
+					identifier: &QueryToken{
+						value: "Summary",
+					},
+				},
+				rhs: &StringLiteral{
+					value: &QueryToken{
+						value: `^Added\s+.*$`,
+					},
+				},
+			},
+			expectedExpression: &BinaryExpression{
+				operator: &Operator{
+					operator: &QueryToken{
+						value:     "REGEXP",
+						tokenType: QTK_CMP_REGEXP,
+					},
+				},
+				lhs: &Identifier{
+					identifier: &QueryToken{
+						value: "Summary",
+					},
+				},
+				rhs: &RegexLiteral{
+					regex: regexp.MustCompile(`^Added\s+.*$`),
+				},
+			},
+		},
+	}
+
+	for _, typeConversionTest := range typeConversionTests {
+		inputExpression := typeConversionTest.inputExpression
+		expectedExpression := typeConversionTest.expectedExpression
+
+		expressionProcessor := NewExpressionProcessor(inputExpression, &TestFieldTypeDescriptor{})
+		actualExpression, errors := expressionProcessor.Process()
+
+		if len(errors) > 0 {
+			t.Errorf("Process failed with errors: %v", errors)
+		} else if !expectedExpression.Equal(actualExpression) {
+			t.Errorf("Expression does not match expected value. Expected: %v, Actual: %v", expectedExpression, actualExpression)
+		}
+	}
+}
+
 func TestExpressionsAreValid(t *testing.T) {
 	var validationTests = []struct {
 		inputExpression Expression
@@ -392,7 +514,68 @@ func TestExpressionsAreValid(t *testing.T) {
 			},
 			expectedErrors: []error{
 				errors.New("1:1: Invalid field: AuthorNamey"),
-				errors.New("1:15: Attempting to compare different types - LHS Type: Invalid vs RHS Type: String"),
+			},
+		},
+		{
+			inputExpression: &BinaryExpression{
+				operator: &Operator{
+					operator: &QueryToken{
+						value:     "GLOB",
+						tokenType: QTK_CMP_GLOB,
+						startPos: QueryScannerPos{
+							line: 1,
+							col:  15,
+						},
+					},
+				},
+				lhs: &Identifier{
+					identifier: &QueryToken{
+						value: "ParentCount",
+						startPos: QueryScannerPos{
+							line: 1,
+							col:  1,
+						},
+					},
+				},
+				rhs: &GlobLiteral{
+					globString: &QueryToken{
+						value: "Test",
+					},
+				},
+			},
+			expectedErrors: []error{
+				errors.New("1:15: Argument on LHS has invalid type: Number. Allowed types are: String"),
+			},
+		},
+		{
+			inputExpression: &BinaryExpression{
+				operator: &Operator{
+					operator: &QueryToken{
+						value:     "REGEXP",
+						tokenType: QTK_CMP_REGEXP,
+						startPos: QueryScannerPos{
+							line: 1,
+							col:  15,
+						},
+					},
+				},
+				lhs: &Identifier{
+					identifier: &QueryToken{
+						value: "AuthorName",
+						startPos: QueryScannerPos{
+							line: 1,
+							col:  1,
+						},
+					},
+				},
+				rhs: &StringLiteral{
+					value: &QueryToken{
+						value: "[Invalid Regex",
+					},
+				},
+			},
+			expectedErrors: []error{
+				errors.New("1:15: Argument on RHS has invalid type: String. Allowed types are: Regex"),
 			},
 		},
 	}

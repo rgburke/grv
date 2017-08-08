@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"github.com/bradfitz/slice"
+	slice "github.com/bradfitz/slice"
 	"sync"
 )
 

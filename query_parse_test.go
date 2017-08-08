@@ -106,6 +106,27 @@ func TestParseQuery(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: "AuthorName GLOB \"*Test*\"",
+			expectedExpression: &BinaryExpression{
+				operator: &Operator{
+					operator: &QueryToken{
+						value: "GLOB",
+					},
+					precedence: 3,
+				},
+				lhs: &Identifier{
+					identifier: &QueryToken{
+						value: "AuthorName",
+					},
+				},
+				rhs: &StringLiteral{
+					value: &QueryToken{
+						value: "*Test*",
+					},
+				},
+			},
+		},
 	}
 
 	for _, queryTest := range queryTests {

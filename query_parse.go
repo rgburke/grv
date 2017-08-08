@@ -162,6 +162,9 @@ var operatorPrecedence = map[QueryTokenType]uint{
 	QTK_CMP_LT: 3,
 	QTK_CMP_LE: 3,
 
+	QTK_CMP_GLOB:   3,
+	QTK_CMP_REGEXP: 3,
+
 	QTK_AND: 2,
 	QTK_OR:  1,
 }
@@ -370,7 +373,8 @@ func isOperatorToken(token *QueryToken) bool {
 
 func isComparisonOperator(token *QueryToken) bool {
 	switch token.tokenType {
-	case QTK_CMP_EQ, QTK_CMP_NE, QTK_CMP_GT, QTK_CMP_GE, QTK_CMP_LT, QTK_CMP_LE:
+	case QTK_CMP_EQ, QTK_CMP_NE, QTK_CMP_GT, QTK_CMP_GE, QTK_CMP_LT, QTK_CMP_LE,
+		QTK_CMP_GLOB, QTK_CMP_REGEXP:
 		return true
 	}
 
@@ -380,15 +384,6 @@ func isComparisonOperator(token *QueryToken) bool {
 func isLogicalOperator(token *QueryToken) bool {
 	switch token.tokenType {
 	case QTK_AND, QTK_OR:
-		return true
-	}
-
-	return false
-}
-
-func isValueToken(token *QueryToken) bool {
-	switch token.tokenType {
-	case QTK_NUMBER, QTK_STRING:
 		return true
 	}
 

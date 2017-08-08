@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	glob "github.com/gobwas/glob"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -91,7 +93,17 @@ func (binaryExpression *BinaryExpression) GenerateFilter(fieldDescriptor FieldDe
 
 	lhs := binaryExpression.lhs.(ValueType)
 	rhs := binaryExpression.rhs.(ValueType)
-	fieldComparator := fieldComparators[binaryExpression.operator.operator.tokenType][lhs.FieldType(fieldDescriptor)]
+
+	var fieldComparator FieldComparator
+
+	switch binaryExpression.operator.operator.tokenType {
+	case QTK_CMP_GLOB:
+		fieldComparator = globComparator
+	case QTK_CMP_REGEXP:
+		fieldComparator = regexpComparator
+	default:
+		fieldComparator = basicFieldComparators[binaryExpression.operator.operator.tokenType][lhs.FieldType(fieldDescriptor)]
+	}
 
 	return func(inputValue interface{}) bool {
 		return fieldComparator(lhs.Value(inputValue, fieldDescriptor), rhs.Value(inputValue, fieldDescriptor))
@@ -115,13 +127,21 @@ func (dateLiteral *DateLiteral) Value(inputValue interface{}, fieldDescriptor Fi
 	return dateLiteral.dateTime
 }
 
+func (globLiteral *GlobLiteral) Value(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
+	return globLiteral.glob
+}
+
+func (regexLiteral *RegexLiteral) Value(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
+	return regexLiteral.regex
+}
+
 func (identifier *Identifier) Value(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
 	return fieldDescriptor.FieldValue(inputValue, identifier.identifier.value)
 }
 
 type FieldComparator func(interface{}, interface{}) bool
 
-var fieldComparators = map[QueryTokenType]map[FieldType]FieldComparator{
+var basicFieldComparators = map[QueryTokenType]map[FieldType]FieldComparator{
 	QTK_CMP_EQ: map[FieldType]FieldComparator{
 		FT_NUMBER: func(value1 interface{}, value2 interface{}) bool {
 			num1 := value1.(float64)
@@ -242,4 +262,18 @@ var fieldComparators = map[QueryTokenType]map[FieldType]FieldComparator{
 			return time1.Before(time2) || time1.Equal(time2)
 		},
 	},
+}
+
+func globComparator(value1 interface{}, value2 interface{}) bool {
+	input := value1.(string)
+	glob := value2.(glob.Glob)
+
+	return glob.Match(input)
+}
+
+func regexpComparator(value1 interface{}, value2 interface{}) bool {
+	input := value1.(string)
+	regex := value2.(*regexp.Regexp)
+
+	return regex.MatchString(input)
 }

@@ -389,6 +389,36 @@ func TestScanSingleQueryToken(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: "GLOB",
+			expectedToken: QueryToken{
+				tokenType: QTK_CMP_GLOB,
+				value:     "GLOB",
+				startPos: QueryScannerPos{
+					line: 1,
+					col:  1,
+				},
+				endPos: QueryScannerPos{
+					line: 1,
+					col:  4,
+				},
+			},
+		},
+		{
+			input: "REGEXP",
+			expectedToken: QueryToken{
+				tokenType: QTK_CMP_REGEXP,
+				value:     "REGEXP",
+				startPos: QueryScannerPos{
+					line: 1,
+					col:  1,
+				},
+				endPos: QueryScannerPos{
+					line: 1,
+					col:  6,
+				},
+			},
+		},
 	}
 
 	for _, singleTokenTest := range singleTokenTests {
@@ -748,6 +778,82 @@ func TestScanMultipleTokens(t *testing.T) {
 					endPos: QueryScannerPos{
 						line: 1,
 						col:  99,
+					},
+				},
+			},
+		},
+		{
+			input: "authorName GLOB \"%John%\"",
+			expectedTokens: []QueryToken{
+				QueryToken{
+					tokenType: QTK_IDENTIFIER,
+					value:     "authorName",
+					startPos: QueryScannerPos{
+						line: 1,
+						col:  1,
+					},
+					endPos: QueryScannerPos{
+						line: 1,
+						col:  10,
+					},
+				},
+				QueryToken{
+					tokenType: QTK_WHITE_SPACE,
+					value:     " ",
+					startPos: QueryScannerPos{
+						line: 1,
+						col:  11,
+					},
+					endPos: QueryScannerPos{
+						line: 1,
+						col:  11,
+					},
+				},
+				QueryToken{
+					tokenType: QTK_CMP_GLOB,
+					value:     "GLOB",
+					startPos: QueryScannerPos{
+						line: 1,
+						col:  12,
+					},
+					endPos: QueryScannerPos{
+						line: 1,
+						col:  15,
+					},
+				},
+				QueryToken{
+					tokenType: QTK_WHITE_SPACE,
+					value:     " ",
+					startPos: QueryScannerPos{
+						line: 1,
+						col:  16,
+					},
+					endPos: QueryScannerPos{
+						line: 1,
+						col:  16,
+					},
+				},
+				QueryToken{
+					tokenType: QTK_STRING,
+					value:     "%John%",
+					startPos: QueryScannerPos{
+						line: 1,
+						col:  17,
+					},
+					endPos: QueryScannerPos{
+						line: 1,
+						col:  24,
+					},
+				},
+				QueryToken{
+					tokenType: QTK_EOF,
+					startPos: QueryScannerPos{
+						line: 1,
+						col:  24,
+					},
+					endPos: QueryScannerPos{
+						line: 1,
+						col:  24,
 					},
 				},
 			},

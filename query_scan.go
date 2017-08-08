@@ -33,6 +33,9 @@ const (
 	QTK_CMP_LT
 	QTK_CMP_LE
 
+	QTK_CMP_GLOB
+	QTK_CMP_REGEXP
+
 	QTK_LPAREN
 	QTK_RPAREN
 )
@@ -164,6 +167,10 @@ func (scanner *QueryScanner) Scan() (token *QueryToken, err error) {
 			token.tokenType = QTK_AND
 		case "OR":
 			token.tokenType = QTK_OR
+		case "GLOB":
+			token.tokenType = QTK_CMP_GLOB
+		case "REGEXP":
+			token.tokenType = QTK_CMP_REGEXP
 		}
 	case char == '"':
 		if err = scanner.unread(); err != nil {
