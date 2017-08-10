@@ -26,6 +26,8 @@ const (
 	QTK_AND
 	QTK_OR
 
+	QTK_NOT
+
 	QTK_CMP_EQ
 	QTK_CMP_NE
 	QTK_CMP_GT
@@ -167,6 +169,8 @@ func (scanner *QueryScanner) Scan() (token *QueryToken, err error) {
 			token.tokenType = QTK_AND
 		case "OR":
 			token.tokenType = QTK_OR
+		case "NOT":
+			token.tokenType = QTK_NOT
 		case "GLOB":
 			token.tokenType = QTK_CMP_GLOB
 		case "REGEXP":

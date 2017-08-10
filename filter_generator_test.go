@@ -401,6 +401,14 @@ func TestLogicalComparators(t *testing.T) {
 			inputQuery:           "1 = 2 OR 2 = 3",
 			expectedFilterOutput: false,
 		},
+		{
+			inputQuery:           "NOT 1 = 1",
+			expectedFilterOutput: false,
+		},
+		{
+			inputQuery:           "NOT 1 = 2",
+			expectedFilterOutput: true,
+		},
 	}
 
 	for _, logicalComparatorTest := range logicalComparatorTests {

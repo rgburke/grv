@@ -83,6 +83,58 @@ func TestDateStringsAreConvertedToDateLiteralsInDateFieldContext(t *testing.T) {
 			},
 		},
 		{
+			inputExpression: &UnaryExpression{
+				operator: &Operator{
+					operator: &QueryToken{
+						value:     "NOT",
+						tokenType: QTK_NOT,
+					},
+				},
+				expression: &BinaryExpression{
+					operator: &Operator{
+						operator: &QueryToken{
+							value:     "=",
+							tokenType: QTK_CMP_EQ,
+						},
+					},
+					lhs: &Identifier{
+						identifier: &QueryToken{
+							value: "AuthorDate",
+						},
+					},
+					rhs: &StringLiteral{
+						value: &QueryToken{
+							value: "2017-07-16",
+						},
+					},
+				},
+			},
+			expectedExpression: &UnaryExpression{
+				operator: &Operator{
+					operator: &QueryToken{
+						value:     "NOT",
+						tokenType: QTK_NOT,
+					},
+				},
+				expression: &BinaryExpression{
+					operator: &Operator{
+						operator: &QueryToken{
+							value:     "=",
+							tokenType: QTK_CMP_EQ,
+						},
+					},
+					lhs: &Identifier{
+						identifier: &QueryToken{
+							value: "AuthorDate",
+						},
+					},
+					rhs: &DateLiteral{
+						dateTime: time.Date(2017, time.July, 16, 0, 0, 0, 0, time.Local),
+					},
+				},
+			},
+		},
+		{
 			inputExpression: &BinaryExpression{
 				operator: &Operator{
 					operator: &QueryToken{
@@ -576,6 +628,28 @@ func TestExpressionsAreValid(t *testing.T) {
 			},
 			expectedErrors: []error{
 				errors.New("1:15: Argument on RHS has invalid type: String. Allowed types are: Regex"),
+			},
+		},
+		{
+			inputExpression: &UnaryExpression{
+				operator: &Operator{
+					operator: &QueryToken{
+						value:     "NOT",
+						tokenType: QTK_NOT,
+						startPos: QueryScannerPos{
+							line: 1,
+							col:  18,
+						},
+					},
+				},
+				expression: &StringLiteral{
+					value: &QueryToken{
+						value: "Test",
+					},
+				},
+			},
+			expectedErrors: []error{
+				errors.New("1:18: NOT operator can only be applied to expressions that resolve to a boolean value"),
 			},
 		},
 	}

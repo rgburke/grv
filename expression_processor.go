@@ -276,6 +276,26 @@ func (parenExpression *ParenExpression) Validate(fieldTypeDescriptor FieldTypeDe
 	return
 }
 
+func (unaryExpression *UnaryExpression) ConvertTypes(fieldTypeDescriptor FieldTypeDescriptor) {
+	if logicalExpression, ok := unaryExpression.expression.(LogicalExpression); ok {
+		logicalExpression.ConvertTypes(fieldTypeDescriptor)
+	}
+}
+
+func (unaryExpression *UnaryExpression) Validate(fieldTypeDescriptor FieldTypeDescriptor) (errors []error) {
+	if _, ok := unaryExpression.expression.(LogicalExpression); !ok {
+		errors = append(errors, GenerateExpressionError(unaryExpression,
+			"%v operator can only be applied to expressions that resolve to a boolean value",
+			unaryExpression.operator.operator.value))
+	}
+
+	if validatableExpression, ok := unaryExpression.expression.(ValidatableExpression); ok {
+		errors = append(errors, validatableExpression.Validate(fieldTypeDescriptor)...)
+	}
+
+	return
+}
+
 func (binaryExpression *BinaryExpression) ConvertTypes(fieldTypeDescriptor FieldTypeDescriptor) {
 	if !binaryExpression.IsComparison() {
 		if logicalExpression, ok := binaryExpression.lhs.(LogicalExpression); ok {

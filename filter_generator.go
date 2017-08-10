@@ -72,6 +72,20 @@ func (parenExpression *ParenExpression) GenerateFilter(fieldDescriptor FieldDesc
 	return filterGeneratorExpression.GenerateFilter(fieldDescriptor)
 }
 
+func (unaryExpression *UnaryExpression) GenerateFilter(fieldDescriptor FieldDescriptor) Filter {
+	filterGeneratorExpression := unaryExpression.expression.(FilterGeneratorExpression)
+	filter := filterGeneratorExpression.GenerateFilter(fieldDescriptor)
+
+	switch unaryExpression.operator.operator.tokenType {
+	case QTK_NOT:
+		return func(inputValue interface{}) bool {
+			return !filter(inputValue)
+		}
+	}
+
+	panic(fmt.Sprintf("Encountered invalid operator: %v", unaryExpression.operator.operator.value))
+}
+
 func (binaryExpression *BinaryExpression) GenerateFilter(fieldDescriptor FieldDescriptor) Filter {
 	if !binaryExpression.IsComparison() {
 		lhs := binaryExpression.lhs.(FilterGeneratorExpression).GenerateFilter(fieldDescriptor)

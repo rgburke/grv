@@ -254,6 +254,21 @@ func TestScanSingleQueryToken(t *testing.T) {
 			},
 		},
 		{
+			input: "NOT",
+			expectedToken: QueryToken{
+				tokenType: QTK_NOT,
+				value:     "NOT",
+				startPos: QueryScannerPos{
+					line: 1,
+					col:  1,
+				},
+				endPos: QueryScannerPos{
+					line: 1,
+					col:  3,
+				},
+			},
+		},
+		{
 			input: "=",
 			expectedToken: QueryToken{
 				tokenType: QTK_CMP_EQ,

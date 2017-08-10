@@ -17,7 +17,7 @@ func TestParseQuery(t *testing.T) {
 					operator: &QueryToken{
 						value: "=",
 					},
-					precedence: 3,
+					precedence: 4,
 				},
 				lhs: &Identifier{
 					identifier: &QueryToken{
@@ -45,7 +45,7 @@ func TestParseQuery(t *testing.T) {
 						operator: &QueryToken{
 							value: ">=",
 						},
-						precedence: 3,
+						precedence: 4,
 					},
 					lhs: &Identifier{
 						identifier: &QueryToken{
@@ -71,7 +71,7 @@ func TestParseQuery(t *testing.T) {
 								operator: &QueryToken{
 									value: "=",
 								},
-								precedence: 3,
+								precedence: 4,
 							},
 							lhs: &Identifier{
 								identifier: &QueryToken{
@@ -89,7 +89,7 @@ func TestParseQuery(t *testing.T) {
 								operator: &QueryToken{
 									value: "=",
 								},
-								precedence: 3,
+								precedence: 4,
 							},
 							lhs: &Identifier{
 								identifier: &QueryToken{
@@ -113,7 +113,7 @@ func TestParseQuery(t *testing.T) {
 					operator: &QueryToken{
 						value: "GLOB",
 					},
-					precedence: 3,
+					precedence: 4,
 				},
 				lhs: &Identifier{
 					identifier: &QueryToken{
@@ -123,6 +123,147 @@ func TestParseQuery(t *testing.T) {
 				rhs: &StringLiteral{
 					value: &QueryToken{
 						value: "*Test*",
+					},
+				},
+			},
+		},
+		{
+			input: "NOT AuthorName GLOB \"*Test*\"",
+			expectedExpression: &UnaryExpression{
+				operator: &Operator{
+					operator: &QueryToken{
+						value: "NOT",
+					},
+					precedence: 3,
+				},
+				expression: &BinaryExpression{
+					operator: &Operator{
+						operator: &QueryToken{
+							value: "GLOB",
+						},
+						precedence: 4,
+					},
+					lhs: &Identifier{
+						identifier: &QueryToken{
+							value: "AuthorName",
+						},
+					},
+					rhs: &StringLiteral{
+						value: &QueryToken{
+							value: "*Test*",
+						},
+					},
+				},
+			},
+		},
+		{
+			input: "NOT (AuthorName GLOB \"*Test*\")",
+			expectedExpression: &UnaryExpression{
+				operator: &Operator{
+					operator: &QueryToken{
+						value: "NOT",
+					},
+					precedence: 3,
+				},
+				expression: &ParenExpression{
+					expression: &BinaryExpression{
+						operator: &Operator{
+							operator: &QueryToken{
+								value: "GLOB",
+							},
+							precedence: 4,
+						},
+						lhs: &Identifier{
+							identifier: &QueryToken{
+								value: "AuthorName",
+							},
+						},
+						rhs: &StringLiteral{
+							value: &QueryToken{
+								value: "*Test*",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			input: "AuthorName GLOB \"*Test*\" AND NOT Summary GLOB \"Added*\" OR Summary GLOB \"Fix:*\"",
+			expectedExpression: &BinaryExpression{
+				operator: &Operator{
+					operator: &QueryToken{
+						value: "OR",
+					},
+					precedence: 1,
+				},
+				lhs: &BinaryExpression{
+					operator: &Operator{
+						operator: &QueryToken{
+							value: "AND",
+						},
+						precedence: 2,
+					},
+					lhs: &BinaryExpression{
+						operator: &Operator{
+							operator: &QueryToken{
+								value: "GLOB",
+							},
+							precedence: 4,
+						},
+						lhs: &Identifier{
+							identifier: &QueryToken{
+								value: "AuthorName",
+							},
+						},
+						rhs: &StringLiteral{
+							value: &QueryToken{
+								value: "*Test*",
+							},
+						},
+					},
+					rhs: &UnaryExpression{
+						operator: &Operator{
+							operator: &QueryToken{
+								value: "NOT",
+							},
+							precedence: 3,
+						},
+						expression: &BinaryExpression{
+							operator: &Operator{
+								operator: &QueryToken{
+									value: "GLOB",
+								},
+								precedence: 4,
+							},
+							lhs: &Identifier{
+								identifier: &QueryToken{
+									value: "Summary",
+								},
+							},
+							rhs: &StringLiteral{
+								value: &QueryToken{
+									value: "Added*",
+								},
+							},
+						},
+					},
+				},
+				rhs: &BinaryExpression{
+					operator: &Operator{
+						operator: &QueryToken{
+							value: "GLOB",
+						},
+						precedence: 4,
+					},
+					lhs: &Identifier{
+						identifier: &QueryToken{
+							value: "Summary",
+						},
+					},
+					rhs: &StringLiteral{
+						value: &QueryToken{
+							value: "Fix:*",
+						},
 					},
 				},
 			},
@@ -230,7 +371,7 @@ func TestOperatorPrecedenceIsRespected(t *testing.T) {
 							operator: &QueryToken{
 								value: ">=",
 							},
-							precedence: 3,
+							precedence: 4,
 						},
 						lhs: &Identifier{
 							identifier: &QueryToken{
@@ -248,7 +389,7 @@ func TestOperatorPrecedenceIsRespected(t *testing.T) {
 							operator: &QueryToken{
 								value: "=",
 							},
-							precedence: 3,
+							precedence: 4,
 						},
 						lhs: &Identifier{
 							identifier: &QueryToken{
@@ -267,7 +408,7 @@ func TestOperatorPrecedenceIsRespected(t *testing.T) {
 						operator: &QueryToken{
 							value: "=",
 						},
-						precedence: 3,
+						precedence: 4,
 					},
 					lhs: &Identifier{
 						identifier: &QueryToken{

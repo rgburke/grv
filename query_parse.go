@@ -15,6 +15,12 @@ type Expression interface {
 	Pos() QueryScannerPos
 }
 
+type LogicalOperatorExpression interface {
+	Rhs() Expression
+	OperatorPrecedence() uint
+	SetRhs(expression Expression)
+}
+
 type Operator struct {
 	operator   *QueryToken
 	precedence uint
@@ -34,6 +40,11 @@ type NumberLiteral struct {
 }
 
 type ParenExpression struct {
+	expression Expression
+}
+
+type UnaryExpression struct {
+	operator   *Operator
 	expression Expression
 }
 
@@ -130,6 +141,36 @@ func (parenExpression *ParenExpression) Pos() QueryScannerPos {
 	return parenExpression.expression.Pos()
 }
 
+func (unaryExpression *UnaryExpression) Equal(expression Expression) bool {
+	other, ok := expression.(*UnaryExpression)
+	if !ok {
+		return false
+	}
+
+	return unaryExpression.operator.Equal(other.operator) &&
+		unaryExpression.expression.Equal(other.expression)
+}
+
+func (unaryExpression *UnaryExpression) String() string {
+	return fmt.Sprintf("(%v %v)", unaryExpression.operator, unaryExpression.expression)
+}
+
+func (unaryExpression *UnaryExpression) Pos() QueryScannerPos {
+	return unaryExpression.operator.operator.startPos
+}
+
+func (unaryExpression *UnaryExpression) Rhs() Expression {
+	return unaryExpression.expression
+}
+
+func (unaryExpression *UnaryExpression) OperatorPrecedence() uint {
+	return unaryExpression.operator.precedence
+}
+
+func (unaryExpression *UnaryExpression) SetRhs(expression Expression) {
+	unaryExpression.expression = expression
+}
+
 func (binaryExpression *BinaryExpression) Equal(expression Expression) bool {
 	other, ok := expression.(*BinaryExpression)
 	if !ok {
@@ -150,20 +191,34 @@ func (binaryExpression *BinaryExpression) Pos() QueryScannerPos {
 	return binaryExpression.operator.operator.startPos
 }
 
+func (binaryExpression *BinaryExpression) Rhs() Expression {
+	return binaryExpression.rhs
+}
+
+func (binaryExpression *BinaryExpression) OperatorPrecedence() uint {
+	return binaryExpression.operator.precedence
+}
+
+func (binaryExpression *BinaryExpression) SetRhs(expression Expression) {
+	binaryExpression.rhs = expression
+}
+
 func (binaryExpression *BinaryExpression) IsComparison() bool {
 	return isComparisonOperator(binaryExpression.operator.operator)
 }
 
 var operatorPrecedence = map[QueryTokenType]uint{
-	QTK_CMP_EQ: 3,
-	QTK_CMP_NE: 3,
-	QTK_CMP_GT: 3,
-	QTK_CMP_GE: 3,
-	QTK_CMP_LT: 3,
-	QTK_CMP_LE: 3,
+	QTK_CMP_EQ: 4,
+	QTK_CMP_NE: 4,
+	QTK_CMP_GT: 4,
+	QTK_CMP_GE: 4,
+	QTK_CMP_LT: 4,
+	QTK_CMP_LE: 4,
 
-	QTK_CMP_GLOB:   3,
-	QTK_CMP_REGEXP: 3,
+	QTK_CMP_GLOB:   4,
+	QTK_CMP_REGEXP: 4,
+
+	QTK_NOT: 3,
 
 	QTK_AND: 2,
 	QTK_OR:  1,
@@ -282,15 +337,15 @@ func (parser *QueryParser) parseExpression() (expression Expression, err error) 
 			return
 		}
 
-		for node := root; ; {
-			nodeRhs, ok := node.rhs.(*BinaryExpression)
+		for node := LogicalOperatorExpression(root); ; {
+			nodeRhs, ok := node.Rhs().(LogicalOperatorExpression)
 
-			if !ok || nodeRhs.operator.precedence >= operator.precedence {
-				node.rhs = &BinaryExpression{
+			if !ok || nodeRhs.OperatorPrecedence() >= operator.precedence {
+				node.SetRhs(&BinaryExpression{
 					operator: operator,
-					lhs:      node.rhs,
+					lhs:      node.Rhs(),
 					rhs:      rhs,
-				}
+				})
 
 				break
 			}
@@ -306,7 +361,8 @@ func (parser *QueryParser) parseUnaryExpression() (expression Expression, err er
 		return
 	}
 
-	if token.tokenType == QTK_LPAREN {
+	switch token.tokenType {
+	case QTK_LPAREN:
 		var parenExpression Expression
 		parenExpression, err = parser.parseExpression()
 		if err != nil {
@@ -325,9 +381,25 @@ func (parser *QueryParser) parseUnaryExpression() (expression Expression, err er
 
 		expression = &ParenExpression{parenExpression}
 		return
-	}
+	case QTK_NOT:
+		var operator *Operator
+		operator, err = createOperator(token)
+		if err != nil {
+			return
+		}
 
-	switch token.tokenType {
+		var rhs Expression
+		rhs, err = parser.parseUnaryExpression()
+		if err != nil {
+			return
+		}
+
+		expression = &UnaryExpression{
+			operator:   operator,
+			expression: rhs,
+		}
+
+		return
 	case QTK_IDENTIFIER:
 		expression = &Identifier{token}
 		return
@@ -383,7 +455,7 @@ func isComparisonOperator(token *QueryToken) bool {
 
 func isLogicalOperator(token *QueryToken) bool {
 	switch token.tokenType {
-	case QTK_AND, QTK_OR:
+	case QTK_AND, QTK_OR, QTK_NOT:
 		return true
 	}
 
