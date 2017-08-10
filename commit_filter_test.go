@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestFieldExistence(t *testing.T) {
+func TestCommitFieldExistence(t *testing.T) {
 	var fieldExistsTests = []struct {
 		fieldName      string
 		expectedExists bool
@@ -44,7 +44,7 @@ func TestFieldExistence(t *testing.T) {
 	}
 }
 
-func TestFieldsAreCaseInsenstive(t *testing.T) {
+func TestCommitFieldsAreCaseInsenstive(t *testing.T) {
 	fields := []string{
 		"authorname",
 		"AuthorName",
