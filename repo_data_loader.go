@@ -12,6 +12,7 @@ import (
 const (
 	RDL_COMMIT_BUFFER_SIZE = 100
 	RDL_DIFF_STATS_COLS    = 80
+	RDL_SHORT_OID_LEN      = 7
 )
 
 type InstanceCache struct {
@@ -55,6 +56,16 @@ type Diff struct {
 
 func (oid Oid) String() string {
 	return oid.oid.String()
+}
+
+func (oid Oid) ShortId() (shortId string) {
+	id := oid.String()
+
+	if len(id) >= RDL_SHORT_OID_LEN {
+		shortId = id[0:RDL_SHORT_OID_LEN]
+	}
+
+	return
 }
 
 func (branch Branch) String() string {

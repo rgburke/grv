@@ -18,6 +18,7 @@ const (
 
 	CMP_COMMITVIEW_TITLE
 	CMP_COMMITVIEW_FOOTER
+	CMP_COMMITVIEW_SHORT_OID
 	CMP_COMMITVIEW_DATE
 	CMP_COMMITVIEW_AUTHOR
 	CMP_COMMITVIEW_SUMMARY
@@ -144,6 +145,10 @@ func NewDefaultTheme() MutableTheme {
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_CYAN,
 			},
+			CMP_COMMITVIEW_SHORT_OID: &ThemeComponent{
+				bgcolor: COLOR_NONE,
+				fgcolor: COLOR_YELLOW,
+			},
 			CMP_COMMITVIEW_DATE: &ThemeComponent{
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_BLUE,
@@ -154,11 +159,11 @@ func NewDefaultTheme() MutableTheme {
 			},
 			CMP_COMMITVIEW_SUMMARY: &ThemeComponent{
 				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_YELLOW,
+				fgcolor: COLOR_NONE,
 			},
 			CMP_COMMITVIEW_TAG: &ThemeComponent{
 				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_WHITE,
+				fgcolor: COLOR_RED,
 			},
 			CMP_COMMITVIEW_LOCAL_BRANCH: &ThemeComponent{
 				bgcolor: COLOR_NONE,

@@ -10,7 +10,7 @@ import (
 
 const (
 	CV_LOAD_REFRESH_MS = 500
-	CV_COLUMN_NUM      = 3
+	CV_COLUMN_NUM      = 4
 	CV_DATE_FORMAT     = "2006-01-02 15:04"
 )
 
@@ -165,22 +165,30 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIndex uint, commit *Commit) (err error) {
 	author := commit.commit.Author()
 	commitRefs := commitView.repoData.RefsForCommit(commit)
+	colIndex := uint(0)
 
-	if err = tableFormatter.SetCellWithStyle(rowIndex, 0, CMP_COMMITVIEW_DATE, "%v", author.When.Format(CV_DATE_FORMAT)); err != nil {
+	if err = tableFormatter.SetCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_SHORT_OID, "%v", commit.oid.ShortId()); err != nil {
 		return
 	}
 
-	if err = tableFormatter.SetCellWithStyle(rowIndex, 1, CMP_COMMITVIEW_AUTHOR, "%v", author.Name); err != nil {
+	colIndex++
+	if err = tableFormatter.SetCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_DATE, "%v", author.When.Format(CV_DATE_FORMAT)); err != nil {
 		return
 	}
 
+	colIndex++
+	if err = tableFormatter.SetCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_AUTHOR, "%v", author.Name); err != nil {
+		return
+	}
+
+	colIndex++
 	if len(commitRefs.tags) > 0 {
 		for _, tag := range commitRefs.tags {
-			if err = tableFormatter.AppendToCellWithStyle(rowIndex, 2, CMP_COMMITVIEW_TAG, "<%v>", tag.name); err != nil {
+			if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_TAG, "<%v>", tag.name); err != nil {
 				return
 			}
 
-			if err = tableFormatter.AppendToCell(rowIndex, 2, " "); err != nil {
+			if err = tableFormatter.AppendToCell(rowIndex, colIndex, " "); err != nil {
 				return
 			}
 		}
@@ -189,22 +197,22 @@ func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIn
 	if len(commitRefs.branches) > 0 {
 		for _, branch := range commitRefs.branches {
 			if branch.isRemote {
-				if err = tableFormatter.AppendToCellWithStyle(rowIndex, 2, CMP_COMMITVIEW_LOCAL_BRANCH, "{%v}", branch.name); err != nil {
+				if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_LOCAL_BRANCH, "{%v}", branch.name); err != nil {
 					return
 				}
 			} else {
-				if err = tableFormatter.AppendToCellWithStyle(rowIndex, 2, CMP_COMMITVIEW_REMOTE_BRANCH, "[%v]", branch.name); err != nil {
+				if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_REMOTE_BRANCH, "[%v]", branch.name); err != nil {
 					return
 				}
 			}
 
-			if err = tableFormatter.AppendToCell(rowIndex, 2, " "); err != nil {
+			if err = tableFormatter.AppendToCell(rowIndex, colIndex, " "); err != nil {
 				return
 			}
 		}
 	}
 
-	if err = tableFormatter.AppendToCellWithStyle(rowIndex, 2, CMP_COMMITVIEW_SUMMARY, "%v", commit.commit.Summary()); err != nil {
+	if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_SUMMARY, "%v", commit.commit.Summary()); err != nil {
 		return
 	}
 
