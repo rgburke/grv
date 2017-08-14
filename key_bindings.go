@@ -128,9 +128,11 @@ var defaultKeyBindings = map[ActionType]map[ViewId][]string{
 	},
 	ACTION_FILTER_PROMPT: map[ViewId][]string{
 		VIEW_COMMIT: []string{"<C-q>"},
+		VIEW_REF:    []string{"<C-q>"},
 	},
 	ACTION_REMOVE_FILTER: map[ViewId][]string{
 		VIEW_COMMIT: []string{"<C-r>"},
+		VIEW_REF:    []string{"<C-r>"},
 	},
 }
 

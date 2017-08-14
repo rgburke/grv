@@ -250,7 +250,7 @@ func (win *Window) Clear() {
 
 func (win *Window) LineBuilder(rowIndex, startColumn uint) (*LineBuilder, error) {
 	if rowIndex >= win.rows {
-		return nil, fmt.Errorf("Invalid row index: %v >= %v rows", rowIndex, win.rows)
+		return nil, fmt.Errorf("LineBuilder: Invalid row index: %v >= %v rows", rowIndex, win.rows)
 	} else if startColumn == 0 {
 		return nil, fmt.Errorf("Column must be postive")
 	}
@@ -273,7 +273,7 @@ func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
 	log.Debugf("Set selected rowIndex for window %v to %v with active %v", win.id, rowIndex, active)
 
 	if rowIndex >= win.rows {
-		return fmt.Errorf("Invalid row index: %v >= %v rows", rowIndex, win.rows)
+		return fmt.Errorf("SetSelectedRow: Invalid row index: %v >= %v rows", rowIndex, win.rows)
 	}
 
 	var attr gc.Char = gc.A_REVERSE
@@ -298,7 +298,7 @@ func (win *Window) IsCursorSet() bool {
 
 func (win *Window) SetCursor(rowIndex, colIndex uint) (err error) {
 	if rowIndex >= win.rows {
-		return fmt.Errorf("Invalid row index: %v >= %v rows", rowIndex, win.rows)
+		return fmt.Errorf("SetCursor: Invalid row index: %v >= %v rows", rowIndex, win.rows)
 	} else if colIndex >= win.cols {
 		return fmt.Errorf("Invalid col index: %v >= %v cols", colIndex, win.cols)
 	}

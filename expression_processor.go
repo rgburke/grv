@@ -499,14 +499,16 @@ func (binaryExpression *BinaryExpression) Validate(fieldTypeDescriptor FieldType
 	if !(isLhsValueType && isRhsValueType) {
 		errors = append(errors, GenerateExpressionError(binaryExpression, "Comparison expressions must compare value types"))
 	} else if binaryExpression.operator.IsOperandTypeRestricted() {
-		if !binaryExpression.operator.IsValidArgument(BOP_LEFT, lhsType) {
-			errors = append(errors, GenerateExpressionError(binaryExpression, "Argument on LHS has invalid type: %v. Allowed types are: %v",
-				fieldTypeNames[lhsType], fieldTypeNamesString(binaryExpression.operator.AllowedTypes(BOP_LEFT))))
-		}
+		if !(lhsType == FT_INVALID || rhsType == FT_INVALID) {
+			if !binaryExpression.operator.IsValidArgument(BOP_LEFT, lhsType) {
+				errors = append(errors, GenerateExpressionError(binaryExpression, "Argument on LHS has invalid type: %v. Allowed types are: %v",
+					fieldTypeNames[lhsType], fieldTypeNamesString(binaryExpression.operator.AllowedTypes(BOP_LEFT))))
+			}
 
-		if !binaryExpression.operator.IsValidArgument(BOP_RIGHT, rhsType) {
-			errors = append(errors, GenerateExpressionError(binaryExpression, "Argument on RHS has invalid type: %v. Allowed types are: %v",
-				fieldTypeNames[rhsType], fieldTypeNamesString(binaryExpression.operator.AllowedTypes(BOP_RIGHT))))
+			if !binaryExpression.operator.IsValidArgument(BOP_RIGHT, rhsType) {
+				errors = append(errors, GenerateExpressionError(binaryExpression, "Argument on RHS has invalid type: %v. Allowed types are: %v",
+					fieldTypeNames[rhsType], fieldTypeNamesString(binaryExpression.operator.AllowedTypes(BOP_RIGHT))))
+			}
 		}
 	} else if lhsType != rhsType && !(lhsType == FT_INVALID || rhsType == FT_INVALID) {
 		errors = append(errors, GenerateExpressionError(binaryExpression, "Attempting to compare different types - LHS Type: %v vs RHS Type: %v",

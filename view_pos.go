@@ -15,16 +15,16 @@ func NewViewPos() *ViewPos {
 }
 
 func (viewPos *ViewPos) DetermineViewStartRow(viewRows, rows uint) {
+	if rows > 0 && viewPos.activeRowIndex >= rows {
+		viewPos.activeRowIndex = rows - 1
+	}
+
 	if viewPos.viewStartRowIndex > viewPos.activeRowIndex {
 		viewPos.viewStartRowIndex = viewPos.activeRowIndex
 	} else if rowDiff := viewPos.activeRowIndex - viewPos.viewStartRowIndex; rowDiff >= viewRows {
 		viewPos.viewStartRowIndex += (rowDiff - viewRows) + 1
 	} else if visibleRows := rows - (viewPos.viewStartRowIndex + 1); visibleRows < viewRows && viewPos.viewStartRowIndex > 0 {
 		viewPos.viewStartRowIndex -= Min(viewPos.viewStartRowIndex, (viewRows-visibleRows)-1)
-	}
-
-	if rows > 0 && viewPos.activeRowIndex >= rows {
-		viewPos.activeRowIndex = rows - 1
 	}
 }
 
