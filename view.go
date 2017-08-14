@@ -6,6 +6,10 @@ import (
 	"sync"
 )
 
+const (
+	VIEW_MIN_ACTIVE_VIEW_ROWS = 6
+)
+
 type ViewId int
 
 const (
@@ -149,11 +153,18 @@ func (view *View) determineErrorViewDimensions(errorViewDim, activeViewDim *View
 
 	errorRowsRequired := view.errorView.DisplayRowsRequired()
 
-	if activeViewDim.rows > errorRowsRequired {
+	if activeViewDim.rows > errorRowsRequired+VIEW_MIN_ACTIVE_VIEW_ROWS {
 		errorViewDim.rows = errorRowsRequired
 		activeViewDim.rows -= errorRowsRequired
 	} else {
-		log.Errorf("Unable to display %v errors, not enough space", errorRowsRequired)
+		log.Errorf("Unable to display all %v errors, not enough space", errorRowsRequired)
+
+		if activeViewDim.rows > VIEW_MIN_ACTIVE_VIEW_ROWS {
+			errorViewDim.rows = activeViewDim.rows - VIEW_MIN_ACTIVE_VIEW_ROWS
+			activeViewDim.rows = VIEW_MIN_ACTIVE_VIEW_ROWS
+		} else {
+			log.Error("Unable to display any errors")
+		}
 	}
 }
 
