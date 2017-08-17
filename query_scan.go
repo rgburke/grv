@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"unicode"
 )
 
@@ -164,7 +165,7 @@ func (scanner *QueryScanner) Scan() (token *QueryToken, err error) {
 			break
 		}
 
-		switch token.value {
+		switch strings.ToUpper(token.value) {
 		case "AND":
 			token.tokenType = QTK_AND
 		case "OR":

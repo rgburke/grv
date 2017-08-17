@@ -448,6 +448,100 @@ func TestScanSingleQueryToken(t *testing.T) {
 	}
 }
 
+func TestOperatorsAreCaseInsensitive(t *testing.T) {
+	var operatorTokenTests = []struct {
+		input         string
+		expectedToken QueryToken
+	}{
+		{
+			input: "and",
+			expectedToken: QueryToken{
+				tokenType: QTK_AND,
+				value:     "and",
+				startPos: QueryScannerPos{
+					line: 1,
+					col:  1,
+				},
+				endPos: QueryScannerPos{
+					line: 1,
+					col:  3,
+				},
+			},
+		},
+		{
+			input: "Or",
+			expectedToken: QueryToken{
+				tokenType: QTK_OR,
+				value:     "Or",
+				startPos: QueryScannerPos{
+					line: 1,
+					col:  1,
+				},
+				endPos: QueryScannerPos{
+					line: 1,
+					col:  2,
+				},
+			},
+		},
+		{
+			input: "nOT",
+			expectedToken: QueryToken{
+				tokenType: QTK_NOT,
+				value:     "nOT",
+				startPos: QueryScannerPos{
+					line: 1,
+					col:  1,
+				},
+				endPos: QueryScannerPos{
+					line: 1,
+					col:  3,
+				},
+			},
+		},
+		{
+			input: "GlOb",
+			expectedToken: QueryToken{
+				tokenType: QTK_CMP_GLOB,
+				value:     "GlOb",
+				startPos: QueryScannerPos{
+					line: 1,
+					col:  1,
+				},
+				endPos: QueryScannerPos{
+					line: 1,
+					col:  4,
+				},
+			},
+		},
+		{
+			input: "ReGeXp",
+			expectedToken: QueryToken{
+				tokenType: QTK_CMP_REGEXP,
+				value:     "ReGeXp",
+				startPos: QueryScannerPos{
+					line: 1,
+					col:  1,
+				},
+				endPos: QueryScannerPos{
+					line: 1,
+					col:  6,
+				},
+			},
+		},
+	}
+
+	for _, operatorTokenTest := range operatorTokenTests {
+		scanner := NewQueryScanner(strings.NewReader(operatorTokenTest.input))
+		token, err := scanner.Scan()
+
+		if err != nil {
+			t.Errorf("Scan failed with error %v", err)
+		} else if !token.Equal(&operatorTokenTest.expectedToken) {
+			t.Errorf("QueryToken does not match expected value. Expected %v, Actual %v", operatorTokenTest.expectedToken, *token)
+		}
+	}
+}
+
 func TestScanMultipleTokens(t *testing.T) {
 	var multiTokenTests = []struct {
 		input          string
