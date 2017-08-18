@@ -247,3 +247,7 @@ func (historyView *HistoryView) ActiveView() AbstractView {
 
 	return historyView.views[historyView.activeViewPos]
 }
+
+func (historyView *HistoryView) Title() string {
+	return "History View"
+}

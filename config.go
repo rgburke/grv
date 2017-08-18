@@ -63,6 +63,9 @@ var viewIdNames = map[string]ViewId{
 var themeComponents = map[string]ThemeComponentId{
 	CV_ALL_VIEW + ".SearchMatch": CMP_ALLVIEW_SEARCH_MATCH,
 
+	CV_MAIN_VIEW + ".ActiveView": CMP_MAINVIEW_ACTIVE_VIEW,
+	CV_MAIN_VIEW + ".NormalView": CMP_MAINVIEW_NORMAL_VIEW,
+
 	CV_REF_VIEW + ".Title":                CMP_REFVIEW_TITLE,
 	CV_REF_VIEW + ".Footer":               CMP_REFVIEW_FOOTER,
 	CV_REF_VIEW + ".LocalBranchesHeader":  CMP_REFVIEW_LOCAL_BRANCHES_HEADER,

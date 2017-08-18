@@ -7,6 +7,9 @@ const (
 
 	CMP_ALLVIEW_SEARCH_MATCH
 
+	CMP_MAINVIEW_ACTIVE_VIEW
+	CMP_MAINVIEW_NORMAL_VIEW
+
 	CMP_REFVIEW_TITLE
 	CMP_REFVIEW_FOOTER
 	CMP_REFVIEW_LOCAL_BRANCHES_HEADER
@@ -228,6 +231,14 @@ func NewDefaultTheme() MutableTheme {
 			CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED: &ThemeComponent{
 				bgcolor: COLOR_NONE,
 				fgcolor: COLOR_RED,
+			},
+			CMP_MAINVIEW_ACTIVE_VIEW: &ThemeComponent{
+				bgcolor: COLOR_WHITE,
+				fgcolor: COLOR_BLUE,
+			},
+			CMP_MAINVIEW_NORMAL_VIEW: &ThemeComponent{
+				bgcolor: COLOR_BLUE,
+				fgcolor: COLOR_WHITE,
 			},
 			CMP_REFVIEW_TITLE: &ThemeComponent{
 				bgcolor: COLOR_NONE,
