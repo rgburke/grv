@@ -7,18 +7,21 @@ import (
 	"io"
 )
 
-type CommandConstructor func(*ConfigParser, []*ConfigToken) (Command, error)
+type commandConstructor func(*ConfigParser, []*ConfigToken) (ConfigCommand, error)
 
-type Command interface {
-	Equal(Command) bool
+// ConfigCommand represents a config command
+type ConfigCommand interface {
+	Equal(ConfigCommand) bool
 }
 
+// SetCommand contains state for setting a config variable to a value
 type SetCommand struct {
 	variable *ConfigToken
 	value    *ConfigToken
 }
 
-func (setCommand *SetCommand) Equal(command Command) bool {
+// Equal returns true if the provided command is equal
+func (setCommand *SetCommand) Equal(command ConfigCommand) bool {
 	other, ok := command.(*SetCommand)
 	if !ok {
 		return false
@@ -30,6 +33,7 @@ func (setCommand *SetCommand) Equal(command Command) bool {
 			(setCommand.value == nil && other.value == nil))
 }
 
+// ThemeCommand contains state for setting a components values for on a theme
 type ThemeCommand struct {
 	name      *ConfigToken
 	component *ConfigToken
@@ -37,7 +41,8 @@ type ThemeCommand struct {
 	fgcolor   *ConfigToken
 }
 
-func (themeCommand *ThemeCommand) Equal(command Command) bool {
+// Equal returns true if the provided command is equal
+func (themeCommand *ThemeCommand) Equal(command ConfigCommand) bool {
 	other, ok := command.(*ThemeCommand)
 	if !ok {
 		return false
@@ -53,13 +58,15 @@ func (themeCommand *ThemeCommand) Equal(command Command) bool {
 			(themeCommand.fgcolor == nil && other.fgcolor == nil))
 }
 
+// MapCommand contains state for mapping a key sequence to another
 type MapCommand struct {
 	view *ConfigToken
 	from *ConfigToken
 	to   *ConfigToken
 }
 
-func (mapCommand *MapCommand) Equal(command Command) bool {
+// Equal returns true if the provided command is equal
+func (mapCommand *MapCommand) Equal(command ConfigCommand) bool {
 	other, ok := command.(*MapCommand)
 	if !ok {
 		return false
@@ -73,42 +80,46 @@ func (mapCommand *MapCommand) Equal(command Command) bool {
 			(mapCommand.view == nil && other.view == nil))
 }
 
+// QuitCommand represents the command to quit grv
 type QuitCommand struct{}
 
-func (quitCommand *QuitCommand) Equal(command Command) bool {
+// Equal returns true if the provided command is equal
+func (quitCommand *QuitCommand) Equal(command ConfigCommand) bool {
 	_, ok := command.(*QuitCommand)
 	return ok
 }
 
-type CommandDescriptor struct {
+type commandDescriptor struct {
 	tokenTypes  []ConfigTokenType
-	constructor CommandConstructor
+	constructor commandConstructor
 }
 
-var commandDescriptors = map[string]*CommandDescriptor{
-	"set": &CommandDescriptor{
-		tokenTypes:  []ConfigTokenType{CTK_WORD, CTK_WORD},
+var commandDescriptors = map[string]*commandDescriptor{
+	"set": {
+		tokenTypes:  []ConfigTokenType{CtkWord, CtkWord},
 		constructor: setCommandConstructor,
 	},
-	"theme": &CommandDescriptor{
-		tokenTypes:  []ConfigTokenType{CTK_OPTION, CTK_WORD, CTK_OPTION, CTK_WORD, CTK_OPTION, CTK_WORD, CTK_OPTION, CTK_WORD},
+	"theme": {
+		tokenTypes:  []ConfigTokenType{CtkOption, CtkWord, CtkOption, CtkWord, CtkOption, CtkWord, CtkOption, CtkWord},
 		constructor: themeCommandConstructor,
 	},
-	"map": &CommandDescriptor{
-		tokenTypes:  []ConfigTokenType{CTK_WORD, CTK_WORD, CTK_WORD},
+	"map": {
+		tokenTypes:  []ConfigTokenType{CtkWord, CtkWord, CtkWord},
 		constructor: mapCommandConstructor,
 	},
-	"q": &CommandDescriptor{
+	"q": {
 		tokenTypes:  []ConfigTokenType{},
 		constructor: quitCommandConstructor,
 	},
 }
 
+// ConfigParser is a component capable of parsing config into commands
 type ConfigParser struct {
 	scanner     *ConfigScanner
 	inputSource string
 }
 
+// NewConfigParser creates a new ConfigParser which will read input from the provided reader
 func NewConfigParser(reader io.Reader, inputSource string) *ConfigParser {
 	return &ConfigParser{
 		scanner:     NewConfigScanner(reader),
@@ -116,7 +127,9 @@ func NewConfigParser(reader io.Reader, inputSource string) *ConfigParser {
 	}
 }
 
-func (parser *ConfigParser) Parse() (command Command, eof bool, err error) {
+// Parse returns the next command from the input stream
+// eof is set to true if the end of the input stream has been reached
+func (parser *ConfigParser) Parse() (command ConfigCommand, eof bool, err error) {
 	var token *ConfigToken
 
 	for {
@@ -126,15 +139,15 @@ func (parser *ConfigParser) Parse() (command Command, eof bool, err error) {
 		}
 
 		switch token.tokenType {
-		case CTK_WORD:
+		case CtkWord:
 			command, eof, err = parser.parseCommand(token)
-		case CTK_TERMINATOR:
+		case CtkTerminator:
 			continue
-		case CTK_EOF:
+		case CtkEOF:
 			eof = true
-		case CTK_OPTION:
+		case CtkOption:
 			err = parser.generateParseError(token, "Unexpected Option \"%v\"", token.value)
-		case CTK_INVALID:
+		case CtkInvalid:
 			err = parser.generateParseError(token, "Syntax Error")
 		default:
 			err = parser.generateParseError(token, "Unexpected token \"%v\"", token.value)
@@ -150,6 +163,7 @@ func (parser *ConfigParser) Parse() (command Command, eof bool, err error) {
 	return
 }
 
+// InputSource returns the text description of the input source
 func (parser *ConfigParser) InputSource() string {
 	return parser.inputSource
 }
@@ -161,7 +175,7 @@ func (parser *ConfigParser) scan() (token *ConfigToken, err error) {
 			return
 		}
 
-		if token.tokenType != CTK_WHITE_SPACE && token.tokenType != CTK_COMMENT {
+		if token.tokenType != CtkWhiteSpace && token.tokenType != CtkComment {
 			break
 		}
 	}
@@ -197,14 +211,14 @@ func (parser *ConfigParser) discardTokensUntilNextCommand() {
 		token, err := parser.scan()
 
 		if err != nil ||
-			token.tokenType == CTK_TERMINATOR ||
-			token.tokenType == CTK_EOF {
+			token.tokenType == CtkTerminator ||
+			token.tokenType == CtkEOF {
 			return
 		}
 	}
 }
 
-func (parser *ConfigParser) parseCommand(token *ConfigToken) (command Command, eof bool, err error) {
+func (parser *ConfigParser) parseCommand(token *ConfigToken) (command ConfigCommand, eof bool, err error) {
 	commandDescriptor, ok := commandDescriptors[token.value]
 	if !ok {
 		err = parser.generateParseError(token, "Invalid command \"%v\"", token.value)
@@ -223,7 +237,7 @@ func (parser *ConfigParser) parseCommand(token *ConfigToken) (command Command, e
 		case token.err != nil:
 			err = parser.generateParseError(token, "Syntax Error")
 			return
-		case token.tokenType == CTK_EOF:
+		case token.tokenType == CtkEOF:
 			err = parser.generateParseError(token, "Unexpected EOF")
 			eof = true
 			return
@@ -241,14 +255,14 @@ func (parser *ConfigParser) parseCommand(token *ConfigToken) (command Command, e
 	return
 }
 
-func setCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (Command, error) {
+func setCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (ConfigCommand, error) {
 	return &SetCommand{
 		variable: tokens[0],
 		value:    tokens[1],
 	}, nil
 }
 
-func themeCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (Command, error) {
+func themeCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (ConfigCommand, error) {
 	themeCommand := &ThemeCommand{}
 
 	optionSetters := map[string]func(*ConfigToken){
@@ -262,17 +276,18 @@ func themeCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (Comma
 		optionToken := tokens[i]
 		valueToken := tokens[i+1]
 
-		if optionSetter, ok := optionSetters[optionToken.value]; !ok {
+		optionSetter, ok := optionSetters[optionToken.value]
+		if !ok {
 			return nil, parser.generateParseError(optionToken, "Invalid option for theme command: \"%v\"", optionToken.value)
-		} else {
-			optionSetter(valueToken)
 		}
+
+		optionSetter(valueToken)
 	}
 
 	return themeCommand, nil
 }
 
-func mapCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (Command, error) {
+func mapCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (ConfigCommand, error) {
 	return &MapCommand{
 		view: tokens[0],
 		from: tokens[1],
@@ -280,6 +295,6 @@ func mapCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (Command
 	}, nil
 }
 
-func quitCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (Command, error) {
+func quitCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (ConfigCommand, error) {
 	return &QuitCommand{}, nil
 }

@@ -4,181 +4,192 @@ import (
 	pt "github.com/tchap/go-patricia/patricia"
 )
 
+// ActionType represents an action to be performed
 type ActionType int
 
+// The set of actions possible supported by grv
 const (
-	ACTION_NONE ActionType = iota
-	ACTION_EXIT
-	ACTION_PROMPT
-	ACTION_SEARCH_PROMPT
-	ACTION_REVERSE_SEARCH_PROMPT
-	ACTION_FILTER_PROMPT
-	ACTION_SEARCH
-	ACTION_REVERSE_SEARCH
-	ACTION_SEARCH_FIND_NEXT
-	ACTION_SEARCH_FIND_PREV
-	ACTION_CLEAR_SEARCH
-	ACTION_SHOW_STATUS
-	ACTION_NEXT_LINE
-	ACTION_PREV_LINE
-	ACTION_NEXT_PAGE
-	ACTION_PREV_PAGE
-	ACTION_SCROLL_RIGHT
-	ACTION_SCROLL_LEFT
-	ACTION_FIRST_LINE
-	ACTION_LAST_LINE
-	ACTION_SELECT
-	ACTION_NEXT_VIEW
-	ACTION_PREV_VIEW
-	ACTION_FULL_SCREEN_VIEW
-	ACTION_TOGGLE_VIEW_LAYOUT
-	ACTION_ADD_FILTER
-	ACTION_REMOVE_FILTER
+	ActionNone ActionType = iota
+	ActionExit
+	ActionPrompt
+	ActionSearchPrompt
+	ActionReverseSearchPrompt
+	ActionFilterPrompt
+	ActionSearch
+	ActionReverseSearch
+	ActionSearchFindNext
+	ActionSearchFindPrev
+	ActionClearSearch
+	ActionShowStatus
+	ActionNextLine
+	ActionPrevLine
+	ActionNextPage
+	ActionPrevPage
+	ActionScrollRight
+	ActionScrollLeft
+	ActionFirstLine
+	ActionLastLine
+	ActionSelect
+	ActionNextView
+	ActionPrevView
+	ActionFullScreenView
+	ActionToggleViewLayout
+	ActionAddFilter
+	ActionRemoveFilter
 )
 
+// Action represents a type of actions and its arguments to be executed
 type Action struct {
 	ActionType ActionType
 	Args       []interface{}
 }
 
 var actionKeys = map[string]ActionType{
-	"<grv-nop>":                   ACTION_NONE,
-	"<grv-exit>":                  ACTION_EXIT,
-	"<grv-prompt>":                ACTION_PROMPT,
-	"<grv-search-prompt>":         ACTION_SEARCH_PROMPT,
-	"<grv-reverse-search-prompt>": ACTION_REVERSE_SEARCH_PROMPT,
-	"<grv-filter-prompt>":         ACTION_FILTER_PROMPT,
-	"<grv-search>":                ACTION_SEARCH,
-	"<grv-reverse-search>":        ACTION_REVERSE_SEARCH,
-	"<grv-search-find-next>":      ACTION_SEARCH_FIND_NEXT,
-	"<grv-search-find-prev>":      ACTION_SEARCH_FIND_PREV,
-	"<grv-clear-search>":          ACTION_CLEAR_SEARCH,
-	"<grv-show-status>":           ACTION_SHOW_STATUS,
-	"<grv-next-line>":             ACTION_NEXT_LINE,
-	"<grv-prev-line>":             ACTION_PREV_LINE,
-	"<grv-next-page>":             ACTION_NEXT_PAGE,
-	"<grv-prev-page>":             ACTION_PREV_PAGE,
-	"<grv-scroll-right>":          ACTION_SCROLL_RIGHT,
-	"<grv-scroll-left>":           ACTION_SCROLL_LEFT,
-	"<grv-first-line>":            ACTION_FIRST_LINE,
-	"<grv-last-line>":             ACTION_LAST_LINE,
-	"<grv-select>":                ACTION_SELECT,
-	"<grv-next-view>":             ACTION_NEXT_VIEW,
-	"<grv-prev-view>":             ACTION_PREV_VIEW,
-	"<grv-full-screen-view>":      ACTION_FULL_SCREEN_VIEW,
-	"<grv-toggle-view-layout>":    ACTION_TOGGLE_VIEW_LAYOUT,
-	"<grv-add-filter>":            ACTION_ADD_FILTER,
-	"<grv-remove-filter>":         ACTION_REMOVE_FILTER,
+	"<grv-nop>":                   ActionNone,
+	"<grv-exit>":                  ActionExit,
+	"<grv-prompt>":                ActionPrompt,
+	"<grv-search-prompt>":         ActionSearchPrompt,
+	"<grv-reverse-search-prompt>": ActionReverseSearchPrompt,
+	"<grv-filter-prompt>":         ActionFilterPrompt,
+	"<grv-search>":                ActionSearch,
+	"<grv-reverse-search>":        ActionReverseSearch,
+	"<grv-search-find-next>":      ActionSearchFindNext,
+	"<grv-search-find-prev>":      ActionSearchFindPrev,
+	"<grv-clear-search>":          ActionClearSearch,
+	"<grv-show-status>":           ActionShowStatus,
+	"<grv-next-line>":             ActionNextLine,
+	"<grv-prev-line>":             ActionPrevLine,
+	"<grv-next-page>":             ActionNextPage,
+	"<grv-prev-page>":             ActionPrevPage,
+	"<grv-scroll-right>":          ActionScrollRight,
+	"<grv-scroll-left>":           ActionScrollLeft,
+	"<grv-first-line>":            ActionFirstLine,
+	"<grv-last-line>":             ActionLastLine,
+	"<grv-select>":                ActionSelect,
+	"<grv-next-view>":             ActionNextView,
+	"<grv-prev-view>":             ActionPrevView,
+	"<grv-full-screen-view>":      ActionFullScreenView,
+	"<grv-toggle-view-layout>":    ActionToggleViewLayout,
+	"<grv-add-filter>":            ActionAddFilter,
+	"<grv-remove-filter>":         ActionRemoveFilter,
 }
 
-var defaultKeyBindings = map[ActionType]map[ViewId][]string{
-	ACTION_PROMPT: map[ViewId][]string{
-		VIEW_MAIN: []string{PROMPT_TEXT},
+var defaultKeyBindings = map[ActionType]map[ViewID][]string{
+	ActionPrompt: {
+		ViewMain: {PromptText},
 	},
-	ACTION_SEARCH_PROMPT: map[ViewId][]string{
-		VIEW_MAIN: []string{SEARCH_PROMPT_TEXT},
+	ActionSearchPrompt: {
+		ViewMain: {SearchPromptText},
 	},
-	ACTION_REVERSE_SEARCH_PROMPT: map[ViewId][]string{
-		VIEW_MAIN: []string{REVERSE_SEARCH_PROMPT_TEXT},
+	ActionReverseSearchPrompt: {
+		ViewMain: {ReverseSearchPromptText},
 	},
-	ACTION_SEARCH_FIND_NEXT: map[ViewId][]string{
-		VIEW_ALL: []string{"n"},
+	ActionSearchFindNext: {
+		ViewAll: {"n"},
 	},
-	ACTION_SEARCH_FIND_PREV: map[ViewId][]string{
-		VIEW_ALL: []string{"N"},
+	ActionSearchFindPrev: {
+		ViewAll: {"N"},
 	},
-	ACTION_NEXT_LINE: map[ViewId][]string{
-		VIEW_ALL: []string{"<Down>", "j"},
+	ActionNextLine: {
+		ViewAll: {"<Down>", "j"},
 	},
-	ACTION_PREV_LINE: map[ViewId][]string{
-		VIEW_ALL: []string{"<Up>", "k"},
+	ActionPrevLine: {
+		ViewAll: {"<Up>", "k"},
 	},
-	ACTION_NEXT_PAGE: map[ViewId][]string{
-		VIEW_ALL: []string{"<PageDown>", "<C-f>"},
+	ActionNextPage: {
+		ViewAll: {"<PageDown>", "<C-f>"},
 	},
-	ACTION_PREV_PAGE: map[ViewId][]string{
-		VIEW_ALL: []string{"<PageUp>", "<C-b>"},
+	ActionPrevPage: {
+		ViewAll: {"<PageUp>", "<C-b>"},
 	},
-	ACTION_SCROLL_RIGHT: map[ViewId][]string{
-		VIEW_ALL: []string{"<Right>", "l"},
+	ActionScrollRight: {
+		ViewAll: {"<Right>", "l"},
 	},
-	ACTION_SCROLL_LEFT: map[ViewId][]string{
-		VIEW_ALL: []string{"<Left>", "h"},
+	ActionScrollLeft: {
+		ViewAll: {"<Left>", "h"},
 	},
-	ACTION_FIRST_LINE: map[ViewId][]string{
-		VIEW_ALL: []string{"gg"},
+	ActionFirstLine: {
+		ViewAll: {"gg"},
 	},
-	ACTION_LAST_LINE: map[ViewId][]string{
-		VIEW_ALL: []string{"G"},
+	ActionLastLine: {
+		ViewAll: {"G"},
 	},
-	ACTION_NEXT_VIEW: map[ViewId][]string{
-		VIEW_ALL: []string{"<Tab>", "<C-w>w", "<C-w><C-w>"},
+	ActionNextView: {
+		ViewAll: {"<Tab>", "<C-w>w", "<C-w><C-w>"},
 	},
-	ACTION_PREV_VIEW: map[ViewId][]string{
-		VIEW_ALL: []string{"<S-Tab>", "<C-w>W"},
+	ActionPrevView: {
+		ViewAll: {"<S-Tab>", "<C-w>W"},
 	},
-	ACTION_FULL_SCREEN_VIEW: map[ViewId][]string{
-		VIEW_ALL: []string{"f", "<C-w>o", "<C-w><C-o>"},
+	ActionFullScreenView: {
+		ViewAll: {"f", "<C-w>o", "<C-w><C-o>"},
 	},
-	ACTION_TOGGLE_VIEW_LAYOUT: map[ViewId][]string{
-		VIEW_ALL: []string{"<C-w>t"},
+	ActionToggleViewLayout: {
+		ViewAll: {"<C-w>t"},
 	},
-	ACTION_SELECT: map[ViewId][]string{
-		VIEW_ALL: []string{"<Enter>"},
+	ActionSelect: {
+		ViewAll: {"<Enter>"},
 	},
-	ACTION_FILTER_PROMPT: map[ViewId][]string{
-		VIEW_COMMIT: []string{"<C-q>"},
-		VIEW_REF:    []string{"<C-q>"},
+	ActionFilterPrompt: {
+		ViewCommit: {"<C-q>"},
+		ViewRef:    {"<C-q>"},
 	},
-	ACTION_REMOVE_FILTER: map[ViewId][]string{
-		VIEW_COMMIT: []string{"<C-r>"},
-		VIEW_REF:    []string{"<C-r>"},
+	ActionRemoveFilter: {
+		ViewCommit: {"<C-r>"},
+		ViewRef:    {"<C-r>"},
 	},
 }
 
-type ViewHierarchy []ViewId
+// ViewHierarchy is a list of views parent to child
+type ViewHierarchy []ViewID
 
+// BindingType specifies the type a key sequence is bound to
 type BindingType int
 
+// The types a key sequence can by bound to
 const (
-	BT_ACTION BindingType = iota
-	BT_KEYSTRING
+	BtAction BindingType = iota
+	BtKeystring
 )
 
+// Binding is the entity a key sequence is bound to
+// This is either an action or a key sequence
 type Binding struct {
 	bindingType BindingType
 	actionType  ActionType
 	keystring   string
 }
 
-func NewActionBinding(actionType ActionType) Binding {
+func newActionBinding(actionType ActionType) Binding {
 	return Binding{
-		bindingType: BT_ACTION,
+		bindingType: BtAction,
 		actionType:  actionType,
 	}
 }
 
-func NewKeystringBinding(keystring string) Binding {
+func newKeystringBinding(keystring string) Binding {
 	return Binding{
-		bindingType: BT_KEYSTRING,
+		bindingType: BtKeystring,
 		keystring:   keystring,
-		actionType:  ACTION_NONE,
+		actionType:  ActionNone,
 	}
 }
 
+// KeyBindings exposes key bindings that have been configured and allows new bindings to be set
 type KeyBindings interface {
 	Binding(viewHierarchy ViewHierarchy, keystring string) (binding Binding, isPrefix bool)
-	SetActionBinding(viewId ViewId, keystring string, actionType ActionType)
-	SetKeystringBinding(viewId ViewId, keystring, mappedKeystring string)
+	SetActionBinding(viewID ViewID, keystring string, actionType ActionType)
+	SetKeystringBinding(viewID ViewID, keystring, mappedKeystring string)
 }
 
+// KeyBindingManager manages key bindings in grv
 type KeyBindingManager struct {
-	bindings map[ViewId]*pt.Trie
+	bindings map[ViewID]*pt.Trie
 }
 
+// NewKeyBindingManager creates a new instance
 func NewKeyBindingManager() KeyBindings {
 	keyBindingManager := &KeyBindingManager{
-		bindings: make(map[ViewId]*pt.Trie),
+		bindings: make(map[ViewID]*pt.Trie),
 	}
 
 	keyBindingManager.setDefaultKeyBindings()
@@ -186,12 +197,14 @@ func NewKeyBindingManager() KeyBindings {
 	return keyBindingManager
 }
 
+// Binding returns the Binding bound to the provided key sequence for the view hierarchy provided
+// If no binding exists or the provided key sequence is a prefix to a binding then an action binding with action ActionNone is returned and a boolean indicating whether there is a prefix match
 func (keyBindingManager *KeyBindingManager) Binding(viewHierarchy ViewHierarchy, keystring string) (Binding, bool) {
-	viewHierarchy = append(viewHierarchy, VIEW_ALL)
+	viewHierarchy = append(viewHierarchy, ViewAll)
 	isPrefix := false
 
-	for _, viewId := range viewHierarchy {
-		if viewBindings, ok := keyBindingManager.bindings[viewId]; ok {
+	for _, viewID := range viewHierarchy {
+		if viewBindings, ok := keyBindingManager.bindings[viewID]; ok {
 			if binding := viewBindings.Get(pt.Prefix(keystring)); binding != nil {
 				return binding.(Binding), false
 			} else if viewBindings.MatchSubtree(pt.Prefix(keystring)) {
@@ -200,38 +213,41 @@ func (keyBindingManager *KeyBindingManager) Binding(viewHierarchy ViewHierarchy,
 		}
 	}
 
-	return NewActionBinding(ACTION_NONE), isPrefix
+	return newActionBinding(ActionNone), isPrefix
 }
 
-func (keyBindingManager *KeyBindingManager) SetActionBinding(viewId ViewId, keystring string, actionType ActionType) {
-	viewBindings := keyBindingManager.getOrCreateViewBindings(viewId)
-	viewBindings.Set(pt.Prefix(keystring), NewActionBinding(actionType))
+// SetActionBinding allows an action to be bound to the provided key sequence and view
+func (keyBindingManager *KeyBindingManager) SetActionBinding(viewID ViewID, keystring string, actionType ActionType) {
+	viewBindings := keyBindingManager.getOrCreateViewBindings(viewID)
+	viewBindings.Set(pt.Prefix(keystring), newActionBinding(actionType))
 }
 
-func (keyBindingManager *KeyBindingManager) SetKeystringBinding(viewId ViewId, keystring, mappedKeystring string) {
-	viewBindings := keyBindingManager.getOrCreateViewBindings(viewId)
-	viewBindings.Set(pt.Prefix(keystring), NewKeystringBinding(mappedKeystring))
+// SetKeystringBinding allows a key sequence to be bound to the provided key sequence and view
+func (keyBindingManager *KeyBindingManager) SetKeystringBinding(viewID ViewID, keystring, mappedKeystring string) {
+	viewBindings := keyBindingManager.getOrCreateViewBindings(viewID)
+	viewBindings.Set(pt.Prefix(keystring), newKeystringBinding(mappedKeystring))
 }
 
-func (keyBindingManager *KeyBindingManager) getOrCreateViewBindings(viewId ViewId) *pt.Trie {
-	if viewBindings, ok := keyBindingManager.bindings[viewId]; ok {
-		return viewBindings
-	} else {
-		viewBindings = pt.NewTrie()
-		keyBindingManager.bindings[viewId] = viewBindings
+func (keyBindingManager *KeyBindingManager) getOrCreateViewBindings(viewID ViewID) *pt.Trie {
+	viewBindings, ok := keyBindingManager.bindings[viewID]
+	if ok {
 		return viewBindings
 	}
+
+	viewBindings = pt.NewTrie()
+	keyBindingManager.bindings[viewID] = viewBindings
+	return viewBindings
 }
 
 func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 	for actionKey, actionType := range actionKeys {
-		keyBindingManager.SetActionBinding(VIEW_ALL, actionKey, actionType)
+		keyBindingManager.SetActionBinding(ViewAll, actionKey, actionType)
 	}
 
 	for actionType, viewKeys := range defaultKeyBindings {
-		for viewId, keys := range viewKeys {
+		for viewID, keys := range viewKeys {
 			for _, key := range keys {
-				keyBindingManager.SetActionBinding(viewId, key, actionType)
+				keyBindingManager.SetActionBinding(viewID, key, actionType)
 			}
 		}
 	}
@@ -242,15 +258,16 @@ func isValidAction(action string) bool {
 	return valid
 }
 
-func DefaultKeyBindings(actionType ActionType, viewId ViewId) (keyBindings []string) {
+// DefaultKeyBindings returns the default key sequences that are bound to an action for the provided view
+func DefaultKeyBindings(actionType ActionType, viewID ViewID) (keyBindings []string) {
 	viewKeys, ok := defaultKeyBindings[actionType]
 	if !ok {
 		return
 	}
 
-	keys, ok := viewKeys[viewId]
+	keys, ok := viewKeys[viewID]
 	if !ok {
-		keys, ok = viewKeys[VIEW_ALL]
+		keys, ok = viewKeys[ViewAll]
 
 		if !ok {
 			return

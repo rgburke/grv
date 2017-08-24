@@ -4,86 +4,97 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"sync"
+
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/libgit2/git2go.v24"
-	"sync"
 )
 
 const (
-	RDL_COMMIT_BUFFER_SIZE = 100
-	RDL_DIFF_STATS_COLS    = 80
-	RDL_SHORT_OID_LEN      = 7
+	rdlCommitBufferSize = 100
+	rdlDiffStatsCols    = 80
+	rdlShortOidLen      = 7
 )
 
-type InstanceCache struct {
+type instanceCache struct {
 	oids       map[string]*Oid
 	commits    map[string]*Commit
 	oidLock    sync.Mutex
 	commitLock sync.Mutex
 }
 
+// RepoDataLoader handles loading data from the repository
 type RepoDataLoader struct {
 	repo     *git.Repository
-	cache    *InstanceCache
+	cache    *instanceCache
 	channels *Channels
 }
 
+// Oid is reference to a git object
 type Oid struct {
 	oid *git.Oid
 }
 
+// Branch contains data for a branch reference
 type Branch struct {
 	oid      *Oid
 	name     string
 	isRemote bool
 }
 
+// Tag contains data for a tag reference
 type Tag struct {
 	oid  *Oid
 	name string
 	tag  *git.Tag
 }
 
+// Commit contains data for a commit
 type Commit struct {
 	oid    *Oid
 	commit *git.Commit
 }
 
+// Diff contains data for a generated diff
 type Diff struct {
 	diffText bytes.Buffer
 	stats    bytes.Buffer
 }
 
+// String returns the oid hash
 func (oid Oid) String() string {
 	return oid.oid.String()
 }
 
-func (oid Oid) ShortId() (shortId string) {
+// ShortID returns a shortened oid hash
+func (oid Oid) ShortID() (shortID string) {
 	id := oid.String()
 
-	if len(id) >= RDL_SHORT_OID_LEN {
-		shortId = id[0:RDL_SHORT_OID_LEN]
+	if len(id) >= rdlShortOidLen {
+		shortID = id[0:rdlShortOidLen]
 	}
 
 	return
 }
 
+// String returns branch data in a string format
 func (branch Branch) String() string {
 	return fmt.Sprintf("%v:%v", branch.name, branch.oid)
 }
 
+// Tag returns tag data in a string format
 func (tag Tag) String() string {
 	return fmt.Sprintf("%v:%v", tag.name, tag.oid)
 }
 
-func NewInstanceCache() *InstanceCache {
-	return &InstanceCache{
+func newInstanceCache() *instanceCache {
+	return &instanceCache{
 		oids:    make(map[string]*Oid),
 		commits: make(map[string]*Commit),
 	}
 }
 
-func (cache *InstanceCache) getOid(rawOid *git.Oid) *Oid {
+func (cache *instanceCache) getOid(rawOid *git.Oid) *Oid {
 	cache.oidLock.Lock()
 	defer cache.oidLock.Unlock()
 
@@ -99,7 +110,7 @@ func (cache *InstanceCache) getOid(rawOid *git.Oid) *Oid {
 	return oid
 }
 
-func (cache *InstanceCache) getCommit(rawCommit *git.Commit) *Commit {
+func (cache *instanceCache) getCommit(rawCommit *git.Commit) *Commit {
 	cache.commitLock.Lock()
 	defer cache.commitLock.Unlock()
 
@@ -118,18 +129,21 @@ func (cache *InstanceCache) getCommit(rawCommit *git.Commit) *Commit {
 	return commit
 }
 
+// NewRepoDataLoader creates a new instance
 func NewRepoDataLoader(channels *Channels) *RepoDataLoader {
 	return &RepoDataLoader{
-		cache:    NewInstanceCache(),
+		cache:    newInstanceCache(),
 		channels: channels,
 	}
 }
 
+// Free releases any resources
 func (repoDataLoader *RepoDataLoader) Free() {
 	log.Info("Freeing RepoDataLoader")
 	repoDataLoader.repo.Free()
 }
 
+// Initialise attempts to access the repository
 func (repoDataLoader *RepoDataLoader) Initialise(repoPath string) (err error) {
 	log.Infof("Opening repository at %v", repoPath)
 
@@ -141,10 +155,12 @@ func (repoDataLoader *RepoDataLoader) Initialise(repoPath string) (err error) {
 	return
 }
 
+// Path returns the file path location of the repository
 func (repoDataLoader *RepoDataLoader) Path() string {
 	return repoDataLoader.repo.Path()
 }
 
+// Head loads the current HEAD ref
 func (repoDataLoader *RepoDataLoader) Head() (oid *Oid, branch *Branch, err error) {
 	log.Debug("Loading HEAD")
 	ref, err := repoDataLoader.repo.Head()
@@ -173,6 +189,7 @@ func (repoDataLoader *RepoDataLoader) Head() (oid *Oid, branch *Branch, err erro
 	return
 }
 
+// LoadBranches loads all local branch refs currently in the repository
 func (repoDataLoader *RepoDataLoader) LoadBranches() (branches []*Branch, err error) {
 	branchIter, err := repoDataLoader.repo.NewBranchIterator(git.BranchAll)
 	if err != nil {
@@ -218,6 +235,7 @@ func (repoDataLoader *RepoDataLoader) LoadBranches() (branches []*Branch, err er
 	return
 }
 
+// LocalTags loads all tag refs in the repository
 func (repoDataLoader *RepoDataLoader) LocalTags() (tags []*Tag, err error) {
 	log.Debug("Loading local tags")
 
@@ -251,6 +269,7 @@ func (repoDataLoader *RepoDataLoader) LocalTags() (tags []*Tag, err error) {
 	return
 }
 
+// Commits loads all commits for the provided ref and returns a channel from which the loaded commits can be read
 func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) {
 	log.Debugf("Loading commits for oid %v", oid)
 
@@ -260,13 +279,15 @@ func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) 
 	}
 
 	revWalk.Sorting(git.SortTime)
-	revWalk.Push(oid.oid)
+	if err := revWalk.Push(oid.oid); err != nil {
+		return nil, err
+	}
 
-	commitCh := make(chan *Commit, RDL_COMMIT_BUFFER_SIZE)
+	commitCh := make(chan *Commit, rdlCommitBufferSize)
 
 	go func() {
 		commitNum := 0
-		revWalk.Iterate(func(commit *git.Commit) bool {
+		if err := revWalk.Iterate(func(commit *git.Commit) bool {
 			if repoDataLoader.channels.Exit() {
 				return false
 			}
@@ -274,7 +295,9 @@ func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) 
 			commitNum++
 			commitCh <- repoDataLoader.cache.getCommit(commit)
 			return true
-		})
+		}); err != nil {
+			log.Errorf("Error when iterating over commits for oid %v: %v", oid, err)
+		}
 
 		close(commitCh)
 		revWalk.Free()
@@ -284,6 +307,7 @@ func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) 
 	return commitCh, nil
 }
 
+// Commit loads a commit for the provided oid (if it points to a commit)
 func (repoDataLoader *RepoDataLoader) Commit(oid *Oid) (commit *Commit, err error) {
 	object, err := repoDataLoader.repo.Lookup(oid.oid)
 	if err != nil {
@@ -328,6 +352,7 @@ func (repoDataLoader *RepoDataLoader) Commit(oid *Oid) (commit *Commit, err erro
 	return
 }
 
+// Diff generates a diff for the provided commit
 func (repoDataLoader *RepoDataLoader) Diff(commit *Commit) (diff *Diff, err error) {
 	diff = &Diff{}
 
@@ -357,14 +382,18 @@ func (repoDataLoader *RepoDataLoader) Diff(commit *Commit) (diff *Diff, err erro
 	if err != nil {
 		return
 	}
-	defer commitDiff.Free()
+	defer func() {
+		if e := commitDiff.Free(); e != nil {
+			log.Errorf("Error when freeing commit diff: %v", e)
+		}
+	}()
 
 	stats, err := commitDiff.Stats()
 	if err != nil {
 		return
 	}
 
-	statsText, err := stats.String(git.DiffStatsFull, RDL_DIFF_STATS_COLS)
+	statsText, err := stats.String(git.DiffStatsFull, rdlDiffStatsCols)
 	if err != nil {
 		return
 	}
@@ -389,7 +418,10 @@ func (repoDataLoader *RepoDataLoader) Diff(commit *Commit) (diff *Diff, err erro
 		}
 
 		diff.diffText.WriteString(patchString)
-		patch.Free()
+
+		if err := patch.Free(); err != nil {
+			log.Errorf("Error when freeing patch: %v", err)
+		}
 	}
 
 	return

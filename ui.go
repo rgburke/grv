@@ -24,99 +24,110 @@ import "C"
 
 import (
 	"errors"
-	log "github.com/Sirupsen/logrus"
-	gc "github.com/rthornton128/goncurses"
 	"os"
 	"sync"
 	"syscall"
 	"time"
 	"unsafe"
+
+	log "github.com/Sirupsen/logrus"
+	gc "github.com/rthornton128/goncurses"
 )
 
 const (
-	INPUT_NO_WIN_SLEEP_MS = 50 * time.Millisecond
-	UI_NO_KEY             = -1
+	// UINoKey is the value returned when there was no user input available
+	UINoKey         = -1
+	inputNoWinSleep = 50 * time.Millisecond
 )
 
+// Key is a raw code received from ncurses
 type Key int
 
+// InputUI is capable of providing input from the UI
 type InputUI interface {
 	GetInput(force bool) (Key, error)
 	CancelGetInput() error
 }
 
+// UI exposes methods for updaing the display
 type UI interface {
 	InputUI
 	Initialise() error
 	Resize() error
 	ViewDimension() ViewDimension
 	Update([]*Window) error
-	ShowError(error)
 	Free()
 }
 
-type SignalPipe struct {
+type signalPipe struct {
 	read  *os.File
 	write *os.File
 }
 
-func (signalPipe SignalPipe) ReadFd() int {
+func (signalPipe signalPipe) ReadFd() int {
 	return int(signalPipe.read.Fd())
 }
 
-type NCursesWindow struct {
+type nCursesWindow struct {
 	*gc.Window
-	hidden bool
+	isHidden bool
 }
 
-func (nwin *NCursesWindow) Hidden() bool {
-	return nwin.hidden
+func (nwin *nCursesWindow) hidden() bool {
+	return nwin.isHidden
 }
 
-func (nwin *NCursesWindow) SetHidden(hidden bool) {
-	nwin.hidden = hidden
+func (nwin *nCursesWindow) setHidden(isHidden bool) {
+	nwin.isHidden = isHidden
 }
 
+// NCursesUI implements the UI and InputUI interfaces
+// It manages displaying grv in the terminal and receiving input
 type NCursesUI struct {
-	windows     map[*Window]*NCursesWindow
+	windows     map[*Window]*nCursesWindow
 	windowsLock sync.RWMutex
-	stdscr      *NCursesWindow
+	stdscr      *nCursesWindow
 	config      Config
 	colors      map[ThemeColor]int16
-	pipe        SignalPipe
+	pipe        signalPipe
 }
 
-func NewNcursesDisplay(config Config) *NCursesUI {
+// NewNCursesDisplay creates a new NCursesUI instance
+func NewNCursesDisplay(config Config) *NCursesUI {
 	return &NCursesUI{
-		windows: make(map[*Window]*NCursesWindow),
+		windows: make(map[*Window]*nCursesWindow),
 		config:  config,
 		colors: map[ThemeColor]int16{
-			COLOR_NONE:    -1,
-			COLOR_BLACK:   gc.C_BLACK,
-			COLOR_RED:     gc.C_RED,
-			COLOR_GREEN:   gc.C_GREEN,
-			COLOR_YELLOW:  gc.C_YELLOW,
-			COLOR_BLUE:    gc.C_BLUE,
-			COLOR_MAGENTA: gc.C_MAGENTA,
-			COLOR_CYAN:    gc.C_CYAN,
-			COLOR_WHITE:   gc.C_WHITE,
+			ColorNone:    -1,
+			ColorBlack:   gc.C_BLACK,
+			ColorRed:     gc.C_RED,
+			ColorGreen:   gc.C_GREEN,
+			ColorYellow:  gc.C_YELLOW,
+			ColorBlue:    gc.C_BLUE,
+			ColorMagenta: gc.C_MAGENTA,
+			ColorCyan:    gc.C_CYAN,
+			ColorWhite:   gc.C_WHITE,
 		},
 	}
 }
 
+// Free releases ncurses resourese used
 func (ui *NCursesUI) Free() {
 	log.Info("Deleting NCurses windows")
 
 	for _, nwin := range ui.windows {
-		nwin.Delete()
+		if err := nwin.Delete(); err != nil {
+			log.Errorf("Error when deleting ncurses window: %v", err)
+		}
 	}
 
-	ui.windows = make(map[*Window]*NCursesWindow)
+	ui.windows = make(map[*Window]*nCursesWindow)
 
 	log.Info("Ending NCurses")
 	gc.End()
 }
 
+// Initialise sets up NCurses
 func (ui *NCursesUI) Initialise() (err error) {
 	log.Info("Initialising NCurses")
 
@@ -128,14 +139,14 @@ func (ui *NCursesUI) Initialise() (err error) {
 		return
 	}
 
-	ui.config.AddOnChangeListener(CV_THEME, ui)
+	ui.config.AddOnChangeListener(CfTheme, ui)
 
 	read, write, err := os.Pipe()
 	if err != nil {
 		return
 	}
 
-	ui.pipe = SignalPipe{
+	ui.pipe = signalPipe{
 		read:  read,
 		write: write,
 	}
@@ -149,12 +160,18 @@ func (ui *NCursesUI) initialiseNCurses() (err error) {
 		return
 	}
 
-	ui.stdscr = &NCursesWindow{Window: stdscr}
+	ui.stdscr = &nCursesWindow{Window: stdscr}
 
 	if gc.HasColors() {
-		gc.StartColor()
-		gc.UseDefaultColors()
-		ui.onConfigVariableChange(CV_THEME)
+		if e := gc.StartColor(); e != nil {
+			log.Errorf("Error calling StartColor: %v", e)
+		}
+
+		if e := gc.UseDefaultColors(); e != nil {
+			log.Errorf("Error calling UseDefaultColors: %v", e)
+		}
+
+		ui.onConfigVariableChange(CfTheme)
 	}
 
 	gc.Echo(false)
@@ -171,6 +188,7 @@ func (ui *NCursesUI) initialiseNCurses() (err error) {
 	return
 }
 
+// Resize determines the current terminal dimensions reinitialises NCurses
 func (ui *NCursesUI) Resize() (err error) {
 	ui.windowsLock.Lock()
 	defer ui.windowsLock.Unlock()
@@ -191,6 +209,7 @@ func (ui *NCursesUI) Resize() (err error) {
 	return ui.initialiseNCurses()
 }
 
+// ViewDimension returns the dimensions of the terminal
 func (ui *NCursesUI) ViewDimension() ViewDimension {
 	y, x := ui.stdscr.MaxYX()
 	viewDimension := ViewDimension{rows: uint(y), cols: uint(x)}
@@ -200,6 +219,7 @@ func (ui *NCursesUI) ViewDimension() ViewDimension {
 	return viewDimension
 }
 
+// Update draws the provided windows to the terminal display
 func (ui *NCursesUI) Update(wins []*Window) (err error) {
 	log.Debug("Updating display")
 
@@ -230,14 +250,14 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 		if _, ok := winMap[win]; ok {
 			nwin.Resize(int(win.rows), int(win.cols))
 			nwin.MoveWindow(int(win.startRow), int(win.startCol))
-			nwin.SetHidden(false)
-			log.Debugf("Moving NCurses window %v to row:%v,col:%v", win.Id(), win.startRow, win.startCol)
-		} else if !nwin.Hidden() {
+			nwin.setHidden(false)
+			log.Debugf("Moving NCurses window %v to row:%v,col:%v", win.ID(), win.startRow, win.startCol)
+		} else if !nwin.hidden() {
 			nwin.Erase()
 			nwin.Resize(0, 0)
 			nwin.NoutRefresh()
-			nwin.SetHidden(true)
-			log.Debugf("Hiding NCurses window %v - %v:%v", win.Id())
+			nwin.setHidden(true)
+			log.Debugf("Hiding NCurses window %v - %v:%v", win.ID())
 		}
 	}
 
@@ -254,15 +274,15 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 		ui.windowsLock.Lock()
 		defer ui.windowsLock.Unlock()
 		var nwinRaw *gc.Window
-		var nwin *NCursesWindow
+		var nwin *nCursesWindow
 
 		for _, win := range newWins {
-			log.Debugf("Creating new NCurses window %v with position row:%v,col:%v and dimensions rows:%v,cols:%v", win.Id(), win.startRow, win.startCol, win.rows, win.cols)
+			log.Debugf("Creating new NCurses window %v with position row:%v,col:%v and dimensions rows:%v,cols:%v", win.ID(), win.startRow, win.startCol, win.rows, win.cols)
 			if nwinRaw, err = gc.NewWindow(int(win.rows), int(win.cols), int(win.startRow), int(win.startCol)); err != nil {
 				return
 			}
 
-			nwin = &NCursesWindow{Window: nwinRaw}
+			nwin = &nCursesWindow{Window: nwinRaw}
 
 			if err = nwin.Keypad(true); err != nil {
 				return
@@ -289,14 +309,17 @@ func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
 			}
 		} else {
 			err = errors.New("Algorithm error")
-			break
+			return
 		}
 	}
 
 	if cursorWin == nil {
-		gc.Cursor(0)
+		err = gc.Cursor(0)
 	} else {
-		gc.Cursor(1)
+		if err = gc.Cursor(1); err != nil {
+			return
+		}
+
 		nwin := ui.windows[cursorWin]
 		nwin.Move(int(cursorWin.cursor.row), int(cursorWin.cursor.col))
 		nwin.NoutRefresh()
@@ -305,8 +328,8 @@ func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
 	return
 }
 
-func drawWindow(win *Window, nwin *NCursesWindow) {
-	log.Debugf("Drawing window %v", win.Id())
+func drawWindow(win *Window, nwin *nCursesWindow) {
+	log.Debugf("Drawing window %v", win.ID())
 
 	for rowIndex := uint(0); rowIndex < win.rows; rowIndex++ {
 		line := win.lines[rowIndex]
@@ -315,13 +338,19 @@ func drawWindow(win *Window, nwin *NCursesWindow) {
 		for colIndex := uint(0); colIndex < win.cols; colIndex++ {
 			cell := line.cells[colIndex]
 
-			if cell.style.acs_char != 0 {
-				nwin.AddChar(cell.style.acs_char)
+			if cell.style.acsChar != 0 {
+				nwin.AddChar(cell.style.acsChar)
 			} else if cell.codePoints.Len() > 0 {
-				attr := cell.style.attr | gc.ColorPair(int16(cell.style.componentId))
-				nwin.AttrOn(attr)
+				attr := cell.style.attr | gc.ColorPair(int16(cell.style.themeComponentID))
+				if err := nwin.AttrOn(attr); err != nil {
+					log.Errorf("Error when attempting to set AttrOn with %v: %v", attr, err)
+				}
+
 				nwin.Print(cell.codePoints.String())
-				nwin.AttrOff(attr)
+
+				if err := nwin.AttrOff(attr); err != nil {
+					log.Errorf("Error when attempting to set AttrOff with %v: %v", attr, err)
+				}
 			}
 		}
 	}
@@ -329,8 +358,11 @@ func drawWindow(win *Window, nwin *NCursesWindow) {
 	nwin.NoutRefresh()
 }
 
+// GetInput blocks until user input is available
+// A single key code is returned on each invocation
+// Setting force = true makes this function non-blocking.
 func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
-	key = UI_NO_KEY
+	key = UINoKey
 
 	if !force {
 		rfds := &syscall.FdSet{}
@@ -339,24 +371,28 @@ func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 
 	OuterLoop:
 		for {
-			FD_ZERO(rfds)
-			FD_SET(stdinFd, rfds)
-			FD_SET(pipeFd, rfds)
+			fdZero(rfds)
+			fdSet(stdinFd, rfds)
+			fdSet(pipeFd, rfds)
 			_, err = syscall.Select(pipeFd+1, rfds, nil, nil, nil)
 
 			switch {
 			case err != nil:
 				return
-			case FD_ISSET(pipeFd, rfds):
-				ui.pipe.read.Read(make([]byte, 8))
+			case fdIsset(pipeFd, rfds):
+				if _, err := ui.pipe.read.Read(make([]byte, 8)); err != nil {
+					log.Errorf("Error when reading from pipe: %v", err)
+					continue
+				}
+
 				return
-			case FD_ISSET(stdinFd, rfds) && !ReadLineActive():
+			case fdIsset(stdinFd, rfds) && !ReadLineActive():
 				break OuterLoop
 			}
 		}
 	}
 
-	var activeWin *NCursesWindow
+	var activeWin *nCursesWindow
 
 	ui.windowsLock.RLock()
 	for _, nwin := range ui.windows {
@@ -378,40 +414,40 @@ func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 			activeWin.Timeout(-1)
 		}
 	} else {
-		time.Sleep(INPUT_NO_WIN_SLEEP_MS)
-		key = UI_NO_KEY
+		time.Sleep(inputNoWinSleep)
+		key = UINoKey
 	}
 
 	return
 }
 
+// CancelGetInput causes an invocation of GetInput (which is blocking) to return
 func (ui *NCursesUI) CancelGetInput() error {
 	_, err := ui.pipe.write.Write([]byte{0})
 	return err
 }
 
-func (ui *NCursesUI) ShowError(err error) {
-	// TODO
-}
-
 func (ui *NCursesUI) onConfigVariableChange(configVariable ConfigVariable) {
 	theme := ui.config.GetTheme()
 
-	for themeComponentId, themeComponent := range theme.GetAllComponents() {
+	for themeComponentID, themeComponent := range theme.GetAllComponents() {
 		fgcolor := ui.colors[themeComponent.fgcolor]
 		bgcolor := ui.colors[themeComponent.bgcolor]
-		gc.InitPair(int16(themeComponentId), fgcolor, bgcolor)
+
+		if err := gc.InitPair(int16(themeComponentID), fgcolor, bgcolor); err != nil {
+			log.Errorf("Error when seting color pair %v:%v - %v", fgcolor, bgcolor, err)
+		}
 	}
 }
 
-func FD_ZERO(set *syscall.FdSet) {
+func fdZero(set *syscall.FdSet) {
 	C.grv_FD_ZERO(unsafe.Pointer(set))
 }
 
-func FD_SET(fd int, set *syscall.FdSet) {
+func fdSet(fd int, set *syscall.FdSet) {
 	C.grv_FD_SET(C.int(fd), unsafe.Pointer(set))
 }
 
-func FD_ISSET(fd int, set *syscall.FdSet) bool {
+func fdIsset(fd int, set *syscall.FdSet) bool {
 	return C.grv_FD_ISSET(C.int(fd), unsafe.Pointer(set)) != 0
 }

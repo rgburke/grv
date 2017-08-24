@@ -2,44 +2,50 @@ package main
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
-	VIEW_MIN_ACTIVE_VIEW_ROWS = 6
+	viewMinActiveViewRows = 6
 )
 
-type ViewId int
+// ViewID is an ID assigned to each view in grv
+type ViewID int
 
+// The set of view IDs
 const (
-	VIEW_ALL ViewId = iota
-	VIEW_MAIN
-	VIEW_HISTORY
-	VIEW_STATUS
-	VIEW_REF
-	VIEW_COMMIT
-	VIEW_DIFF
-	VIEW_STATUS_BAR
-	VIEW_HELP_BAR
-	VIEW_ERROR
+	ViewAll ViewID = iota
+	ViewMain
+	ViewHistory
+	ViewStatus
+	ViewRef
+	ViewCommit
+	ViewDiff
+	ViewStatusBar
+	ViewHelpBar
+	ViewError
 )
 
+// AbstractView exposes common functionality amongst all views
 type AbstractView interface {
 	Initialise() error
 	HandleKeyPress(keystring string) error
 	HandleAction(Action) error
 	OnActiveChange(bool)
-	ViewId() ViewId
+	ViewID() ViewID
 	RenderStatusBar(*LineBuilder) error
 	RenderHelpBar(*LineBuilder) error
 }
 
+// WindowView is a single window view
 type WindowView interface {
 	AbstractView
 	Render(RenderWindow) error
 }
 
+// WindowViewCollection is a view that contains multiple child views
 type WindowViewCollection interface {
 	AbstractView
 	Render(ViewDimension) ([]*Window, error)
@@ -47,16 +53,25 @@ type WindowViewCollection interface {
 	Title() string
 }
 
+// RootView exposes functionality of the view at the top of the hierarchy
 type RootView interface {
 	ActiveViewHierarchy() []AbstractView
-	ActiveViewIdHierarchy() []ViewId
+	ActiveViewIDHierarchy() []ViewID
 }
 
+// ViewDimension describes the size of a view
 type ViewDimension struct {
 	rows uint
 	cols uint
 }
 
+// String returns a string representation of the view dimensions
+func (viewDimension ViewDimension) String() string {
+	return fmt.Sprintf("rows:%v,cols:%v", viewDimension.rows, viewDimension.cols)
+}
+
+// View is the top level view in grv
+// All views in grv are children of this view
 type View struct {
 	views         []WindowViewCollection
 	activeViewPos uint
@@ -70,10 +85,7 @@ type View struct {
 	lock          sync.Mutex
 }
 
-func (viewDimension ViewDimension) String() string {
-	return fmt.Sprintf("rows:%v,cols:%v", viewDimension.rows, viewDimension.cols)
-}
-
+// NewView creates a new instance
 func NewView(repoData RepoData, channels *Channels, config ConfigSetter) (view *View) {
 	view = &View{
 		views: []WindowViewCollection{
@@ -90,6 +102,7 @@ func NewView(repoData RepoData, channels *Channels, config ConfigSetter) (view *
 	return
 }
 
+// Initialise sets up all child views
 func (view *View) Initialise() (err error) {
 	for _, childView := range view.views {
 		if err = childView.Initialise(); err != nil {
@@ -102,6 +115,7 @@ func (view *View) Initialise() (err error) {
 	return
 }
 
+// Render generates all windows to be drawn to the UI
 func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error) {
 	log.Debug("Rendering View")
 
@@ -148,7 +162,10 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 	startRow += activeViewDim.rows
 
 	if errorViewDim.rows > 0 {
-		wins, err = view.renderErrorView(wins, errorViewDim, activeViewDim)
+		if wins, err = view.renderErrorView(wins, errorViewDim, activeViewDim); err != nil {
+			return
+		}
+
 		view.errorViewWin.OffsetPosition(int(startRow), 0)
 		startRow += errorViewDim.rows
 	}
@@ -173,15 +190,15 @@ func (view *View) determineErrorViewDimensions(errorViewDim, activeViewDim *View
 
 	errorRowsRequired := view.errorView.DisplayRowsRequired()
 
-	if activeViewDim.rows > errorRowsRequired+VIEW_MIN_ACTIVE_VIEW_ROWS {
+	if activeViewDim.rows > errorRowsRequired+viewMinActiveViewRows {
 		errorViewDim.rows = errorRowsRequired
 		activeViewDim.rows -= errorRowsRequired
 	} else {
 		log.Errorf("Unable to display all %v errors, not enough space", errorRowsRequired)
 
-		if activeViewDim.rows > VIEW_MIN_ACTIVE_VIEW_ROWS {
-			errorViewDim.rows = activeViewDim.rows - VIEW_MIN_ACTIVE_VIEW_ROWS
-			activeViewDim.rows = VIEW_MIN_ACTIVE_VIEW_ROWS
+		if activeViewDim.rows > viewMinActiveViewRows {
+			errorViewDim.rows = activeViewDim.rows - viewMinActiveViewRows
+			activeViewDim.rows = viewMinActiveViewRows
 		} else {
 			log.Error("Unable to display any errors")
 		}
@@ -224,7 +241,7 @@ func (view *View) renderActiveView(availableCols uint) (err error) {
 	win.Resize(ViewDimension{rows: 1, cols: availableCols})
 	win.Clear()
 	win.SetPosition(0, 0)
-	win.ApplyStyle(CMP_MAINVIEW_NORMAL_VIEW)
+	win.ApplyStyle(CmpMainviewNormalView)
 
 	lineBuilder, err := view.activeViewWin.LineBuilder(0, 1)
 	if err != nil {
@@ -232,67 +249,75 @@ func (view *View) renderActiveView(availableCols uint) (err error) {
 	}
 
 	for index, viewTitle := range viewTitles {
-		var themeComponentId ThemeComponentId
+		var themeComponentID ThemeComponentID
 
 		if uint(index) == view.activeViewPos {
-			themeComponentId = CMP_MAINVIEW_ACTIVE_VIEW
+			themeComponentID = CmpMainviewActiveView
 		} else {
-			themeComponentId = CMP_MAINVIEW_NORMAL_VIEW
+			themeComponentID = CmpMainviewNormalView
 		}
 
-		lineBuilder.AppendWithStyle(themeComponentId, "%v", viewTitle)
+		lineBuilder.AppendWithStyle(themeComponentID, "%v", viewTitle)
 	}
 
 	return
 }
 
+// RenderStatusBar does nothing
 func (view *View) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
+// RenderHelpBar renders key binding help to the help bar for this view
 func (view *View) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	view.lock.Lock()
 	promptActive := view.promptActive
 	view.lock.Unlock()
 
 	if !promptActive {
-		RenderKeyBindingHelp(view.ViewId(), lineBuilder, []ActionMessage{
-			ActionMessage{action: ACTION_PROMPT, message: "Command Prompt"},
+		RenderKeyBindingHelp(view.ViewID(), lineBuilder, []ActionMessage{
+			{action: ActionPrompt, message: "Command Prompt"},
 		})
 	}
 
 	return
 }
 
+// HandleKeyPress passes the key press on to child view to handle
 func (view *View) HandleKeyPress(keystring string) error {
 	log.Debugf("View handling keys %v", keystring)
 	return view.ActiveView().HandleKeyPress(keystring)
 }
 
+// HandleAction checks if this view can handle the action
+// If not the action is passed down to child views to handle
 func (view *View) HandleAction(action Action) (err error) {
 	log.Debugf("View handling action %v", action)
 
 	switch action.ActionType {
-	case ACTION_PROMPT, ACTION_SEARCH_PROMPT, ACTION_REVERSE_SEARCH_PROMPT, ACTION_FILTER_PROMPT:
-		view.prompt(action)
+	case ActionPrompt, ActionSearchPrompt, ActionReverseSearchPrompt, ActionFilterPrompt:
+		err = view.prompt(action)
 		return
-	case ACTION_SHOW_STATUS:
-		view.statusView.HandleAction(action)
+	case ActionShowStatus:
+		err = view.statusView.HandleAction(action)
 		return
 	}
 
 	return view.ActiveView().HandleAction(action)
 }
 
+// OnActiveChange updates the active state of the currently active child view
 func (view *View) OnActiveChange(active bool) {
 	log.Debugf("View active %v", active)
 	view.ActiveView().OnActiveChange(active)
 }
 
-func (view *View) ViewId() ViewId {
-	return VIEW_MAIN
+// ViewID returns the view ID of this view
+func (view *View) ViewID() ViewID {
+	return ViewMain
 }
 
+// ActiveViewHierarchy generates the currently active view hierarchy and returns the views that define it
 func (view *View) ActiveViewHierarchy() []AbstractView {
 	viewHierarchy := []AbstractView{view}
 	var parentView WindowViewCollection = view
@@ -310,16 +335,18 @@ func (view *View) ActiveViewHierarchy() []AbstractView {
 	return viewHierarchy
 }
 
-func (view *View) ActiveViewIdHierarchy() (viewIds []ViewId) {
+// ActiveViewIDHierarchy generates the currently active view hierarchy and returns the view ID's that define it
+func (view *View) ActiveViewIDHierarchy() (viewIds []ViewID) {
 	viewHierarchy := view.ActiveViewHierarchy()
 
 	for _, activeView := range viewHierarchy {
-		viewIds = append(viewIds, activeView.ViewId())
+		viewIds = append(viewIds, activeView.ViewID())
 	}
 
 	return
 }
 
+// ActiveView returns the currently active child view
 func (view *View) ActiveView() AbstractView {
 	view.lock.Lock()
 	defer view.lock.Unlock()
@@ -331,14 +358,14 @@ func (view *View) ActiveView() AbstractView {
 	return view.views[view.activeViewPos]
 }
 
-func (view *View) prompt(action Action) {
+func (view *View) prompt(action Action) (err error) {
 	view.lock.Lock()
 	view.views[view.activeViewPos].OnActiveChange(false)
 	view.statusView.OnActiveChange(true)
 	view.promptActive = true
 	view.lock.Unlock()
 
-	view.statusView.HandleAction(action)
+	err = view.statusView.HandleAction(action)
 
 	view.lock.Lock()
 	view.promptActive = false
@@ -347,12 +374,16 @@ func (view *View) prompt(action Action) {
 	view.lock.Unlock()
 
 	view.channels.UpdateDisplay()
+
+	return
 }
 
+// SetErrors sets errors to be displayed in the error view
 func (view *View) SetErrors(errors []error) {
 	view.errors = errors
 }
 
+// Title returns the title of this view
 func (view *View) Title() string {
 	return "Main View"
 }

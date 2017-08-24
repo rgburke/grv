@@ -20,13 +20,13 @@ func TestRefFieldExistence(t *testing.T) {
 		},
 	}
 
-	refFieldDescriptor := &RefFieldDescriptor{}
+	fieldDescriptor := &refFieldDescriptor{}
 
 	for _, fieldExistsTest := range fieldExistsTests {
 		fieldName := fieldExistsTest.fieldName
 		expectedExists := fieldExistsTest.expectedExists
 
-		_, actualExists := refFieldDescriptor.FieldType(fieldName)
+		_, actualExists := fieldDescriptor.FieldType(fieldName)
 
 		if expectedExists != actualExists {
 			t.Errorf("Field existence does not match expected value for field %v. Expected: %v, Actual: %v", fieldName, expectedExists, actualExists)
@@ -41,10 +41,10 @@ func TestRefFieldsAreCaseInsenstive(t *testing.T) {
 		"NAME",
 	}
 
-	refFieldDescriptor := &RefFieldDescriptor{}
+	fieldDescriptor := &refFieldDescriptor{}
 
 	for _, field := range fields {
-		_, exists := refFieldDescriptor.FieldType(field)
+		_, exists := fieldDescriptor.FieldType(field)
 
 		if !exists {
 			t.Errorf("Field does not exist: %v", field)
@@ -59,17 +59,17 @@ func TestRefFieldTypes(t *testing.T) {
 	}{
 		{
 			fieldName:         "name",
-			expectedFieldType: FT_STRING,
+			expectedFieldType: FtString,
 		},
 	}
 
-	refFieldDescriptor := &RefFieldDescriptor{}
+	fieldDescriptor := &refFieldDescriptor{}
 
 	for _, refFieldTypeTest := range refFieldTypeTests {
 		fieldName := refFieldTypeTest.fieldName
 		expectedFieldType := refFieldTypeTest.expectedFieldType
 
-		actualFieldType, fieldExists := refFieldDescriptor.FieldType(fieldName)
+		actualFieldType, fieldExists := fieldDescriptor.FieldType(fieldName)
 
 		if !fieldExists {
 			t.Errorf("Expected field %v to exist", fieldName)
@@ -91,17 +91,17 @@ func TestRefFieldValuesAreExtracted(t *testing.T) {
 	}
 
 	renderedRef := &RenderedRef{
-		renderedRefType: RV_LOCAL_BRANCH,
+		renderedRefType: RvLocalBranch,
 		value:           "Test",
 	}
 
-	refFieldDescriptor := &RefFieldDescriptor{}
+	fieldDescriptor := &refFieldDescriptor{}
 
 	for _, refFieldValueTest := range refFieldValueTests {
 		fieldName := refFieldValueTest.fieldName
 		expectedValue := refFieldValueTest.expectedValue
 
-		actualValue := refFieldDescriptor.FieldValue(renderedRef, fieldName)
+		actualValue := fieldDescriptor.FieldValue(renderedRef, fieldName)
 
 		if !reflect.DeepEqual(expectedValue, actualValue) {
 			t.Errorf("Field value does not match expected value for field %v. Expected: %v, Actual: %v", fieldName, expectedValue, actualValue)
@@ -115,35 +115,35 @@ func TestCertainRenderedRefTypesAlwaysMatchFilter(t *testing.T) {
 		expectedFilterOutput bool
 	}{
 		{
-			renderedRefType:      RV_LOCAL_BRANCH_GROUP,
+			renderedRefType:      RvLocalBranchGroup,
 			expectedFilterOutput: true,
 		},
 		{
-			renderedRefType:      RV_REMOTE_BRANCH_GROUP,
+			renderedRefType:      RvRemoteBranchGroup,
 			expectedFilterOutput: true,
 		},
 		{
-			renderedRefType:      RV_TAG_GROUP,
+			renderedRefType:      RvTagGroup,
 			expectedFilterOutput: true,
 		},
 		{
-			renderedRefType:      RV_SPACE,
+			renderedRefType:      RvSpace,
 			expectedFilterOutput: true,
 		},
 		{
-			renderedRefType:      RV_LOADING,
+			renderedRefType:      RvLoading,
 			expectedFilterOutput: true,
 		},
 		{
-			renderedRefType:      RV_LOCAL_BRANCH,
+			renderedRefType:      RvLocalBranch,
 			expectedFilterOutput: false,
 		},
 		{
-			renderedRefType:      RV_REMOTE_BRANCH,
+			renderedRefType:      RvRemoteBranch,
 			expectedFilterOutput: false,
 		},
 		{
-			renderedRefType:      RV_TAG,
+			renderedRefType:      RvTag,
 			expectedFilterOutput: false,
 		},
 	}

@@ -14,7 +14,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "\n \t\r\v\f",
 			expectedToken: QueryToken{
-				tokenType: QTK_WHITE_SPACE,
+				tokenType: QtkWhiteSpace,
 				value:     "\n \t\r\v\f",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -29,7 +29,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "",
 			expectedToken: QueryToken{
-				tokenType: QTK_EOF,
+				tokenType: QtkEOF,
 				startPos: QueryScannerPos{
 					line: 1,
 					col:  1,
@@ -43,7 +43,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "AuthorName",
 			expectedToken: QueryToken{
-				tokenType: QTK_IDENTIFIER,
+				tokenType: QtkIdentifier,
 				value:     "AuthorName",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -58,7 +58,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "1234",
 			expectedToken: QueryToken{
-				tokenType: QTK_NUMBER,
+				tokenType: QtkNumber,
 				value:     "1234",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -73,7 +73,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "12.34",
 			expectedToken: QueryToken{
-				tokenType: QTK_NUMBER,
+				tokenType: QtkNumber,
 				value:     "12.34",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -88,7 +88,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: ".1234",
 			expectedToken: QueryToken{
-				tokenType: QTK_NUMBER,
+				tokenType: QtkNumber,
 				value:     ".1234",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -103,7 +103,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "-1234",
 			expectedToken: QueryToken{
-				tokenType: QTK_NUMBER,
+				tokenType: QtkNumber,
 				value:     "-1234",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -118,7 +118,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "-12.34",
 			expectedToken: QueryToken{
-				tokenType: QTK_NUMBER,
+				tokenType: QtkNumber,
 				value:     "-12.34",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -133,7 +133,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "-.1234",
 			expectedToken: QueryToken{
-				tokenType: QTK_NUMBER,
+				tokenType: QtkNumber,
 				value:     "-.1234",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -148,7 +148,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "12.3.4",
 			expectedToken: QueryToken{
-				tokenType: QTK_INVALID,
+				tokenType: QtkInvalid,
 				value:     "12.3.",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -164,7 +164,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "-1234-",
 			expectedToken: QueryToken{
-				tokenType: QTK_INVALID,
+				tokenType: QtkInvalid,
 				value:     "-1234-",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -180,7 +180,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "\"Bug fix\"",
 			expectedToken: QueryToken{
-				tokenType: QTK_STRING,
+				tokenType: QtkString,
 				value:     "Bug fix",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -195,7 +195,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "\"\\tBug\\n\\tfix\"",
 			expectedToken: QueryToken{
-				tokenType: QTK_STRING,
+				tokenType: QtkString,
 				value:     "\tBug\n\tfix",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -210,7 +210,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "\"Unterminated string",
 			expectedToken: QueryToken{
-				tokenType: QTK_INVALID,
+				tokenType: QtkInvalid,
 				value:     "\"Unterminated string",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -226,7 +226,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "AND",
 			expectedToken: QueryToken{
-				tokenType: QTK_AND,
+				tokenType: QtkAnd,
 				value:     "AND",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -241,7 +241,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "OR",
 			expectedToken: QueryToken{
-				tokenType: QTK_OR,
+				tokenType: QtkOr,
 				value:     "OR",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -256,7 +256,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "NOT",
 			expectedToken: QueryToken{
-				tokenType: QTK_NOT,
+				tokenType: QtkNot,
 				value:     "NOT",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -271,7 +271,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "=",
 			expectedToken: QueryToken{
-				tokenType: QTK_CMP_EQ,
+				tokenType: QtkCmpEq,
 				value:     "=",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -286,7 +286,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "!=",
 			expectedToken: QueryToken{
-				tokenType: QTK_CMP_NE,
+				tokenType: QtkCmpNe,
 				value:     "!=",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -301,7 +301,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "!>",
 			expectedToken: QueryToken{
-				tokenType: QTK_INVALID,
+				tokenType: QtkInvalid,
 				value:     "!>",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -317,7 +317,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: ">",
 			expectedToken: QueryToken{
-				tokenType: QTK_CMP_GT,
+				tokenType: QtkCmpGt,
 				value:     ">",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -332,7 +332,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: ">=",
 			expectedToken: QueryToken{
-				tokenType: QTK_CMP_GE,
+				tokenType: QtkCmpGe,
 				value:     ">=",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -347,7 +347,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "<",
 			expectedToken: QueryToken{
-				tokenType: QTK_CMP_LT,
+				tokenType: QtkCmpLt,
 				value:     "<",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -362,7 +362,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "<=",
 			expectedToken: QueryToken{
-				tokenType: QTK_CMP_LE,
+				tokenType: QtkCmpLe,
 				value:     "<=",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -377,7 +377,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "(",
 			expectedToken: QueryToken{
-				tokenType: QTK_LPAREN,
+				tokenType: QtkLparen,
 				value:     "(",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -392,7 +392,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: ")",
 			expectedToken: QueryToken{
-				tokenType: QTK_RPAREN,
+				tokenType: QtkRparen,
 				value:     ")",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -407,7 +407,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "GLOB",
 			expectedToken: QueryToken{
-				tokenType: QTK_CMP_GLOB,
+				tokenType: QtkCmpGlob,
 				value:     "GLOB",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -422,7 +422,7 @@ func TestScanSingleQueryToken(t *testing.T) {
 		{
 			input: "REGEXP",
 			expectedToken: QueryToken{
-				tokenType: QTK_CMP_REGEXP,
+				tokenType: QtkCmpRegexp,
 				value:     "REGEXP",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -456,7 +456,7 @@ func TestOperatorsAreCaseInsensitive(t *testing.T) {
 		{
 			input: "and",
 			expectedToken: QueryToken{
-				tokenType: QTK_AND,
+				tokenType: QtkAnd,
 				value:     "and",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -471,7 +471,7 @@ func TestOperatorsAreCaseInsensitive(t *testing.T) {
 		{
 			input: "Or",
 			expectedToken: QueryToken{
-				tokenType: QTK_OR,
+				tokenType: QtkOr,
 				value:     "Or",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -486,7 +486,7 @@ func TestOperatorsAreCaseInsensitive(t *testing.T) {
 		{
 			input: "nOT",
 			expectedToken: QueryToken{
-				tokenType: QTK_NOT,
+				tokenType: QtkNot,
 				value:     "nOT",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -501,7 +501,7 @@ func TestOperatorsAreCaseInsensitive(t *testing.T) {
 		{
 			input: "GlOb",
 			expectedToken: QueryToken{
-				tokenType: QTK_CMP_GLOB,
+				tokenType: QtkCmpGlob,
 				value:     "GlOb",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -516,7 +516,7 @@ func TestOperatorsAreCaseInsensitive(t *testing.T) {
 		{
 			input: "ReGeXp",
 			expectedToken: QueryToken{
-				tokenType: QTK_CMP_REGEXP,
+				tokenType: QtkCmpRegexp,
 				value:     "ReGeXp",
 				startPos: QueryScannerPos{
 					line: 1,
@@ -550,8 +550,8 @@ func TestScanMultipleTokens(t *testing.T) {
 		{
 			input: "authorName=\"John Smith\"",
 			expectedTokens: []QueryToken{
-				QueryToken{
-					tokenType: QTK_IDENTIFIER,
+				{
+					tokenType: QtkIdentifier,
 					value:     "authorName",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -562,8 +562,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  10,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_CMP_EQ,
+				{
+					tokenType: QtkCmpEq,
 					value:     "=",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -574,8 +574,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  11,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_STRING,
+				{
+					tokenType: QtkString,
 					value:     "John Smith",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -586,8 +586,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  23,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_EOF,
+				{
+					tokenType: QtkEOF,
 					startPos: QueryScannerPos{
 						line: 1,
 						col:  23,
@@ -602,8 +602,8 @@ func TestScanMultipleTokens(t *testing.T) {
 		{
 			input: "authorDate >= \"2017-07-02 00:00:00\" AND (authorName = \"John Smith\" OR committerName = \"John Smith\")",
 			expectedTokens: []QueryToken{
-				QueryToken{
-					tokenType: QTK_IDENTIFIER,
+				{
+					tokenType: QtkIdentifier,
 					value:     "authorDate",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -614,8 +614,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  10,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_WHITE_SPACE,
+				{
+					tokenType: QtkWhiteSpace,
 					value:     " ",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -626,8 +626,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  11,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_CMP_GE,
+				{
+					tokenType: QtkCmpGe,
 					value:     ">=",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -638,8 +638,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  13,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_WHITE_SPACE,
+				{
+					tokenType: QtkWhiteSpace,
 					value:     " ",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -650,8 +650,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  14,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_STRING,
+				{
+					tokenType: QtkString,
 					value:     "2017-07-02 00:00:00",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -662,8 +662,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  35,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_WHITE_SPACE,
+				{
+					tokenType: QtkWhiteSpace,
 					value:     " ",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -674,8 +674,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  36,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_AND,
+				{
+					tokenType: QtkAnd,
 					value:     "AND",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -686,8 +686,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  39,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_WHITE_SPACE,
+				{
+					tokenType: QtkWhiteSpace,
 					value:     " ",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -698,8 +698,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  40,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_LPAREN,
+				{
+					tokenType: QtkLparen,
 					value:     "(",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -710,8 +710,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  41,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_IDENTIFIER,
+				{
+					tokenType: QtkIdentifier,
 					value:     "authorName",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -722,8 +722,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  51,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_WHITE_SPACE,
+				{
+					tokenType: QtkWhiteSpace,
 					value:     " ",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -734,8 +734,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  52,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_CMP_EQ,
+				{
+					tokenType: QtkCmpEq,
 					value:     "=",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -746,8 +746,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  53,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_WHITE_SPACE,
+				{
+					tokenType: QtkWhiteSpace,
 					value:     " ",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -758,8 +758,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  54,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_STRING,
+				{
+					tokenType: QtkString,
 					value:     "John Smith",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -770,8 +770,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  66,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_WHITE_SPACE,
+				{
+					tokenType: QtkWhiteSpace,
 					value:     " ",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -782,8 +782,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  67,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_OR,
+				{
+					tokenType: QtkOr,
 					value:     "OR",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -794,8 +794,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  69,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_WHITE_SPACE,
+				{
+					tokenType: QtkWhiteSpace,
 					value:     " ",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -806,8 +806,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  70,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_IDENTIFIER,
+				{
+					tokenType: QtkIdentifier,
 					value:     "committerName",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -818,8 +818,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  83,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_WHITE_SPACE,
+				{
+					tokenType: QtkWhiteSpace,
 					value:     " ",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -830,8 +830,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  84,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_CMP_EQ,
+				{
+					tokenType: QtkCmpEq,
 					value:     "=",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -842,8 +842,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  85,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_WHITE_SPACE,
+				{
+					tokenType: QtkWhiteSpace,
 					value:     " ",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -854,8 +854,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  86,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_STRING,
+				{
+					tokenType: QtkString,
 					value:     "John Smith",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -866,8 +866,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  98,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_RPAREN,
+				{
+					tokenType: QtkRparen,
 					value:     ")",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -878,8 +878,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  99,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_EOF,
+				{
+					tokenType: QtkEOF,
 					startPos: QueryScannerPos{
 						line: 1,
 						col:  99,
@@ -894,8 +894,8 @@ func TestScanMultipleTokens(t *testing.T) {
 		{
 			input: "authorName GLOB \"%John%\"",
 			expectedTokens: []QueryToken{
-				QueryToken{
-					tokenType: QTK_IDENTIFIER,
+				{
+					tokenType: QtkIdentifier,
 					value:     "authorName",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -906,8 +906,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  10,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_WHITE_SPACE,
+				{
+					tokenType: QtkWhiteSpace,
 					value:     " ",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -918,8 +918,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  11,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_CMP_GLOB,
+				{
+					tokenType: QtkCmpGlob,
 					value:     "GLOB",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -930,8 +930,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  15,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_WHITE_SPACE,
+				{
+					tokenType: QtkWhiteSpace,
 					value:     " ",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -942,8 +942,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  16,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_STRING,
+				{
+					tokenType: QtkString,
 					value:     "%John%",
 					startPos: QueryScannerPos{
 						line: 1,
@@ -954,8 +954,8 @@ func TestScanMultipleTokens(t *testing.T) {
 						col:  24,
 					},
 				},
-				QueryToken{
-					tokenType: QTK_EOF,
+				{
+					tokenType: QtkEOF,
 					startPos: QueryScannerPos{
 						line: 1,
 						col:  24,

@@ -13,13 +13,13 @@ type TestFieldTypeDescriptor struct{}
 func (testFieldTypeDescriptor *TestFieldTypeDescriptor) FieldType(fieldName string) (fieldType FieldType, fieldExists bool) {
 	switch fieldName {
 	case "AuthorName", "CommitterName", "Summary":
-		fieldType = FT_STRING
+		fieldType = FtString
 		fieldExists = true
 	case "AuthorDate", "CommitterDate":
-		fieldType = FT_DATE
+		fieldType = FtDate
 		fieldExists = true
 	case "ParentCount":
-		fieldType = FT_NUMBER
+		fieldType = FtNumber
 		fieldExists = true
 	}
 
@@ -51,7 +51,7 @@ func TestDateStringsAreConvertedToDateLiteralsInDateFieldContext(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "=",
-						tokenType: QTK_CMP_EQ,
+						tokenType: QtkCmpEq,
 					},
 				},
 				lhs: &Identifier{
@@ -69,7 +69,7 @@ func TestDateStringsAreConvertedToDateLiteralsInDateFieldContext(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "=",
-						tokenType: QTK_CMP_EQ,
+						tokenType: QtkCmpEq,
 					},
 				},
 				lhs: &Identifier{
@@ -87,14 +87,14 @@ func TestDateStringsAreConvertedToDateLiteralsInDateFieldContext(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "NOT",
-						tokenType: QTK_NOT,
+						tokenType: QtkNot,
 					},
 				},
 				expression: &BinaryExpression{
 					operator: &Operator{
 						operator: &QueryToken{
 							value:     "=",
-							tokenType: QTK_CMP_EQ,
+							tokenType: QtkCmpEq,
 						},
 					},
 					lhs: &Identifier{
@@ -113,14 +113,14 @@ func TestDateStringsAreConvertedToDateLiteralsInDateFieldContext(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "NOT",
-						tokenType: QTK_NOT,
+						tokenType: QtkNot,
 					},
 				},
 				expression: &BinaryExpression{
 					operator: &Operator{
 						operator: &QueryToken{
 							value:     "=",
-							tokenType: QTK_CMP_EQ,
+							tokenType: QtkCmpEq,
 						},
 					},
 					lhs: &Identifier{
@@ -139,14 +139,14 @@ func TestDateStringsAreConvertedToDateLiteralsInDateFieldContext(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "AND",
-						tokenType: QTK_AND,
+						tokenType: QtkAnd,
 					},
 				},
 				lhs: &BinaryExpression{
 					operator: &Operator{
 						operator: &QueryToken{
 							value:     "=",
-							tokenType: QTK_CMP_EQ,
+							tokenType: QtkCmpEq,
 						},
 					},
 					lhs: &Identifier{
@@ -165,14 +165,14 @@ func TestDateStringsAreConvertedToDateLiteralsInDateFieldContext(t *testing.T) {
 						operator: &Operator{
 							operator: &QueryToken{
 								value:     "OR",
-								tokenType: QTK_OR,
+								tokenType: QtkOr,
 							},
 						},
 						lhs: &BinaryExpression{
 							operator: &Operator{
 								operator: &QueryToken{
 									value:     "<=",
-									tokenType: QTK_CMP_LE,
+									tokenType: QtkCmpLe,
 								},
 							},
 							lhs: &Identifier{
@@ -190,7 +190,7 @@ func TestDateStringsAreConvertedToDateLiteralsInDateFieldContext(t *testing.T) {
 							operator: &Operator{
 								operator: &QueryToken{
 									value:     ">=",
-									tokenType: QTK_CMP_GE,
+									tokenType: QtkCmpGe,
 								},
 							},
 							lhs: &Identifier{
@@ -211,14 +211,14 @@ func TestDateStringsAreConvertedToDateLiteralsInDateFieldContext(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "AND",
-						tokenType: QTK_AND,
+						tokenType: QtkAnd,
 					},
 				},
 				lhs: &BinaryExpression{
 					operator: &Operator{
 						operator: &QueryToken{
 							value:     "=",
-							tokenType: QTK_CMP_EQ,
+							tokenType: QtkCmpEq,
 						},
 					},
 					lhs: &Identifier{
@@ -237,14 +237,14 @@ func TestDateStringsAreConvertedToDateLiteralsInDateFieldContext(t *testing.T) {
 						operator: &Operator{
 							operator: &QueryToken{
 								value:     "OR",
-								tokenType: QTK_OR,
+								tokenType: QtkOr,
 							},
 						},
 						lhs: &BinaryExpression{
 							operator: &Operator{
 								operator: &QueryToken{
 									value:     "<=",
-									tokenType: QTK_CMP_LE,
+									tokenType: QtkCmpLe,
 								},
 							},
 							lhs: &Identifier{
@@ -260,7 +260,7 @@ func TestDateStringsAreConvertedToDateLiteralsInDateFieldContext(t *testing.T) {
 							operator: &Operator{
 								operator: &QueryToken{
 									value:     ">=",
-									tokenType: QTK_CMP_GE,
+									tokenType: QtkCmpGe,
 								},
 							},
 							lhs: &Identifier{
@@ -303,7 +303,7 @@ func TestGlobStringsAreConvertedToGlobLiteralsInGlobFieldContext(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "GLOB",
-						tokenType: QTK_CMP_GLOB,
+						tokenType: QtkCmpGlob,
 					},
 				},
 				lhs: &Identifier{
@@ -321,7 +321,7 @@ func TestGlobStringsAreConvertedToGlobLiteralsInGlobFieldContext(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "GLOB",
-						tokenType: QTK_CMP_GLOB,
+						tokenType: QtkCmpGlob,
 					},
 				},
 				lhs: &Identifier{
@@ -363,7 +363,7 @@ func TestRegexStringsAreConvertedToRegexLiteralsInRegexFieldContext(t *testing.T
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "REGEXP",
-						tokenType: QTK_CMP_REGEXP,
+						tokenType: QtkCmpRegexp,
 					},
 				},
 				lhs: &Identifier{
@@ -381,7 +381,7 @@ func TestRegexStringsAreConvertedToRegexLiteralsInRegexFieldContext(t *testing.T
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "REGEXP",
-						tokenType: QTK_CMP_REGEXP,
+						tokenType: QtkCmpRegexp,
 					},
 				},
 				lhs: &Identifier{
@@ -421,7 +421,7 @@ func TestExpressionsAreValid(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "=",
-						tokenType: QTK_CMP_EQ,
+						tokenType: QtkCmpEq,
 					},
 				},
 				lhs: &Identifier{
@@ -441,7 +441,7 @@ func TestExpressionsAreValid(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "AND",
-						tokenType: QTK_AND,
+						tokenType: QtkAnd,
 						startPos: QueryScannerPos{
 							line: 1,
 							col:  10,
@@ -457,7 +457,7 @@ func TestExpressionsAreValid(t *testing.T) {
 					operator: &Operator{
 						operator: &QueryToken{
 							value:     "=",
-							tokenType: QTK_CMP_EQ,
+							tokenType: QtkCmpEq,
 						},
 					},
 					lhs: &Identifier{
@@ -481,7 +481,7 @@ func TestExpressionsAreValid(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "=",
-						tokenType: QTK_CMP_EQ,
+						tokenType: QtkCmpEq,
 						startPos: QueryScannerPos{
 							line: 1,
 							col:  5,
@@ -515,7 +515,7 @@ func TestExpressionsAreValid(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "=",
-						tokenType: QTK_CMP_EQ,
+						tokenType: QtkCmpEq,
 						startPos: QueryScannerPos{
 							line: 1,
 							col:  8,
@@ -542,7 +542,7 @@ func TestExpressionsAreValid(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "=",
-						tokenType: QTK_CMP_EQ,
+						tokenType: QtkCmpEq,
 						startPos: QueryScannerPos{
 							line: 1,
 							col:  15,
@@ -573,7 +573,7 @@ func TestExpressionsAreValid(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "GLOB",
-						tokenType: QTK_CMP_GLOB,
+						tokenType: QtkCmpGlob,
 						startPos: QueryScannerPos{
 							line: 1,
 							col:  15,
@@ -604,7 +604,7 @@ func TestExpressionsAreValid(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "REGEXP",
-						tokenType: QTK_CMP_REGEXP,
+						tokenType: QtkCmpRegexp,
 						startPos: QueryScannerPos{
 							line: 1,
 							col:  15,
@@ -635,7 +635,7 @@ func TestExpressionsAreValid(t *testing.T) {
 				operator: &Operator{
 					operator: &QueryToken{
 						value:     "NOT",
-						tokenType: QTK_NOT,
+						tokenType: QtkNot,
 						startPos: QueryScannerPos{
 							line: 1,
 							col:  18,

@@ -3,30 +3,31 @@ package main
 import (
 	"bytes"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path"
 	"runtime"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
-	LOG_LOGRUS_REPO      = "github.com/Sirupsen/logrus"
-	LOG_FILE_DATE_FORMAT = "2006-01-02 15:04:05.000-0700"
+	logLogrusRepo     = "github.com/Sirupsen/logrus"
+	logFileDateFormat = "2006-01-02 15:04:05.000-0700"
 )
 
-type FileHook struct{}
+type fileHook struct{}
 
-func (fileHook FileHook) Fire(entry *log.Entry) (err error) {
-	pc := make([]uintptr, 5, 5)
+func (hook fileHook) Fire(entry *log.Entry) (err error) {
+	pc := make([]uintptr, 5)
 	cnt := runtime.Callers(6, pc)
 
 	for i := 0; i < cnt; i++ {
 		fu := runtime.FuncForPC(pc[i] - 1)
 		name := fu.Name()
 
-		if !strings.Contains(name, LOG_LOGRUS_REPO) {
+		if !strings.Contains(name, logLogrusRepo) {
 			file, line := fu.FileLine(pc[i] - 1)
 			entry.Data["file"] = fmt.Sprintf("%v:%v", path.Base(file), line)
 			break
@@ -36,19 +37,19 @@ func (fileHook FileHook) Fire(entry *log.Entry) (err error) {
 	return
 }
 
-func (fileHook FileHook) Levels() []log.Level {
+func (hook fileHook) Levels() []log.Level {
 	return log.AllLevels
 }
 
-type LogFormatter struct{}
+type logFormatter struct{}
 
-func (logFormatter LogFormatter) Format(entry *log.Entry) ([]byte, error) {
+func (formatter logFormatter) Format(entry *log.Entry) ([]byte, error) {
 	var buffer bytes.Buffer
 	file, _ := entry.Data["file"].(string)
 
-	logFormatter.formatBracketEntry(&buffer, entry.Time.Format(LOG_FILE_DATE_FORMAT))
-	logFormatter.formatBracketEntry(&buffer, strings.ToUpper(entry.Level.String()))
-	logFormatter.formatBracketEntry(&buffer, file)
+	formatter.formatBracketEntry(&buffer, entry.Time.Format(logFileDateFormat))
+	formatter.formatBracketEntry(&buffer, strings.ToUpper(entry.Level.String()))
+	formatter.formatBracketEntry(&buffer, file)
 
 	buffer.WriteString("- ")
 
@@ -57,7 +58,7 @@ func (logFormatter LogFormatter) Format(entry *log.Entry) ([]byte, error) {
 		case char == '\n':
 			buffer.WriteString("\\n")
 		case char < 32 || char == 127:
-			buffer.WriteString(nonPrintableCharString(char))
+			buffer.WriteString(NonPrintableCharString(char))
 		default:
 			buffer.WriteRune(char)
 		}
@@ -68,14 +69,15 @@ func (logFormatter LogFormatter) Format(entry *log.Entry) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (logFormatter LogFormatter) formatBracketEntry(buffer *bytes.Buffer, value string) {
+func (formatter logFormatter) formatBracketEntry(buffer *bytes.Buffer, value string) {
 	buffer.WriteRune('[')
 	buffer.WriteString(value)
 	buffer.WriteString("] ")
 }
 
+// InitialiseLogging sets up logging
 func InitialiseLogging(logLevel, logFilePath string) {
-	if logLevel == MN_LOG_LEVEL_DEFAULT {
+	if logLevel == MnLogLevelDefault {
 		log.SetOutput(ioutil.Discard)
 		return
 	}
@@ -102,7 +104,7 @@ func InitialiseLogging(logLevel, logFilePath string) {
 
 	log.SetOutput(file)
 
-	log.SetFormatter(LogFormatter{})
+	log.SetFormatter(logFormatter{})
 
-	log.AddHook(FileHook{})
+	log.AddHook(fileHook{})
 }

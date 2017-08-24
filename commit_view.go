@@ -3,66 +3,70 @@ package main
 import (
 	"bytes"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"sync"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
-	CV_LOAD_REFRESH_MS = 500
-	CV_COLUMN_NUM      = 4
-	CV_DATE_FORMAT     = "2006-01-02 15:04"
+	cvLoadRefreshMs = 500
+	cvColumnNum     = 4
+	cvDateFormat    = "2006-01-02 15:04"
 )
 
-type CommitViewHandler func(*CommitView, Action) error
+type commitViewHandler func(*CommitView, Action) error
 
-type LoadingCommitsRefreshTask struct {
+type loadingCommitsRefreshTask struct {
 	refreshRate time.Duration
 	ticker      *time.Ticker
 	channels    *Channels
 	cancelCh    chan<- bool
 }
 
-type CommitListener interface {
-	OnCommitSelect(*Commit) error
-}
-
-type RefViewData struct {
+type referenceViewData struct {
 	viewPos        *ViewPos
 	tableFormatter *TableFormatter
 }
 
+// CommitListener is notified when a commit is selected
+type CommitListener interface {
+	OnCommitSelect(*Commit) error
+}
+
+// CommitView is the overall instance representing the commit view
 type CommitView struct {
 	channels        *Channels
 	repoData        RepoData
 	activeRef       *Oid
 	activeRefName   string
 	active          bool
-	refViewData     map[*Oid]*RefViewData
-	handlers        map[ActionType]CommitViewHandler
-	refreshTask     *LoadingCommitsRefreshTask
+	refViewData     map[*Oid]*referenceViewData
+	handlers        map[ActionType]commitViewHandler
+	refreshTask     *loadingCommitsRefreshTask
 	commitListeners []CommitListener
 	viewDimension   ViewDimension
 	viewSearch      *ViewSearch
 	lock            sync.Mutex
 }
 
+// NewCommitView creates a new instance of the commit view
 func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 	commitView := &CommitView{
 		channels:    channels,
 		repoData:    repoData,
-		refViewData: make(map[*Oid]*RefViewData),
-		handlers: map[ActionType]CommitViewHandler{
-			ACTION_PREV_LINE:     MoveUpCommit,
-			ACTION_NEXT_LINE:     MoveDownCommit,
-			ACTION_PREV_PAGE:     MoveUpCommitPage,
-			ACTION_NEXT_PAGE:     MoveDownCommitPage,
-			ACTION_SCROLL_RIGHT:  ScrollCommitViewRight,
-			ACTION_SCROLL_LEFT:   ScrollCommitViewLeft,
-			ACTION_FIRST_LINE:    MoveToFirstCommit,
-			ACTION_LAST_LINE:     MoveToLastCommit,
-			ACTION_ADD_FILTER:    AddCommitFilter,
-			ACTION_REMOVE_FILTER: RemoveCommitFilter,
+		refViewData: make(map[*Oid]*referenceViewData),
+		handlers: map[ActionType]commitViewHandler{
+			ActionPrevLine:     moveUpCommit,
+			ActionNextLine:     moveDownCommit,
+			ActionPrevPage:     moveUpCommitPage,
+			ActionNextPage:     moveDownCommitPage,
+			ActionScrollRight:  scrollCommitViewRight,
+			ActionScrollLeft:   scrollCommitViewLeft,
+			ActionFirstLine:    moveToFirstCommit,
+			ActionLastLine:     moveToLastCommit,
+			ActionAddFilter:    addCommitFilter,
+			ActionRemoveFilter: removeCommitFilter,
 		},
 	}
 
@@ -71,11 +75,13 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 	return commitView
 }
 
+// Initialise currently does nothing
 func (commitView *CommitView) Initialise() (err error) {
 	log.Info("Initialising CommitView")
 	return
 }
 
+// Render generates and draws the commit view to the provided window
 func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	log.Debug("Rendering CommitView")
 	commitView.lock.Lock()
@@ -123,7 +129,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		}
 	}
 
-	if err = win.SetTitle(CMP_COMMITVIEW_TITLE, "Commits for %v", commitView.activeRefName); err != nil {
+	if err = win.SetTitle(CmpCommitviewTitle, "Commits for %v", commitView.activeRefName); err != nil {
 		return
 	}
 
@@ -149,12 +155,12 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		footerText.WriteString(fmt.Sprintf(" (%v filter%v applied)", commitSetState.filterState.filtersApplied, filtersTextSuffix))
 	}
 
-	if err = win.SetFooter(CMP_COMMITVIEW_FOOTER, "%v", footerText.String()); err != nil {
+	if err = win.SetFooter(CmpCommitviewFooter, "%v", footerText.String()); err != nil {
 		return
 	}
 
 	if searchActive, searchPattern, lastSearchFoundMatch := commitView.viewSearch.SearchActive(); searchActive && lastSearchFoundMatch {
-		if err = win.Highlight(searchPattern, CMP_ALLVIEW_SEARCH_MATCH); err != nil {
+		if err = win.Highlight(searchPattern, CmpAllviewSearchMatch); err != nil {
 			return
 		}
 	}
@@ -167,24 +173,24 @@ func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIn
 	commitRefs := commitView.repoData.RefsForCommit(commit)
 	colIndex := uint(0)
 
-	if err = tableFormatter.SetCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_SHORT_OID, "%v", commit.oid.ShortId()); err != nil {
+	if err = tableFormatter.SetCellWithStyle(rowIndex, colIndex, CmpCommitviewShortOid, "%v", commit.oid.ShortID()); err != nil {
 		return
 	}
 
 	colIndex++
-	if err = tableFormatter.SetCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_DATE, "%v", author.When.Format(CV_DATE_FORMAT)); err != nil {
+	if err = tableFormatter.SetCellWithStyle(rowIndex, colIndex, CmpCommitviewDate, "%v", author.When.Format(cvDateFormat)); err != nil {
 		return
 	}
 
 	colIndex++
-	if err = tableFormatter.SetCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_AUTHOR, "%v", author.Name); err != nil {
+	if err = tableFormatter.SetCellWithStyle(rowIndex, colIndex, CmpCommitviewAuthor, "%v", author.Name); err != nil {
 		return
 	}
 
 	colIndex++
 	if len(commitRefs.tags) > 0 {
 		for _, tag := range commitRefs.tags {
-			if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_TAG, "<%v>", tag.name); err != nil {
+			if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CmpCommitviewTag, "<%v>", tag.name); err != nil {
 				return
 			}
 
@@ -197,11 +203,11 @@ func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIn
 	if len(commitRefs.branches) > 0 {
 		for _, branch := range commitRefs.branches {
 			if branch.isRemote {
-				if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_LOCAL_BRANCH, "{%v}", branch.name); err != nil {
+				if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CmpCommitviewLocalBranch, "{%v}", branch.name); err != nil {
 					return
 				}
 			} else {
-				if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_REMOTE_BRANCH, "[%v]", branch.name); err != nil {
+				if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CmpCommitviewRemoteBranch, "[%v]", branch.name); err != nil {
 					return
 				}
 			}
@@ -212,34 +218,36 @@ func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIn
 		}
 	}
 
-	if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CMP_COMMITVIEW_SUMMARY, "%v", commit.commit.Summary()); err != nil {
+	if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CmpCommitviewSummary, "%v", commit.commit.Summary()); err != nil {
 		return
 	}
 
 	return
 }
 
+// RenderStatusBar does nothing
 func (commitView *CommitView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
+// RenderHelpBar shows key bindings custom to the commit view
 func (commitView *CommitView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
-	RenderKeyBindingHelp(commitView.ViewId(), lineBuilder, []ActionMessage{
-		ActionMessage{action: ACTION_FILTER_PROMPT, message: "Add Filter"},
-		ActionMessage{action: ACTION_REMOVE_FILTER, message: "Remove Filter"},
+	RenderKeyBindingHelp(commitView.ViewID(), lineBuilder, []ActionMessage{
+		{action: ActionFilterPrompt, message: "Add Filter"},
+		{action: ActionRemoveFilter, message: "Remove Filter"},
 	})
 
 	return
 }
 
-func NewLoadingCommitsRefreshTask(refreshRate time.Duration, channels *Channels) *LoadingCommitsRefreshTask {
-	return &LoadingCommitsRefreshTask{
+func newLoadingCommitsRefreshTask(refreshRate time.Duration, channels *Channels) *loadingCommitsRefreshTask {
+	return &loadingCommitsRefreshTask{
 		refreshRate: refreshRate,
 		channels:    channels,
 	}
 }
 
-func (refreshTask *LoadingCommitsRefreshTask) Start() {
+func (refreshTask *loadingCommitsRefreshTask) start() {
 	refreshTask.ticker = time.NewTicker(refreshTask.refreshRate)
 	cancelCh := make(chan bool)
 	refreshTask.cancelCh = cancelCh
@@ -258,7 +266,7 @@ func (refreshTask *LoadingCommitsRefreshTask) Start() {
 	}(cancelCh)
 }
 
-func (refreshTask *LoadingCommitsRefreshTask) Stop() {
+func (refreshTask *loadingCommitsRefreshTask) stop() {
 	if refreshTask.ticker != nil {
 		refreshTask.ticker.Stop()
 		refreshTask.cancelCh <- true
@@ -267,23 +275,24 @@ func (refreshTask *LoadingCommitsRefreshTask) Stop() {
 	}
 }
 
+// OnRefSelect handles a new ref being selected and fetches/loads the relevant commits to display
 func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) {
 	log.Debugf("CommitView loading commits for selected oid %v", oid)
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
 	if commitView.refreshTask != nil {
-		commitView.refreshTask.Stop()
+		commitView.refreshTask.stop()
 	}
 
-	refreshTask := NewLoadingCommitsRefreshTask(time.Millisecond*CV_LOAD_REFRESH_MS, commitView.channels)
+	refreshTask := newLoadingCommitsRefreshTask(time.Millisecond*cvLoadRefreshMs, commitView.channels)
 	commitView.refreshTask = refreshTask
 
 	if err = commitView.repoData.LoadCommits(oid, func(oid *Oid) error {
 		commitView.lock.Lock()
 		defer commitView.lock.Unlock()
 
-		refreshTask.Stop()
+		refreshTask.stop()
 
 		commitSetState := commitView.repoData.CommitSetState(oid)
 		commitView.channels.ReportStatus("Loaded %v commits for ref %v", commitSetState.commitNum, refName)
@@ -298,9 +307,9 @@ func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) 
 
 	refViewData, refViewDataExists := commitView.refViewData[oid]
 	if !refViewDataExists {
-		refViewData = &RefViewData{
+		refViewData = &referenceViewData{
 			viewPos:        NewViewPos(),
-			tableFormatter: NewTableFormatter(CV_COLUMN_NUM),
+			tableFormatter: NewTableFormatter(cvColumnNum),
 		}
 
 		commitView.refViewData[oid] = refViewData
@@ -309,10 +318,10 @@ func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) 
 	commitSetState := commitView.repoData.CommitSetState(oid)
 
 	if commitSetState.loading {
-		commitView.refreshTask.Start()
+		commitView.refreshTask.start()
 		commitView.channels.ReportStatus("Loading commits for ref %v", refName)
 	} else {
-		commitView.refreshTask.Stop()
+		commitView.refreshTask.stop()
 	}
 
 	var commit *Commit
@@ -332,6 +341,7 @@ func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) 
 	return
 }
 
+// OnActiveChange updates whether this view is currently active
 func (commitView *CommitView) OnActiveChange(active bool) {
 	log.Debugf("CommitView active: %v", active)
 	commitView.lock.Lock()
@@ -340,24 +350,24 @@ func (commitView *CommitView) OnActiveChange(active bool) {
 	commitView.active = active
 }
 
-func (commitView *CommitView) ViewId() ViewId {
-	return VIEW_COMMIT
+// ViewID returns the ViewID for the commit view
+func (commitView *CommitView) ViewID() ViewID {
+	return ViewCommit
 }
 
+// RegisterCommitListner accepts a listener to be notified when a commit is selected
 func (commitView *CommitView) RegisterCommitListner(commitListener CommitListener) {
 	commitView.commitListeners = append(commitView.commitListeners, commitListener)
 }
 
 func (commitView *CommitView) notifyCommitListeners(commit *Commit) {
-	log.Debugf("Notifying commit listners of selected commit %v", commit.commit.Id().String())
+	log.Debugf("Notifying commit listeners of selected commit %v", commit.commit.Id().String())
 
 	for _, commitListener := range commitView.commitListeners {
 		if err := commitListener.OnCommitSelect(commit); err != nil {
 			commitView.channels.ReportError(err)
 		}
 	}
-
-	return
 }
 
 func (commitView *CommitView) selectCommit(commitIndex uint) (err error) {
@@ -381,11 +391,13 @@ func (commitView *CommitView) selectCommit(commitIndex uint) (err error) {
 	return
 }
 
+// ViewPos returns the current view position
 func (commitView *CommitView) ViewPos() *ViewPos {
 	refViewData := commitView.refViewData[commitView.activeRef]
 	return refViewData.viewPos
 }
 
+// OnSearchMatch updates the view position when there is a search match
 func (commitView *CommitView) OnSearchMatch(startPos *ViewPos, matchLineIndex uint) {
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
@@ -400,6 +412,7 @@ func (commitView *CommitView) OnSearchMatch(startPos *ViewPos, matchLineIndex ui
 	viewPos.activeRowIndex = matchLineIndex
 }
 
+// Line returns the rendered line at the index provided
 func (commitView *CommitView) Line(lineIndex uint) (line string, lineExists bool) {
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
@@ -442,6 +455,7 @@ func (commitView *CommitView) Line(lineIndex uint) (line string, lineExists bool
 	return
 }
 
+// LineNumber returns the total number of rendered lines the commit view has
 func (commitView *CommitView) LineNumber() (lineNumber uint) {
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
@@ -450,11 +464,13 @@ func (commitView *CommitView) LineNumber() (lineNumber uint) {
 	return commitSetState.commitNum
 }
 
+// HandleKeyPress does nothing
 func (commitView *CommitView) HandleKeyPress(keystring string) (err error) {
 	log.Debugf("CommitView handling key %v - NOP", keystring)
 	return
 }
 
+// HandleAction checks if commit view supports this action and if it does executes it
 func (commitView *CommitView) HandleAction(action Action) (err error) {
 	log.Debugf("CommitView handling action %v", action)
 	commitView.lock.Lock()
@@ -469,57 +485,65 @@ func (commitView *CommitView) HandleAction(action Action) (err error) {
 	return
 }
 
-func MoveUpCommit(commitView *CommitView, action Action) (err error) {
+func moveUpCommit(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.ViewPos()
 
 	if viewPos.MoveLineUp() {
 		log.Debug("Moving up one commit")
-		commitView.selectCommit(viewPos.activeRowIndex)
+		if err = commitView.selectCommit(viewPos.activeRowIndex); err != nil {
+			return
+		}
 		commitView.channels.UpdateDisplay()
 	}
 
 	return
 }
 
-func MoveDownCommit(commitView *CommitView, action Action) (err error) {
+func moveDownCommit(commitView *CommitView, action Action) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 	viewPos := commitView.ViewPos()
 
 	if viewPos.MoveLineDown(commitSetState.commitNum) {
 		log.Debug("Moving down one commit")
-		commitView.selectCommit(viewPos.activeRowIndex)
+		if err = commitView.selectCommit(viewPos.activeRowIndex); err != nil {
+			return
+		}
 		commitView.channels.UpdateDisplay()
 	}
 
 	return
 }
 
-func MoveUpCommitPage(commitView *CommitView, action Action) (err error) {
+func moveUpCommitPage(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.ViewPos()
 
 	if viewPos.MovePageUp(commitView.viewDimension.rows - 2) {
 		log.Debug("Moving up one page")
-		commitView.selectCommit(viewPos.activeRowIndex)
+		if err = commitView.selectCommit(viewPos.activeRowIndex); err != nil {
+			return
+		}
 		commitView.channels.UpdateDisplay()
 	}
 
 	return
 }
 
-func MoveDownCommitPage(commitView *CommitView, action Action) (err error) {
+func moveDownCommitPage(commitView *CommitView, action Action) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 	viewPos := commitView.ViewPos()
 
 	if viewPos.MovePageDown(commitView.viewDimension.rows-2, commitSetState.commitNum) {
 		log.Debug("Moving down one page")
-		commitView.selectCommit(viewPos.activeRowIndex)
+		if err = commitView.selectCommit(viewPos.activeRowIndex); err != nil {
+			return
+		}
 		commitView.channels.UpdateDisplay()
 	}
 
 	return
 }
 
-func ScrollCommitViewRight(commitView *CommitView, action Action) (err error) {
+func scrollCommitViewRight(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.ViewPos()
 	viewPos.MovePageRight(commitView.viewDimension.cols)
 	log.Debugf("Scrolling right. View starts at column %v", viewPos.viewStartColumn)
@@ -528,7 +552,7 @@ func ScrollCommitViewRight(commitView *CommitView, action Action) (err error) {
 	return
 }
 
-func ScrollCommitViewLeft(commitView *CommitView, action Action) (err error) {
+func scrollCommitViewLeft(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.ViewPos()
 
 	if viewPos.MovePageLeft(commitView.viewDimension.cols) {
@@ -539,32 +563,36 @@ func ScrollCommitViewLeft(commitView *CommitView, action Action) (err error) {
 	return
 }
 
-func MoveToFirstCommit(commitView *CommitView, action Action) (err error) {
+func moveToFirstCommit(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.ViewPos()
 
 	if viewPos.MoveToFirstLine() {
 		log.Debug("Moving up to first commit")
-		commitView.selectCommit(viewPos.activeRowIndex)
+		if err = commitView.selectCommit(viewPos.activeRowIndex); err != nil {
+			return
+		}
 		commitView.channels.UpdateDisplay()
 	}
 
 	return
 }
 
-func MoveToLastCommit(commitView *CommitView, action Action) (err error) {
+func moveToLastCommit(commitView *CommitView, action Action) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 	viewPos := commitView.ViewPos()
 
 	if viewPos.MoveToLastLine(commitSetState.commitNum) {
 		log.Debug("Moving to last commit")
-		commitView.selectCommit(viewPos.activeRowIndex)
+		if err = commitView.selectCommit(viewPos.activeRowIndex); err != nil {
+			return
+		}
 		commitView.channels.UpdateDisplay()
 	}
 
 	return
 }
 
-func AddCommitFilter(commitView *CommitView, action Action) (err error) {
+func addCommitFilter(commitView *CommitView, action Action) (err error) {
 	if !(len(action.Args) > 0) {
 		return fmt.Errorf("Expected filter query argument")
 	}
@@ -586,7 +614,7 @@ func AddCommitFilter(commitView *CommitView, action Action) (err error) {
 	return
 }
 
-func RemoveCommitFilter(commitView *CommitView, action Action) (err error) {
+func removeCommitFilter(commitView *CommitView, action Action) (err error) {
 	err = commitView.repoData.RemoveCommitFilter(commitView.activeRef)
 	commitView.channels.UpdateDisplay()
 

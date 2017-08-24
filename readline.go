@@ -7,10 +7,10 @@ package main
 // #include <readline/readline.h>
 // #include <readline/history.h>
 //
-// extern void grv_readline_update_display(void);
+// extern void grvReadlineUpdateDisplay(void);
 //
 // static void grv_init_readline(void) {
-// 	rl_redisplay_function = grv_readline_update_display;
+// 	rl_redisplay_function = grvReadlineUpdateDisplay;
 //	rl_catch_signals = 0;
 //	rl_catch_sigwinch = 0;
 //	rl_change_environment = 0;
@@ -22,27 +22,29 @@ package main
 import "C"
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"os"
 	"sync"
 	"unsafe"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
-	RL_COMMAND_HISTORY_FILE = "/command_history"
-	RL_SEARCH_HISTORY_FILE  = "/search_history"
-	RL_FILTER_HISTORY_FILE  = "/filter_history"
+	rlCommandHistoryFile = "/command_history"
+	rlSearchHistoryFile  = "/search_history"
+	rlFilterHistoryFile  = "/filter_history"
 )
 
 var historyFilePrompts = map[string]string{
-	PROMPT_TEXT:                RL_COMMAND_HISTORY_FILE,
-	SEARCH_PROMPT_TEXT:         RL_SEARCH_HISTORY_FILE,
-	REVERSE_SEARCH_PROMPT_TEXT: RL_SEARCH_HISTORY_FILE,
-	FILTER_PROMPT_TEXT:         RL_FILTER_HISTORY_FILE,
+	PromptText:              rlCommandHistoryFile,
+	SearchPromptText:        rlSearchHistoryFile,
+	ReverseSearchPromptText: rlSearchHistoryFile,
+	FilterPromptText:        rlFilterHistoryFile,
 }
 
 var readLine ReadLine
 
+// ReadLine is a wrapper around the readline library
 type ReadLine struct {
 	channels       *Channels
 	ui             InputUI
@@ -55,6 +57,7 @@ type ReadLine struct {
 	lock           sync.Mutex
 }
 
+// InitReadLine initialises the readline library
 func InitReadLine(channels *Channels, ui InputUI, config Config) {
 	readLine = ReadLine{
 		channels: channels,
@@ -65,6 +68,7 @@ func InitReadLine(channels *Channels, ui InputUI, config Config) {
 	C.grv_init_readline()
 }
 
+// FreeReadLine flushes any history to disk
 func FreeReadLine() {
 	historyFile, hasHistoryFile := historyFilePrompts[readLine.lastPromptText]
 
@@ -108,6 +112,8 @@ func writeHistoryFile(file string) {
 	C.free(unsafe.Pointer(cHistoryFilePath))
 }
 
+// Prompt shows a readline prompt using prompt text provided
+// User input is returned
 func Prompt(prompt string) string {
 	cPrompt := C.CString(prompt)
 
@@ -124,6 +130,7 @@ func Prompt(prompt string) string {
 	return input
 }
 
+// PromptState returns current prompt properties
 func PromptState() (string, string, int) {
 	readLine.lock.Lock()
 	defer readLine.lock.Unlock()
@@ -131,6 +138,7 @@ func PromptState() (string, string, int) {
 	return readLine.promptText, readLine.promptInput, readLine.promptPoint
 }
 
+// ReadLineActive returns true if the readline prompt is currently displayed
 func ReadLineActive() bool {
 	readLine.lock.Lock()
 	defer readLine.lock.Unlock()
@@ -183,8 +191,8 @@ func readLineAddPromptHistory(prompt string, cInput *C.char) {
 	}
 }
 
-//export grv_readline_update_display
-func grv_readline_update_display() {
+//export grvReadlineUpdateDisplay
+func grvReadlineUpdateDisplay() {
 	readLine.lock.Lock()
 	defer readLine.lock.Unlock()
 

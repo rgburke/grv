@@ -1,10 +1,11 @@
 package main
 
 import (
-	"gopkg.in/libgit2/git2go.v24"
 	"os"
 	"reflect"
 	"testing"
+
+	"gopkg.in/libgit2/git2go.v24"
 )
 
 func TestCommitFieldExistence(t *testing.T) {
@@ -70,39 +71,39 @@ func TestCommitFieldTypes(t *testing.T) {
 	}{
 		{
 			fieldName:         "authorname",
-			expectedFieldType: FT_STRING,
+			expectedFieldType: FtString,
 		},
 		{
 			fieldName:         "authoremail",
-			expectedFieldType: FT_STRING,
+			expectedFieldType: FtString,
 		},
 		{
 			fieldName:         "authordate",
-			expectedFieldType: FT_DATE,
+			expectedFieldType: FtDate,
 		},
 		{
 			fieldName:         "committername",
-			expectedFieldType: FT_STRING,
+			expectedFieldType: FtString,
 		},
 		{
 			fieldName:         "committeremail",
-			expectedFieldType: FT_STRING,
+			expectedFieldType: FtString,
 		},
 		{
 			fieldName:         "committerdate",
-			expectedFieldType: FT_DATE,
+			expectedFieldType: FtDate,
 		},
 		{
 			fieldName:         "id",
-			expectedFieldType: FT_STRING,
+			expectedFieldType: FtString,
 		},
 		{
 			fieldName:         "summary",
-			expectedFieldType: FT_STRING,
+			expectedFieldType: FtString,
 		},
 		{
 			fieldName:         "parentcount",
-			expectedFieldType: FT_NUMBER,
+			expectedFieldType: FtNumber,
 		},
 	}
 
@@ -133,15 +134,15 @@ func TestCommitFieldValuesAreExtracted(t *testing.T) {
 		t.Fatalf("Unable to open repo: %v", err)
 	}
 
-	commitId := "300dc7fd7cf162e89136ad3b1b8b4b7bd7dd13a5"
-	oid, err := git.NewOid(commitId)
+	commitID := "300dc7fd7cf162e89136ad3b1b8b4b7bd7dd13a5"
+	oid, err := git.NewOid(commitID)
 	if err != nil {
-		t.Fatalf("Unable to create oid with Id %v: %v", commitId, err)
+		t.Fatalf("Unable to create oid with Id %v: %v", commitID, err)
 	}
 
 	rawCommit, err := repo.LookupCommit(oid)
 	if err != nil {
-		t.Fatalf("Unable to load commit with Id %v: %v", commitId, err)
+		t.Fatalf("Unable to load commit with Id %v: %v", commitID, err)
 	}
 
 	var commitFieldValueTests = []struct {

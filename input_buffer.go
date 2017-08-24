@@ -4,11 +4,13 @@ import (
 	"strings"
 )
 
+// InputBuffer buffers input and maps it to configured actions or key sequences
 type InputBuffer struct {
 	buffer      []string
 	keyBindings KeyBindings
 }
 
+// NewInputBuffer creates a new input buffer instance
 func NewInputBuffer(keyBindings KeyBindings) *InputBuffer {
 	return &InputBuffer{
 		buffer:      make([]string, 0),
@@ -16,6 +18,7 @@ func NewInputBuffer(keyBindings KeyBindings) *InputBuffer {
 	}
 }
 
+// Append adds new input to the end of the buffer
 func (inputBuffer *InputBuffer) Append(input string) {
 	keys := TokeniseKeys(input)
 	inputBuffer.buffer = append(inputBuffer.buffer, keys...)
@@ -35,6 +38,9 @@ func (inputBuffer *InputBuffer) hasInput() bool {
 	return len(inputBuffer.buffer) > 0
 }
 
+// Process goes through the input in the buffer and attempts to map it to actions or key sequences
+// If no mapping is possible the key sequences on the buffer are returned.
+// If a prefix is matched then the buffer returns NOP so that more input can be appended to it
 func (inputBuffer *InputBuffer) Process(viewHierarchy ViewHierarchy) (action Action, keystring string) {
 	if !inputBuffer.hasInput() {
 		return
@@ -54,11 +60,11 @@ OuterLoop:
 			if len(inputBuffer.buffer) == 0 {
 				inputBuffer.prepend(keyBuffer)
 				return
-			} else {
-				isPrefix = true
 			}
-		case binding.bindingType == BT_ACTION:
-			if binding.actionType != ACTION_NONE {
+
+			isPrefix = true
+		case binding.bindingType == BtAction:
+			if binding.actionType != ActionNone {
 				action = Action{ActionType: binding.actionType}
 			} else if isPrefix {
 				inputBuffer.prepend(keyBuffer[1:])
@@ -66,7 +72,7 @@ OuterLoop:
 			}
 
 			break OuterLoop
-		case binding.bindingType == BT_KEYSTRING:
+		case binding.bindingType == BtKeystring:
 			inputBuffer.prepend(TokeniseKeys(binding.keystring))
 			keyBuffer = keyBuffer[0:0]
 			isPrefix = false

@@ -4,22 +4,27 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	glob "github.com/gobwas/glob"
 	"reflect"
 	"regexp"
 	"strings"
 	"time"
+
+	glob "github.com/gobwas/glob"
 )
 
+// FieldTypeDescriptor provides the type of the provided field (if it exists)
 type FieldTypeDescriptor interface {
 	FieldType(fieldName string) (fieldType FieldType, fieldExists bool)
 }
 
+// ExpressionProcessor takes the query expression that has been parsed and processes it further
+// Type conversion and validation of the expression are performed
 type ExpressionProcessor struct {
 	expression          Expression
 	fieldTypeDescriptor FieldTypeDescriptor
 }
 
+// NewExpressionProcessor creates an expression processor instance for the provided expression
 func NewExpressionProcessor(expression Expression, fieldTypeDescriptor FieldTypeDescriptor) *ExpressionProcessor {
 	return &ExpressionProcessor{
 		expression:          expression,
@@ -27,6 +32,7 @@ func NewExpressionProcessor(expression Expression, fieldTypeDescriptor FieldType
 	}
 }
 
+// Process performs type conversion and validates the expression
 func (expressionProcessor *ExpressionProcessor) Process() (expression Expression, errors []error) {
 	if logicalExpression, ok := expressionProcessor.expression.(LogicalExpression); ok {
 		logicalExpression.ConvertTypes(expressionProcessor.fieldTypeDescriptor)
@@ -40,38 +46,38 @@ func (expressionProcessor *ExpressionProcessor) Process() (expression Expression
 	return
 }
 
-type BinaryOperatorPosition int
+type binaryOperatorPosition int
 
 const (
-	BOP_LEFT = iota
-	BOP_RIGHT
+	bopLeft = iota
+	bopRight
 )
 
-var operatorAllowedOperandTypes = map[QueryTokenType]map[BinaryOperatorPosition]map[FieldType]bool{
-	QTK_CMP_GLOB: map[BinaryOperatorPosition]map[FieldType]bool{
-		BOP_LEFT: map[FieldType]bool{
-			FT_STRING: true,
+var operatorAllowedOperandTypes = map[QueryTokenType]map[binaryOperatorPosition]map[FieldType]bool{
+	QtkCmpGlob: {
+		bopLeft: {
+			FtString: true,
 		},
-		BOP_RIGHT: map[FieldType]bool{
-			FT_GLOB: true,
+		bopRight: {
+			FtGlob: true,
 		},
 	},
-	QTK_CMP_REGEXP: map[BinaryOperatorPosition]map[FieldType]bool{
-		BOP_LEFT: map[FieldType]bool{
-			FT_STRING: true,
+	QtkCmpRegexp: {
+		bopLeft: {
+			FtString: true,
 		},
-		BOP_RIGHT: map[FieldType]bool{
-			FT_REGEX: true,
+		bopRight: {
+			FtRegex: true,
 		},
 	},
 }
 
-func (operator *Operator) IsOperandTypeRestricted() bool {
+func (operator *Operator) isOperandTypeRestricted() bool {
 	_, isRestricted := operatorAllowedOperandTypes[operator.operator.tokenType]
 	return isRestricted
 }
 
-func (operator *Operator) IsValidArgument(operatorPosition BinaryOperatorPosition, operandType FieldType) bool {
+func (operator *Operator) isValidArgument(operatorPosition binaryOperatorPosition, operandType FieldType) bool {
 	allowedOperandTypes, ok := operatorAllowedOperandTypes[operator.operator.tokenType]
 	if !ok {
 		return true
@@ -87,7 +93,7 @@ func (operator *Operator) IsValidArgument(operatorPosition BinaryOperatorPositio
 	return isAllowedType
 }
 
-func (operator *Operator) AllowedTypes(operatorPosition BinaryOperatorPosition) (fieldTypes []FieldType) {
+func (operator *Operator) allowedTypes(operatorPosition binaryOperatorPosition) (fieldTypes []FieldType) {
 	allowedOperandTypes, ok := operatorAllowedOperandTypes[operator.operator.tokenType]
 	if !ok {
 		return
@@ -98,7 +104,7 @@ func (operator *Operator) AllowedTypes(operatorPosition BinaryOperatorPosition) 
 		return
 	}
 
-	for fieldType, _ := range allowedTypes {
+	for fieldType := range allowedTypes {
 		fieldTypes = append(fieldTypes, fieldType)
 	}
 
@@ -106,42 +112,47 @@ func (operator *Operator) AllowedTypes(operatorPosition BinaryOperatorPosition) 
 }
 
 const (
-	QUERY_DATE_FORMAT      = "2006-01-02"
-	QUERY_DATE_TIME_FORMAT = "2006-01-02 15:04:05"
+	queryDateFormat     = "2006-01-02"
+	queryDateTimeFormat = "2006-01-02 15:04:05"
 )
 
 var dateFormatPattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 var dateTimeFormatPattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$`)
 
+// FieldType represents the data type of a field
 type FieldType int
 
+// The set of supported field types
 const (
-	FT_INVALID = iota
-	FT_STRING
-	FT_NUMBER
-	FT_DATE
-	FT_GLOB
-	FT_REGEX
+	FtInvalid = iota
+	FtString
+	FtNumber
+	FtDate
+	FtGlob
+	FtRegex
 )
 
 var fieldTypeNames = map[FieldType]string{
-	FT_INVALID: "Invalid",
-	FT_STRING:  "String",
-	FT_NUMBER:  "Number",
-	FT_DATE:    "Date",
-	FT_GLOB:    "Glob",
-	FT_REGEX:   "Regex",
+	FtInvalid: "Invalid",
+	FtString:  "String",
+	FtNumber:  "Number",
+	FtDate:    "Date",
+	FtGlob:    "Glob",
+	FtRegex:   "Regex",
 }
 
+// TypeDescriptor returns the type of a field or value
 type TypeDescriptor interface {
 	FieldType(fieldTypeDescriptor FieldTypeDescriptor) FieldType
 }
 
+// DateLiteral represents a date value
 type DateLiteral struct {
 	dateTime   time.Time
 	stringTime *QueryToken
 }
 
+// Equal returns true if the provided expression is equal
 func (dateLiteral *DateLiteral) Equal(expression Expression) bool {
 	other, ok := expression.(*DateLiteral)
 	if !ok {
@@ -151,23 +162,28 @@ func (dateLiteral *DateLiteral) Equal(expression Expression) bool {
 	return dateLiteral.dateTime.Equal(other.dateTime)
 }
 
+// String converts the date value into a string format
 func (dateLiteral *DateLiteral) String() string {
-	return dateLiteral.dateTime.Format(QUERY_DATE_TIME_FORMAT)
+	return dateLiteral.dateTime.Format(queryDateTimeFormat)
 }
 
+// Pos returns the position this date appeared at in the input stream
 func (dateLiteral *DateLiteral) Pos() QueryScannerPos {
 	return dateLiteral.stringTime.startPos
 }
 
+// FieldType retruns the data type of this value
 func (dateLiteral *DateLiteral) FieldType(fieldTypeDescriptor FieldTypeDescriptor) FieldType {
-	return FT_DATE
+	return FtDate
 }
 
+// RegexLiteral represents a regex value
 type RegexLiteral struct {
 	regex       *regexp.Regexp
 	regexString *QueryToken
 }
 
+// Equal returns true if the provided expression is equal
 func (regexLiteral *RegexLiteral) Equal(expression Expression) bool {
 	other, ok := expression.(*RegexLiteral)
 	if !ok {
@@ -177,23 +193,28 @@ func (regexLiteral *RegexLiteral) Equal(expression Expression) bool {
 	return regexLiteral.regex.String() == other.regex.String()
 }
 
+// String returns the regex string used to construct this instance
 func (regexLiteral *RegexLiteral) String() string {
-	return regexLiteral.String()
+	return regexLiteral.regex.String()
 }
 
+// Pos returns the position this regex appeared in the input stream
 func (regexLiteral *RegexLiteral) Pos() QueryScannerPos {
 	return regexLiteral.regexString.startPos
 }
 
+// FieldType retruns the data type of this value
 func (regexLiteral *RegexLiteral) FieldType(fieldTypeDescriptor FieldTypeDescriptor) FieldType {
-	return FT_REGEX
+	return FtRegex
 }
 
+// GlobLiteral represents a glob value
 type GlobLiteral struct {
 	glob       glob.Glob
 	globString *QueryToken
 }
 
+// Equal returns true if the provided expression is equal
 func (globLiteral *GlobLiteral) Equal(expression Expression) bool {
 	other, ok := expression.(*GlobLiteral)
 	if !ok {
@@ -203,34 +224,41 @@ func (globLiteral *GlobLiteral) Equal(expression Expression) bool {
 	return globLiteral.globString.value == other.globString.value
 }
 
+// String returns the string representation of the glob
 func (globLiteral *GlobLiteral) String() string {
 	return globLiteral.globString.value
 }
 
+// Pos returns the position the glob appeared in the input stream
 func (globLiteral *GlobLiteral) Pos() QueryScannerPos {
 	return globLiteral.globString.startPos
 }
 
+// FieldType returns the data type of this value
 func (globLiteral *GlobLiteral) FieldType(fieldTypeDescriptor FieldTypeDescriptor) FieldType {
-	return FT_GLOB
+	return FtGlob
 }
 
+// FieldType returns the data type of this value
 func (stringLiteral *StringLiteral) FieldType(fieldTypeDescriptor FieldTypeDescriptor) FieldType {
-	return FT_STRING
+	return FtString
 }
 
+// FieldType returns the data type of this value
 func (numberLiteral *NumberLiteral) FieldType(fieldTypeDescriptor FieldTypeDescriptor) FieldType {
-	return FT_NUMBER
+	return FtNumber
 }
 
+// FieldType returns the data type of the field represented by this identifier
 func (identifier *Identifier) FieldType(fieldTypeDescriptor FieldTypeDescriptor) FieldType {
 	if fieldType, fieldExists := fieldTypeDescriptor.FieldType(identifier.identifier.value); fieldExists {
 		return fieldType
 	}
 
-	return FT_INVALID
+	return FtInvalid
 }
 
+// Validate that this identifier represents a valid field
 func (identifier *Identifier) Validate(fieldTypeDescriptor FieldTypeDescriptor) (errors []error) {
 	if _, fieldExists := fieldTypeDescriptor.FieldType(identifier.identifier.value); !fieldExists {
 		errors = append(errors, GenerateExpressionError(identifier, "Invalid field: %v", identifier.identifier.value))
@@ -239,16 +267,19 @@ func (identifier *Identifier) Validate(fieldTypeDescriptor FieldTypeDescriptor) 
 	return
 }
 
+// ValidatableExpression is an expression which can be validated for correctness
 type ValidatableExpression interface {
 	Validate(FieldTypeDescriptor) []error
 }
 
+// LogicalExpression is an expression which resolves to a boolean value and is composed of child expressions
 type LogicalExpression interface {
 	Expression
 	ValidatableExpression
 	ConvertTypes(FieldTypeDescriptor)
 }
 
+// GenerateExpressionError generates an error with expression position information included
 func GenerateExpressionError(expression Expression, errorMessage string, args ...interface{}) error {
 	var buffer bytes.Buffer
 
@@ -258,12 +289,14 @@ func GenerateExpressionError(expression Expression, errorMessage string, args ..
 	return errors.New(buffer.String())
 }
 
+// ConvertTypes defers the call to the child expression if it is a logical expression
 func (parenExpression *ParenExpression) ConvertTypes(fieldTypeDescriptor FieldTypeDescriptor) {
 	if logicalExpression, ok := parenExpression.expression.(LogicalExpression); ok {
 		logicalExpression.ConvertTypes(fieldTypeDescriptor)
 	}
 }
 
+// Validate checks the child expression is valid
 func (parenExpression *ParenExpression) Validate(fieldTypeDescriptor FieldTypeDescriptor) (errors []error) {
 	if _, ok := parenExpression.expression.(LogicalExpression); !ok {
 		errors = append(errors, GenerateExpressionError(parenExpression, "Expression in parentheses must resolve to a boolean value"))
@@ -276,12 +309,14 @@ func (parenExpression *ParenExpression) Validate(fieldTypeDescriptor FieldTypeDe
 	return
 }
 
+// ConvertTypes defers the call to the child expression
 func (unaryExpression *UnaryExpression) ConvertTypes(fieldTypeDescriptor FieldTypeDescriptor) {
 	if logicalExpression, ok := unaryExpression.expression.(LogicalExpression); ok {
 		logicalExpression.ConvertTypes(fieldTypeDescriptor)
 	}
 }
 
+// Validate checks the child expression is valid
 func (unaryExpression *UnaryExpression) Validate(fieldTypeDescriptor FieldTypeDescriptor) (errors []error) {
 	if _, ok := unaryExpression.expression.(LogicalExpression); !ok {
 		errors = append(errors, GenerateExpressionError(unaryExpression,
@@ -296,6 +331,8 @@ func (unaryExpression *UnaryExpression) Validate(fieldTypeDescriptor FieldTypeDe
 	return
 }
 
+// ConvertTypes defers the call to the child expressions if they're logical
+// Otherwise performs type conversion on the child expressions if necessary
 func (binaryExpression *BinaryExpression) ConvertTypes(fieldTypeDescriptor FieldTypeDescriptor) {
 	if !binaryExpression.IsComparison() {
 		if logicalExpression, ok := binaryExpression.lhs.(LogicalExpression); ok {
@@ -324,9 +361,9 @@ func (binaryExpression *BinaryExpression) processDateComparison(fieldTypeDescrip
 
 	switch {
 	case dateFormatPattern.MatchString(dateString.value.value):
-		dateFormat = QUERY_DATE_FORMAT
+		dateFormat = queryDateFormat
 	case dateTimeFormatPattern.MatchString(dateString.value.value):
-		dateFormat = QUERY_DATE_TIME_FORMAT
+		dateFormat = queryDateTimeFormat
 	default:
 		return
 	}
@@ -365,7 +402,7 @@ func (binaryExpression *BinaryExpression) isDateComparison(fieldTypeDescriptor F
 	}
 
 	fieldType, fieldExists := fieldTypeDescriptor.FieldType(identifier.identifier.value)
-	if !fieldExists || fieldType != FT_DATE {
+	if !fieldExists || fieldType != FtDate {
 		return
 	}
 
@@ -392,7 +429,7 @@ func (binaryExpression *BinaryExpression) processGlobComparison(fieldTypeDescrip
 }
 
 func (binaryExpression *BinaryExpression) isGlobComparison(fieldTypeDescriptor FieldTypeDescriptor) (isGlobComparison bool, globString *StringLiteral, globPtr *Expression) {
-	if binaryExpression.operator.operator.tokenType != QTK_CMP_GLOB {
+	if binaryExpression.operator.operator.tokenType != QtkCmpGlob {
 		return
 	}
 
@@ -412,7 +449,7 @@ func (binaryExpression *BinaryExpression) isGlobComparison(fieldTypeDescriptor F
 	}
 
 	fieldType, fieldExists := fieldTypeDescriptor.FieldType(identifier.identifier.value)
-	if !fieldExists || fieldType != FT_STRING {
+	if !fieldExists || fieldType != FtString {
 		return
 	}
 
@@ -439,7 +476,7 @@ func (binaryExpression *BinaryExpression) processRegexComparison(fieldTypeDescri
 }
 
 func (binaryExpression *BinaryExpression) isRegexComparison(fieldTypeDescriptor FieldTypeDescriptor) (isRegexComparison bool, regexString *StringLiteral, regexPtr *Expression) {
-	if binaryExpression.operator.operator.tokenType != QTK_CMP_REGEXP {
+	if binaryExpression.operator.operator.tokenType != QtkCmpRegexp {
 		return
 	}
 
@@ -459,7 +496,7 @@ func (binaryExpression *BinaryExpression) isRegexComparison(fieldTypeDescriptor 
 	}
 
 	fieldType, fieldExists := fieldTypeDescriptor.FieldType(identifier.identifier.value)
-	if !fieldExists || fieldType != FT_STRING {
+	if !fieldExists || fieldType != FtString {
 		return
 	}
 
@@ -468,6 +505,7 @@ func (binaryExpression *BinaryExpression) isRegexComparison(fieldTypeDescriptor 
 	return
 }
 
+// Validate the child expressions and operator are valid
 func (binaryExpression *BinaryExpression) Validate(fieldTypeDescriptor FieldTypeDescriptor) (errors []error) {
 	if !binaryExpression.IsComparison() {
 		if logicalExpression, ok := binaryExpression.lhs.(LogicalExpression); !ok {
@@ -493,24 +531,24 @@ func (binaryExpression *BinaryExpression) Validate(fieldTypeDescriptor FieldType
 		errors = append(errors, validatableExpression.Validate(fieldTypeDescriptor)...)
 	}
 
-	lhsType, isLhsValueType := determineFieldType(binaryExpression.lhs, fieldTypeDescriptor)
-	rhsType, isRhsValueType := determineFieldType(binaryExpression.rhs, fieldTypeDescriptor)
+	lhsType, isLHSValueType := determineFieldType(binaryExpression.lhs, fieldTypeDescriptor)
+	rhsType, isRHSValueType := determineFieldType(binaryExpression.rhs, fieldTypeDescriptor)
 
-	if !(isLhsValueType && isRhsValueType) {
+	if !(isLHSValueType && isRHSValueType) {
 		errors = append(errors, GenerateExpressionError(binaryExpression, "Comparison expressions must compare value types"))
-	} else if binaryExpression.operator.IsOperandTypeRestricted() {
-		if !(lhsType == FT_INVALID || rhsType == FT_INVALID) {
-			if !binaryExpression.operator.IsValidArgument(BOP_LEFT, lhsType) {
+	} else if binaryExpression.operator.isOperandTypeRestricted() {
+		if !(lhsType == FtInvalid || rhsType == FtInvalid) {
+			if !binaryExpression.operator.isValidArgument(bopLeft, lhsType) {
 				errors = append(errors, GenerateExpressionError(binaryExpression, "Argument on LHS has invalid type: %v. Allowed types are: %v",
-					fieldTypeNames[lhsType], fieldTypeNamesString(binaryExpression.operator.AllowedTypes(BOP_LEFT))))
+					fieldTypeNames[lhsType], fieldTypeNamesString(binaryExpression.operator.allowedTypes(bopLeft))))
 			}
 
-			if !binaryExpression.operator.IsValidArgument(BOP_RIGHT, rhsType) {
+			if !binaryExpression.operator.isValidArgument(bopRight, rhsType) {
 				errors = append(errors, GenerateExpressionError(binaryExpression, "Argument on RHS has invalid type: %v. Allowed types are: %v",
-					fieldTypeNames[rhsType], fieldTypeNamesString(binaryExpression.operator.AllowedTypes(BOP_RIGHT))))
+					fieldTypeNames[rhsType], fieldTypeNamesString(binaryExpression.operator.allowedTypes(bopRight))))
 			}
 		}
-	} else if lhsType != rhsType && !(lhsType == FT_INVALID || rhsType == FT_INVALID) {
+	} else if lhsType != rhsType && !(lhsType == FtInvalid || rhsType == FtInvalid) {
 		errors = append(errors, GenerateExpressionError(binaryExpression, "Attempting to compare different types - LHS Type: %v vs RHS Type: %v",
 			fieldTypeNames[lhsType], fieldTypeNames[rhsType]))
 	}

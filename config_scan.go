@@ -9,33 +9,38 @@ import (
 	"unicode"
 )
 
+// ConfigTokenType is an enum of token types the config scanner can produce
 type ConfigTokenType int
 
+// Token types produced by the config scanner
 const (
-	CTK_INVALID ConfigTokenType = iota
-	CTK_WORD
-	CTK_OPTION
-	CTK_WHITE_SPACE
-	CTK_COMMENT
-	CTK_TERMINATOR
-	CTK_EOF
+	CtkInvalid ConfigTokenType = iota
+	CtkWord
+	CtkOption
+	CtkWhiteSpace
+	CtkComment
+	CtkTerminator
+	CtkEOF
 )
 
 var configTokenNames = map[ConfigTokenType]string{
-	CTK_INVALID:     "Invalid",
-	CTK_WORD:        "Word",
-	CTK_OPTION:      "Option",
-	CTK_WHITE_SPACE: "White Space",
-	CTK_COMMENT:     "Comment",
-	CTK_TERMINATOR:  "Terminator",
-	CTK_EOF:         "EOF",
+	CtkInvalid:    "Invalid",
+	CtkWord:       "Word",
+	CtkOption:     "Option",
+	CtkWhiteSpace: "White Space",
+	CtkComment:    "Comment",
+	CtkTerminator: "Terminator",
+	CtkEOF:        "EOF",
 }
 
+// ConfigScannerPos represents a position in the config scanner input stream
 type ConfigScannerPos struct {
 	line uint
 	col  uint
 }
 
+// ConfigToken is a config token parsed from an input stream
+// It contains position, error and value data
 type ConfigToken struct {
 	tokenType ConfigTokenType
 	value     string
@@ -44,6 +49,7 @@ type ConfigToken struct {
 	err       error
 }
 
+// ConfigScanner scans an input stream and generates a stream of config tokens
 type ConfigScanner struct {
 	reader          *bufio.Reader
 	pos             ConfigScannerPos
@@ -51,6 +57,7 @@ type ConfigScanner struct {
 	lastLineEndCol  uint
 }
 
+// Equal returns true if the other token is equal
 func (token *ConfigToken) Equal(other *ConfigToken) bool {
 	if other == nil {
 		return false
@@ -65,10 +72,12 @@ func (token *ConfigToken) Equal(other *ConfigToken) bool {
 				token.err.Error() == other.err.Error()))
 }
 
+// ConfigTokenName maps token types to human readable names
 func ConfigTokenName(tokenType ConfigTokenType) string {
 	return configTokenNames[tokenType]
 }
 
+// NewConfigScanner creates a new scanner which uses the provided reader
 func NewConfigScanner(reader io.Reader) *ConfigScanner {
 	return &ConfigScanner{
 		reader: bufio.NewReader(reader),
@@ -121,6 +130,7 @@ func (scanner *ConfigScanner) unread() (err error) {
 	return
 }
 
+// Scan returns the next token from the input stream
 func (scanner *ConfigScanner) Scan() (token *ConfigToken, err error) {
 	char, eof, err := scanner.read()
 	startPos := scanner.pos
@@ -129,12 +139,12 @@ func (scanner *ConfigScanner) Scan() (token *ConfigToken, err error) {
 	case err != nil:
 	case eof:
 		token = &ConfigToken{
-			tokenType: CTK_EOF,
+			tokenType: CtkEOF,
 			endPos:    scanner.pos,
 		}
 	case char == '\n':
 		token = &ConfigToken{
-			tokenType: CTK_TERMINATOR,
+			tokenType: CtkTerminator,
 			value:     string(char),
 			endPos:    scanner.pos,
 		}
@@ -159,8 +169,8 @@ func (scanner *ConfigScanner) Scan() (token *ConfigToken, err error) {
 		} else if len(nextBytes) == 1 && nextBytes[0] == '-' {
 			token, err = scanner.scanWord()
 
-			if token != nil && token.tokenType != CTK_INVALID {
-				token.tokenType = CTK_OPTION
+			if token != nil && token.tokenType != CtkInvalid {
+				token.tokenType = CtkOption
 				token.value = "-" + token.value
 			}
 
@@ -249,7 +259,7 @@ OuterLoop:
 	}
 
 	token = &ConfigToken{
-		tokenType: CTK_WHITE_SPACE,
+		tokenType: CtkWhiteSpace,
 		value:     buffer.String(),
 		endPos:    scanner.pos,
 	}
@@ -285,7 +295,7 @@ OuterLoop:
 	}
 
 	token = &ConfigToken{
-		tokenType: CTK_COMMENT,
+		tokenType: CtkComment,
 		value:     buffer.String(),
 		endPos:    scanner.pos,
 	}
@@ -321,7 +331,7 @@ OuterLoop:
 	}
 
 	token = &ConfigToken{
-		tokenType: CTK_WORD,
+		tokenType: CtkWord,
 		value:     buffer.String(),
 		endPos:    scanner.pos,
 	}
@@ -335,6 +345,10 @@ func (scanner *ConfigScanner) scanStringWord() (token *ConfigToken, err error) {
 	var eof bool
 
 	char, eof, err = scanner.read()
+	if err != nil || eof {
+		return
+	}
+
 	if _, err = buffer.WriteRune(char); err != nil {
 		return
 	}
@@ -386,13 +400,13 @@ OuterLoop:
 		}
 
 		token = &ConfigToken{
-			tokenType: CTK_WORD,
+			tokenType: CtkWord,
 			value:     word,
 			endPos:    scanner.pos,
 		}
 	} else {
 		token = &ConfigToken{
-			tokenType: CTK_INVALID,
+			tokenType: CtkInvalid,
 			value:     buffer.String(),
 			endPos:    scanner.pos,
 			err:       errors.New("Unterminated string"),

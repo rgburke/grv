@@ -2,42 +2,50 @@ package main
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"regexp"
 	"runtime"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
-	SEARCH_MAX_ITERATIONS_BEFORE_YEILD = 1000
+	searchMaxIterationsBeforeYeild = 1000
 )
 
+// SearchDirection describes the direction the search should be performed in
 type SearchDirection int
 
+// The set of search search directions
 const (
-	SD_FORWARD SearchDirection = iota
-	SD_BACKWARD
+	SdForward SearchDirection = iota
+	SdBackward
 )
 
 var actionSearchDirection = map[ActionType]SearchDirection{
-	ACTION_SEARCH:         SD_FORWARD,
-	ACTION_REVERSE_SEARCH: SD_BACKWARD,
+	ActionSearch:        SdForward,
+	ActionReverseSearch: SdBackward,
 }
 
+// SearchInputProvidor provides input to the search alorithm
+// This abstracts the source of the data from the search logic
 type SearchInputProvidor interface {
 	Line(lineIndex uint) (line string, lineExists bool)
 	LineNumber() (lineNumber uint)
 }
 
+// SearchMatchIndex describes the byte range of a match on a line
 type SearchMatchIndex struct {
 	ByteStartIndex uint
 	ByteEndIndex   uint
 }
 
+// SearchMatch contains all search match positions for a line
 type SearchMatch struct {
 	RowIndex     uint
 	MatchIndexes []SearchMatchIndex
 }
 
+// Search manages performing a search on an input providor
 type Search struct {
 	direction     SearchDirection
 	pattern       string
@@ -45,6 +53,7 @@ type Search struct {
 	inputProvidor SearchInputProvidor
 }
 
+// CreateSearchFromAction is a utility method to create a search configured based on the action that triggered it
 func CreateSearchFromAction(action Action, inputProvidor SearchInputProvidor) (search *Search, err error) {
 	direction, ok := actionSearchDirection[action.ActionType]
 	if !ok {
@@ -63,6 +72,7 @@ func CreateSearchFromAction(action Action, inputProvidor SearchInputProvidor) (s
 	return NewSearch(direction, pattern, inputProvidor)
 }
 
+// NewSearch creates a new search instance
 func NewSearch(direction SearchDirection, pattern string, inputProvidor SearchInputProvidor) (search *Search, err error) {
 	search = &Search{
 		direction:     direction,
@@ -77,22 +87,24 @@ func NewSearch(direction SearchDirection, pattern string, inputProvidor SearchIn
 	return
 }
 
+// FindNext looks for the next match starting from the line index provided
 func (search *Search) FindNext(startLineIndex uint) (matchedLineIndex uint, found bool) {
 	switch search.direction {
-	case SD_FORWARD:
+	case SdForward:
 		return search.findNext(startLineIndex)
-	case SD_BACKWARD:
+	case SdBackward:
 		return search.findPrev(startLineIndex)
 	}
 
 	panic(fmt.Sprintf("Invalid search direction: %v", search.direction))
 }
 
+// FindPrev looks for the next match in the reverse direction starting from the line index provided
 func (search *Search) FindPrev(startLineIndex uint) (matchedLineIndex uint, found bool) {
 	switch search.direction {
-	case SD_FORWARD:
+	case SdForward:
 		return search.findPrev(startLineIndex)
-	case SD_BACKWARD:
+	case SdBackward:
 		return search.findNext(startLineIndex)
 	}
 
@@ -119,7 +131,7 @@ func (search *Search) findNext(startLineIndex uint) (matchedLineIndex uint, foun
 
 		currentLineIndex++
 
-		if currentLineIndex%SEARCH_MAX_ITERATIONS_BEFORE_YEILD == 0 {
+		if currentLineIndex%searchMaxIterationsBeforeYeild == 0 {
 			runtime.Gosched()
 		}
 	}
@@ -156,7 +168,7 @@ func (search *Search) findPrev(startLineIndex uint) (matchedLineIndex uint, foun
 			break
 		}
 
-		if currentLineIndex%SEARCH_MAX_ITERATIONS_BEFORE_YEILD == 0 {
+		if currentLineIndex%searchMaxIterationsBeforeYeild == 0 {
 			runtime.Gosched()
 		}
 	}
@@ -164,6 +176,7 @@ func (search *Search) findPrev(startLineIndex uint) (matchedLineIndex uint, foun
 	return
 }
 
+// FindAll find all matches across the entire input provided
 func (search *Search) FindAll() (matches []SearchMatch) {
 	lineIndex := uint(0)
 
@@ -192,7 +205,7 @@ func (search *Search) FindAll() (matches []SearchMatch) {
 
 		lineIndex++
 
-		if lineIndex%SEARCH_MAX_ITERATIONS_BEFORE_YEILD == 0 {
+		if lineIndex%searchMaxIterationsBeforeYeild == 0 {
 			runtime.Gosched()
 		}
 	}

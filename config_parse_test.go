@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	CONFIG_FILE = "~/.config/grv/grvrc"
+	ConfigFile = "~/.config/grv/grvrc"
 )
 
 type SetCommandValues struct {
@@ -14,7 +14,7 @@ type SetCommandValues struct {
 	value    string
 }
 
-func (setCommandValues *SetCommandValues) Equal(command Command) bool {
+func (setCommandValues *SetCommandValues) Equal(command ConfigCommand) bool {
 	if command == nil {
 		return false
 	}
@@ -39,7 +39,7 @@ type ThemeCommandValues struct {
 	fgcolour  string
 }
 
-func (themeCommandValues *ThemeCommandValues) Equal(command Command) bool {
+func (themeCommandValues *ThemeCommandValues) Equal(command ConfigCommand) bool {
 	if command == nil {
 		return false
 	}
@@ -62,7 +62,7 @@ func (themeCommandValues *ThemeCommandValues) Equal(command Command) bool {
 func TestParseSingleCommand(t *testing.T) {
 	var singleCommandTests = []struct {
 		input           string
-		expectedCommand Command
+		expectedCommand ConfigCommand
 	}{
 		{
 			input: "set theme mytheme",
@@ -84,13 +84,13 @@ func TestParseSingleCommand(t *testing.T) {
 
 	for _, singleCommandTest := range singleCommandTests {
 		expectedCommand := singleCommandTest.expectedCommand
-		parser := NewConfigParser(strings.NewReader(singleCommandTest.input), CONFIG_FILE)
+		parser := NewConfigParser(strings.NewReader(singleCommandTest.input), ConfigFile)
 		command, _, err := parser.Parse()
 
 		if err != nil {
 			t.Errorf("Parse failed with error %v", err)
 		} else if !expectedCommand.Equal(command) {
-			t.Errorf("Command does not match expected value. Expected %v, Actual %v", singleCommandTest.expectedCommand, command)
+			t.Errorf("ConfigCommand does not match expected value. Expected %v, Actual %v", singleCommandTest.expectedCommand, command)
 		}
 	}
 }
@@ -111,7 +111,7 @@ func TestEOFIsSetByConfigParser(t *testing.T) {
 	}
 
 	for _, eofTest := range eofTests {
-		parser := NewConfigParser(strings.NewReader(eofTest.input), CONFIG_FILE)
+		parser := NewConfigParser(strings.NewReader(eofTest.input), ConfigFile)
 		_, _, err := parser.Parse()
 
 		if err != nil {
@@ -132,11 +132,11 @@ func TestEOFIsSetByConfigParser(t *testing.T) {
 func TestParseMultipleCommands(t *testing.T) {
 	var multipleCommandsTests = []struct {
 		input            string
-		expectedCommands []Command
+		expectedCommands []ConfigCommand
 	}{
 		{
 			input: " set mouse\ttrue # Enable mouse\n# Set theme\n\tset theme \"my theme 2\" #Custom theme",
-			expectedCommands: []Command{
+			expectedCommands: []ConfigCommand{
 				&SetCommandValues{
 					variable: "mouse",
 					value:    "true",
@@ -149,7 +149,7 @@ func TestParseMultipleCommands(t *testing.T) {
 		},
 		{
 			input: "theme\t--name mytheme\t--component RefView.LocalBranch \\\n\t--bgcolor BLUE\t--fgcolor YELLOW\nset mouse false\n",
-			expectedCommands: []Command{
+			expectedCommands: []ConfigCommand{
 				&ThemeCommandValues{
 					name:      "mytheme",
 					component: "RefView.LocalBranch",
@@ -165,7 +165,7 @@ func TestParseMultipleCommands(t *testing.T) {
 	}
 
 	for _, multipleCommandsTest := range multipleCommandsTests {
-		parser := NewConfigParser(strings.NewReader(multipleCommandsTest.input), CONFIG_FILE)
+		parser := NewConfigParser(strings.NewReader(multipleCommandsTest.input), ConfigFile)
 
 		for _, expectedCommand := range multipleCommandsTest.expectedCommands {
 			command, _, err := parser.Parse()
@@ -173,7 +173,7 @@ func TestParseMultipleCommands(t *testing.T) {
 			if err != nil {
 				t.Errorf("Parse failed with error %v", err)
 			} else if !expectedCommand.Equal(command) {
-				t.Errorf("Command does not match expected value. Expected %v, Actual %v", expectedCommand, command)
+				t.Errorf("ConfigCommand does not match expected value. Expected %v, Actual %v", expectedCommand, command)
 			}
 		}
 	}
@@ -186,36 +186,36 @@ func TestErrorsAreReceivedForInvalidConfigTokenSequences(t *testing.T) {
 	}{
 		{
 			input:                "--name",
-			expectedErrorMessage: CONFIG_FILE + ":1:1 Unexpected Option \"--name\"",
+			expectedErrorMessage: ConfigFile + ":1:1 Unexpected Option \"--name\"",
 		},
 		{
 			input:                "\"theme",
-			expectedErrorMessage: CONFIG_FILE + ":1:1 Syntax Error: Unterminated string",
+			expectedErrorMessage: ConfigFile + ":1:1 Syntax Error: Unterminated string",
 		},
 		{
 			input:                "\n sety theme mytheme",
-			expectedErrorMessage: CONFIG_FILE + ":2:2 Invalid command \"sety\"",
+			expectedErrorMessage: ConfigFile + ":2:2 Invalid command \"sety\"",
 		},
 		{
 			input:                "set theme",
-			expectedErrorMessage: CONFIG_FILE + ":1:9 Unexpected EOF",
+			expectedErrorMessage: ConfigFile + ":1:9 Unexpected EOF",
 		},
 		{
 			input:                "set theme --name mytheme",
-			expectedErrorMessage: CONFIG_FILE + ":1:11 Expected Word but got Option: \"--name\"",
+			expectedErrorMessage: ConfigFile + ":1:11 Expected Word but got Option: \"--name\"",
 		},
 		{
 			input:                "set theme\nmytheme",
-			expectedErrorMessage: CONFIG_FILE + ":1:10 Expected Word but got Terminator: \"\n\"",
+			expectedErrorMessage: ConfigFile + ":1:10 Expected Word but got Terminator: \"\n\"",
 		},
 		{
 			input:                "theme --name mytheme --component CommitView.CommitDate --bgcolour NONE --fgcolour YELLOW\n",
-			expectedErrorMessage: CONFIG_FILE + ":1:56 Invalid option for theme command: \"--bgcolour\"",
+			expectedErrorMessage: ConfigFile + ":1:56 Invalid option for theme command: \"--bgcolour\"",
 		},
 	}
 
 	for _, errorTest := range errorTests {
-		parser := NewConfigParser(strings.NewReader(errorTest.input), CONFIG_FILE)
+		parser := NewConfigParser(strings.NewReader(errorTest.input), ConfigFile)
 		_, _, err := parser.Parse()
 
 		if err == nil {
@@ -229,11 +229,11 @@ func TestErrorsAreReceivedForInvalidConfigTokenSequences(t *testing.T) {
 func TestInvalidCommandsAreDiscardedAndParsingContinuesOnNextLine(t *testing.T) {
 	var invalidCommandTests = []struct {
 		input            string
-		expectedCommands []Command
+		expectedCommands []ConfigCommand
 	}{
 		{
 			input: "set theme mytheme\nset theme --name theme\nset mouse false",
-			expectedCommands: []Command{
+			expectedCommands: []ConfigCommand{
 				&SetCommandValues{
 					variable: "theme",
 					value:    "mytheme",
@@ -246,7 +246,7 @@ func TestInvalidCommandsAreDiscardedAndParsingContinuesOnNextLine(t *testing.T) 
 		},
 		{
 			input: "set theme\nmytheme\nset theme --name theme\nset mouse false",
-			expectedCommands: []Command{
+			expectedCommands: []ConfigCommand{
 				&SetCommandValues{
 					variable: "mouse",
 					value:    "false",
@@ -256,9 +256,9 @@ func TestInvalidCommandsAreDiscardedAndParsingContinuesOnNextLine(t *testing.T) 
 	}
 
 	for _, invalidCommandTest := range invalidCommandTests {
-		parser := NewConfigParser(strings.NewReader(invalidCommandTest.input), CONFIG_FILE)
+		parser := NewConfigParser(strings.NewReader(invalidCommandTest.input), ConfigFile)
 
-		var commands []Command
+		var commands []ConfigCommand
 
 		for {
 			command, eof, _ := parser.Parse()
@@ -281,7 +281,7 @@ func TestInvalidCommandsAreDiscardedAndParsingContinuesOnNextLine(t *testing.T) 
 			command := commands[i]
 
 			if !expectedCommand.Equal(command) {
-				t.Errorf("Command does not match expected value. Expected %v, Actual %v", expectedCommand, command)
+				t.Errorf("ConfigCommand does not match expected value. Expected %v, Actual %v", expectedCommand, command)
 			}
 		}
 	}

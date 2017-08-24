@@ -3,87 +3,93 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"unicode"
+
 	log "github.com/Sirupsen/logrus"
 	rw "github.com/mattn/go-runewidth"
 	gc "github.com/rthornton128/goncurses"
-	"unicode"
 )
 
+// RenderWindow represents a window that will be drawn to the display
 type RenderWindow interface {
-	Id() string
+	ID() string
 	Rows() uint
 	Cols() uint
 	ViewDimensions() ViewDimension
 	Clear()
-	SetRow(rowIndex, startColumn uint, themeComponentId ThemeComponentId, format string, args ...interface{}) error
+	SetRow(rowIndex, startColumn uint, themeComponentID ThemeComponentID, format string, args ...interface{}) error
 	SetSelectedRow(rowIndex uint, active bool) error
 	SetCursor(rowIndex, colIndex uint) error
-	SetTitle(themeComponentId ThemeComponentId, format string, args ...interface{}) error
-	SetFooter(themeComponentId ThemeComponentId, format string, args ...interface{}) error
-	ApplyStyle(themeComponentId ThemeComponentId)
-	Highlight(pattern string, themeComponentId ThemeComponentId) error
+	SetTitle(themeComponentID ThemeComponentID, format string, args ...interface{}) error
+	SetFooter(themeComponentID ThemeComponentID, format string, args ...interface{}) error
+	ApplyStyle(themeComponentID ThemeComponentID)
+	Highlight(pattern string, themeComponentID ThemeComponentID) error
 	DrawBorder()
 	LineBuilder(rowIndex, startColumn uint) (*LineBuilder, error)
 }
 
+// RenderedCodePoint contains the display values for a codepoint
 type RenderedCodePoint struct {
 	width     uint
 	codePoint rune
 }
 
-type Line struct {
-	cells []*Cell
+type line struct {
+	cells []*cell
 }
 
+// LineBuilder provides a way of drawing a single line to a window
 type LineBuilder struct {
-	line        *Line
+	line        *line
 	cellIndex   uint
 	column      uint
 	startColumn uint
 	config      Config
 }
 
-type CellStyle struct {
-	componentId ThemeComponentId
-	attr        gc.Char
-	acs_char    gc.Char
+type cellStyle struct {
+	themeComponentID ThemeComponentID
+	attr             gc.Char
+	acsChar          gc.Char
 }
 
-type Cell struct {
+type cell struct {
 	codePoints bytes.Buffer
-	style      CellStyle
+	style      cellStyle
 }
 
-type Cursor struct {
+type cursor struct {
 	row uint
 	col uint
 }
 
+// Window implements the RenderWindow interface and contains all rendered data
 type Window struct {
 	id       string
 	rows     uint
 	cols     uint
-	lines    []*Line
+	lines    []*line
 	startRow uint
 	startCol uint
 	border   bool
 	config   Config
-	cursor   *Cursor
+	cursor   *cursor
 }
 
-func NewLine(cols uint) *Line {
-	line := &Line{
-		cells: make([]*Cell, cols),
+func newLine(cols uint) *line {
+	line := &line{
+		cells: make([]*cell, cols),
 	}
 
 	for i := uint(0); i < cols; i++ {
-		line.cells[i] = &Cell{}
+		line.cells[i] = &cell{}
 	}
 
 	return line
 }
 
-func (line *Line) String() string {
+// String returns the text contained in the line
+func (line *line) String() string {
 	var buf bytes.Buffer
 
 	for _, cell := range line.cells {
@@ -93,7 +99,7 @@ func (line *Line) String() string {
 	return buf.String()
 }
 
-func NewLineBuilder(line *Line, config Config, startColumn uint) *LineBuilder {
+func newLineBuilder(line *line, config Config, startColumn uint) *LineBuilder {
 	return &LineBuilder{
 		line:        line,
 		column:      1,
@@ -102,11 +108,13 @@ func NewLineBuilder(line *Line, config Config, startColumn uint) *LineBuilder {
 	}
 }
 
+// Append adds the provided text to the end of the line
 func (lineBuilder *LineBuilder) Append(format string, args ...interface{}) *LineBuilder {
-	return lineBuilder.AppendWithStyle(CMP_NONE, format, args...)
+	return lineBuilder.AppendWithStyle(CmpNone, format, args...)
 }
 
-func (lineBuilder *LineBuilder) AppendWithStyle(componentId ThemeComponentId, format string, args ...interface{}) *LineBuilder {
+// AppendWithStyle adds the provided text with style information to the end of the line
+func (lineBuilder *LineBuilder) AppendWithStyle(themeComponentID ThemeComponentID, format string, args ...interface{}) *LineBuilder {
 	str := fmt.Sprintf(format, args...)
 	line := lineBuilder.line
 
@@ -119,10 +127,10 @@ func (lineBuilder *LineBuilder) AppendWithStyle(componentId ThemeComponentId, fo
 			}
 
 			if renderedCodePoint.width > 1 {
-				lineBuilder.setCellAndAdvanceIndex(renderedCodePoint.codePoint, renderedCodePoint.width, componentId)
+				lineBuilder.setCellAndAdvanceIndex(renderedCodePoint.codePoint, renderedCodePoint.width, themeComponentID)
 				lineBuilder.Clear(renderedCodePoint.width - 1)
 			} else if renderedCodePoint.width > 0 {
-				lineBuilder.setCellAndAdvanceIndex(renderedCodePoint.codePoint, renderedCodePoint.width, componentId)
+				lineBuilder.setCellAndAdvanceIndex(renderedCodePoint.codePoint, renderedCodePoint.width, themeComponentID)
 			} else {
 				lineBuilder.appendToPreviousCell(renderedCodePoint.codePoint)
 			}
@@ -132,7 +140,7 @@ func (lineBuilder *LineBuilder) AppendWithStyle(componentId ThemeComponentId, fo
 	return lineBuilder
 }
 
-func (lineBuilder *LineBuilder) setCellAndAdvanceIndex(codePoint rune, width uint, componentId ThemeComponentId) {
+func (lineBuilder *LineBuilder) setCellAndAdvanceIndex(codePoint rune, width uint, themeComponentID ThemeComponentID) {
 	line := lineBuilder.line
 
 	if lineBuilder.cellIndex < uint(len(line.cells)) {
@@ -140,8 +148,8 @@ func (lineBuilder *LineBuilder) setCellAndAdvanceIndex(codePoint rune, width uin
 			cell := line.cells[lineBuilder.cellIndex]
 			cell.codePoints.Reset()
 			cell.codePoints.WriteRune(codePoint)
-			cell.style.componentId = componentId
-			cell.style.acs_char = 0
+			cell.style.themeComponentID = themeComponentID
+			cell.style.acsChar = 0
 			lineBuilder.cellIndex++
 		}
 
@@ -149,6 +157,7 @@ func (lineBuilder *LineBuilder) setCellAndAdvanceIndex(codePoint rune, width uin
 	}
 }
 
+// Clear resets the next cellNum cells in the line
 func (lineBuilder *LineBuilder) Clear(cellNum uint) {
 	line := lineBuilder.line
 
@@ -158,6 +167,7 @@ func (lineBuilder *LineBuilder) Clear(cellNum uint) {
 	}
 }
 
+// ToLineStart moves the draw position to the start of the line
 func (lineBuilder *LineBuilder) ToLineStart() {
 	lineBuilder.cellIndex = 0
 	lineBuilder.startColumn = 1
@@ -170,6 +180,7 @@ func (lineBuilder *LineBuilder) appendToPreviousCell(codePoint rune) {
 	}
 }
 
+// NewWindow creates a new instance
 func NewWindow(id string, config Config) *Window {
 	return &Window{
 		id:     id,
@@ -177,6 +188,7 @@ func NewWindow(id string, config Config) *Window {
 	}
 }
 
+// Resize updates the windows internal storage capacity
 func (win *Window) Resize(viewDimension ViewDimension) {
 	if win.rows == viewDimension.rows && win.cols == viewDimension.cols {
 		return
@@ -187,43 +199,49 @@ func (win *Window) Resize(viewDimension ViewDimension) {
 	win.rows = viewDimension.rows
 	win.cols = viewDimension.cols
 
-	win.lines = make([]*Line, win.rows)
+	win.lines = make([]*line, win.rows)
 
 	for i := uint(0); i < win.rows; i++ {
-		win.lines[i] = NewLine(win.cols)
+		win.lines[i] = newLine(win.cols)
 	}
 }
 
+// SetPosition sets the coordintates the window should appear on the display
 func (win *Window) SetPosition(startRow, startCol uint) {
 	win.startRow = startRow
 	win.startCol = startCol
 }
 
+// OffsetPosition applies the provided offsets to the windows position
 func (win *Window) OffsetPosition(rowOffset, colOffset int) {
 	win.startRow = applyOffset(win.startRow, rowOffset)
 	win.startCol = applyOffset(win.startCol, colOffset)
 }
 
 func applyOffset(value uint, offset int) uint {
-	if value < 0 {
+	if offset < 0 {
 		return value - Min(value, Abs(offset))
 	}
 
 	return value + uint(offset)
 }
 
-func (win *Window) Id() string {
+// ID returns the window ID
+func (win *Window) ID() string {
 	return win.id
 }
 
+// Rows returns the number of rows in this window
 func (win *Window) Rows() uint {
 	return win.rows
 }
 
+// Cols returns the number of cols in this window
 func (win *Window) Cols() uint {
 	return win.cols
 }
 
+// ViewDimensions returns the dimensions of the window
 func (win *Window) ViewDimensions() ViewDimension {
 	return ViewDimension{
 		rows: win.rows,
@@ -231,6 +249,7 @@ func (win *Window) ViewDimensions() ViewDimension {
 	}
 }
 
+// Clear resets all cells in the window
 func (win *Window) Clear() {
 	log.Debugf("Clearing window %v", win.id)
 
@@ -238,9 +257,9 @@ func (win *Window) Clear() {
 		for _, cell := range line.cells {
 			cell.codePoints.Reset()
 			cell.codePoints.WriteRune(' ')
-			cell.style.componentId = CMP_NONE
+			cell.style.themeComponentID = CmpNone
 			cell.style.attr = gc.A_NORMAL
-			cell.style.acs_char = 0
+			cell.style.acsChar = 0
 		}
 	}
 
@@ -248,27 +267,30 @@ func (win *Window) Clear() {
 	win.border = false
 }
 
+// LineBuilder returns a line builder instance for the provided line index
 func (win *Window) LineBuilder(rowIndex, startColumn uint) (*LineBuilder, error) {
 	if rowIndex >= win.rows {
 		return nil, fmt.Errorf("LineBuilder: Invalid row index: %v >= %v rows", rowIndex, win.rows)
 	} else if startColumn == 0 {
-		return nil, fmt.Errorf("Column must be postive")
+		return nil, fmt.Errorf("Column must be positive")
 	}
 
-	return NewLineBuilder(win.lines[rowIndex], win.config, startColumn), nil
+	return newLineBuilder(win.lines[rowIndex], win.config, startColumn), nil
 }
 
-func (win *Window) SetRow(rowIndex, startColumn uint, themeComponentId ThemeComponentId, format string, args ...interface{}) error {
+// SetRow sets the text and style information for a line
+func (win *Window) SetRow(rowIndex, startColumn uint, themeComponentID ThemeComponentID, format string, args ...interface{}) error {
 	lineBuilder, err := win.LineBuilder(rowIndex, startColumn)
 	if err != nil {
 		return err
 	}
 
-	lineBuilder.AppendWithStyle(themeComponentId, format, args...)
+	lineBuilder.AppendWithStyle(themeComponentID, format, args...)
 
 	return nil
 }
 
+// SetSelectedRow sets the row to be highlighted as the selected row
 func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
 	log.Debugf("Set selected rowIndex for window %v to %v with active %v", win.id, rowIndex, active)
 
@@ -286,16 +308,19 @@ func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
 
 	for _, cell := range line.cells {
 		cell.style.attr |= attr
-		cell.style.componentId = CMP_NONE
+		cell.style.themeComponentID = CmpNone
 	}
 
 	return nil
 }
 
+// IsCursorSet returns true if a cursor position has been set
 func (win *Window) IsCursorSet() bool {
 	return win.cursor != nil
 }
 
+// SetCursor sets a cursor position on the window
+// If this is set then a cursor will be displayed in this window
 func (win *Window) SetCursor(rowIndex, colIndex uint) (err error) {
 	if rowIndex >= win.rows {
 		return fmt.Errorf("SetCursor: Invalid row index: %v >= %v rows", rowIndex, win.rows)
@@ -303,7 +328,7 @@ func (win *Window) SetCursor(rowIndex, colIndex uint) (err error) {
 		return fmt.Errorf("Invalid col index: %v >= %v cols", colIndex, win.cols)
 	}
 
-	win.cursor = &Cursor{
+	win.cursor = &cursor{
 		row: rowIndex,
 		col: colIndex,
 	}
@@ -311,20 +336,22 @@ func (win *Window) SetCursor(rowIndex, colIndex uint) (err error) {
 	return
 }
 
-func (win *Window) SetTitle(componentId ThemeComponentId, format string, args ...interface{}) (err error) {
-	return win.setHeader(0, false, componentId, format, args...)
+// SetTitle sets the title to display for the window
+func (win *Window) SetTitle(themeComponentID ThemeComponentID, format string, args ...interface{}) (err error) {
+	return win.setHeader(0, false, themeComponentID, format, args...)
 }
 
-func (win *Window) SetFooter(componentId ThemeComponentId, format string, args ...interface{}) (err error) {
+// SetFooter sets the footer to display for thw window
+func (win *Window) SetFooter(themeComponentID ThemeComponentID, format string, args ...interface{}) (err error) {
 	if win.rows < 1 {
 		log.Errorf("Can't set footer on window %v with %v rows", win.id, win.rows)
 		return
 	}
 
-	return win.setHeader(win.rows-1, true, componentId, format, args...)
+	return win.setHeader(win.rows-1, true, themeComponentID, format, args...)
 }
 
-func (win *Window) setHeader(rowIndex uint, rightJustified bool, componentId ThemeComponentId, format string, args ...interface{}) (err error) {
+func (win *Window) setHeader(rowIndex uint, rightJustified bool, themeComponentID ThemeComponentID, format string, args ...interface{}) (err error) {
 	if win.rows < 3 || win.cols < 3 {
 		log.Errorf("Can't set header on window %v with %v rows and %v cols", win.id, win.rows, win.cols)
 		return
@@ -354,55 +381,58 @@ func (win *Window) setHeader(rowIndex uint, rightJustified bool, componentId The
 
 	lineBuilder.column = lineBuilder.cellIndex + 1
 
-	lineBuilder.AppendWithStyle(componentId, format, args...)
+	lineBuilder.AppendWithStyle(themeComponentID, format, args...)
 
 	return
 }
 
+// DrawBorder draws a line of a single cells width around the edge of the window
 func (win *Window) DrawBorder() {
 	if win.rows < 3 || win.cols < 3 {
 		return
 	}
 
 	firstLine := win.lines[0]
-	firstLine.cells[0].style.acs_char = gc.ACS_ULCORNER
+	firstLine.cells[0].style.acsChar = gc.ACS_ULCORNER
 
 	for i := uint(1); i < win.cols-1; i++ {
-		firstLine.cells[i].style.acs_char = gc.ACS_HLINE
+		firstLine.cells[i].style.acsChar = gc.ACS_HLINE
 	}
 
-	firstLine.cells[win.cols-1].style.acs_char = gc.ACS_URCORNER
+	firstLine.cells[win.cols-1].style.acsChar = gc.ACS_URCORNER
 
 	for i := uint(1); i < win.rows-1; i++ {
 		line := win.lines[i]
-		line.cells[0].style.acs_char = gc.ACS_VLINE
-		line.cells[win.cols-1].style.acs_char = gc.ACS_VLINE
+		line.cells[0].style.acsChar = gc.ACS_VLINE
+		line.cells[win.cols-1].style.acsChar = gc.ACS_VLINE
 	}
 
 	lastLine := win.lines[win.rows-1]
-	lastLine.cells[0].style.acs_char = gc.ACS_LLCORNER
+	lastLine.cells[0].style.acsChar = gc.ACS_LLCORNER
 
 	for i := uint(1); i < win.cols-1; i++ {
-		lastLine.cells[i].style.acs_char = gc.ACS_HLINE
+		lastLine.cells[i].style.acsChar = gc.ACS_HLINE
 	}
 
-	lastLine.cells[win.cols-1].style.acs_char = gc.ACS_LRCORNER
+	lastLine.cells[win.cols-1].style.acsChar = gc.ACS_LRCORNER
 
 	win.border = true
 }
 
-func (win *Window) ApplyStyle(themeComponentId ThemeComponentId) {
+// ApplyStyle sets a single style for all cells in the window
+func (win *Window) ApplyStyle(themeComponentID ThemeComponentID) {
 	for _, line := range win.lines {
 		for _, cell := range line.cells {
-			cell.style.componentId = themeComponentId
+			cell.style.themeComponentID = themeComponentID
 		}
 	}
 }
 
+// DetermineRenderedCodePoint converts a code point into its rendered representation
 func DetermineRenderedCodePoint(codePoint rune, column uint, config Config) (renderedCodePoints []RenderedCodePoint) {
 	if !unicode.IsPrint(codePoint) {
 		if codePoint == '\t' {
-			tabWidth := uint(config.GetInt(CV_TAB_WIDTH))
+			tabWidth := uint(config.GetInt(CfTabWidth))
 			width := tabWidth - ((column - 1) % tabWidth)
 
 			for i := uint(0); i < width; i++ {
@@ -412,7 +442,7 @@ func DetermineRenderedCodePoint(codePoint rune, column uint, config Config) (ren
 				})
 			}
 		} else if codePoint != '\n' && (codePoint < 32 || codePoint == 127) {
-			for _, char := range nonPrintableCharString(codePoint) {
+			for _, char := range NonPrintableCharString(codePoint) {
 				renderedCodePoints = append(renderedCodePoints, RenderedCodePoint{
 					width:     1,
 					codePoint: char,
@@ -434,6 +464,7 @@ func DetermineRenderedCodePoint(codePoint rune, column uint, config Config) (ren
 	return
 }
 
+// Line returns the text contained on the specified line index
 func (win *Window) Line(lineIndex uint) (line string, lineExists bool) {
 	if lineIndex < win.rows {
 		if win.border && lineIndex == 0 || lineIndex+1 == win.rows {
@@ -453,12 +484,15 @@ func (win *Window) Line(lineIndex uint) (line string, lineExists bool) {
 	return
 }
 
+// LineNumber returns the number of lines in the window
 func (win *Window) LineNumber() (lineNumber uint) {
 	return win.rows
 }
 
-func (win *Window) Highlight(pattern string, themeComponentId ThemeComponentId) (err error) {
-	search, err := NewSearch(SD_FORWARD, pattern, win)
+// Highlight searches the window for all occurrences of the specified pattern.
+// Each match then has the provided style applied to it
+func (win *Window) Highlight(pattern string, themeComponentID ThemeComponentID) (err error) {
+	search, err := NewSearch(SdForward, pattern, win)
 	if err != nil {
 		return
 	}
@@ -491,7 +525,7 @@ func (win *Window) Highlight(pattern string, themeComponentId ThemeComponentId) 
 				attr := int(cell.style.attr)
 				attr &= ^gc.A_REVERSE
 				cell.style.attr = gc.Char(attr)
-				cell.style.componentId = themeComponentId
+				cell.style.themeComponentID = themeComponentID
 			}
 
 			bytes += uint(cell.codePoints.Len())

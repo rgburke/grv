@@ -1,120 +1,133 @@
 package main
 
-type ThemeComponentId int16
+// ThemeComponentID represents different components of the display that makes up grv
+// The style of each of these components can be customised using themes
+type ThemeComponentID int16
 
+// The set of theme components that make up the display of grv
 const (
-	CMP_NONE ThemeComponentId = iota
+	CmpNone ThemeComponentID = iota
 
-	CMP_ALLVIEW_SEARCH_MATCH
+	CmpAllviewSearchMatch
 
-	CMP_MAINVIEW_ACTIVE_VIEW
-	CMP_MAINVIEW_NORMAL_VIEW
+	CmpMainviewActiveView
+	CmpMainviewNormalView
 
-	CMP_REFVIEW_TITLE
-	CMP_REFVIEW_FOOTER
-	CMP_REFVIEW_LOCAL_BRANCHES_HEADER
-	CMP_REFVIEW_REMOTE_BRANCHES_HEADER
-	CMP_REFVIEW_LOCAL_BRANCH
-	CMP_REFVIEW_REMOTE_BRANCH
-	CMP_REFVIEW_TAGS_HEADER
-	CMP_REFVIEW_TAG
+	CmpRefviewTitle
+	CmpRefviewFooter
+	CmpRefviewLocalBranchesHeader
+	CmpRefviewRemoteBranchesHeader
+	CmpRefviewLocalBranch
+	CmpRefviewRemoteBranch
+	CmpRefviewTagsHeader
+	CmpRefviewTag
 
-	CMP_COMMITVIEW_TITLE
-	CMP_COMMITVIEW_FOOTER
-	CMP_COMMITVIEW_SHORT_OID
-	CMP_COMMITVIEW_DATE
-	CMP_COMMITVIEW_AUTHOR
-	CMP_COMMITVIEW_SUMMARY
-	CMP_COMMITVIEW_TAG
-	CMP_COMMITVIEW_LOCAL_BRANCH
-	CMP_COMMITVIEW_REMOTE_BRANCH
+	CmpCommitviewTitle
+	CmpCommitviewFooter
+	CmpCommitviewShortOid
+	CmpCommitviewDate
+	CmpCommitviewAuthor
+	CmpCommitviewSummary
+	CmpCommitviewTag
+	CmpCommitviewLocalBranch
+	CmpCommitviewRemoteBranch
 
-	CMP_DIFFVIEW_DIFFLINE_NORMAL
-	CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_AUTHOR
-	CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_AUTHOR_DATE
-	CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_COMMITTER
-	CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_COMMITTER_DATE
-	CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_SUMMARY
-	CMP_DIFFVIEW_DIFFLINE_DIFF_STATS_FILE
-	CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_HEADER
-	CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_EXTENDED_HEADER
-	CMP_DIFFVIEW_DIFFLINE_UNIFIED_DIFF_HEADER
-	CMP_DIFFVIEW_DIFFLINE_HUNK_START
-	CMP_DIFFVIEW_DIFFLINE_HUNK_HEADER
-	CMP_DIFFVIEW_DIFFLINE_LINE_ADDED
-	CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED
+	CmpDiffviewDifflineNormal
+	CmpDiffviewDifflineDiffCommitAuthor
+	CmpDiffviewDifflineDiffCommitAuthorDate
+	CmpDiffviewDifflineDiffCommitCommitter
+	CmpDiffviewDifflineDiffCommitCommitterDate
+	CmpDiffviewDifflineDiffCommitSummary
+	CmpDiffviewDifflineDiffStatsFile
+	CmpDiffviewDifflineGitDiffHeader
+	CmpDiffviewDifflineGitDiffExtendedHeader
+	CmpDiffviewDifflineUnifiedDiffHeader
+	CmpDiffviewDifflineHunkStart
+	CmpDiffviewDifflineHunkHeader
+	CmpDiffviewDifflineLineAdded
+	CmpDiffviewDifflineLineRemoved
 
-	CMP_STATUSBARVIEW_NORMAL
+	CmpStatusbarviewNormal
 
-	CMP_HELPBARVIEW_SPECIAL
-	CMP_HELPBARVIEW_NORMAL
+	CmpHelpbarviewSpecial
+	CmpHelpbarviewNormal
 
-	CMP_ERROR_VIEW_TITLE
-	CMP_ERROR_VIEW_FOOTER
-	CMP_ERROR_VIEW_ERRORS
+	CmpErrorViewTitle
+	CmpErrorViewFooter
+	CmpErrorViewErrors
 
-	CMP_COUNT
+	CmpCount
 )
 
+// ThemeColor is a display color that grv supports
 type ThemeColor int
 
+// The set of display colors grv supports
 const (
-	COLOR_NONE ThemeColor = iota
-	COLOR_BLACK
-	COLOR_RED
-	COLOR_GREEN
-	COLOR_YELLOW
-	COLOR_BLUE
-	COLOR_MAGENTA
-	COLOR_CYAN
-	COLOR_WHITE
+	ColorNone ThemeColor = iota
+	ColorBlack
+	ColorRed
+	ColorGreen
+	ColorYellow
+	ColorBlue
+	ColorMagenta
+	ColorCyan
+	ColorWhite
 )
 
+// ThemeComponent stores the color information for a theme component
 type ThemeComponent struct {
 	bgcolor ThemeColor
 	fgcolor ThemeColor
 }
 
+// Theme provides read only access to the style information of a theme
 type Theme interface {
-	GetComponent(ThemeComponentId) ThemeComponent
-	GetAllComponents() map[ThemeComponentId]ThemeComponent
+	GetComponent(ThemeComponentID) ThemeComponent
+	GetAllComponents() map[ThemeComponentID]ThemeComponent
 }
 
+// MutableTheme allows defaults to be set on a theme that has not defined color information for all theme components
 type MutableTheme interface {
 	Theme
-	CreateOrGetComponent(ThemeComponentId) *ThemeComponent
+	CreateOrGetComponent(ThemeComponentID) *ThemeComponent
 }
 
+// ThemeComponents stores all of the style information for a theme
 type ThemeComponents struct {
-	components map[ThemeComponentId]*ThemeComponent
+	components map[ThemeComponentID]*ThemeComponent
 }
 
-func (themeComponents *ThemeComponents) GetComponent(themeComponentId ThemeComponentId) ThemeComponent {
-	if themeComponent, ok := themeComponents.components[themeComponentId]; ok {
+// GetComponent returns the configured color information for the specified theme component ID
+func (themeComponents *ThemeComponents) GetComponent(themeComponentID ThemeComponentID) ThemeComponent {
+	if themeComponent, ok := themeComponents.components[themeComponentID]; ok {
 		return *themeComponent
 	}
 
 	return getDefaultThemeComponent()
 }
 
-func (themeComponents *ThemeComponents) GetAllComponents() map[ThemeComponentId]ThemeComponent {
-	components := make(map[ThemeComponentId]ThemeComponent, CMP_COUNT)
+// GetAllComponents returns all configured color information the theme contains
+func (themeComponents *ThemeComponents) GetAllComponents() map[ThemeComponentID]ThemeComponent {
+	components := make(map[ThemeComponentID]ThemeComponent, CmpCount)
 
-	for themeComponentId := ThemeComponentId(1); themeComponentId < CMP_COUNT; themeComponentId++ {
-		themeComponent := themeComponents.GetComponent(themeComponentId)
-		components[themeComponentId] = themeComponent
+	for themeComponentID := ThemeComponentID(1); themeComponentID < CmpCount; themeComponentID++ {
+		themeComponent := themeComponents.GetComponent(themeComponentID)
+		components[themeComponentID] = themeComponent
 	}
 
 	return components
 }
 
-func (themeComponents *ThemeComponents) CreateOrGetComponent(themeComponentId ThemeComponentId) *ThemeComponent {
-	themeComponent, ok := themeComponents.components[themeComponentId]
+// CreateOrGetComponent returns the configured info if the component has been defined on this theme
+// Otherwise a component is created and set on the theme using default values. This default is then returned
+func (themeComponents *ThemeComponents) CreateOrGetComponent(themeComponentID ThemeComponentID) *ThemeComponent {
+	themeComponent, ok := themeComponents.components[themeComponentID]
 
 	if !ok {
 		defultThemeComponent := getDefaultThemeComponent()
 		themeComponent = &defultThemeComponent
-		themeComponents.components[themeComponentId] = themeComponent
+		themeComponents.components[themeComponentID] = themeComponent
 	}
 
 	return themeComponent
@@ -122,179 +135,181 @@ func (themeComponents *ThemeComponents) CreateOrGetComponent(themeComponentId Th
 
 func getDefaultThemeComponent() ThemeComponent {
 	return ThemeComponent{
-		bgcolor: COLOR_NONE,
-		fgcolor: COLOR_NONE,
+		bgcolor: ColorNone,
+		fgcolor: ColorNone,
 	}
 }
 
+// NewTheme creates a new empty theme
 func NewTheme() MutableTheme {
 	return &ThemeComponents{
-		components: make(map[ThemeComponentId]*ThemeComponent),
+		components: make(map[ThemeComponentID]*ThemeComponent),
 	}
 }
 
+// NewDefaultTheme creates the default theme of grv
 func NewDefaultTheme() MutableTheme {
 	return &ThemeComponents{
-		components: map[ThemeComponentId]*ThemeComponent{
-			CMP_ALLVIEW_SEARCH_MATCH: &ThemeComponent{
-				bgcolor: COLOR_YELLOW,
-				fgcolor: COLOR_NONE,
+		components: map[ThemeComponentID]*ThemeComponent{
+			CmpAllviewSearchMatch: {
+				bgcolor: ColorYellow,
+				fgcolor: ColorNone,
 			},
-			CMP_COMMITVIEW_TITLE: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_CYAN,
+			CmpCommitviewTitle: {
+				bgcolor: ColorNone,
+				fgcolor: ColorCyan,
 			},
-			CMP_COMMITVIEW_FOOTER: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_CYAN,
+			CmpCommitviewFooter: {
+				bgcolor: ColorNone,
+				fgcolor: ColorCyan,
 			},
-			CMP_COMMITVIEW_SHORT_OID: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_YELLOW,
+			CmpCommitviewShortOid: {
+				bgcolor: ColorNone,
+				fgcolor: ColorYellow,
 			},
-			CMP_COMMITVIEW_DATE: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_BLUE,
+			CmpCommitviewDate: {
+				bgcolor: ColorNone,
+				fgcolor: ColorBlue,
 			},
-			CMP_COMMITVIEW_AUTHOR: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_GREEN,
+			CmpCommitviewAuthor: {
+				bgcolor: ColorNone,
+				fgcolor: ColorGreen,
 			},
-			CMP_COMMITVIEW_SUMMARY: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_NONE,
+			CmpCommitviewSummary: {
+				bgcolor: ColorNone,
+				fgcolor: ColorNone,
 			},
-			CMP_COMMITVIEW_TAG: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_RED,
+			CmpCommitviewTag: {
+				bgcolor: ColorNone,
+				fgcolor: ColorRed,
 			},
-			CMP_COMMITVIEW_LOCAL_BRANCH: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_CYAN,
+			CmpCommitviewLocalBranch: {
+				bgcolor: ColorNone,
+				fgcolor: ColorCyan,
 			},
-			CMP_COMMITVIEW_REMOTE_BRANCH: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_MAGENTA,
+			CmpCommitviewRemoteBranch: {
+				bgcolor: ColorNone,
+				fgcolor: ColorMagenta,
 			},
-			CMP_DIFFVIEW_DIFFLINE_NORMAL: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_NONE,
+			CmpDiffviewDifflineNormal: {
+				bgcolor: ColorNone,
+				fgcolor: ColorNone,
 			},
-			CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_AUTHOR: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_CYAN,
+			CmpDiffviewDifflineDiffCommitAuthor: {
+				bgcolor: ColorNone,
+				fgcolor: ColorCyan,
 			},
-			CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_AUTHOR_DATE: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_YELLOW,
+			CmpDiffviewDifflineDiffCommitAuthorDate: {
+				bgcolor: ColorNone,
+				fgcolor: ColorYellow,
 			},
-			CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_COMMITTER: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_MAGENTA,
+			CmpDiffviewDifflineDiffCommitCommitter: {
+				bgcolor: ColorNone,
+				fgcolor: ColorMagenta,
 			},
-			CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_COMMITTER_DATE: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_YELLOW,
+			CmpDiffviewDifflineDiffCommitCommitterDate: {
+				bgcolor: ColorNone,
+				fgcolor: ColorYellow,
 			},
-			CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_SUMMARY: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_NONE,
+			CmpDiffviewDifflineDiffCommitSummary: {
+				bgcolor: ColorNone,
+				fgcolor: ColorNone,
 			},
-			CMP_DIFFVIEW_DIFFLINE_DIFF_STATS_FILE: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_BLUE,
+			CmpDiffviewDifflineDiffStatsFile: {
+				bgcolor: ColorNone,
+				fgcolor: ColorBlue,
 			},
-			CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_HEADER: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_YELLOW,
+			CmpDiffviewDifflineGitDiffHeader: {
+				bgcolor: ColorNone,
+				fgcolor: ColorYellow,
 			},
-			CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_EXTENDED_HEADER: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_BLUE,
+			CmpDiffviewDifflineGitDiffExtendedHeader: {
+				bgcolor: ColorNone,
+				fgcolor: ColorBlue,
 			},
-			CMP_DIFFVIEW_DIFFLINE_UNIFIED_DIFF_HEADER: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_YELLOW,
+			CmpDiffviewDifflineUnifiedDiffHeader: {
+				bgcolor: ColorNone,
+				fgcolor: ColorYellow,
 			},
-			CMP_DIFFVIEW_DIFFLINE_HUNK_START: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_CYAN,
+			CmpDiffviewDifflineHunkStart: {
+				bgcolor: ColorNone,
+				fgcolor: ColorCyan,
 			},
-			CMP_DIFFVIEW_DIFFLINE_HUNK_HEADER: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_BLUE,
+			CmpDiffviewDifflineHunkHeader: {
+				bgcolor: ColorNone,
+				fgcolor: ColorBlue,
 			},
-			CMP_DIFFVIEW_DIFFLINE_LINE_ADDED: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_GREEN,
+			CmpDiffviewDifflineLineAdded: {
+				bgcolor: ColorNone,
+				fgcolor: ColorGreen,
 			},
-			CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_RED,
+			CmpDiffviewDifflineLineRemoved: {
+				bgcolor: ColorNone,
+				fgcolor: ColorRed,
 			},
-			CMP_MAINVIEW_ACTIVE_VIEW: &ThemeComponent{
-				bgcolor: COLOR_WHITE,
-				fgcolor: COLOR_BLUE,
+			CmpMainviewActiveView: {
+				bgcolor: ColorWhite,
+				fgcolor: ColorBlue,
 			},
-			CMP_MAINVIEW_NORMAL_VIEW: &ThemeComponent{
-				bgcolor: COLOR_BLUE,
-				fgcolor: COLOR_WHITE,
+			CmpMainviewNormalView: {
+				bgcolor: ColorBlue,
+				fgcolor: ColorWhite,
 			},
-			CMP_REFVIEW_TITLE: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_CYAN,
+			CmpRefviewTitle: {
+				bgcolor: ColorNone,
+				fgcolor: ColorCyan,
 			},
-			CMP_REFVIEW_FOOTER: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_CYAN,
+			CmpRefviewFooter: {
+				bgcolor: ColorNone,
+				fgcolor: ColorCyan,
 			},
-			CMP_REFVIEW_LOCAL_BRANCHES_HEADER: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_MAGENTA,
+			CmpRefviewLocalBranchesHeader: {
+				bgcolor: ColorNone,
+				fgcolor: ColorMagenta,
 			},
-			CMP_REFVIEW_REMOTE_BRANCHES_HEADER: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_MAGENTA,
+			CmpRefviewRemoteBranchesHeader: {
+				bgcolor: ColorNone,
+				fgcolor: ColorMagenta,
 			},
-			CMP_REFVIEW_LOCAL_BRANCH: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_NONE,
+			CmpRefviewLocalBranch: {
+				bgcolor: ColorNone,
+				fgcolor: ColorNone,
 			},
-			CMP_REFVIEW_REMOTE_BRANCH: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_NONE,
+			CmpRefviewRemoteBranch: {
+				bgcolor: ColorNone,
+				fgcolor: ColorNone,
 			},
-			CMP_REFVIEW_TAGS_HEADER: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_MAGENTA,
+			CmpRefviewTagsHeader: {
+				bgcolor: ColorNone,
+				fgcolor: ColorMagenta,
 			},
-			CMP_REFVIEW_TAG: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_NONE,
+			CmpRefviewTag: {
+				bgcolor: ColorNone,
+				fgcolor: ColorNone,
 			},
-			CMP_STATUSBARVIEW_NORMAL: &ThemeComponent{
-				bgcolor: COLOR_BLUE,
-				fgcolor: COLOR_YELLOW,
+			CmpStatusbarviewNormal: {
+				bgcolor: ColorBlue,
+				fgcolor: ColorYellow,
 			},
-			CMP_HELPBARVIEW_SPECIAL: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_MAGENTA,
+			CmpHelpbarviewSpecial: {
+				bgcolor: ColorNone,
+				fgcolor: ColorMagenta,
 			},
-			CMP_HELPBARVIEW_NORMAL: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_NONE,
+			CmpHelpbarviewNormal: {
+				bgcolor: ColorNone,
+				fgcolor: ColorNone,
 			},
-			CMP_ERROR_VIEW_TITLE: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_CYAN,
+			CmpErrorViewTitle: {
+				bgcolor: ColorNone,
+				fgcolor: ColorCyan,
 			},
-			CMP_ERROR_VIEW_FOOTER: &ThemeComponent{
-				bgcolor: COLOR_NONE,
-				fgcolor: COLOR_CYAN,
+			CmpErrorViewFooter: {
+				bgcolor: ColorNone,
+				fgcolor: ColorCyan,
 			},
-			CMP_ERROR_VIEW_ERRORS: &ThemeComponent{
-				bgcolor: COLOR_RED,
-				fgcolor: COLOR_WHITE,
+			CmpErrorViewErrors: {
+				bgcolor: ColorRed,
+				fgcolor: ColorWhite,
 			},
 		},
 	}

@@ -34,11 +34,11 @@ func (testRecordFieldDescriptor *TestRecordFieldDescriptor) FieldType(fieldName 
 
 	switch strings.ToLower(fieldName) {
 	case "id":
-		fieldType = FT_NUMBER
+		fieldType = FtNumber
 	case "name":
-		fieldType = FT_STRING
+		fieldType = FtString
 	case "lastupdated":
-		fieldType = FT_DATE
+		fieldType = FtDate
 	default:
 		fieldExists = false
 	}
@@ -267,7 +267,7 @@ func TestValueComparators(t *testing.T) {
 			actualFilterOutput := filter(testRecord)
 
 			if expectedFilterOutput != actualFilterOutput {
-				t.Errorf("Filter ouput does not match expected value for query \"%v\". Expected: %v, Actual: %v", inputQuery, expectedFilterOutput, actualFilterOutput)
+				t.Errorf("Filter output does not match expected value for query \"%v\". Expected: %v, Actual: %v", inputQuery, expectedFilterOutput, actualFilterOutput)
 			}
 		}
 	}
@@ -358,7 +358,7 @@ func TestPatternComparators(t *testing.T) {
 			actualFilterOutput := filter(testRecord)
 
 			if expectedFilterOutput != actualFilterOutput {
-				t.Errorf("Filter ouput does not match expected value for query \"%v\". Expected: %v, Actual: %v", inputQuery, expectedFilterOutput, actualFilterOutput)
+				t.Errorf("Filter output does not match expected value for query \"%v\". Expected: %v, Actual: %v", inputQuery, expectedFilterOutput, actualFilterOutput)
 			}
 		}
 	}
@@ -423,7 +423,7 @@ func TestLogicalComparators(t *testing.T) {
 			actualFilterOutput := filter(nil)
 
 			if expectedFilterOutput != actualFilterOutput {
-				t.Errorf("Filter ouput does not match expected value for query \"%v\". Expected: %v, Actual: %v", inputQuery, expectedFilterOutput, actualFilterOutput)
+				t.Errorf("Filter output does not match expected value for query \"%v\". Expected: %v, Actual: %v", inputQuery, expectedFilterOutput, actualFilterOutput)
 			}
 		}
 	}

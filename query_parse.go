@@ -9,51 +9,61 @@ import (
 	"strings"
 )
 
+// Expression represents a parsed query expression
 type Expression interface {
 	Equal(expression Expression) bool
 	String() string
 	Pos() QueryScannerPos
 }
 
+// LogicalOperatorExpression is an expression which resolves to a boolean value
 type LogicalOperatorExpression interface {
-	Rhs() Expression
+	RHS() Expression
 	OperatorPrecedence() uint
-	SetRhs(expression Expression)
+	SetRHS(expression Expression)
 }
 
+// Operator represents a unary or binary operator
 type Operator struct {
 	operator   *QueryToken
 	precedence uint
 }
 
+// Identifier represents a field name
 type Identifier struct {
 	identifier *QueryToken
 }
 
+// StringLiteral is a literal string value
 type StringLiteral struct {
 	value *QueryToken
 }
 
+// NumberLiteral is a numeric value
 type NumberLiteral struct {
 	value  *QueryToken
 	number float64
 }
 
+// ParenExpression represents an expression contained in parentheses
 type ParenExpression struct {
 	expression Expression
 }
 
+// UnaryExpression groups an operator and a single operand
 type UnaryExpression struct {
 	operator   *Operator
 	expression Expression
 }
 
+// BinaryExpression groups an operator and two operands
 type BinaryExpression struct {
 	operator *Operator
 	lhs      Expression
 	rhs      Expression
 }
 
+// Equal returns true if this expression is equal to the provided expression
 func (operator *Operator) Equal(expression Expression) bool {
 	other, ok := expression.(*Operator)
 	if !ok {
@@ -64,14 +74,17 @@ func (operator *Operator) Equal(expression Expression) bool {
 		operator.precedence == other.precedence
 }
 
+// String returns the string representation of the operator with precedence
 func (operator *Operator) String() string {
 	return fmt.Sprintf("%v[%v]", operator.operator.value, operator.precedence)
 }
 
+// Pos returns the position this token appeared at in the input stream
 func (operator *Operator) Pos() QueryScannerPos {
 	return operator.operator.startPos
 }
 
+// Equal returns true if this expression is equal to the provided expression
 func (identifier *Identifier) Equal(expression Expression) bool {
 	other, ok := expression.(*Identifier)
 	if !ok {
@@ -81,14 +94,17 @@ func (identifier *Identifier) Equal(expression Expression) bool {
 	return identifier.identifier.value == other.identifier.value
 }
 
+// String returns the field name
 func (identifier *Identifier) String() string {
 	return identifier.identifier.value
 }
 
+// Pos returns the position this token appeared at in the input stream
 func (identifier *Identifier) Pos() QueryScannerPos {
 	return identifier.identifier.startPos
 }
 
+// Equal returns true if this expression is equal to the provided expression
 func (numberLiteral *NumberLiteral) Equal(expression Expression) bool {
 	other, ok := expression.(*NumberLiteral)
 	if !ok {
@@ -99,14 +115,17 @@ func (numberLiteral *NumberLiteral) Equal(expression Expression) bool {
 		numberLiteral.number == other.number
 }
 
+// String returns the string representation of the numberic value stored
 func (numberLiteral *NumberLiteral) String() string {
 	return numberLiteral.value.value
 }
 
+// Pos returns the position this token appeared at in the input stream
 func (numberLiteral *NumberLiteral) Pos() QueryScannerPos {
 	return numberLiteral.value.startPos
 }
 
+// Equal returns true if this expression is equal to the provided expression
 func (stringLiteral *StringLiteral) Equal(expression Expression) bool {
 	other, ok := expression.(*StringLiteral)
 	if !ok {
@@ -116,14 +135,17 @@ func (stringLiteral *StringLiteral) Equal(expression Expression) bool {
 	return stringLiteral.value.value == other.value.value
 }
 
+// String returns the processed string value
 func (stringLiteral *StringLiteral) String() string {
 	return fmt.Sprintf("\"%v\"", strings.Replace(stringLiteral.value.value, "\"", "\\\"", -1))
 }
 
+// Pos returns the position this token appeared at in the input stream
 func (stringLiteral *StringLiteral) Pos() QueryScannerPos {
 	return stringLiteral.value.startPos
 }
 
+// Equal returns true if this expression is equal to the provided expression
 func (parenExpression *ParenExpression) Equal(expression Expression) bool {
 	other, ok := expression.(*ParenExpression)
 	if !ok {
@@ -133,14 +155,17 @@ func (parenExpression *ParenExpression) Equal(expression Expression) bool {
 	return parenExpression.expression.Equal(other.expression)
 }
 
+// String returns the expression in parenthesis
 func (parenExpression *ParenExpression) String() string {
 	return fmt.Sprintf("(%v)", parenExpression.expression)
 }
 
+// Pos returns the position the child expression appeared at in the input stream
 func (parenExpression *ParenExpression) Pos() QueryScannerPos {
 	return parenExpression.expression.Pos()
 }
 
+// Equal returns true if this expression is equal to the provided expression
 func (unaryExpression *UnaryExpression) Equal(expression Expression) bool {
 	other, ok := expression.(*UnaryExpression)
 	if !ok {
@@ -151,26 +176,32 @@ func (unaryExpression *UnaryExpression) Equal(expression Expression) bool {
 		unaryExpression.expression.Equal(other.expression)
 }
 
+// String returns the unary expression in parenthesis
 func (unaryExpression *UnaryExpression) String() string {
 	return fmt.Sprintf("(%v %v)", unaryExpression.operator, unaryExpression.expression)
 }
 
+// Pos returns the position this expressions operator appeared in the input stream
 func (unaryExpression *UnaryExpression) Pos() QueryScannerPos {
 	return unaryExpression.operator.operator.startPos
 }
 
-func (unaryExpression *UnaryExpression) Rhs() Expression {
+// RHS returns the operand for the unary expression
+func (unaryExpression *UnaryExpression) RHS() Expression {
 	return unaryExpression.expression
 }
 
+// OperatorPrecedence returns the operator precedence of this expressions operator
 func (unaryExpression *UnaryExpression) OperatorPrecedence() uint {
 	return unaryExpression.operator.precedence
 }
 
-func (unaryExpression *UnaryExpression) SetRhs(expression Expression) {
+// SetRHS sets the operand of this expression
+func (unaryExpression *UnaryExpression) SetRHS(expression Expression) {
 	unaryExpression.expression = expression
 }
 
+// Equal returns true if this expression is equal to the provided expression
 func (binaryExpression *BinaryExpression) Equal(expression Expression) bool {
 	other, ok := expression.(*BinaryExpression)
 	if !ok {
@@ -182,54 +213,62 @@ func (binaryExpression *BinaryExpression) Equal(expression Expression) bool {
 		binaryExpression.rhs.Equal(other.rhs)
 }
 
+// String returns the binary expression in parenthesis
 func (binaryExpression *BinaryExpression) String() string {
 	return fmt.Sprintf("(%v %v %v)", binaryExpression.lhs,
 		binaryExpression.operator, binaryExpression.rhs)
 }
 
+// Pos returns the position this token appeared at in the input stream
 func (binaryExpression *BinaryExpression) Pos() QueryScannerPos {
 	return binaryExpression.operator.operator.startPos
 }
 
-func (binaryExpression *BinaryExpression) Rhs() Expression {
+// RHS returns the right hand side operand
+func (binaryExpression *BinaryExpression) RHS() Expression {
 	return binaryExpression.rhs
 }
 
+// OperatorPrecedence returns the precedence of this expressions operator
 func (binaryExpression *BinaryExpression) OperatorPrecedence() uint {
 	return binaryExpression.operator.precedence
 }
 
-func (binaryExpression *BinaryExpression) SetRhs(expression Expression) {
+// SetRHS sets the right hand side operand
+func (binaryExpression *BinaryExpression) SetRHS(expression Expression) {
 	binaryExpression.rhs = expression
 }
 
+// IsComparison returns true if the operator for this expression is a comparison operator
 func (binaryExpression *BinaryExpression) IsComparison() bool {
 	return isComparisonOperator(binaryExpression.operator.operator)
 }
 
 var operatorPrecedence = map[QueryTokenType]uint{
-	QTK_CMP_EQ: 4,
-	QTK_CMP_NE: 4,
-	QTK_CMP_GT: 4,
-	QTK_CMP_GE: 4,
-	QTK_CMP_LT: 4,
-	QTK_CMP_LE: 4,
+	QtkCmpEq: 4,
+	QtkCmpNe: 4,
+	QtkCmpGt: 4,
+	QtkCmpGe: 4,
+	QtkCmpLt: 4,
+	QtkCmpLe: 4,
 
-	QTK_CMP_GLOB:   4,
-	QTK_CMP_REGEXP: 4,
+	QtkCmpGlob:   4,
+	QtkCmpRegexp: 4,
 
-	QTK_NOT: 3,
+	QtkNot: 3,
 
-	QTK_AND: 2,
-	QTK_OR:  1,
+	QtkAnd: 2,
+	QtkOr:  1,
 }
 
+// QueryParser parses an input stream into a sequence of expressions
 type QueryParser struct {
 	scanner          *QueryScanner
 	tokenBuffer      []*QueryToken
 	tokenBufferIndex int
 }
 
+// NewQueryParser creates a new instance
 func NewQueryParser(reader io.Reader) *QueryParser {
 	return &QueryParser{
 		scanner: NewQueryScanner(reader),
@@ -249,7 +288,7 @@ func (parser *QueryParser) scan() (token *QueryToken, err error) {
 			return
 		}
 
-		if token.tokenType != QTK_WHITE_SPACE {
+		if token.tokenType != QtkWhiteSpace {
 			break
 		}
 	}
@@ -266,7 +305,7 @@ func (parser *QueryParser) unscan() {
 	}
 }
 
-func GenerateQueryError(token *QueryToken, errorMessage string, args ...interface{}) error {
+func generateQueryError(token *QueryToken, errorMessage string, args ...interface{}) error {
 	var buffer bytes.Buffer
 
 	buffer.WriteString(fmt.Sprintf("%v:%v: ", token.startPos.line, token.startPos.col))
@@ -280,12 +319,13 @@ func GenerateQueryError(token *QueryToken, errorMessage string, args ...interfac
 	return errors.New(buffer.String())
 }
 
+// Parse parses and returns the next expression from the input stream or sets eof = true is the end of the input steam is reached
 func (parser *QueryParser) Parse() (expression Expression, eof bool, err error) {
 	token, err := parser.scan()
 
 	switch {
 	case err != nil:
-	case token.tokenType == QTK_EOF:
+	case token.tokenType == QtkEOF:
 		eof = true
 	default:
 		parser.unscan()
@@ -312,14 +352,14 @@ func (parser *QueryParser) parseExpression() (expression Expression, err error) 
 		if err != nil {
 			return
 		} else if !isOperatorToken(token) {
-			if token.tokenType == QTK_EOF || token.tokenType == QTK_RPAREN {
+			if token.tokenType == QtkEOF || token.tokenType == QtkRparen {
 				expression = root.rhs
 
-				if token.tokenType == QTK_RPAREN {
+				if token.tokenType == QtkRparen {
 					parser.unscan()
 				}
 			} else {
-				err = GenerateQueryError(token, "Expected operator but found: %v", token.Value())
+				err = generateQueryError(token, "Expected operator but found: %v", token.Value())
 			}
 
 			return
@@ -338,19 +378,19 @@ func (parser *QueryParser) parseExpression() (expression Expression, err error) 
 		}
 
 		for node := LogicalOperatorExpression(root); ; {
-			nodeRhs, ok := node.Rhs().(LogicalOperatorExpression)
+			nodeRHS, ok := node.RHS().(LogicalOperatorExpression)
 
-			if !ok || nodeRhs.OperatorPrecedence() >= operator.precedence {
-				node.SetRhs(&BinaryExpression{
+			if !ok || nodeRHS.OperatorPrecedence() >= operator.precedence {
+				node.SetRHS(&BinaryExpression{
 					operator: operator,
-					lhs:      node.Rhs(),
+					lhs:      node.RHS(),
 					rhs:      rhs,
 				})
 
 				break
 			}
 
-			node = nodeRhs
+			node = nodeRHS
 		}
 	}
 }
@@ -362,7 +402,7 @@ func (parser *QueryParser) parseUnaryExpression() (expression Expression, err er
 	}
 
 	switch token.tokenType {
-	case QTK_LPAREN:
+	case QtkLparen:
 		var parenExpression Expression
 		parenExpression, err = parser.parseExpression()
 		if err != nil {
@@ -374,14 +414,14 @@ func (parser *QueryParser) parseUnaryExpression() (expression Expression, err er
 			return
 		}
 
-		if token.tokenType != QTK_RPAREN {
-			err = GenerateQueryError(token, "Expected ')' but found: %v", token.Value())
+		if token.tokenType != QtkRparen {
+			err = generateQueryError(token, "Expected ')' but found: %v", token.Value())
 			return
 		}
 
 		expression = &ParenExpression{parenExpression}
 		return
-	case QTK_NOT:
+	case QtkNot:
 		var operator *Operator
 		operator, err = createOperator(token)
 		if err != nil {
@@ -400,10 +440,10 @@ func (parser *QueryParser) parseUnaryExpression() (expression Expression, err er
 		}
 
 		return
-	case QTK_IDENTIFIER:
+	case QtkIdentifier:
 		expression = &Identifier{token}
 		return
-	case QTK_NUMBER:
+	case QtkNumber:
 		var number float64
 		number, err = strconv.ParseFloat(token.value, 64)
 		if err != nil {
@@ -412,23 +452,23 @@ func (parser *QueryParser) parseUnaryExpression() (expression Expression, err er
 
 		expression = &NumberLiteral{token, number}
 		return
-	case QTK_STRING:
+	case QtkString:
 		expression = &StringLiteral{token}
 		return
 	}
 
-	err = GenerateQueryError(token, "Expected Identifier, String or Number but found: %v", token.value)
+	err = generateQueryError(token, "Expected Identifier, String or Number but found: %v", token.value)
 	return
 }
 
 func createOperator(token *QueryToken) (*Operator, error) {
 	if !isOperatorToken(token) {
-		return nil, GenerateQueryError(token, "Expected operator token but found: %v", token.value)
+		return nil, generateQueryError(token, "Expected operator token but found: %v", token.value)
 	}
 
 	precedence, ok := operatorPrecedence[token.tokenType]
 	if !ok {
-		precedence = uint(QTK_OR - 1)
+		precedence = uint(QtkOr - 1)
 	}
 
 	operator := &Operator{
@@ -445,8 +485,8 @@ func isOperatorToken(token *QueryToken) bool {
 
 func isComparisonOperator(token *QueryToken) bool {
 	switch token.tokenType {
-	case QTK_CMP_EQ, QTK_CMP_NE, QTK_CMP_GT, QTK_CMP_GE, QTK_CMP_LT, QTK_CMP_LE,
-		QTK_CMP_GLOB, QTK_CMP_REGEXP:
+	case QtkCmpEq, QtkCmpNe, QtkCmpGt, QtkCmpGe, QtkCmpLt, QtkCmpLe,
+		QtkCmpGlob, QtkCmpRegexp:
 		return true
 	}
 
@@ -455,7 +495,7 @@ func isComparisonOperator(token *QueryToken) bool {
 
 func isLogicalOperator(token *QueryToken) bool {
 	switch token.tokenType {
-	case QTK_AND, QTK_OR, QTK_NOT:
+	case QtkAnd, QtkOr, QtkNot:
 		return true
 	}
 

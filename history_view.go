@@ -1,22 +1,24 @@
 package main
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
-	HV_BRANCH_VIEW_WIDTH = 35
+	hvBranchViewWidth = 35
 )
 
-type ViewOrientation int
+type viewOrientation int
 
 const (
-	VO_DEFAULT ViewOrientation = iota
-	VO_COLUMN
-	VO_COUNT
+	voDefault viewOrientation = iota
+	voColumn
+	voCount
 )
 
+// HistoryView manages the history view and it's child views
 type HistoryView struct {
 	channels             *Channels
 	refView              WindowView
@@ -27,16 +29,17 @@ type HistoryView struct {
 	activeViewPos        uint
 	active               bool
 	fullScreenActiveView bool
-	viewOrientation      ViewOrientation
+	orientation          viewOrientation
 	lock                 sync.Mutex
 }
 
-type ViewLayout struct {
+type viewLayout struct {
 	viewDimension ViewDimension
 	startRow      uint
 	startCol      uint
 }
 
+// NewHistoryView creates a new instance of the history view
 func NewHistoryView(repoData RepoData, channels *Channels, config Config) *HistoryView {
 	refView := NewRefView(repoData, channels)
 	commitView := NewCommitView(repoData, channels)
@@ -50,11 +53,12 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 	commitView.RegisterCommitListner(diffView)
 
 	return &HistoryView{
-		channels:   channels,
-		refView:    refView,
-		commitView: commitView,
-		diffView:   diffView,
-		views:      []WindowView{refView, commitView, diffView},
+		channels:    channels,
+		refView:     refView,
+		commitView:  commitView,
+		diffView:    diffView,
+		views:       []WindowView{refView, commitView, diffView},
+		orientation: voDefault,
 		viewWins: map[WindowView]*Window{
 			refView:    refViewWin,
 			commitView: commitViewWin,
@@ -64,6 +68,7 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 	}
 }
 
+// Initialise sets up the history view and calls initialise on its child views
 func (historyView *HistoryView) Initialise() (err error) {
 	for _, childView := range historyView.views {
 		if err = childView.Initialise(); err != nil {
@@ -74,6 +79,7 @@ func (historyView *HistoryView) Initialise() (err error) {
 	return
 }
 
+// Render generates the history view and returns windows (one for each child view) representing the view as a whole
 func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Window, err error) {
 	log.Debug("Rendering HistoryView")
 	historyView.lock.Lock()
@@ -101,14 +107,14 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 	return
 }
 
-func (historyView *HistoryView) determineViewDimensions(viewDimension ViewDimension) map[WindowView]ViewLayout {
-	refViewLayout := ViewLayout{viewDimension: viewDimension}
-	commitViewLayout := ViewLayout{viewDimension: viewDimension}
-	diffViewLayout := ViewLayout{viewDimension: viewDimension}
+func (historyView *HistoryView) determineViewDimensions(viewDimension ViewDimension) map[WindowView]viewLayout {
+	refViewLayout := viewLayout{viewDimension: viewDimension}
+	commitViewLayout := viewLayout{viewDimension: viewDimension}
+	diffViewLayout := viewLayout{viewDimension: viewDimension}
 
-	refViewLayout.viewDimension.cols = Min(HV_BRANCH_VIEW_WIDTH, viewDimension.cols/2)
+	refViewLayout.viewDimension.cols = Min(hvBranchViewWidth, viewDimension.cols/2)
 
-	if historyView.viewOrientation == VO_COLUMN {
+	if historyView.orientation == voColumn {
 		remainingCols := viewDimension.cols - refViewLayout.viewDimension.cols
 
 		commitViewLayout.viewDimension.cols = remainingCols / 2
@@ -131,7 +137,7 @@ func (historyView *HistoryView) determineViewDimensions(viewDimension ViewDimens
 	log.Debugf("CommitView layout: %v", commitViewLayout)
 	log.Debugf("DiffView layout: %v", diffViewLayout)
 
-	return map[WindowView]ViewLayout{
+	return map[WindowView]viewLayout{
 		historyView.refView:    refViewLayout,
 		historyView.commitView: commitViewLayout,
 		historyView.diffView:   diffViewLayout,
@@ -155,32 +161,36 @@ func (historyView *HistoryView) renderActiveViewFullScreen(viewDimension ViewDim
 	return
 }
 
+// RenderStatusBar does nothing
 func (historyView *HistoryView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
+// RenderHelpBar renders key binding help info for the history view
 func (historyView *HistoryView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
-	RenderKeyBindingHelp(historyView.ViewId(), lineBuilder, []ActionMessage{
-		ActionMessage{action: ACTION_NEXT_VIEW, message: "Next View"},
-		ActionMessage{action: ACTION_PREV_VIEW, message: "Previous View"},
-		ActionMessage{action: ACTION_FULL_SCREEN_VIEW, message: "Toggle Full Screen"},
-		ActionMessage{action: ACTION_TOGGLE_VIEW_LAYOUT, message: "Toggle Layout"},
+	RenderKeyBindingHelp(historyView.ViewID(), lineBuilder, []ActionMessage{
+		{action: ActionNextView, message: "Next View"},
+		{action: ActionPrevView, message: "Previous View"},
+		{action: ActionFullScreenView, message: "Toggle Full Screen"},
+		{action: ActionToggleViewLayout, message: "Toggle Layout"},
 	})
 
 	return
 }
 
+// HandleKeyPress passes the keypress onto the active child view
 func (historyView *HistoryView) HandleKeyPress(keystring string) (err error) {
 	log.Debugf("HistoryView handling keys %v", keystring)
 	activeChildView := historyView.ActiveView()
 	return activeChildView.HandleKeyPress(keystring)
 }
 
+// HandleAction handles the provided action if the history view supports it or passes it down to the active child view
 func (historyView *HistoryView) HandleAction(action Action) (err error) {
 	log.Debugf("HistoryView handling action %v", action)
 
 	switch action.ActionType {
-	case ACTION_NEXT_VIEW:
+	case ActionNextView:
 		historyView.lock.Lock()
 		historyView.activeViewPos++
 		historyView.activeViewPos %= uint(len(historyView.views))
@@ -188,7 +198,7 @@ func (historyView *HistoryView) HandleAction(action Action) (err error) {
 		historyView.OnActiveChange(true)
 		historyView.channels.UpdateDisplay()
 		return
-	case ACTION_PREV_VIEW:
+	case ActionPrevView:
 		historyView.lock.Lock()
 
 		if historyView.activeViewPos == 0 {
@@ -201,18 +211,18 @@ func (historyView *HistoryView) HandleAction(action Action) (err error) {
 		historyView.OnActiveChange(true)
 		historyView.channels.UpdateDisplay()
 		return
-	case ACTION_FULL_SCREEN_VIEW:
+	case ActionFullScreenView:
 		historyView.lock.Lock()
 		defer historyView.lock.Unlock()
 
 		historyView.fullScreenActiveView = !historyView.fullScreenActiveView
 		historyView.channels.UpdateDisplay()
 		return
-	case ACTION_TOGGLE_VIEW_LAYOUT:
+	case ActionToggleViewLayout:
 		historyView.lock.Lock()
 		defer historyView.lock.Unlock()
 
-		historyView.viewOrientation = (historyView.viewOrientation + 1) % VO_COUNT
+		historyView.orientation = (historyView.orientation + 1) % voCount
 		historyView.channels.UpdateDisplay()
 		return
 	}
@@ -221,6 +231,7 @@ func (historyView *HistoryView) HandleAction(action Action) (err error) {
 	return activeChildView.HandleAction(action)
 }
 
+// OnActiveChange updates whether this view (and it's active child view) are active
 func (historyView *HistoryView) OnActiveChange(active bool) {
 	log.Debugf("History active set to %v", active)
 	historyView.lock.Lock()
@@ -237,10 +248,12 @@ func (historyView *HistoryView) OnActiveChange(active bool) {
 	}
 }
 
-func (historyView *HistoryView) ViewId() ViewId {
-	return VIEW_HISTORY
+// ViewID returns the view ID for the history view
+func (historyView *HistoryView) ViewID() ViewID {
+	return ViewHistory
 }
 
+// ActiveView returns the active child view
 func (historyView *HistoryView) ActiveView() AbstractView {
 	historyView.lock.Lock()
 	defer historyView.lock.Unlock()
@@ -248,6 +261,7 @@ func (historyView *HistoryView) ActiveView() AbstractView {
 	return historyView.views[historyView.activeViewPos]
 }
 
+// Title returns the title for the history view
 func (historyView *HistoryView) Title() string {
 	return "History View"
 }

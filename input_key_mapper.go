@@ -3,15 +3,16 @@ package main
 import (
 	"bytes"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	gc "github.com/rthornton128/goncurses"
 	"regexp"
 	"unicode"
+
+	log "github.com/Sirupsen/logrus"
+	gc "github.com/rthornton128/goncurses"
 )
 
 const (
-	IKM_ESCAPE_KEY = 0x1B
-	IKM_CTRL_MASK  = 0x1F
+	ikmEscapeKey = 0x1B
+	ikmCtrlMask  = 0x1F
 )
 
 var keyMap = map[gc.Key]string{
@@ -119,18 +120,21 @@ var keyMap = map[gc.Key]string{
 	gc.KEY_MAX:       "<Max>",
 }
 
+// InputKeyMapper maps ncurses characters to key string representations and groups byte sequences into UTF-8 characters
 type InputKeyMapper struct {
 	ui               InputUI
 	char             bytes.Buffer
 	expectedCharSize int
 }
 
+// NewInputKeyMapper creates a new instance
 func NewInputKeyMapper(ui InputUI) *InputKeyMapper {
 	return &InputKeyMapper{
 		ui: ui,
 	}
 }
 
+// GetKeyInput fetches the next character or key string returned from the UI
 func (inputKeyMapper *InputKeyMapper) GetKeyInput() (key string, err error) {
 	for {
 		keyPressEvent, err := inputKeyMapper.ui.GetInput(false)
@@ -139,13 +143,13 @@ func (inputKeyMapper *InputKeyMapper) GetKeyInput() (key string, err error) {
 		switch {
 		case err != nil:
 			return key, err
-		case keyPressEvent == UI_NO_KEY:
+		case keyPressEvent == UINoKey:
 			return key, err
 		case inputKeyMapper.isProcessingUTF8Char():
 			err = inputKeyMapper.processUTF8ContinuationByte(keyPressEvent)
 		case isMappedKey:
 			return mappedKey, err
-		case keyPressEvent == IKM_ESCAPE_KEY:
+		case keyPressEvent == ikmEscapeKey:
 			return inputKeyMapper.metaKeyString(), err
 		case isControlKey(keyPressEvent):
 			return controlKeyString(keyPressEvent), err
@@ -223,17 +227,18 @@ func (inputKeyMapper *InputKeyMapper) metaKeyString() string {
 }
 
 func isControlKey(keyPressEvent Key) bool {
-	return keyPressEvent >= (IKM_CTRL_MASK&'@') && keyPressEvent <= (IKM_CTRL_MASK&'_')
+	return keyPressEvent >= (ikmCtrlMask&'@') && keyPressEvent <= (ikmCtrlMask&'_')
 }
 
 func controlKeyString(keyPressEvent Key) string {
 	return fmt.Sprintf("<C-%c>", unicode.ToLower(rune(keyPressEvent|0x40)))
 }
 
+// TokeniseKeys breaks a key string sequence down in to the individual keys is consists of
 func TokeniseKeys(keysString string) (keys []string) {
 	for i := 0; i < len(keysString); i++ {
 		if keysString[i] == '<' {
-			if key, isSpecialKey := specialKeyString(keysString[i:len(keysString)]); isSpecialKey {
+			if key, isSpecialKey := specialKeyString(keysString[i:]); isSpecialKey {
 				keys = append(keys, key)
 				i += len(key) - 1
 				continue

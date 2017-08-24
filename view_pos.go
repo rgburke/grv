@@ -1,11 +1,13 @@
 package main
 
+// ViewPos manages the display positioning of a view
 type ViewPos struct {
 	activeRowIndex    uint
 	viewStartRowIndex uint
 	viewStartColumn   uint
 }
 
+// NewViewPos creates a new instance
 func NewViewPos() *ViewPos {
 	return &ViewPos{
 		activeRowIndex:    0,
@@ -14,6 +16,7 @@ func NewViewPos() *ViewPos {
 	}
 }
 
+// DetermineViewStartRow determines the row the view should start displaying from based on the current cursor position
 func (viewPos *ViewPos) DetermineViewStartRow(viewRows, rows uint) {
 	if rows > 0 && viewPos.activeRowIndex >= rows {
 		viewPos.activeRowIndex = rows - 1
@@ -28,6 +31,7 @@ func (viewPos *ViewPos) DetermineViewStartRow(viewRows, rows uint) {
 	}
 }
 
+// MoveLineDown moves the cursor down one line
 func (viewPos *ViewPos) MoveLineDown(rows uint) (changed bool) {
 	if viewPos.activeRowIndex+1 < rows {
 		viewPos.activeRowIndex++
@@ -37,6 +41,7 @@ func (viewPos *ViewPos) MoveLineDown(rows uint) (changed bool) {
 	return
 }
 
+// MoveLineUp moves the cursor up one line
 func (viewPos *ViewPos) MoveLineUp() (changed bool) {
 	if viewPos.activeRowIndex > 0 {
 		viewPos.activeRowIndex--
@@ -46,6 +51,7 @@ func (viewPos *ViewPos) MoveLineUp() (changed bool) {
 	return
 }
 
+// MovePageDown moves the cursor and display down a page
 func (viewPos *ViewPos) MovePageDown(pageRows, rows uint) (changed bool) {
 	if viewPos.activeRowIndex+1 < rows {
 		viewPos.activeRowIndex += Min(pageRows, rows-(viewPos.activeRowIndex+1))
@@ -56,6 +62,7 @@ func (viewPos *ViewPos) MovePageDown(pageRows, rows uint) (changed bool) {
 	return
 }
 
+// MovePageUp moves the cursor and display up a page
 func (viewPos *ViewPos) MovePageUp(pageRows uint) (changed bool) {
 	if viewPos.activeRowIndex > 0 {
 		viewPos.activeRowIndex -= Min(pageRows, viewPos.activeRowIndex)
@@ -66,11 +73,13 @@ func (viewPos *ViewPos) MovePageUp(pageRows uint) (changed bool) {
 	return
 }
 
+// MovePageRight scrolls the view right a page (half the available view width)
 func (viewPos *ViewPos) MovePageRight(cols uint) {
 	halfPage := cols / 2
 	viewPos.viewStartColumn += halfPage
 }
 
+// MovePageLeft scrolls the view left a page (half the available view width)
 func (viewPos *ViewPos) MovePageLeft(cols uint) (changed bool) {
 	if viewPos.viewStartColumn > 1 {
 		halfPage := cols / 2
@@ -87,6 +96,7 @@ func (viewPos *ViewPos) MovePageLeft(cols uint) (changed bool) {
 	return
 }
 
+// MoveToFirstLine moves the cursor to the first line of the view
 func (viewPos *ViewPos) MoveToFirstLine() (changed bool) {
 	if viewPos.activeRowIndex > 0 {
 		viewPos.activeRowIndex = 0
@@ -96,6 +106,7 @@ func (viewPos *ViewPos) MoveToFirstLine() (changed bool) {
 	return
 }
 
+// MoveToLastLine moves the cursor to the last line of the view
 func (viewPos *ViewPos) MoveToLastLine(rows uint) (changed bool) {
 	if rows > 0 && viewPos.activeRowIndex+1 != rows {
 		viewPos.activeRowIndex = rows - 1

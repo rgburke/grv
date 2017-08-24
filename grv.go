@@ -2,24 +2,25 @@ package main
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
-	GRV_INPUT_BUFFER_SIZE     = 100
-	GRV_ACTION_BUFFER_SIZE    = 100
-	GRV_ERROR_BUFFER_SIZE     = 100
-	GRV_DISPLAY_BUFFER_SIZE   = 50
-	GRV_MAX_DRAW_FREQUENCY    = time.Millisecond * 50
-	GRV_MIN_ERROR_DISPLAY_SEC = time.Second * 2
+	grvInputBufferSize   = 100
+	grvActionBufferSize  = 100
+	grvErrorBufferSize   = 100
+	grvDisplayBufferSize = 50
+	grvMaxDrawFrequency  = time.Millisecond * 50
+	grvMinErrorDisplay   = time.Second * 2
 )
 
-type GRVChannels struct {
+type gRVChannels struct {
 	exitCh     chan bool
 	inputKeyCh chan string
 	actionCh   chan Action
@@ -27,7 +28,7 @@ type GRVChannels struct {
 	errorCh    chan error
 }
 
-func (grvChannels GRVChannels) Channels() *Channels {
+func (grvChannels gRVChannels) Channels() *Channels {
 	return &Channels{
 		displayCh: grvChannels.displayCh,
 		exitCh:    grvChannels.exitCh,
@@ -36,6 +37,7 @@ func (grvChannels GRVChannels) Channels() *Channels {
 	}
 }
 
+// Channels contains channels used for communication within grv
 type Channels struct {
 	displayCh chan<- bool
 	exitCh    <-chan bool
@@ -43,16 +45,18 @@ type Channels struct {
 	actionCh  chan<- Action
 }
 
+// GRV is the top level structure containing all state in the program
 type GRV struct {
 	repoData    *RepositoryData
 	view        *View
 	ui          UI
-	channels    GRVChannels
+	channels    gRVChannels
 	config      *Configuration
 	inputBuffer *InputBuffer
 	input       *InputKeyMapper
 }
 
+// UpdateDisplay sends a request to update the display
 func (channels *Channels) UpdateDisplay() {
 	select {
 	case channels.displayCh <- true:
@@ -60,8 +64,7 @@ func (channels *Channels) UpdateDisplay() {
 	}
 }
 
-// Check if grv is exiting
-// This is intended to be used by long running go routines
+// Exit returns true if GRV is in the process of exiting
 func (channels *Channels) Exit() bool {
 	select {
 	case _, ok := <-channels.exitCh:
@@ -71,8 +74,7 @@ func (channels *Channels) Exit() bool {
 	}
 }
 
-// Report an error to the error channel
-// This is intended to be used by go routines to report errors that cannot be returned
+// ReportError reports an error to be displayed
 func (channels *Channels) ReportError(err error) {
 	if err != nil {
 		select {
@@ -83,6 +85,7 @@ func (channels *Channels) ReportError(err error) {
 	}
 }
 
+// ReportErrors reports multiple errors to be displayed
 func (channels *Channels) ReportErrors(errors []error) {
 	if errors == nil {
 		return
@@ -93,30 +96,33 @@ func (channels *Channels) ReportErrors(errors []error) {
 	}
 }
 
+// DoAction sends an action to be executed
 func (channels *Channels) DoAction(action Action) {
-	if action.ActionType != ACTION_NONE {
+	if action.ActionType != ActionNone {
 		channels.actionCh <- action
 	}
 }
 
+// ReportStatus updates the status bar with the provided status
 func (channels *Channels) ReportStatus(format string, args ...interface{}) {
 	status := fmt.Sprintf(format, args...)
 
 	if status != "" {
 		channels.DoAction(Action{
-			ActionType: ACTION_SHOW_STATUS,
+			ActionType: ActionShowStatus,
 			Args:       []interface{}{status},
 		})
 	}
 }
 
+// NewGRV creates a new instace of GRV
 func NewGRV() *GRV {
-	grvChannels := GRVChannels{
+	grvChannels := gRVChannels{
 		exitCh:     make(chan bool),
-		inputKeyCh: make(chan string, GRV_INPUT_BUFFER_SIZE),
-		actionCh:   make(chan Action, GRV_ACTION_BUFFER_SIZE),
-		displayCh:  make(chan bool, GRV_DISPLAY_BUFFER_SIZE),
-		errorCh:    make(chan error, GRV_ERROR_BUFFER_SIZE),
+		inputKeyCh: make(chan string, grvInputBufferSize),
+		actionCh:   make(chan Action, grvActionBufferSize),
+		displayCh:  make(chan bool, grvDisplayBufferSize),
+		errorCh:    make(chan error, grvErrorBufferSize),
 	}
 
 	channels := grvChannels.Channels()
@@ -125,7 +131,7 @@ func NewGRV() *GRV {
 	repoData := NewRepositoryData(repoDataLoader, channels)
 	keyBindings := NewKeyBindingManager()
 	config := NewConfiguration(keyBindings, channels)
-	ui := NewNcursesDisplay(config)
+	ui := NewNCursesDisplay(config)
 
 	return &GRV{
 		repoData:    repoData,
@@ -138,6 +144,7 @@ func NewGRV() *GRV {
 	}
 }
 
+// Initialise sets up all the components of GRV
 func (grv *GRV) Initialise(repoPath string) (err error) {
 	log.Info("Initialising GRV")
 
@@ -165,6 +172,7 @@ func (grv *GRV) Initialise(repoPath string) (err error) {
 	return
 }
 
+// Free closes and frees any resources used by GRV
 func (grv *GRV) Free() {
 	log.Info("Freeing GRV")
 
@@ -173,13 +181,19 @@ func (grv *GRV) Free() {
 	grv.repoData.Free()
 }
 
+// End signals GRV to stop
 func (grv *GRV) End() {
 	log.Info("Stopping GRV")
 
 	close(grv.channels.exitCh)
-	grv.ui.CancelGetInput()
+
+	if err := grv.ui.CancelGetInput(); err != nil {
+		log.Errorf("Error calling CancelGetInput: %v", err)
+	}
 }
 
+// Run sets up the input, display, action and singal handler loops
+// This function blocks until Exit is called
 func (grv *GRV) Run() {
 	var waitGroup sync.WaitGroup
 	channels := grv.channels
@@ -189,7 +203,7 @@ func (grv *GRV) Run() {
 	waitGroup.Add(1)
 	go grv.runDisplayLoop(&waitGroup, channels.exitCh, channels.displayCh, channels.errorCh)
 	waitGroup.Add(1)
-	go grv.runHandlerLoop(&waitGroup, channels.exitCh, channels.displayCh, channels.inputKeyCh, channels.actionCh, channels.errorCh)
+	go grv.runHandlerLoop(&waitGroup, channels.exitCh, channels.inputKeyCh, channels.actionCh, channels.errorCh)
 	waitGroup.Add(1)
 	go grv.runSignalHandlerLoop(&waitGroup, channels.exitCh)
 
@@ -234,7 +248,7 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	defer log.Info("Display loop stopping")
 	log.Info("Starting display loop")
 
-	displayTimerCh := time.NewTicker(GRV_MAX_DRAW_FREQUENCY)
+	displayTimerCh := time.NewTicker(grvMaxDrawFrequency)
 	defer displayTimerCh.Stop()
 	refreshRequestReceived := false
 	channels := &Channels{errorCh: errorCh}
@@ -252,7 +266,7 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 				break
 			}
 
-			if lastErrorReceivedTime.Before(time.Now().Add(-GRV_MIN_ERROR_DISPLAY_SEC)) {
+			if lastErrorReceivedTime.Before(time.Now().Add(-grvMinErrorDisplay)) {
 				errors = nil
 			} else if errors != nil {
 				grv.view.SetErrors(errors)
@@ -299,7 +313,7 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	}
 }
 
-func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, displayCh chan<- bool, inputKeyCh <-chan string, actionCh chan Action, errorCh chan<- error) {
+func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, inputKeyCh <-chan string, actionCh chan Action, errorCh chan<- error) {
 	defer waitGroup.Done()
 	defer log.Info("Handler loop stopping")
 	log.Info("Starting handler loop")
@@ -310,10 +324,10 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 			grv.inputBuffer.Append(key)
 
 			for {
-				viewHierarchy := grv.view.ActiveViewIdHierarchy()
+				viewHierarchy := grv.view.ActiveViewIDHierarchy()
 				action, keystring := grv.inputBuffer.Process(viewHierarchy)
 
-				if action.ActionType != ACTION_NONE {
+				if action.ActionType != ActionNone {
 					actionCh <- action
 				} else if keystring != "" {
 					if err := grv.view.HandleKeyPress(keystring); err != nil {
@@ -324,7 +338,7 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 				}
 			}
 		case action := <-actionCh:
-			if action.ActionType == ACTION_EXIT {
+			if action.ActionType == ActionExit {
 				grv.End()
 			} else if err := grv.view.HandleAction(action); err != nil {
 				errorCh <- err

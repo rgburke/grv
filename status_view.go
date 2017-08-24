@@ -1,10 +1,12 @@
 package main
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
 
+// StatusView manages the status bar view and help view displayed at the bottom of grv
 type StatusView struct {
 	statusBarView WindowView
 	helpBarView   WindowView
@@ -14,6 +16,7 @@ type StatusView struct {
 	lock          sync.Mutex
 }
 
+// NewStatusView creates a new instance
 func NewStatusView(rootView RootView, repoData RepoData, channels *Channels, config ConfigSetter) *StatusView {
 	return &StatusView{
 		statusBarView: NewStatusBarView(rootView, repoData, channels, config),
@@ -23,14 +26,17 @@ func NewStatusView(rootView RootView, repoData RepoData, channels *Channels, con
 	}
 }
 
+// Initialise does nothing
 func (statusView *StatusView) Initialise() (err error) {
 	return
 }
 
+// HandleKeyPress does nothing
 func (statusView *StatusView) HandleKeyPress(keystring string) (err error) {
 	return
 }
 
+// HandleAction passes on the action to its child views for them to habdle
 func (statusView *StatusView) HandleAction(action Action) (err error) {
 	if err = statusView.statusBarView.HandleAction(action); err != nil {
 		return
@@ -41,6 +47,7 @@ func (statusView *StatusView) HandleAction(action Action) (err error) {
 	return
 }
 
+// OnActiveChange updates the active state of this view and its child views
 func (statusView *StatusView) OnActiveChange(active bool) {
 	statusView.lock.Lock()
 	defer statusView.lock.Unlock()
@@ -52,15 +59,17 @@ func (statusView *StatusView) OnActiveChange(active bool) {
 	statusView.helpBarView.OnActiveChange(active)
 }
 
-func (statusView *StatusView) ViewId() ViewId {
-	return VIEW_STATUS
+// ViewID returns the view ID of the status view
+func (statusView *StatusView) ViewID() ViewID {
+	return ViewStatus
 }
 
+// Render generates its child views and returns the windows that constitute the status view as a whole
 func (statusView *StatusView) Render(viewDimension ViewDimension) (wins []*Window, err error) {
 	statusView.lock.Lock()
 	defer statusView.lock.Unlock()
 
-	viewDimension.rows -= 1
+	viewDimension.rows--
 
 	statusView.statusBarWin.Resize(viewDimension)
 	statusView.helpBarWin.Resize(viewDimension)
@@ -84,18 +93,23 @@ func (statusView *StatusView) Render(viewDimension ViewDimension) (wins []*Windo
 	return
 }
 
+// RenderStatusBar does nothing
 func (statusView *StatusView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
+// RenderHelpBar does nothing
 func (statusView *StatusView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
+// ActiveView returns the status bar view
+// The help bar view is display only
 func (statusView *StatusView) ActiveView() (childView AbstractView) {
 	return statusView.statusBarView
 }
 
+// Title returns the title of the status view
 func (statusView *StatusView) Title() string {
 	return "Status View"
 }

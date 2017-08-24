@@ -2,79 +2,84 @@ package main
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"strings"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
 
-type RefViewHandler func(*RefView, Action) error
+type refViewHandler func(*RefView, Action) error
 
+// RenderedRefType is the type (branch, tag, etc...) of a rendered ref
 type RenderedRefType int
 
+// The set of RenderedRefTypes
 const (
-	RV_LOCAL_BRANCH_GROUP RenderedRefType = iota
-	RV_REMOTE_BRANCH_GROUP
-	RV_LOCAL_BRANCH
-	RV_REMOTE_BRANCH
-	RV_TAG_GROUP
-	RV_TAG
-	RV_SPACE
-	RV_LOADING
+	RvLocalBranchGroup RenderedRefType = iota
+	RvRemoteBranchGroup
+	RvLocalBranch
+	RvRemoteBranch
+	RvTagGroup
+	RvTag
+	RvSpace
+	RvLoading
 )
 
-var refToTheme = map[RenderedRefType]ThemeComponentId{
-	RV_LOCAL_BRANCH_GROUP:  CMP_REFVIEW_LOCAL_BRANCHES_HEADER,
-	RV_REMOTE_BRANCH_GROUP: CMP_REFVIEW_REMOTE_BRANCHES_HEADER,
-	RV_LOCAL_BRANCH:        CMP_REFVIEW_LOCAL_BRANCH,
-	RV_REMOTE_BRANCH:       CMP_REFVIEW_REMOTE_BRANCH,
-	RV_TAG_GROUP:           CMP_REFVIEW_TAGS_HEADER,
-	RV_TAG:                 CMP_REFVIEW_TAG,
+var refToTheme = map[RenderedRefType]ThemeComponentID{
+	RvLocalBranchGroup:  CmpRefviewLocalBranchesHeader,
+	RvRemoteBranchGroup: CmpRefviewRemoteBranchesHeader,
+	RvLocalBranch:       CmpRefviewLocalBranch,
+	RvRemoteBranch:      CmpRefviewRemoteBranch,
+	RvTagGroup:          CmpRefviewTagsHeader,
+	RvTag:               CmpRefviewTag,
 }
 
-type RenderedRefGenerator func(*RefView, *RefList, RenderedRefSet)
+type renderedRefGenerator func(*RefView, *refList, renderedRefSet)
 
-type RefList struct {
+type refList struct {
 	name            string
 	expanded        bool
-	renderer        RenderedRefGenerator
+	renderer        renderedRefGenerator
 	renderedRefType RenderedRefType
 }
 
+// RenderedRef represents a reference's string value and meta data
 type RenderedRef struct {
 	value           string
 	oid             *Oid
 	renderedRefType RenderedRefType
-	refList         *RefList
+	refList         *refList
 	refNum          uint
 }
 
-type RenderedRefSet interface {
+type renderedRefSet interface {
 	Add(*RenderedRef)
-	AddChild(RenderedRefSet)
+	AddChild(renderedRefSet)
 	RemoveChild() (removed bool)
-	Child() RenderedRefSet
+	Child() renderedRefSet
 	Clear()
 	RenderedRefs() []*RenderedRef
 	Children() uint
 }
 
-type RenderedRefList struct {
-	child        RenderedRefSet
+type renderedRefList struct {
+	child        renderedRefSet
 	renderedRefs []*RenderedRef
 	refFilter    *RefFilter
 }
 
-func NewRenderedRefList() *RenderedRefList {
-	return NewFilteredRenderedRefList(nil)
+func newRenderedRefList() *renderedRefList {
+	return newFilteredRenderedRefList(nil)
 }
 
-func NewFilteredRenderedRefList(refFilter *RefFilter) *RenderedRefList {
-	return &RenderedRefList{
+func newFilteredRenderedRefList(refFilter *RefFilter) *renderedRefList {
+	return &renderedRefList{
 		refFilter: refFilter,
 	}
 }
 
-func (renderedRefList *RenderedRefList) Add(renderedRef *RenderedRef) {
+// Add a ref to the list if it matches the filter (if set) and pass it down the child filter
+func (renderedRefList *renderedRefList) Add(renderedRef *RenderedRef) {
 	if renderedRefList.refFilter != nil && !renderedRefList.refFilter.MatchesFilter(renderedRef) {
 		return
 	}
@@ -86,7 +91,8 @@ func (renderedRefList *RenderedRefList) Add(renderedRef *RenderedRef) {
 	}
 }
 
-func (renderedRefList *RenderedRefList) AddChild(renderedRefs RenderedRefSet) {
+// AddChild adds another ref set and initialises it with its parents references
+func (renderedRefList *renderedRefList) AddChild(renderedRefs renderedRefSet) {
 	if renderedRefList.child != nil {
 		renderedRefList.child.AddChild(renderedRefs)
 	} else {
@@ -98,7 +104,8 @@ func (renderedRefList *RenderedRefList) AddChild(renderedRefs RenderedRefSet) {
 	}
 }
 
-func (renderedRefList *RenderedRefList) RemoveChild() (removed bool) {
+// Remove child removes the last child in the chain
+func (renderedRefList *renderedRefList) RemoveChild() (removed bool) {
 	switch {
 	case renderedRefList.Child() == nil:
 	case renderedRefList.Child().Child() == nil:
@@ -111,11 +118,13 @@ func (renderedRefList *RenderedRefList) RemoveChild() (removed bool) {
 	return
 }
 
-func (renderedRefList *RenderedRefList) Child() RenderedRefSet {
+// Child returns the child
+func (renderedRefList *renderedRefList) Child() renderedRefSet {
 	return renderedRefList.child
 }
 
-func (renderedRefList *RenderedRefList) Clear() {
+// Clear clears the list of rendered refs for this instance and all its children
+func (renderedRefList *renderedRefList) Clear() {
 	renderedRefList.renderedRefs = renderedRefList.renderedRefs[0:0]
 
 	if renderedRefList.child != nil {
@@ -123,7 +132,8 @@ func (renderedRefList *RenderedRefList) Clear() {
 	}
 }
 
-func (renderedRefList *RenderedRefList) RenderedRefs() []*RenderedRef {
+// RenderedRefs returns the leaf childs set of rendered refs
+func (renderedRefList *renderedRefList) RenderedRefs() []*RenderedRef {
 	if renderedRefList.child != nil {
 		return renderedRefList.child.RenderedRefs()
 	}
@@ -131,70 +141,74 @@ func (renderedRefList *RenderedRefList) RenderedRefs() []*RenderedRef {
 	return renderedRefList.renderedRefs
 }
 
-func (renderedRefList *RenderedRefList) Children() (children uint) {
-	renderedRefSet := renderedRefList.Child()
+// Children returns a count of the number of children this instance has
+func (renderedRefList *renderedRefList) Children() (children uint) {
+	renderedRefs := renderedRefList.Child()
 
-	for ; renderedRefSet != nil; renderedRefSet = renderedRefSet.Child() {
+	for ; renderedRefs != nil; renderedRefs = renderedRefs.Child() {
 		children++
 	}
 
 	return
 }
 
+// RefView manages the display of references
 type RefView struct {
 	channels      *Channels
 	repoData      RepoData
-	refLists      []*RefList
+	refLists      []*refList
 	refListeners  []RefListener
 	active        bool
-	renderedRefs  RenderedRefSet
+	renderedRefs  renderedRefSet
 	viewPos       *ViewPos
 	viewDimension ViewDimension
-	handlers      map[ActionType]RefViewHandler
+	handlers      map[ActionType]refViewHandler
 	viewSearch    *ViewSearch
 	lock          sync.Mutex
 }
 
+// RefListener is notified when a reference is selected
 type RefListener interface {
 	OnRefSelect(refName string, oid *Oid) error
 }
 
+// NewRefView creates a new instance
 func NewRefView(repoData RepoData, channels *Channels) *RefView {
 	refView := &RefView{
 		channels:     channels,
 		repoData:     repoData,
 		viewPos:      NewViewPos(),
-		renderedRefs: NewRenderedRefList(),
-		refLists: []*RefList{
-			&RefList{
+		renderedRefs: newRenderedRefList(),
+		refLists: []*refList{
+			{
 				name:            "Branches",
-				renderer:        GenerateBranches,
+				renderer:        generateBranches,
 				expanded:        true,
-				renderedRefType: RV_LOCAL_BRANCH_GROUP,
+				renderedRefType: RvLocalBranchGroup,
 			},
-			&RefList{
+			{
 				name:            "Remote Branches",
-				renderer:        GenerateBranches,
-				renderedRefType: RV_REMOTE_BRANCH_GROUP,
+				renderer:        generateBranches,
+				renderedRefType: RvRemoteBranchGroup,
 			},
-			&RefList{
+			{
 				name:            "Tags",
-				renderer:        GenerateTags,
-				renderedRefType: RV_TAG_GROUP,
+				renderer:        generateTags,
+				renderedRefType: RvTagGroup,
 			},
 		},
-		handlers: map[ActionType]RefViewHandler{
-			ACTION_PREV_LINE:     MoveUpRef,
-			ACTION_NEXT_LINE:     MoveDownRef,
-			ACTION_PREV_PAGE:     MoveUpRefPage,
-			ACTION_NEXT_PAGE:     MoveDownRefPage,
-			ACTION_SCROLL_RIGHT:  ScrollRefViewRight,
-			ACTION_SCROLL_LEFT:   ScrollRefViewLeft,
-			ACTION_FIRST_LINE:    MoveToFirstRef,
-			ACTION_LAST_LINE:     MoveToLastRef,
-			ACTION_SELECT:        SelectRef,
-			ACTION_ADD_FILTER:    AddRefFilter,
-			ACTION_REMOVE_FILTER: RemoveRefFilter,
+		handlers: map[ActionType]refViewHandler{
+			ActionPrevLine:     moveUpRef,
+			ActionNextLine:     moveDownRef,
+			ActionPrevPage:     moveUpRefPage,
+			ActionNextPage:     moveDownRefPage,
+			ActionScrollRight:  scrollRefViewRight,
+			ActionScrollLeft:   scrollRefViewLeft,
+			ActionFirstLine:    moveToFirstRef,
+			ActionLastLine:     moveToLastRef,
+			ActionSelect:       selectRef,
+			ActionAddFilter:    addRefFilter,
+			ActionRemoveFilter: removeRefFilter,
 		},
 	}
 
@@ -203,6 +217,7 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 	return refView
 }
 
+// Initialise loads the HEAD reference along with branches and tags
 func (refView *RefView) Initialise() (err error) {
 	log.Info("Initialising RefView")
 
@@ -215,7 +230,7 @@ func (refView *RefView) Initialise() (err error) {
 		refView.lock.Lock()
 		defer refView.lock.Unlock()
 
-		refView.GenerateRenderedRefs()
+		refView.generateRenderedRefs()
 
 		_, headBranch := refView.repoData.Head()
 		viewPos := refView.viewPos
@@ -246,7 +261,7 @@ func (refView *RefView) Initialise() (err error) {
 		refView.lock.Lock()
 		defer refView.lock.Unlock()
 
-		refView.GenerateRenderedRefs()
+		refView.generateRenderedRefs()
 		refView.channels.UpdateDisplay()
 
 		return nil
@@ -254,7 +269,7 @@ func (refView *RefView) Initialise() (err error) {
 		return
 	}
 
-	refView.GenerateRenderedRefs()
+	refView.generateRenderedRefs()
 	head, branch := refView.repoData.Head()
 
 	var branchName string
@@ -274,9 +289,10 @@ func getDetachedHeadDisplayValue(oid *Oid) string {
 }
 
 func isSelectableRenderedRef(renderedRefType RenderedRefType) bool {
-	return renderedRefType != RV_SPACE && renderedRefType != RV_LOADING
+	return renderedRefType != RvSpace && renderedRefType != RvLoading
 }
 
+// RegisterRefListener adds a ref listener to be notified when a reference is selected
 func (refView *RefView) RegisterRefListener(refListener RefListener) {
 	refView.refListeners = append(refView.refListeners, refListener)
 }
@@ -293,6 +309,7 @@ func (refView *RefView) notifyRefListeners(refName string, oid *Oid) (err error)
 	return
 }
 
+// Render generates and writes the ref view to the provided window
 func (refView *RefView) Render(win RenderWindow) (err error) {
 	log.Debug("Rendering RefView")
 	refView.lock.Lock()
@@ -311,12 +328,12 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	for winRowIndex := uint(0); winRowIndex < rows && refIndex < renderedRefNum; winRowIndex++ {
 		renderedRef := renderedRefs[refIndex]
 
-		themeComponentId, ok := refToTheme[renderedRef.renderedRefType]
+		themeComponentID, ok := refToTheme[renderedRef.renderedRefType]
 		if !ok {
-			themeComponentId = CMP_NONE
+			themeComponentID = CmpNone
 		}
 
-		if err = win.SetRow(winRowIndex+1, startColumn, themeComponentId, "%v", renderedRef.value); err != nil {
+		if err = win.SetRow(winRowIndex+1, startColumn, themeComponentID, "%v", renderedRef.value); err != nil {
 			return
 		}
 
@@ -329,7 +346,7 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 
 	win.DrawBorder()
 
-	if err = win.SetTitle(CMP_REFVIEW_TITLE, "Refs"); err != nil {
+	if err = win.SetTitle(CmpRefviewTitle, "Refs"); err != nil {
 		return
 	}
 
@@ -339,7 +356,7 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	}
 
 	if searchActive, searchPattern, lastSearchFoundMatch := refView.viewSearch.SearchActive(); searchActive && lastSearchFoundMatch {
-		if err = win.Highlight(searchPattern, CMP_ALLVIEW_SEARCH_MATCH); err != nil {
+		if err = win.Highlight(searchPattern, CmpAllviewSearchMatch); err != nil {
 			return
 		}
 	}
@@ -347,15 +364,17 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	return
 }
 
+// RenderStatusBar does nothing
 func (refView *RefView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
+// RenderHelpBar generates key binding help info for the ref view
 func (refView *RefView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
-	RenderKeyBindingHelp(refView.ViewId(), lineBuilder, []ActionMessage{
-		ActionMessage{action: ACTION_SELECT, message: "Select"},
-		ActionMessage{action: ACTION_FILTER_PROMPT, message: "Add Filter"},
-		ActionMessage{action: ACTION_REMOVE_FILTER, message: "Remove Filter"},
+	RenderKeyBindingHelp(refView.ViewID(), lineBuilder, []ActionMessage{
+		{action: ActionSelect, message: "Select"},
+		{action: ActionFilterPrompt, message: "Add Filter"},
+		{action: ActionRemoveFilter, message: "Remove Filter"},
 	})
 
 	return
@@ -373,44 +392,44 @@ func (refView *RefView) renderFooter(win RenderWindow, selectedRenderedRef *Rend
 		footer = fmt.Sprintf("%v filter%v applied", filters, plural)
 	} else {
 		switch selectedRenderedRef.renderedRefType {
-		case RV_LOCAL_BRANCH_GROUP:
+		case RvLocalBranchGroup:
 			if localBranches, _, loading := refView.repoData.Branches(); loading {
 				footer = "Branches: Loading..."
 			} else {
 				footer = fmt.Sprintf("Branches: %v", len(localBranches))
 			}
-		case RV_REMOTE_BRANCH_GROUP:
+		case RvRemoteBranchGroup:
 			if _, remoteBranches, loading := refView.repoData.Branches(); loading {
 				footer = "Remote Branches: Loading..."
 			} else {
 				footer = fmt.Sprintf("Remote Branches: %v", len(remoteBranches))
 			}
-		case RV_LOCAL_BRANCH:
+		case RvLocalBranch:
 			localBranches, _, _ := refView.repoData.Branches()
 			footer = fmt.Sprintf("Branch %v of %v", selectedRenderedRef.refNum, len(localBranches))
-		case RV_REMOTE_BRANCH:
+		case RvRemoteBranch:
 			_, remoteBranches, _ := refView.repoData.Branches()
 			footer = fmt.Sprintf("Remote Branch %v of %v", selectedRenderedRef.refNum, len(remoteBranches))
-		case RV_TAG_GROUP:
+		case RvTagGroup:
 			if tags, loading := refView.repoData.LocalTags(); loading {
 				footer = "Tags: Loading"
 			} else {
 				footer = fmt.Sprintf("Tags: %v", len(tags))
 			}
-		case RV_TAG:
+		case RvTag:
 			tags, _ := refView.repoData.LocalTags()
 			footer = fmt.Sprintf("Tag %v of %v", selectedRenderedRef.refNum, len(tags))
 		}
 	}
 
 	if footer != "" {
-		err = win.SetFooter(CMP_REFVIEW_FOOTER, "%v", footer)
+		err = win.SetFooter(CmpRefviewFooter, "%v", footer)
 	}
 
 	return
 }
 
-func (refView *RefView) GenerateRenderedRefs() {
+func (refView *RefView) generateRenderedRefs() {
 	log.Debug("Generating Rendered Refs")
 	refView.renderedRefs.Clear()
 	renderedRefs := refView.renderedRefs
@@ -434,19 +453,19 @@ func (refView *RefView) GenerateRenderedRefs() {
 		if refIndex != len(refView.refLists)-1 {
 			renderedRefs.Add(&RenderedRef{
 				value:           "",
-				renderedRefType: RV_SPACE,
+				renderedRefType: RvSpace,
 			})
 		}
 	}
 }
 
-func GenerateBranches(refView *RefView, refList *RefList, renderedRefs RenderedRefSet) {
+func generateBranches(refView *RefView, refList *refList, renderedRefs renderedRefSet) {
 	localBranches, remoteBranches, loading := refView.repoData.Branches()
 
 	if loading {
 		renderedRefs.Add(&RenderedRef{
 			value:           "   Loading...",
-			renderedRefType: RV_LOADING,
+			renderedRefType: RvLoading,
 		})
 
 		return
@@ -456,8 +475,8 @@ func GenerateBranches(refView *RefView, refList *RefList, renderedRefs RenderedR
 	var branches []*Branch
 	var branchRenderedRefType RenderedRefType
 
-	if refList.renderedRefType == RV_LOCAL_BRANCH_GROUP {
-		branchRenderedRefType = RV_LOCAL_BRANCH
+	if refList.renderedRefType == RvLocalBranchGroup {
+		branchRenderedRefType = RvLocalBranch
 		branches = localBranches
 
 		if head, headBranch := refView.repoData.Head(); headBranch == nil {
@@ -471,7 +490,7 @@ func GenerateBranches(refView *RefView, refList *RefList, renderedRefs RenderedR
 			branchNum++
 		}
 	} else {
-		branchRenderedRefType = RV_REMOTE_BRANCH
+		branchRenderedRefType = RvRemoteBranch
 		branches = remoteBranches
 	}
 
@@ -487,13 +506,13 @@ func GenerateBranches(refView *RefView, refList *RefList, renderedRefs RenderedR
 	}
 }
 
-func GenerateTags(refView *RefView, refList *RefList, renderedRefs RenderedRefSet) {
+func generateTags(refView *RefView, refList *refList, renderedRefs renderedRefSet) {
 	tags, loading := refView.repoData.LocalTags()
 
 	if loading {
 		renderedRefs.Add(&RenderedRef{
 			value:           "   Loading...",
-			renderedRefType: RV_LOADING,
+			renderedRefType: RvLoading,
 		})
 
 		return
@@ -503,12 +522,13 @@ func GenerateTags(refView *RefView, refList *RefList, renderedRefs RenderedRefSe
 		renderedRefs.Add(&RenderedRef{
 			value:           fmt.Sprintf("   %s", tag.name),
 			oid:             tag.oid,
-			renderedRefType: RV_TAG,
+			renderedRefType: RvTag,
 			refNum:          uint(tagIndex + 1),
 		})
 	}
 }
 
+// OnActiveChange updates whether the ref view is active or not
 func (refView *RefView) OnActiveChange(active bool) {
 	log.Debugf("RefView active: %v", active)
 	refView.lock.Lock()
@@ -517,14 +537,17 @@ func (refView *RefView) OnActiveChange(active bool) {
 	refView.active = active
 }
 
-func (refView *RefView) ViewId() ViewId {
-	return VIEW_REF
+// ViewID returns the view ID of the ref view
+func (refView *RefView) ViewID() ViewID {
+	return ViewRef
 }
 
+// ViewPos returns the current cursor position in the view
 func (refView *RefView) ViewPos() *ViewPos {
 	return refView.viewPos
 }
 
+// OnSearchMatch updates the view position to the matched search position
 func (refView *RefView) OnSearchMatch(startPos *ViewPos, matchLineIndex uint) {
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
@@ -539,6 +562,7 @@ func (refView *RefView) OnSearchMatch(startPos *ViewPos, matchLineIndex uint) {
 	}
 }
 
+// Line returns the rendered line (if it exists) specified by the provided line index
 func (refView *RefView) Line(lineIndex uint) (line string, lineExists bool) {
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
@@ -555,6 +579,7 @@ func (refView *RefView) Line(lineIndex uint) (line string, lineExists bool) {
 	return
 }
 
+// LineNumber returns the number of lines in the ref view
 func (refView *RefView) LineNumber() (lineNumber uint) {
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
@@ -564,11 +589,13 @@ func (refView *RefView) LineNumber() (lineNumber uint) {
 	return renderedRefNum
 }
 
+// HandleKeyPress does nothing
 func (refView *RefView) HandleKeyPress(keystring string) (err error) {
 	log.Debugf("RefView handling key %v - NOP", keystring)
 	return
 }
 
+// HandleAction checks if the rev view supports an action and executes it if so
 func (refView *RefView) HandleAction(action Action) (err error) {
 	log.Debugf("RefView handling action %v", action)
 	refView.lock.Lock()
@@ -583,7 +610,7 @@ func (refView *RefView) HandleAction(action Action) (err error) {
 	return
 }
 
-func MoveUpRef(refView *RefView, action Action) (err error) {
+func moveUpRef(refView *RefView, action Action) (err error) {
 	viewPos := refView.viewPos
 
 	if viewPos.activeRowIndex == 0 {
@@ -617,7 +644,7 @@ func MoveUpRef(refView *RefView, action Action) (err error) {
 	return
 }
 
-func MoveDownRef(refView *RefView, action Action) (err error) {
+func moveDownRef(refView *RefView, action Action) (err error) {
 	renderedRefs := refView.renderedRefs.RenderedRefs()
 	renderedRefNum := uint(len(renderedRefs))
 	viewPos := refView.viewPos
@@ -652,12 +679,12 @@ func MoveDownRef(refView *RefView, action Action) (err error) {
 	return
 }
 
-func MoveUpRefPage(refView *RefView, action Action) (err error) {
+func moveUpRefPage(refView *RefView, action Action) (err error) {
 	pageSize := refView.viewDimension.rows - 2
 	viewPos := refView.viewPos
 
 	for viewPos.activeRowIndex > 0 && pageSize > 0 {
-		if err = MoveUpRef(refView, action); err != nil {
+		if err = moveUpRef(refView, action); err != nil {
 			break
 		} else {
 			pageSize--
@@ -667,14 +694,14 @@ func MoveUpRefPage(refView *RefView, action Action) (err error) {
 	return
 }
 
-func MoveDownRefPage(refView *RefView, action Action) (err error) {
+func moveDownRefPage(refView *RefView, action Action) (err error) {
 	renderedRefs := refView.renderedRefs.RenderedRefs()
 	renderedRefNum := uint(len(renderedRefs))
 	pageSize := refView.viewDimension.rows - 2
 	viewPos := refView.viewPos
 
 	for viewPos.activeRowIndex+1 < renderedRefNum && pageSize > 0 {
-		if err = MoveDownRef(refView, action); err != nil {
+		if err = moveDownRef(refView, action); err != nil {
 			break
 		} else {
 			pageSize--
@@ -684,7 +711,7 @@ func MoveDownRefPage(refView *RefView, action Action) (err error) {
 	return
 }
 
-func ScrollRefViewRight(refView *RefView, action Action) (err error) {
+func scrollRefViewRight(refView *RefView, action Action) (err error) {
 	viewPos := refView.viewPos
 	viewPos.MovePageRight(refView.viewDimension.cols)
 	log.Debugf("Scrolling right. View starts at column %v", viewPos.viewStartColumn)
@@ -693,7 +720,7 @@ func ScrollRefViewRight(refView *RefView, action Action) (err error) {
 	return
 }
 
-func ScrollRefViewLeft(refView *RefView, action Action) (err error) {
+func scrollRefViewLeft(refView *RefView, action Action) (err error) {
 	viewPos := refView.viewPos
 
 	if viewPos.MovePageLeft(refView.viewDimension.cols) {
@@ -704,7 +731,7 @@ func ScrollRefViewLeft(refView *RefView, action Action) (err error) {
 	return
 }
 
-func MoveToFirstRef(refView *RefView, action Action) (err error) {
+func moveToFirstRef(refView *RefView, action Action) (err error) {
 	viewPos := refView.viewPos
 
 	if viewPos.MoveToFirstLine() {
@@ -715,7 +742,7 @@ func MoveToFirstRef(refView *RefView, action Action) (err error) {
 	return
 }
 
-func MoveToLastRef(refView *RefView, action Action) (err error) {
+func moveToLastRef(refView *RefView, action Action) (err error) {
 	viewPos := refView.viewPos
 	renderedRefs := refView.renderedRefs.RenderedRefs()
 	renderedRefNum := uint(len(renderedRefs))
@@ -728,17 +755,17 @@ func MoveToLastRef(refView *RefView, action Action) (err error) {
 	return
 }
 
-func SelectRef(refView *RefView, action Action) (err error) {
+func selectRef(refView *RefView, action Action) (err error) {
 	renderedRefs := refView.renderedRefs.RenderedRefs()
 	renderedRef := renderedRefs[refView.viewPos.activeRowIndex]
 
 	switch renderedRef.renderedRefType {
-	case RV_LOCAL_BRANCH_GROUP, RV_REMOTE_BRANCH_GROUP, RV_TAG_GROUP:
+	case RvLocalBranchGroup, RvRemoteBranchGroup, RvTagGroup:
 		renderedRef.refList.expanded = !renderedRef.refList.expanded
 		log.Debugf("Setting ref group %v to expanded %v", renderedRef.refList.name, renderedRef.refList.expanded)
-		refView.GenerateRenderedRefs()
+		refView.generateRenderedRefs()
 		refView.channels.UpdateDisplay()
-	case RV_LOCAL_BRANCH, RV_REMOTE_BRANCH, RV_TAG:
+	case RvLocalBranch, RvRemoteBranch, RvTag:
 		log.Debugf("Selecting ref %v:%v", renderedRef.value, renderedRef.oid)
 		if err = refView.notifyRefListeners(strings.TrimLeft(renderedRef.value, " "), renderedRef.oid); err != nil {
 			return
@@ -751,7 +778,7 @@ func SelectRef(refView *RefView, action Action) (err error) {
 	return
 }
 
-func AddRefFilter(refView *RefView, action Action) (err error) {
+func addRefFilter(refView *RefView, action Action) (err error) {
 	if !(len(action.Args) > 0) {
 		return fmt.Errorf("Expected filter query argument")
 	}
@@ -768,7 +795,7 @@ func AddRefFilter(refView *RefView, action Action) (err error) {
 	}
 
 	beforeRenderedRefNum := len(refView.renderedRefs.RenderedRefs())
-	refView.renderedRefs.AddChild(NewFilteredRenderedRefList(refFilter))
+	refView.renderedRefs.AddChild(newFilteredRenderedRefList(refFilter))
 	afterRenderedRefNum := len(refView.renderedRefs.RenderedRefs())
 
 	if afterRenderedRefNum < beforeRenderedRefNum {
@@ -780,7 +807,7 @@ func AddRefFilter(refView *RefView, action Action) (err error) {
 	return
 }
 
-func RemoveRefFilter(refView *RefView, action Action) (err error) {
+func removeRefFilter(refView *RefView, action Action) (err error) {
 	if refView.renderedRefs.RemoveChild() {
 		refView.channels.ReportStatus("Removed ref filter")
 	} else {

@@ -2,15 +2,22 @@ package main
 
 import (
 	"fmt"
+	"sync"
+
 	log "github.com/Sirupsen/logrus"
 	slice "github.com/bradfitz/slice"
-	"sync"
 )
 
+// OnCommitsLoaded is called when all commits are loaded for the specified oid
 type OnCommitsLoaded func(*Oid) error
+
+// OnBranchesLoaded is called when all local and remote branch refs have been loaded
 type OnBranchesLoaded func(localBranches, remoteBranches []*Branch) error
+
+// OnTagsLoaded is called when all tags have been loaded
 type OnTagsLoaded func([]*Tag) error
 
+// RepoData houses all data loaded from the repository
 type RepoData interface {
 	Path() string
 	LoadHead() error
@@ -30,7 +37,7 @@ type RepoData interface {
 	Diff(commit *Commit) (*Diff, error)
 }
 
-type CommitSet interface {
+type commitSet interface {
 	AddCommit(commit *Commit) (err error)
 	Commit(index uint) (commit *Commit)
 	CommitStream() <-chan *Commit
@@ -38,19 +45,20 @@ type CommitSet interface {
 	CommitSetState() CommitSetState
 }
 
-type RawCommitSet struct {
+type rawCommitSet struct {
 	commits []*Commit
 	loading bool
 	lock    sync.Mutex
 }
 
-func NewRawCommitSet() *RawCommitSet {
-	return &RawCommitSet{
+func newRawCommitSet() *rawCommitSet {
+	return &rawCommitSet{
 		commits: make([]*Commit, 0),
 	}
 }
 
-func (rawCommitSet *RawCommitSet) AddCommit(commit *Commit) (err error) {
+// Add a commit to the commit set
+func (rawCommitSet *rawCommitSet) AddCommit(commit *Commit) (err error) {
 	rawCommitSet.lock.Lock()
 	defer rawCommitSet.lock.Unlock()
 
@@ -63,7 +71,8 @@ func (rawCommitSet *RawCommitSet) AddCommit(commit *Commit) (err error) {
 	return
 }
 
-func (rawCommitSet *RawCommitSet) Commit(index uint) (commit *Commit) {
+// Commit returns the commit at the provided index (or nil if the index is invalid)
+func (rawCommitSet *rawCommitSet) Commit(index uint) (commit *Commit) {
 	rawCommitSet.lock.Lock()
 	defer rawCommitSet.lock.Unlock()
 
@@ -74,7 +83,8 @@ func (rawCommitSet *RawCommitSet) Commit(index uint) (commit *Commit) {
 	return
 }
 
-func (rawCommitSet *RawCommitSet) CommitStream() <-chan *Commit {
+// CommitStream returns a channel through which all the commits in this set can be read
+func (rawCommitSet *rawCommitSet) CommitStream() <-chan *Commit {
 	ch := make(chan *Commit)
 
 	go func() {
@@ -105,14 +115,16 @@ func (rawCommitSet *RawCommitSet) CommitStream() <-chan *Commit {
 	return ch
 }
 
-func (rawCommitSet *RawCommitSet) SetLoading(loading bool) {
+// SetLoading sets whether this commit set is still loading or not
+func (rawCommitSet *rawCommitSet) SetLoading(loading bool) {
 	rawCommitSet.lock.Lock()
 	defer rawCommitSet.lock.Unlock()
 
 	rawCommitSet.loading = loading
 }
 
-func (rawCommitSet *RawCommitSet) CommitSetState() CommitSetState {
+// CommitSetState returns the current state of the commit set
+func (rawCommitSet *rawCommitSet) CommitSetState() CommitSetState {
 	rawCommitSet.lock.Lock()
 	defer rawCommitSet.lock.Unlock()
 
@@ -122,22 +134,22 @@ func (rawCommitSet *RawCommitSet) CommitSetState() CommitSetState {
 	}
 }
 
-type FilteredCommitSet struct {
+type filteredCommitSet struct {
 	commits      []*Commit
-	commitSet    CommitSet
+	commitSet    commitSet
 	commitFilter *CommitFilter
 	lock         sync.Mutex
 }
 
-func NewFilteredCommitSet(commitSet CommitSet, commitFilter *CommitFilter) *FilteredCommitSet {
-	return &FilteredCommitSet{
+func newFilteredCommitSet(commitSet commitSet, commitFilter *CommitFilter) *filteredCommitSet {
+	return &filteredCommitSet{
 		commits:      make([]*Commit, 0),
 		commitSet:    commitSet,
 		commitFilter: commitFilter,
 	}
 }
 
-func (filteredCommitSet *FilteredCommitSet) InitialiseFromCommitSet() {
+func (filteredCommitSet *filteredCommitSet) initialiseFromCommitSet() {
 	filteredCommitSet.lock.Lock()
 	defer filteredCommitSet.lock.Unlock()
 
@@ -146,14 +158,16 @@ func (filteredCommitSet *FilteredCommitSet) InitialiseFromCommitSet() {
 	}
 }
 
-func (filteredCommitSet *FilteredCommitSet) CommitSet() CommitSet {
+// CommitSet returns the child commit set of this filter
+func (filteredCommitSet *filteredCommitSet) CommitSet() commitSet {
 	filteredCommitSet.lock.Lock()
 	defer filteredCommitSet.lock.Unlock()
 
 	return filteredCommitSet.commitSet
 }
 
-func (filteredCommitSet *FilteredCommitSet) AddCommit(commit *Commit) (err error) {
+// AddCommit adds the commit to the child and then itself if the filter matches
+func (filteredCommitSet *filteredCommitSet) AddCommit(commit *Commit) (err error) {
 	filteredCommitSet.lock.Lock()
 	defer filteredCommitSet.lock.Unlock()
 
@@ -166,15 +180,14 @@ func (filteredCommitSet *FilteredCommitSet) AddCommit(commit *Commit) (err error
 	return
 }
 
-func (filteredCommitSet *FilteredCommitSet) addCommitIfFilterMatches(commit *Commit) {
+func (filteredCommitSet *filteredCommitSet) addCommitIfFilterMatches(commit *Commit) {
 	if filteredCommitSet.commitFilter.MatchesFilter(commit) {
 		filteredCommitSet.commits = append(filteredCommitSet.commits, commit)
 	}
-
-	return
 }
 
-func (filteredCommitSet *FilteredCommitSet) Commit(index uint) (commit *Commit) {
+// Commit returns the commit at the specified index
+func (filteredCommitSet *filteredCommitSet) Commit(index uint) (commit *Commit) {
 	filteredCommitSet.lock.Lock()
 	defer filteredCommitSet.lock.Unlock()
 
@@ -185,7 +198,8 @@ func (filteredCommitSet *FilteredCommitSet) Commit(index uint) (commit *Commit) 
 	return
 }
 
-func (filteredCommitSet *FilteredCommitSet) CommitStream() <-chan *Commit {
+// CommitStream returns a channel through which all the commits in this set can be read
+func (filteredCommitSet *filteredCommitSet) CommitStream() <-chan *Commit {
 	ch := make(chan *Commit)
 
 	go func() {
@@ -216,11 +230,13 @@ func (filteredCommitSet *FilteredCommitSet) CommitStream() <-chan *Commit {
 	return ch
 }
 
-func (filteredCommitSet *FilteredCommitSet) SetLoading(loading bool) {
+// SetLoading is defered onto the underlying raw commit set
+func (filteredCommitSet *filteredCommitSet) SetLoading(loading bool) {
 	filteredCommitSet.commitSet.SetLoading(loading)
 }
 
-func (filteredCommitSet *FilteredCommitSet) CommitSetState() CommitSetState {
+// CommitSetState returns the state of this commit set
+func (filteredCommitSet *filteredCommitSet) CommitSetState() CommitSetState {
 	filteredCommitSet.lock.Lock()
 	defer filteredCommitSet.lock.Unlock()
 
@@ -238,18 +254,20 @@ func (filteredCommitSet *FilteredCommitSet) CommitSetState() CommitSetState {
 	return commitSetState
 }
 
+// CommitSetState describes the current state of a commit set for a ref
 type CommitSetState struct {
 	loading     bool
 	commitNum   uint
 	filterState *CommitSetFilterState
 }
 
+// CommitSetFilterState describes filter information for a commit set
 type CommitSetFilterState struct {
 	unfilteredCommitNum uint
 	filtersApplied      uint
 }
 
-type BranchSet struct {
+type branchSet struct {
 	branches           map[*Oid]*Branch
 	localBranchesList  []*Branch
 	remoteBranchesList []*Branch
@@ -257,42 +275,43 @@ type BranchSet struct {
 	lock               sync.Mutex
 }
 
-func NewBranchSet() *BranchSet {
-	return &BranchSet{
+func newBranchSet() *branchSet {
+	return &branchSet{
 		branches: make(map[*Oid]*Branch),
 	}
 }
 
-type TagSet struct {
+type tagSet struct {
 	tags     map[*Oid]*Tag
 	tagsList []*Tag
 	loading  bool
 	lock     sync.Mutex
 }
 
-func NewTagSet() *TagSet {
-	return &TagSet{
+func newTagSet() *tagSet {
+	return &tagSet{
 		tags: make(map[*Oid]*Tag),
 	}
 }
 
+// CommitRefs contain all refs to a commit
 type CommitRefs struct {
 	tags     []*Tag
 	branches []*Branch
 }
 
-type CommitRefSet struct {
+type commitRefSet struct {
 	commitRefs map[*Oid]*CommitRefs
 	lock       sync.Mutex
 }
 
-func NewCommitRefSet() *CommitRefSet {
-	return &CommitRefSet{
+func newCommitRefSet() *commitRefSet {
+	return &commitRefSet{
 		commitRefs: make(map[*Oid]*CommitRefs),
 	}
 }
 
-func (commitRefSet *CommitRefSet) AddTagForCommit(commit *Commit, newTag *Tag) {
+func (commitRefSet *commitRefSet) addTagForCommit(commit *Commit, newTag *Tag) {
 	commitRefSet.lock.Lock()
 	defer commitRefSet.lock.Unlock()
 
@@ -311,7 +330,7 @@ func (commitRefSet *CommitRefSet) AddTagForCommit(commit *Commit, newTag *Tag) {
 	commitRefs.tags = append(commitRefs.tags, newTag)
 }
 
-func (commitRefSet *CommitRefSet) AddBranchForCommit(commit *Commit, newBranch *Branch) {
+func (commitRefSet *commitRefSet) addBranchForCommit(commit *Commit, newBranch *Branch) {
 	commitRefSet.lock.Lock()
 	defer commitRefSet.lock.Unlock()
 
@@ -330,7 +349,7 @@ func (commitRefSet *CommitRefSet) AddBranchForCommit(commit *Commit, newBranch *
 	commitRefs.branches = append(commitRefs.branches, newBranch)
 }
 
-func (commitRefSet *CommitRefSet) RefsForCommit(commit *Commit) (commitRefsCopy *CommitRefs) {
+func (commitRefSet *commitRefSet) refsForCommit(commit *Commit) (commitRefsCopy *CommitRefs) {
 	commitRefSet.lock.Lock()
 	defer commitRefSet.lock.Unlock()
 
@@ -345,20 +364,20 @@ func (commitRefSet *CommitRefSet) RefsForCommit(commit *Commit) (commitRefsCopy 
 	return commitRefsCopy
 }
 
-type RefCommitSets struct {
-	commits  map[*Oid]CommitSet
+type refCommitSets struct {
+	commits  map[*Oid]commitSet
 	channels *Channels
 	lock     sync.Mutex
 }
 
-func NewRefCommitSets(channels *Channels) *RefCommitSets {
-	return &RefCommitSets{
-		commits:  make(map[*Oid]CommitSet),
+func newRefCommitSets(channels *Channels) *refCommitSets {
+	return &refCommitSets{
+		commits:  make(map[*Oid]commitSet),
 		channels: channels,
 	}
 }
 
-func (refCommitSets *RefCommitSets) CommitSet(oid *Oid) (commitSet CommitSet, exists bool) {
+func (refCommitSets *refCommitSets) commitSet(oid *Oid) (commitSet commitSet, exists bool) {
 	refCommitSets.lock.Lock()
 	defer refCommitSets.lock.Unlock()
 
@@ -366,14 +385,14 @@ func (refCommitSets *RefCommitSets) CommitSet(oid *Oid) (commitSet CommitSet, ex
 	return
 }
 
-func (refCommitSets *RefCommitSets) SetCommitSet(oid *Oid, commitSet CommitSet) {
+func (refCommitSets *refCommitSets) setCommitSet(oid *Oid, commitSet commitSet) {
 	refCommitSets.lock.Lock()
 	defer refCommitSets.lock.Unlock()
 
 	refCommitSets.commits[oid] = commitSet
 }
 
-func (refCommitSets *RefCommitSets) AddCommitFilter(oid *Oid, commitFilter *CommitFilter) (err error) {
+func (refCommitSets *refCommitSets) addCommitFilter(oid *Oid, commitFilter *CommitFilter) (err error) {
 	refCommitSets.lock.Lock()
 	defer refCommitSets.lock.Unlock()
 
@@ -382,12 +401,12 @@ func (refCommitSets *RefCommitSets) AddCommitFilter(oid *Oid, commitFilter *Comm
 		return fmt.Errorf("No CommitSet exists for ref with id: %v", oid)
 	}
 
-	filteredCommitSet := NewFilteredCommitSet(commitSet, commitFilter)
+	filteredCommitSet := newFilteredCommitSet(commitSet, commitFilter)
 	refCommitSets.commits[oid] = filteredCommitSet
 
 	go func() {
 		beforeState := commitSet.CommitSetState()
-		filteredCommitSet.InitialiseFromCommitSet()
+		filteredCommitSet.initialiseFromCommitSet()
 
 		if !beforeState.loading {
 			afterState := filteredCommitSet.CommitSetState()
@@ -407,7 +426,7 @@ func (refCommitSets *RefCommitSets) AddCommitFilter(oid *Oid, commitFilter *Comm
 	return
 }
 
-func (refCommitSets *RefCommitSets) RemoveCommitFilter(oid *Oid) (err error) {
+func (refCommitSets *refCommitSets) removeCommitFilter(oid *Oid) (err error) {
 	refCommitSets.lock.Lock()
 	defer refCommitSets.lock.Unlock()
 
@@ -416,7 +435,7 @@ func (refCommitSets *RefCommitSets) RemoveCommitFilter(oid *Oid) (err error) {
 		return fmt.Errorf("No CommitSet exists for ref with id: %v", oid)
 	}
 
-	filteredCommitSet, ok := commitSet.(*FilteredCommitSet)
+	filteredCommitSet, ok := commitSet.(*filteredCommitSet)
 	if !ok {
 		refCommitSets.channels.ReportStatus("No commit filter applied to remove")
 		return
@@ -428,32 +447,36 @@ func (refCommitSets *RefCommitSets) RemoveCommitFilter(oid *Oid) (err error) {
 	return
 }
 
+// RepositoryData implements RepoData and stores all loaded repository data
 type RepositoryData struct {
 	channels       *Channels
 	repoDataLoader *RepoDataLoader
 	head           *Oid
 	headBranch     *Branch
-	branches       *BranchSet
-	localTags      *TagSet
-	commitRefSet   *CommitRefSet
-	refCommitSets  *RefCommitSets
+	branches       *branchSet
+	localTags      *tagSet
+	commitRefSet   *commitRefSet
+	refCommitSets  *refCommitSets
 }
 
+// NewRepositoryData creates a new instance
 func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *RepositoryData {
 	return &RepositoryData{
 		channels:       channels,
 		repoDataLoader: repoDataLoader,
-		branches:       NewBranchSet(),
-		localTags:      NewTagSet(),
-		commitRefSet:   NewCommitRefSet(),
-		refCommitSets:  NewRefCommitSets(channels),
+		branches:       newBranchSet(),
+		localTags:      newTagSet(),
+		commitRefSet:   newCommitRefSet(),
+		refCommitSets:  newRefCommitSets(channels),
 	}
 }
 
+// Free free's any underlying resources
 func (repoData *RepositoryData) Free() {
 	repoData.repoDataLoader.Free()
 }
 
+// Initialise performs setup to allow loading data from the repository
 func (repoData *RepositoryData) Initialise(repoPath string) (err error) {
 	if err = repoData.repoDataLoader.Initialise(repoPath); err != nil {
 		return
@@ -462,10 +485,12 @@ func (repoData *RepositoryData) Initialise(repoPath string) (err error) {
 	return
 }
 
+// Path returns the file patch location of the repository
 func (repoData *RepositoryData) Path() string {
 	return repoData.repoDataLoader.Path()
 }
 
+// LoadHead attempts to load the HEAD reference
 func (repoData *RepositoryData) LoadHead() (err error) {
 	head, branch, err := repoData.repoDataLoader.Head()
 	if err != nil {
@@ -478,6 +503,7 @@ func (repoData *RepositoryData) LoadHead() (err error) {
 	return
 }
 
+// LoadBranches attempts to load local and remote branch refs from the repository
 func (repoData *RepositoryData) LoadBranches(onBranchesLoaded OnBranchesLoaded) (err error) {
 	branchSet := repoData.branches
 	branchSet.lock.Lock()
@@ -547,12 +573,13 @@ func (repoData *RepositoryData) mapBranchesToCommits() (err error) {
 			return
 		}
 
-		commitRefSet.AddBranchForCommit(commit, branch)
+		commitRefSet.addBranchForCommit(commit, branch)
 	}
 
 	return
 }
 
+// LoadLocalTags attempts to load all tags stored in the repository
 func (repoData *RepositoryData) LoadLocalTags(onTagsLoaded OnTagsLoaded) (err error) {
 	tagSet := repoData.localTags
 	tagSet.lock.Lock()
@@ -608,14 +635,15 @@ func (repoData *RepositoryData) mapTagsToCommits() (err error) {
 			return
 		}
 
-		commitRefSet.AddTagForCommit(commit, tag)
+		commitRefSet.addTagForCommit(commit, tag)
 	}
 
 	return
 }
 
+// LoadCommits attempts to load all commits for the provided oid
 func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsLoaded) (err error) {
-	if _, ok := repoData.refCommitSets.CommitSet(oid); ok {
+	if _, ok := repoData.refCommitSets.commitSet(oid); ok {
 		log.Debugf("Commits already loading/loaded for oid %v", oid)
 		return
 	}
@@ -625,15 +653,15 @@ func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsL
 		return
 	}
 
-	commitSet := NewRawCommitSet()
+	commitSet := newRawCommitSet()
 	commitSet.SetLoading(true)
-	repoData.refCommitSets.SetCommitSet(oid, commitSet)
+	repoData.refCommitSets.setCommitSet(oid, commitSet)
 
 	go func() {
 		log.Debugf("Receiving commits from RepoDataLoader for oid %v", oid)
 
 		for commit := range commitCh {
-			commitSet, ok := repoData.refCommitSets.CommitSet(oid)
+			commitSet, ok := repoData.refCommitSets.commitSet(oid)
 			if !ok {
 				log.Errorf("Error when loading commits: No CommitSet exists for ref with id: %v", oid)
 				return
@@ -645,7 +673,7 @@ func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsL
 			}
 		}
 
-		commitSet, ok := repoData.refCommitSets.CommitSet(oid)
+		commitSet, ok := repoData.refCommitSets.commitSet(oid)
 		if !ok {
 			log.Errorf("No CommitSet exists for ref with id: %v", oid)
 			return
@@ -660,10 +688,12 @@ func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsL
 	return
 }
 
+// Head returns the loaded HEAD ref
 func (repoData *RepositoryData) Head() (*Oid, *Branch) {
 	return repoData.head, repoData.headBranch
 }
 
+// Branches returns all loaded local and remote branches
 func (repoData *RepositoryData) Branches() (localBranches []*Branch, remoteBranches []*Branch, loading bool) {
 	branchSet := repoData.branches
 	branchSet.lock.Lock()
@@ -676,6 +706,7 @@ func (repoData *RepositoryData) Branches() (localBranches []*Branch, remoteBranc
 	return
 }
 
+// LocalTags returns all loaded tags
 func (repoData *RepositoryData) LocalTags() (tags []*Tag, loading bool) {
 	tagSet := repoData.localTags
 	tagSet.lock.Lock()
@@ -687,12 +718,14 @@ func (repoData *RepositoryData) LocalTags() (tags []*Tag, loading bool) {
 	return
 }
 
+// RefsForCommit returns the set of all refs that point to the provided commit
 func (repoData *RepositoryData) RefsForCommit(commit *Commit) *CommitRefs {
-	return repoData.commitRefSet.RefsForCommit(commit)
+	return repoData.commitRefSet.refsForCommit(commit)
 }
 
+// CommitSetState returns the current commit set state for the provided oid
 func (repoData *RepositoryData) CommitSetState(oid *Oid) CommitSetState {
-	if commitSet, ok := repoData.refCommitSets.CommitSet(oid); ok {
+	if commitSet, ok := repoData.refCommitSets.commitSet(oid); ok {
 		return commitSet.CommitSetState()
 	}
 
@@ -702,8 +735,9 @@ func (repoData *RepositoryData) CommitSetState(oid *Oid) CommitSetState {
 	}
 }
 
+// Commits returns a channel from which the commit range specified can be read
 func (repoData *RepositoryData) Commits(oid *Oid, startIndex, count uint) (<-chan *Commit, error) {
-	commitSet, ok := repoData.refCommitSets.CommitSet(oid)
+	commitSet, ok := repoData.refCommitSets.commitSet(oid)
 	if !ok {
 		return nil, fmt.Errorf("No commits loaded for oid %v", oid)
 	}
@@ -733,8 +767,9 @@ func (repoData *RepositoryData) Commits(oid *Oid, startIndex, count uint) (<-cha
 	return commitCh, nil
 }
 
+// CommitByIndex returns the loaded commit for the provided ref and index
 func (repoData *RepositoryData) CommitByIndex(oid *Oid, index uint) (commit *Commit, err error) {
-	commitSet, ok := repoData.refCommitSets.CommitSet(oid)
+	commitSet, ok := repoData.refCommitSets.commitSet(oid)
 	if !ok {
 		return nil, fmt.Errorf("No commits loaded for oid %v", oid)
 	}
@@ -746,18 +781,22 @@ func (repoData *RepositoryData) CommitByIndex(oid *Oid, index uint) (commit *Com
 	return
 }
 
+// Commit loads the commit from the repository using the provided oid
 func (repoData *RepositoryData) Commit(oid *Oid) (*Commit, error) {
 	return repoData.repoDataLoader.Commit(oid)
 }
 
+// AddCommitFilter adds the filter to the specified ref
 func (repoData *RepositoryData) AddCommitFilter(oid *Oid, commitFilter *CommitFilter) error {
-	return repoData.refCommitSets.AddCommitFilter(oid, commitFilter)
+	return repoData.refCommitSets.addCommitFilter(oid, commitFilter)
 }
 
+// RemoveCommitFilter removes a filter (if one exists) for the specified oid
 func (repoData *RepositoryData) RemoveCommitFilter(oid *Oid) error {
-	return repoData.refCommitSets.RemoveCommitFilter(oid)
+	return repoData.refCommitSets.removeCommitFilter(oid)
 }
 
+// Diff loads a diff for the specified oid
 func (repoData *RepositoryData) Diff(commit *Commit) (*Diff, error) {
 	return repoData.repoDataLoader.Diff(commit)
 }

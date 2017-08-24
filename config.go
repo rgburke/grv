@@ -2,114 +2,119 @@ package main
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
-	CF_DEFAULT_CONFIG_HOME_DIR = "/.config"
-	CF_GRV_CONFIG_DIR          = "/grv"
-	CF_GRVRC_FILE              = "/grvrc"
-	CV_TAB_WIDTH_MIN_VALUE     = 1
-	CV_THEME_DEFALT_VALUE      = "default"
+	cfDefaultConfigHomeDir = "/.config"
+	cfGrvConfigDir         = "/grv"
+	cfGrvrcFile            = "/grvrc"
+	cfTabWidthMinValue     = 1
+	cfThemeDefaultValue    = "default"
 
-	CV_ALL_VIEW        = "All"
-	CV_MAIN_VIEW       = "MainView"
-	CV_HISTORY_VIEW    = "HistoryView"
-	CV_STATUS_VIEW     = "StatusView"
-	CV_REF_VIEW        = "RefView"
-	CV_COMMIT_VIEW     = "CommitView"
-	CV_DIFF_VIEW       = "DiffView"
-	CV_STATUS_BAR_VIEW = "StatusBarView"
-	CV_HELP_BAR_VIEW   = "HelpBarView"
-	CV_ERROR_VIEW      = "ErrorView"
+	cfAllView       = "All"
+	cfMainView      = "MainView"
+	cfHistoryView   = "HistoryView"
+	cfStatusView    = "StatusView"
+	cfRefView       = "RefView"
+	cfCommitView    = "CommitView"
+	cfDiffView      = "DiffView"
+	cfStatusBarView = "StatusBarView"
+	cfHelpBarView   = "HelpBarView"
+	cfErrorView     = "ErrorView"
 )
 
+// ConfigVariable stores a config variable name
 type ConfigVariable string
 
 const (
-	CV_TAB_WIDTH ConfigVariable = "tabWidth"
-	CV_THEME     ConfigVariable = "theme"
+	// CfTabWidth stores the tab width variable name
+	CfTabWidth ConfigVariable = "tabWidth"
+	// CfTheme stores the theme variable name
+	CfTheme ConfigVariable = "theme"
 )
 
 var themeColors = map[string]ThemeColor{
-	"NONE":    COLOR_NONE,
-	"BLACK":   COLOR_BLACK,
-	"RED":     COLOR_RED,
-	"GREEN":   COLOR_GREEN,
-	"YELLOW":  COLOR_YELLOW,
-	"BLUE":    COLOR_BLUE,
-	"MAGENTA": COLOR_MAGENTA,
-	"CYAN":    COLOR_CYAN,
-	"WHITE":   COLOR_WHITE,
+	"NONE":    ColorNone,
+	"BLACK":   ColorBlack,
+	"RED":     ColorRed,
+	"GREEN":   ColorGreen,
+	"YELLOW":  ColorYellow,
+	"BLUE":    ColorBlue,
+	"MAGENTA": ColorMagenta,
+	"CYAN":    ColorCyan,
+	"WHITE":   ColorWhite,
 }
 
-var viewIdNames = map[string]ViewId{
-	CV_ALL_VIEW:        VIEW_ALL,
-	CV_MAIN_VIEW:       VIEW_MAIN,
-	CV_HISTORY_VIEW:    VIEW_HISTORY,
-	CV_STATUS_VIEW:     VIEW_STATUS,
-	CV_REF_VIEW:        VIEW_REF,
-	CV_COMMIT_VIEW:     VIEW_COMMIT,
-	CV_DIFF_VIEW:       VIEW_DIFF,
-	CV_STATUS_BAR_VIEW: VIEW_STATUS_BAR,
-	CV_HELP_BAR_VIEW:   VIEW_HELP_BAR,
-	CV_ERROR_VIEW:      VIEW_ERROR,
+var viewIDNames = map[string]ViewID{
+	cfAllView:       ViewAll,
+	cfMainView:      ViewMain,
+	cfHistoryView:   ViewHistory,
+	cfStatusView:    ViewStatus,
+	cfRefView:       ViewRef,
+	cfCommitView:    ViewCommit,
+	cfDiffView:      ViewDiff,
+	cfStatusBarView: ViewStatusBar,
+	cfHelpBarView:   ViewHelpBar,
+	cfErrorView:     ViewError,
 }
 
-var themeComponents = map[string]ThemeComponentId{
-	CV_ALL_VIEW + ".SearchMatch": CMP_ALLVIEW_SEARCH_MATCH,
+var themeComponents = map[string]ThemeComponentID{
+	cfAllView + ".SearchMatch": CmpAllviewSearchMatch,
 
-	CV_MAIN_VIEW + ".ActiveView": CMP_MAINVIEW_ACTIVE_VIEW,
-	CV_MAIN_VIEW + ".NormalView": CMP_MAINVIEW_NORMAL_VIEW,
+	cfMainView + ".ActiveView": CmpMainviewActiveView,
+	cfMainView + ".NormalView": CmpMainviewNormalView,
 
-	CV_REF_VIEW + ".Title":                CMP_REFVIEW_TITLE,
-	CV_REF_VIEW + ".Footer":               CMP_REFVIEW_FOOTER,
-	CV_REF_VIEW + ".LocalBranchesHeader":  CMP_REFVIEW_LOCAL_BRANCHES_HEADER,
-	CV_REF_VIEW + ".RemoteBranchesHeader": CMP_REFVIEW_REMOTE_BRANCHES_HEADER,
-	CV_REF_VIEW + ".LocalBranch":          CMP_REFVIEW_LOCAL_BRANCH,
-	CV_REF_VIEW + ".RemoteBranch":         CMP_REFVIEW_REMOTE_BRANCH,
-	CV_REF_VIEW + ".TagsHeader":           CMP_REFVIEW_TAGS_HEADER,
-	CV_REF_VIEW + ".Tag":                  CMP_REFVIEW_TAG,
+	cfRefView + ".Title":                CmpRefviewTitle,
+	cfRefView + ".Footer":               CmpRefviewFooter,
+	cfRefView + ".LocalBranchesHeader":  CmpRefviewLocalBranchesHeader,
+	cfRefView + ".RemoteBranchesHeader": CmpRefviewRemoteBranchesHeader,
+	cfRefView + ".LocalBranch":          CmpRefviewLocalBranch,
+	cfRefView + ".RemoteBranch":         CmpRefviewRemoteBranch,
+	cfRefView + ".TagsHeader":           CmpRefviewTagsHeader,
+	cfRefView + ".Tag":                  CmpRefviewTag,
 
-	CV_COMMIT_VIEW + ".Title":        CMP_COMMITVIEW_TITLE,
-	CV_COMMIT_VIEW + ".Footer":       CMP_COMMITVIEW_FOOTER,
-	CV_COMMIT_VIEW + ".ShortOid":     CMP_COMMITVIEW_SHORT_OID,
-	CV_COMMIT_VIEW + ".Date":         CMP_COMMITVIEW_DATE,
-	CV_COMMIT_VIEW + ".Author":       CMP_COMMITVIEW_AUTHOR,
-	CV_COMMIT_VIEW + ".Summary":      CMP_COMMITVIEW_SUMMARY,
-	CV_COMMIT_VIEW + ".Tag":          CMP_COMMITVIEW_TAG,
-	CV_COMMIT_VIEW + ".LocalBranch":  CMP_COMMITVIEW_LOCAL_BRANCH,
-	CV_COMMIT_VIEW + ".RemoteBranch": CMP_COMMITVIEW_REMOTE_BRANCH,
+	cfCommitView + ".Title":        CmpCommitviewTitle,
+	cfCommitView + ".Footer":       CmpCommitviewFooter,
+	cfCommitView + ".ShortOid":     CmpCommitviewShortOid,
+	cfCommitView + ".Date":         CmpCommitviewDate,
+	cfCommitView + ".Author":       CmpCommitviewAuthor,
+	cfCommitView + ".Summary":      CmpCommitviewSummary,
+	cfCommitView + ".Tag":          CmpCommitviewTag,
+	cfCommitView + ".LocalBranch":  CmpCommitviewLocalBranch,
+	cfCommitView + ".RemoteBranch": CmpCommitviewRemoteBranch,
 
-	CV_DIFF_VIEW + ".Normal":                CMP_DIFFVIEW_DIFFLINE_NORMAL,
-	CV_DIFF_VIEW + ".CommitAuthor":          CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_AUTHOR,
-	CV_DIFF_VIEW + ".CommitAuthorDate":      CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_AUTHOR_DATE,
-	CV_DIFF_VIEW + ".CommitCommitter":       CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_COMMITTER,
-	CV_DIFF_VIEW + ".CommitCommitterDate":   CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_COMMITTER_DATE,
-	CV_DIFF_VIEW + ".CommitSummary":         CMP_DIFFVIEW_DIFFLINE_DIFF_COMMIT_SUMMARY,
-	CV_DIFF_VIEW + ".StatsFile":             CMP_DIFFVIEW_DIFFLINE_DIFF_STATS_FILE,
-	CV_DIFF_VIEW + ".GitDiffHeader":         CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_HEADER,
-	CV_DIFF_VIEW + ".GitDiffExtendedHeader": CMP_DIFFVIEW_DIFFLINE_GIT_DIFF_EXTENDED_HEADER,
-	CV_DIFF_VIEW + ".UnifiedDiffHeader":     CMP_DIFFVIEW_DIFFLINE_UNIFIED_DIFF_HEADER,
-	CV_DIFF_VIEW + ".HunkStart":             CMP_DIFFVIEW_DIFFLINE_HUNK_START,
-	CV_DIFF_VIEW + ".HunkHeader":            CMP_DIFFVIEW_DIFFLINE_HUNK_HEADER,
-	CV_DIFF_VIEW + ".AddedLine":             CMP_DIFFVIEW_DIFFLINE_LINE_ADDED,
-	CV_DIFF_VIEW + ".RemovedLine":           CMP_DIFFVIEW_DIFFLINE_LINE_REMOVED,
+	cfDiffView + ".Normal":                CmpDiffviewDifflineNormal,
+	cfDiffView + ".CommitAuthor":          CmpDiffviewDifflineDiffCommitAuthor,
+	cfDiffView + ".CommitAuthorDate":      CmpDiffviewDifflineDiffCommitAuthorDate,
+	cfDiffView + ".CommitCommitter":       CmpDiffviewDifflineDiffCommitCommitter,
+	cfDiffView + ".CommitCommitterDate":   CmpDiffviewDifflineDiffCommitCommitterDate,
+	cfDiffView + ".CommitSummary":         CmpDiffviewDifflineDiffCommitSummary,
+	cfDiffView + ".StatsFile":             CmpDiffviewDifflineDiffStatsFile,
+	cfDiffView + ".GitDiffHeader":         CmpDiffviewDifflineGitDiffHeader,
+	cfDiffView + ".GitDiffExtendedHeader": CmpDiffviewDifflineGitDiffExtendedHeader,
+	cfDiffView + ".UnifiedDiffHeader":     CmpDiffviewDifflineUnifiedDiffHeader,
+	cfDiffView + ".HunkStart":             CmpDiffviewDifflineHunkStart,
+	cfDiffView + ".HunkHeader":            CmpDiffviewDifflineHunkHeader,
+	cfDiffView + ".AddedLine":             CmpDiffviewDifflineLineAdded,
+	cfDiffView + ".RemovedLine":           CmpDiffviewDifflineLineRemoved,
 
-	CV_STATUS_BAR_VIEW + ".Normal": CMP_STATUSBARVIEW_NORMAL,
+	cfStatusBarView + ".Normal": CmpStatusbarviewNormal,
 
-	CV_HELP_BAR_VIEW + ".Special": CMP_HELPBARVIEW_SPECIAL,
-	CV_HELP_BAR_VIEW + ".Normal":  CMP_HELPBARVIEW_NORMAL,
+	cfHelpBarView + ".Special": CmpHelpbarviewSpecial,
+	cfHelpBarView + ".Normal":  CmpHelpbarviewNormal,
 
-	CV_ERROR_VIEW + ".Title":  CMP_ERROR_VIEW_TITLE,
-	CV_ERROR_VIEW + ".Footer": CMP_ERROR_VIEW_FOOTER,
-	CV_ERROR_VIEW + ".Errors": CMP_ERROR_VIEW_ERRORS,
+	cfErrorView + ".Title":  CmpErrorViewTitle,
+	cfErrorView + ".Footer": CmpErrorViewFooter,
+	cfErrorView + ".Errors": CmpErrorViewErrors,
 }
 
+// Config exposes a read only interface for configuration
 type Config interface {
 	GetBool(ConfigVariable) bool
 	GetString(ConfigVariable) string
@@ -120,25 +125,30 @@ type Config interface {
 	ConfigDir() string
 }
 
+// ConfigSetter extends the config interface and exposes the ability to set config values
 type ConfigSetter interface {
 	Config
 	Evaluate(config string) []error
 }
 
+// ConfigVariableValidator validates a new value for a config variable
 type ConfigVariableValidator interface {
 	validate(value string) (processedValue interface{}, err error)
 }
 
+// ConfigVariableOnChangeListener is notified when a config variable changes value
 type ConfigVariableOnChangeListener interface {
 	onConfigVariableChange(ConfigVariable)
 }
 
+// ConfigurationVariable represents a config variable
 type ConfigurationVariable struct {
 	value             interface{}
 	validator         ConfigVariableValidator
 	onChangeListeners []ConfigVariableOnChangeListener
 }
 
+// Configuration contains all configuration state
 type Configuration struct {
 	variables    map[ConfigVariable]*ConfigurationVariable
 	themes       map[string]MutableTheme
@@ -147,23 +157,24 @@ type Configuration struct {
 	channels     *Channels
 }
 
+// NewConfiguration creates a Configuration instance with default values
 func NewConfiguration(keyBindings KeyBindings, channels *Channels) *Configuration {
 	config := &Configuration{
 		keyBindings: keyBindings,
 		themes: map[string]MutableTheme{
-			CV_THEME_DEFALT_VALUE: NewDefaultTheme(),
+			cfThemeDefaultValue: NewDefaultTheme(),
 		},
 		channels: channels,
 	}
 
 	config.variables = map[ConfigVariable]*ConfigurationVariable{
-		CV_TAB_WIDTH: &ConfigurationVariable{
+		CfTabWidth: {
 			value:     8,
-			validator: TabWidithValidator{},
+			validator: tabWidithValidator{},
 		},
-		CV_THEME: &ConfigurationVariable{
-			value: CV_THEME_DEFALT_VALUE,
-			validator: ThemeValidator{
+		CfTheme: {
+			value: cfThemeDefaultValue,
+			validator: themeValidator{
 				config: config,
 			},
 		},
@@ -172,6 +183,7 @@ func NewConfiguration(keyBindings KeyBindings, channels *Channels) *Configuratio
 	return config
 }
 
+// Initialise loads the grvrc config file (if it exists)
 func (config *Configuration) Initialise() []error {
 	configHomeDir, configHomeDirSet := os.LookupEnv("XDG_CONFIG_HOME")
 
@@ -185,12 +197,12 @@ func (config *Configuration) Initialise() []error {
 		}
 
 		log.Debugf("HOME directory: %v", home)
-		configHomeDir = home + CF_DEFAULT_CONFIG_HOME_DIR
+		configHomeDir = home + cfDefaultConfigHomeDir
 	} else {
 		log.Debugf("XDG_CONFIG_HOME: %v", configHomeDir)
 	}
 
-	grvConfigDir := configHomeDir + CF_GRV_CONFIG_DIR
+	grvConfigDir := configHomeDir + cfGrvConfigDir
 
 	if err := os.MkdirAll(grvConfigDir, 0755); err != nil {
 		log.Errorf("Unable to create config home directory %v: %v", grvConfigDir, err)
@@ -199,7 +211,7 @@ func (config *Configuration) Initialise() []error {
 
 	config.grvConfigDir = grvConfigDir
 
-	grvConfig := grvConfigDir + CF_GRVRC_FILE
+	grvConfig := grvConfigDir + cfGrvrcFile
 
 	if _, err := os.Stat(grvConfig); os.IsNotExist(err) {
 		log.Infof("No config file found at: %v", grvConfig)
@@ -215,10 +227,12 @@ func (config *Configuration) Initialise() []error {
 	return errors
 }
 
+// ConfigDir returns the directory grv looks for config in
 func (config *Configuration) ConfigDir() string {
 	return config.grvConfigDir
 }
 
+// LoadFile loads the configuration file at by the provided file path
 func (config *Configuration) LoadFile(filePath string) []error {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -231,6 +245,7 @@ func (config *Configuration) LoadFile(filePath string) []error {
 	return config.processCommands(NewConfigParser(file, filePath))
 }
 
+// Evaluate processes configuration in string format
 func (config *Configuration) Evaluate(configString string) (errs []error) {
 	if configString == "" {
 		return
@@ -266,7 +281,7 @@ OuterLoop:
 	return configErrors
 }
 
-func (config *Configuration) processCommand(command Command, inputSource string) (err error) {
+func (config *Configuration) processCommand(command ConfigCommand, inputSource string) (err error) {
 	switch command := command.(type) {
 	case *SetCommand:
 		err = config.processSetCommand(command, inputSource)
@@ -275,7 +290,7 @@ func (config *Configuration) processCommand(command Command, inputSource string)
 	case *MapCommand:
 		err = config.processMapCommand(command, inputSource)
 	case *QuitCommand:
-		err = config.processQuitCommand(command)
+		err = config.processQuitCommand()
 	default:
 		log.Errorf("Unknown command type %T", command)
 	}
@@ -323,9 +338,9 @@ func (config *Configuration) processSetCommand(setCommand *SetCommand, inputSour
 }
 
 func (config *Configuration) processThemeCommand(themeCommand *ThemeCommand, inputSource string) (err error) {
-	themeComponentId, componentIdExists := themeComponents[themeCommand.component.value]
+	themeComponentID, componentIDExists := themeComponents[themeCommand.component.value]
 
-	if !componentIdExists {
+	if !componentIDExists {
 		err = generateConfigError(inputSource, themeCommand.component, "Invalid theme component: %v", themeCommand.component.value)
 		return
 	}
@@ -349,7 +364,7 @@ func (config *Configuration) processThemeCommand(themeCommand *ThemeCommand, inp
 		themeCommand.bgcolor.value, themeCommand.fgcolor.value,
 		themeCommand.component.value, themeCommand.name.value)
 
-	themeComponent := theme.CreateOrGetComponent(themeComponentId)
+	themeComponent := theme.CreateOrGetComponent(themeComponentID)
 	themeComponent.bgcolor = bgThemeColor
 	themeComponent.fgcolor = fgThemeColor
 
@@ -360,7 +375,7 @@ func getThemeColor(color *ConfigToken, inputSource string) (ThemeColor, error) {
 	themeColor, ok := themeColors[color.value]
 
 	if !ok {
-		return COLOR_NONE, generateConfigError(inputSource, color, "Invalid color: %v", color.value)
+		return ColorNone, generateConfigError(inputSource, color, "Invalid color: %v", color.value)
 	}
 
 	return themeColor, nil
@@ -375,7 +390,7 @@ func (config *Configuration) getVariable(configVariable ConfigVariable) *Configu
 }
 
 func (config *Configuration) processMapCommand(mapCommand *MapCommand, inputSource string) (err error) {
-	viewId, ok := viewIdNames[mapCommand.view.value]
+	viewID, ok := viewIDNames[mapCommand.view.value]
 	if !ok {
 		return generateConfigError(inputSource, mapCommand.view, "Invalid view: %v", mapCommand.view.value)
 	}
@@ -386,24 +401,26 @@ func (config *Configuration) processMapCommand(mapCommand *MapCommand, inputSour
 		return generateConfigError(inputSource, mapCommand.to, "to keystring cannot be empty")
 	}
 
-	config.keyBindings.SetKeystringBinding(viewId, mapCommand.from.value, mapCommand.to.value)
+	config.keyBindings.SetKeystringBinding(viewID, mapCommand.from.value, mapCommand.to.value)
 
 	log.Infof("Mapped \"%v\" to \"%v\" for view %v", mapCommand.from.value, mapCommand.to.value, mapCommand.view.value)
 
 	return
 }
 
-func (config *Configuration) processQuitCommand(quitCommand *QuitCommand) (err error) {
+func (config *Configuration) processQuitCommand() (err error) {
 	log.Info("Processed quit command")
-	config.channels.DoAction(Action{ActionType: ACTION_EXIT})
+	config.channels.DoAction(Action{ActionType: ActionExit})
 	return
 }
 
+// AddOnChangeListener adds a listener to be notified when a configuration variable changes value
 func (config *Configuration) AddOnChangeListener(configVariable ConfigVariable, listener ConfigVariableOnChangeListener) {
 	variable := config.getVariable(configVariable)
 	variable.onChangeListeners = append(variable.onChangeListeners, listener)
 }
 
+// GetBool returns the boolean value of the specified configuration variable
 func (config *Configuration) GetBool(configVariable ConfigVariable) bool {
 	switch value := config.getVariable(configVariable).value.(type) {
 	case bool:
@@ -413,6 +430,7 @@ func (config *Configuration) GetBool(configVariable ConfigVariable) bool {
 	panic(fmt.Sprintf("ConfigVariable with ID %v does not have a boolean value", configVariable))
 }
 
+// GetString returns the string value of the specified configuration variable
 func (config *Configuration) GetString(configVariable ConfigVariable) string {
 	switch value := config.getVariable(configVariable).value.(type) {
 	case string:
@@ -422,6 +440,7 @@ func (config *Configuration) GetString(configVariable ConfigVariable) string {
 	panic(fmt.Sprintf("ConfigVariable with ID %v does not have a string value", configVariable))
 }
 
+// GetInt returns the integer value of the specified configuration variable
 func (config *Configuration) GetInt(configVariable ConfigVariable) int {
 	switch value := config.getVariable(configVariable).value.(type) {
 	case int:
@@ -431,6 +450,7 @@ func (config *Configuration) GetInt(configVariable ConfigVariable) int {
 	panic(fmt.Sprintf("ConfigVariable with ID %v does not have an integer value", configVariable))
 }
 
+// GetFloat returns the floating point value of the specified configuration variable
 func (config *Configuration) GetFloat(configVariable ConfigVariable) float64 {
 	switch value := config.getVariable(configVariable).value.(type) {
 	case float64:
@@ -440,8 +460,9 @@ func (config *Configuration) GetFloat(configVariable ConfigVariable) float64 {
 	panic(fmt.Sprintf("ConfigVariable with ID %v does not have a floating point value", configVariable))
 }
 
+// GetTheme returns the currently active theme
 func (config *Configuration) GetTheme() Theme {
-	themeName := config.GetString(CV_THEME)
+	themeName := config.GetString(CfTheme)
 	theme, ok := config.themes[themeName]
 
 	if !ok {
@@ -451,15 +472,15 @@ func (config *Configuration) GetTheme() Theme {
 	return theme
 }
 
-type TabWidithValidator struct{}
+type tabWidithValidator struct{}
 
-func (tabwidthValidator TabWidithValidator) validate(value string) (processedValue interface{}, err error) {
+func (tabwidthValidator tabWidithValidator) validate(value string) (processedValue interface{}, err error) {
 	var tabWidth int
 
 	if tabWidth, err = strconv.Atoi(value); err != nil {
-		err = fmt.Errorf("%v must be an integer value greater than %v", CV_TAB_WIDTH, CV_TAB_WIDTH_MIN_VALUE-1)
-	} else if tabWidth < CV_TAB_WIDTH_MIN_VALUE {
-		err = fmt.Errorf("%v must be greater than %v", CV_TAB_WIDTH, CV_TAB_WIDTH_MIN_VALUE-1)
+		err = fmt.Errorf("%v must be an integer value greater than %v", CfTabWidth, cfTabWidthMinValue-1)
+	} else if tabWidth < cfTabWidthMinValue {
+		err = fmt.Errorf("%v must be greater than %v", CfTabWidth, cfTabWidthMinValue-1)
 	} else {
 		processedValue = tabWidth
 	}
@@ -467,11 +488,11 @@ func (tabwidthValidator TabWidithValidator) validate(value string) (processedVal
 	return
 }
 
-type ThemeValidator struct {
+type themeValidator struct {
 	config *Configuration
 }
 
-func (themeValidator ThemeValidator) validate(value string) (processedValue interface{}, err error) {
+func (themeValidator themeValidator) validate(value string) (processedValue interface{}, err error) {
 	if _, ok := themeValidator.config.themes[value]; !ok {
 		err = fmt.Errorf("No theme exists with name %v", value)
 	} else {

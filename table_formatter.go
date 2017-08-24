@@ -7,34 +7,38 @@ import (
 )
 
 const (
-	TF_SEPARATOR = " "
+	tfSeparator = " "
 )
 
-type TableCellText struct {
+type tableCellText struct {
 	text             string
-	themeComponentId ThemeComponentId
+	themeComponentID ThemeComponentID
 }
 
-type TableCell struct {
-	textEntries []TableCellText
+type tableCell struct {
+	textEntries []tableCellText
 }
 
+// TableFormatter renders provided data in a tabular layout
 type TableFormatter struct {
 	config       Config
 	maxColWidths []uint
-	cells        [][]TableCell
+	cells        [][]tableCell
 }
 
+// NewTableFormatter creates a new instance of the table formatter supporting the specified number of columns
 func NewTableFormatter(cols uint) *TableFormatter {
 	return &TableFormatter{
 		maxColWidths: make([]uint, cols),
 	}
 }
 
+// Rows returns the number of rows in the table formatter
 func (tableFormatter *TableFormatter) Rows() uint {
 	return uint(len(tableFormatter.cells))
 }
 
+// Cols returns the number of cols in the table formatter
 func (tableFormatter *TableFormatter) Cols() uint {
 	if tableFormatter.Rows() > 0 {
 		return uint(len(tableFormatter.cells[0]))
@@ -43,6 +47,7 @@ func (tableFormatter *TableFormatter) Cols() uint {
 	return 0
 }
 
+// Resize updates the number of rows the tableformatter can store
 func (tableFormatter *TableFormatter) Resize(newRows uint) {
 	rows := tableFormatter.Rows()
 
@@ -52,12 +57,13 @@ func (tableFormatter *TableFormatter) Resize(newRows uint) {
 
 	cols := len(tableFormatter.maxColWidths)
 
-	tableFormatter.cells = make([][]TableCell, newRows)
+	tableFormatter.cells = make([][]tableCell, newRows)
 	for rowIndex := range tableFormatter.cells {
-		tableFormatter.cells[rowIndex] = make([]TableCell, cols)
+		tableFormatter.cells[rowIndex] = make([]tableCell, cols)
 	}
 }
 
+// Clear text in all cells
 func (tableFormatter *TableFormatter) Clear() {
 	for rowIndex := range tableFormatter.cells {
 		for colIndex := range tableFormatter.cells[rowIndex] {
@@ -66,11 +72,13 @@ func (tableFormatter *TableFormatter) Clear() {
 	}
 }
 
+// SetCell sets the text value of the cell at the specified coordinates
 func (tableFormatter *TableFormatter) SetCell(rowIndex, colIndex uint, format string, args ...interface{}) (err error) {
-	return tableFormatter.SetCellWithStyle(rowIndex, colIndex, CMP_NONE, format, args...)
+	return tableFormatter.SetCellWithStyle(rowIndex, colIndex, CmpNone, format, args...)
 }
 
-func (tableFormatter *TableFormatter) SetCellWithStyle(rowIndex, colIndex uint, themeComponentId ThemeComponentId, format string, args ...interface{}) (err error) {
+// SetCellWithStyle sets text with style information value of the cell at the specified coordinates
+func (tableFormatter *TableFormatter) SetCellWithStyle(rowIndex, colIndex uint, themeComponentID ThemeComponentID, format string, args ...interface{}) (err error) {
 	if !(rowIndex < tableFormatter.Rows() && colIndex < tableFormatter.Cols()) {
 		return fmt.Errorf("Invalid rowIndex (%v), colIndex (%v) for dimensions rows (%v), cols (%v)",
 			rowIndex, colIndex, tableFormatter.Rows(), tableFormatter.Cols())
@@ -78,21 +86,23 @@ func (tableFormatter *TableFormatter) SetCellWithStyle(rowIndex, colIndex uint, 
 
 	tableCell := &tableFormatter.cells[rowIndex][colIndex]
 
-	tableCell.textEntries = []TableCellText{
-		TableCellText{
+	tableCell.textEntries = []tableCellText{
+		{
 			text:             fmt.Sprintf(format, args...),
-			themeComponentId: themeComponentId,
+			themeComponentID: themeComponentID,
 		},
 	}
 
 	return
 }
 
+// AppendToCell appends text to the specified cell
 func (tableFormatter *TableFormatter) AppendToCell(rowIndex, colIndex uint, format string, args ...interface{}) (err error) {
-	return tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CMP_NONE, format, args...)
+	return tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CmpNone, format, args...)
 }
 
-func (tableFormatter *TableFormatter) AppendToCellWithStyle(rowIndex, colIndex uint, themeComponentId ThemeComponentId, format string, args ...interface{}) (err error) {
+// AppendToCellWithStyle appends text with style information to the specified cell
+func (tableFormatter *TableFormatter) AppendToCellWithStyle(rowIndex, colIndex uint, themeComponentID ThemeComponentID, format string, args ...interface{}) (err error) {
 	if !(rowIndex < tableFormatter.Rows() && colIndex < tableFormatter.Cols()) {
 		return fmt.Errorf("Invalid rowIndex (%v), colIndex (%v) for dimensions rows (%v), cols (%v)",
 			rowIndex, colIndex, tableFormatter.Rows(), tableFormatter.Cols())
@@ -100,14 +110,15 @@ func (tableFormatter *TableFormatter) AppendToCellWithStyle(rowIndex, colIndex u
 
 	tableCell := &tableFormatter.cells[rowIndex][colIndex]
 
-	tableCell.textEntries = append(tableCell.textEntries, TableCellText{
+	tableCell.textEntries = append(tableCell.textEntries, tableCellText{
 		text:             fmt.Sprintf(format, args...),
-		themeComponentId: themeComponentId,
+		themeComponentID: themeComponentID,
 	})
 
 	return
 }
 
+// RowString returns the string representation of the row at the specified index
 func (tableFormatter *TableFormatter) RowString(rowIndex uint) (rowString string, err error) {
 	if rowIndex >= tableFormatter.Rows() {
 		err = fmt.Errorf("Invalid rowIndex: %v, total rows %v", rowIndex, tableFormatter.Rows())
@@ -121,15 +132,18 @@ func (tableFormatter *TableFormatter) RowString(rowIndex uint) (rowString string
 			buf.WriteString(textEntry.text)
 		}
 
-		buf.WriteString(TF_SEPARATOR)
+		buf.WriteString(tfSeparator)
 	}
 
 	rowString = buf.String()
 	return
 }
 
+// Render pads the content of the table formatter and writes it to the provided window
 func (tableFormatter *TableFormatter) Render(win RenderWindow, viewStartColumn uint, border bool) (err error) {
-	tableFormatter.PadCells(border)
+	if err = tableFormatter.PadCells(border); err != nil {
+		return
+	}
 
 	var lineBuilder *LineBuilder
 
@@ -151,10 +165,10 @@ func (tableFormatter *TableFormatter) Render(win RenderWindow, viewStartColumn u
 			tableCell := &tableFormatter.cells[rowIndex][colIndex]
 
 			for _, textEntry := range tableCell.textEntries {
-				lineBuilder.AppendWithStyle(textEntry.themeComponentId, "%v", textEntry.text)
+				lineBuilder.AppendWithStyle(textEntry.themeComponentID, "%v", textEntry.text)
 			}
 
-			lineBuilder.Append(TF_SEPARATOR)
+			lineBuilder.Append(tfSeparator)
 		}
 	}
 
@@ -165,7 +179,8 @@ func (tableFormatter *TableFormatter) Render(win RenderWindow, viewStartColumn u
 	return
 }
 
-func (tableFormatter *TableFormatter) PadCells(border bool) {
+// PadCells pads each cell with whitespace so that the text in each column is of uniform width
+func (tableFormatter *TableFormatter) PadCells(border bool) (err error) {
 	tableFormatter.determineMaxColWidths(border)
 
 	for rowIndex := range tableFormatter.cells {
@@ -180,12 +195,16 @@ func (tableFormatter *TableFormatter) PadCells(border bool) {
 			maxColWidth := tableFormatter.maxColWidths[colIndex]
 
 			if width < maxColWidth {
-				tableFormatter.AppendToCell(uint(rowIndex), uint(colIndex), strings.Repeat(" ", int(maxColWidth-width)))
+				if err = tableFormatter.AppendToCell(uint(rowIndex), uint(colIndex), strings.Repeat(" ", int(maxColWidth-width))); err != nil {
+					return
+				}
 			}
 
-			column += maxColWidth + uint(len(TF_SEPARATOR))
+			column += maxColWidth + uint(len(tfSeparator))
 		}
 	}
+
+	return
 }
 
 func (tableFormatter *TableFormatter) determineMaxColWidths(border bool) {
@@ -198,7 +217,7 @@ func (tableFormatter *TableFormatter) determineMaxColWidths(border bool) {
 
 		for doneColIndex := 0; doneColIndex < colIndex; doneColIndex++ {
 			column += tableFormatter.maxColWidths[doneColIndex]
-			column += uint(len(TF_SEPARATOR))
+			column += uint(len(tfSeparator))
 		}
 
 		for rowIndex := range tableFormatter.cells {

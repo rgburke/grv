@@ -1,16 +1,19 @@
 package main
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
 
+// SearchableView is a view that supports searching functionality
 type SearchableView interface {
 	SearchInputProvidor
 	ViewPos() *ViewPos
 	OnSearchMatch(startPos *ViewPos, matchLineIndex uint)
 }
 
+// ViewSearch manages search functionality for a view
 type ViewSearch struct {
 	search               *Search
 	searchableView       SearchableView
@@ -19,6 +22,7 @@ type ViewSearch struct {
 	lock                 sync.Mutex
 }
 
+// NewViewSearch creates a new instance
 func NewViewSearch(searchableView SearchableView, channels *Channels) *ViewSearch {
 	return &ViewSearch{
 		searchableView: searchableView,
@@ -26,6 +30,7 @@ func NewViewSearch(searchableView SearchableView, channels *Channels) *ViewSearc
 	}
 }
 
+// SearchActive returns the state of the most recent search (if one has been performed)
 func (viewSearch *ViewSearch) SearchActive() (active bool, pattern string, lastSearchFoundMatch bool) {
 	viewSearch.lock.Lock()
 	defer viewSearch.lock.Unlock()
@@ -43,6 +48,7 @@ func (viewSearch *ViewSearch) searchActive() (active bool, pattern string, lastS
 	return
 }
 
+// HandleAction handles all actions relating to search that a view receives
 func (viewSearch *ViewSearch) HandleAction(action Action) (handled bool, err error) {
 	viewSearch.lock.Lock()
 	defer viewSearch.lock.Unlock()
@@ -50,13 +56,13 @@ func (viewSearch *ViewSearch) HandleAction(action Action) (handled bool, err err
 	handled = true
 
 	switch action.ActionType {
-	case ACTION_SEARCH, ACTION_REVERSE_SEARCH:
+	case ActionSearch, ActionReverseSearch:
 		err = viewSearch.doSearch(action)
-	case ACTION_SEARCH_FIND_NEXT:
+	case ActionSearchFindNext:
 		err = viewSearch.findNextMatch()
-	case ACTION_SEARCH_FIND_PREV:
+	case ActionSearchFindPrev:
 		err = viewSearch.findPrevMatch()
-	case ACTION_CLEAR_SEARCH:
+	case ActionClearSearch:
 		err = viewSearch.clearSearch()
 	default:
 		handled = false
@@ -85,7 +91,7 @@ func (viewSearch *ViewSearch) findNextMatch() (err error) {
 	viewPos := viewSearch.searchableView.ViewPos()
 
 	viewSearch.channels.ReportStatus("Searching...")
-	log.Debugf("Searching for next occurence of pattern %v starting from row index :%v",
+	log.Debugf("Searching for next occurrence of pattern %v starting from row index :%v",
 		pattern, viewPos.activeRowIndex)
 
 	go func() {
@@ -115,7 +121,7 @@ func (viewSearch *ViewSearch) findPrevMatch() (err error) {
 	viewPos := viewSearch.searchableView.ViewPos()
 
 	viewSearch.channels.ReportStatus("Searching...")
-	log.Debugf("Searching for previous occurence of pattern %v starting from row index :%v",
+	log.Debugf("Searching for previous occurrence of pattern %v starting from row index :%v",
 		pattern, viewPos.activeRowIndex)
 
 	go func() {

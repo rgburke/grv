@@ -2,44 +2,43 @@ package main
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	rw "github.com/mattn/go-runewidth"
 	"sync"
 	"unicode/utf8"
+
+	log "github.com/Sirupsen/logrus"
+	rw "github.com/mattn/go-runewidth"
 )
+
+// The different prompt types grv uses
+const (
+	PromptText              = ":"
+	SearchPromptText        = "/"
+	ReverseSearchPromptText = "?"
+	FilterPromptText        = "query: "
+)
+
+type promptType int
 
 const (
-	PROMPT_TEXT                = ":"
-	SEARCH_PROMPT_TEXT         = "/"
-	REVERSE_SEARCH_PROMPT_TEXT = "?"
-	FILTER_PROMPT_TEXT         = "query: "
+	ptNone promptType = iota
+	ptCommand
+	ptSearch
+	ptFilter
 )
 
-type PromptType int
-
-const (
-	PT_NONE PromptType = iota
-	PT_COMMAND
-	PT_SEARCH
-	PT_FILTER
-)
-
-type PropertyValue struct {
-	Property string
-	Value    string
-}
-
+// StatusBarView manages the display of the status bar
 type StatusBarView struct {
 	rootView      RootView
 	repoData      RepoData
 	channels      *Channels
 	config        ConfigSetter
 	active        bool
-	promptType    PromptType
+	promptType    promptType
 	pendingStatus string
 	lock          sync.Mutex
 }
 
+// NewStatusBarView creates a new instance
 func NewStatusBarView(rootView RootView, repoData RepoData, channels *Channels, config ConfigSetter) *StatusBarView {
 	return &StatusBarView{
 		rootView: rootView,
@@ -49,25 +48,28 @@ func NewStatusBarView(rootView RootView, repoData RepoData, channels *Channels, 
 	}
 }
 
+// Initialise does nothing
 func (statusBarView *StatusBarView) Initialise() (err error) {
 	return
 }
 
+// HandleKeyPress does nothing
 func (statusBarView *StatusBarView) HandleKeyPress(keystring string) (err error) {
 	return
 }
 
+// HandleAction checks if the status bar view supports the provided action and executes it if so
 func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
 	switch action.ActionType {
-	case ACTION_PROMPT:
+	case ActionPrompt:
 		statusBarView.showCommandPrompt()
-	case ACTION_SEARCH_PROMPT:
-		statusBarView.showSearchPrompt(SEARCH_PROMPT_TEXT, ACTION_SEARCH)
-	case ACTION_REVERSE_SEARCH_PROMPT:
-		statusBarView.showSearchPrompt(REVERSE_SEARCH_PROMPT_TEXT, ACTION_REVERSE_SEARCH)
-	case ACTION_FILTER_PROMPT:
+	case ActionSearchPrompt:
+		statusBarView.showSearchPrompt(SearchPromptText, ActionSearch)
+	case ActionReverseSearchPrompt:
+		statusBarView.showSearchPrompt(ReverseSearchPromptText, ActionReverseSearch)
+	case ActionFilterPrompt:
 		statusBarView.showFilterPrompt()
-	case ACTION_SHOW_STATUS:
+	case ActionShowStatus:
 		statusBarView.lock.Lock()
 		defer statusBarView.lock.Unlock()
 
@@ -88,20 +90,20 @@ func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
 }
 
 func (statusBarView *StatusBarView) showCommandPrompt() {
-	statusBarView.promptType = PT_COMMAND
-	input := Prompt(PROMPT_TEXT)
+	statusBarView.promptType = ptCommand
+	input := Prompt(PromptText)
 	errors := statusBarView.config.Evaluate(input)
 	statusBarView.channels.ReportErrors(errors)
-	statusBarView.promptType = PT_NONE
+	statusBarView.promptType = ptNone
 }
 
 func (statusBarView *StatusBarView) showSearchPrompt(prompt string, actionType ActionType) {
-	statusBarView.promptType = PT_SEARCH
+	statusBarView.promptType = ptSearch
 	input := Prompt(prompt)
 
 	if input == "" {
 		statusBarView.channels.DoAction(Action{
-			ActionType: ACTION_CLEAR_SEARCH,
+			ActionType: ActionClearSearch,
 		})
 	} else {
 		statusBarView.channels.DoAction(Action{
@@ -110,37 +112,39 @@ func (statusBarView *StatusBarView) showSearchPrompt(prompt string, actionType A
 		})
 	}
 
-	statusBarView.promptType = PT_NONE
+	statusBarView.promptType = ptNone
 }
 
 func (statusBarView *StatusBarView) showFilterPrompt() {
-	statusBarView.promptType = PT_FILTER
-	input := Prompt(FILTER_PROMPT_TEXT)
+	statusBarView.promptType = ptFilter
+	input := Prompt(FilterPromptText)
 
 	if input != "" {
 		statusBarView.channels.DoAction(Action{
-			ActionType: ACTION_ADD_FILTER,
+			ActionType: ActionAddFilter,
 			Args:       []interface{}{input},
 		})
 	}
 
-	statusBarView.promptType = PT_NONE
+	statusBarView.promptType = ptNone
 }
 
+// OnActiveChange updates the active state of this view
 func (statusBarView *StatusBarView) OnActiveChange(active bool) {
 	statusBarView.lock.Lock()
 	defer statusBarView.lock.Unlock()
 
 	log.Debugf("StatusBarView active: %v", active)
 	statusBarView.active = active
-
-	return
 }
 
-func (statusBarView *StatusBarView) ViewId() ViewId {
-	return VIEW_STATUS_BAR
+// ViewID returns the view ID of the status bar view
+func (statusBarView *StatusBarView) ViewID() ViewID {
+	return ViewStatusBar
 }
 
+// Render generates and draws the status view to the provided window
+// If the readline prompt is active then this is drawn
 func (statusBarView *StatusBarView) Render(win RenderWindow) (err error) {
 	statusBarView.lock.Lock()
 	defer statusBarView.lock.Unlock()
@@ -168,40 +172,36 @@ func (statusBarView *StatusBarView) Render(win RenderWindow) (err error) {
 			}
 		}
 
-		win.SetCursor(0, uint(characters))
+		err = win.SetCursor(0, uint(characters))
 	} else {
 		lineBuilder.Append(" %v", statusBarView.pendingStatus)
-		win.ApplyStyle(CMP_STATUSBARVIEW_NORMAL)
+		win.ApplyStyle(CmpStatusbarviewNormal)
 	}
 
 	return
 }
 
+// RenderStatusBar does nothing
 func (statusBarView *StatusBarView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
+// RenderHelpBar renders help information for the status bar view
 func (statusBarView *StatusBarView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	message := ""
 
 	switch statusBarView.promptType {
-	case PT_COMMAND:
+	case ptCommand:
 		message = "Enter a command"
-	case PT_SEARCH:
+	case ptSearch:
 		message = "Enter a regex pattern"
-	case PT_FILTER:
+	case ptFilter:
 		message = "Enter a filter query"
 	}
 
 	if message != "" {
-		lineBuilder.AppendWithStyle(CMP_HELPBARVIEW_SPECIAL, message)
+		lineBuilder.AppendWithStyle(CmpHelpbarviewSpecial, message)
 	}
 
 	return
-}
-
-func RenderStatusProperties(lineBuilder *LineBuilder, propertyValues []PropertyValue) {
-	for _, propValue := range propertyValues {
-		lineBuilder.Append("%v: %v     ", propValue.Property, propValue.Value)
-	}
 }

@@ -2,16 +2,18 @@ package main
 
 import (
 	"flag"
+
 	log "github.com/Sirupsen/logrus"
 )
 
 const (
-	MN_REPO_FILE_PATH_DEFAULT = "."
-	MN_LOG_LEVEL_DEFAULT      = "NONE"
-	MN_LOG_FILE_PATH_DEFAULT  = "grv.log"
+	mnRepoFilePathDefault = "."
+	mnLogFilePathDefault  = "grv.log"
+	// MnLogLevelDefault is the default log level for grv
+	MnLogLevelDefault = "NONE"
 )
 
-type GRVArgs struct {
+type grvArgs struct {
 	repoFilePath string
 	logLevel     string
 	logFilePath  string
@@ -35,14 +37,14 @@ func main() {
 	log.Info("Exiting normally")
 }
 
-func parseArgs() *GRVArgs {
-	repoFilePathPtr := flag.String("repoFilePath", MN_REPO_FILE_PATH_DEFAULT, "Repository file path")
-	logLevelPtr := flag.String("logLevel", MN_LOG_LEVEL_DEFAULT, "Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG]")
-	logFilePathPtr := flag.String("logFile", MN_LOG_FILE_PATH_DEFAULT, "Log file path")
+func parseArgs() *grvArgs {
+	repoFilePathPtr := flag.String("repoFilePath", mnRepoFilePathDefault, "Repository file path")
+	logLevelPtr := flag.String("logLevel", MnLogLevelDefault, "Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG]")
+	logFilePathPtr := flag.String("logFile", mnLogFilePathDefault, "Log file path")
 
 	flag.Parse()
 
-	return &GRVArgs{
+	return &grvArgs{
 		repoFilePath: *repoFilePathPtr,
 		logLevel:     *logLevelPtr,
 		logFilePath:  *logFilePathPtr,

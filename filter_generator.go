@@ -2,19 +2,23 @@ package main
 
 import (
 	"fmt"
-	glob "github.com/gobwas/glob"
 	"regexp"
 	"strings"
 	"time"
+
+	glob "github.com/gobwas/glob"
 )
 
+// Filter is a function which returns true if the argument matches the filter and false otherwise
 type Filter func(interface{}) bool
 
+// FieldDescriptor describes field data for an object type
 type FieldDescriptor interface {
 	FieldTypeDescriptor
 	FieldValue(inputValue interface{}, fieldName string) interface{}
 }
 
+// CreateFilter constructs a filter instance from the provided query and field information
 func CreateFilter(query string, fieldDescriptor FieldDescriptor) (filter Filter, errors []error) {
 	queryParser := NewQueryParser(strings.NewReader(query))
 
@@ -41,11 +45,13 @@ func CreateFilter(query string, fieldDescriptor FieldDescriptor) (filter Filter,
 	return
 }
 
+// FilterGenerator generates a filter from a parsed and processed expression
 type FilterGenerator struct {
 	expression      Expression
 	fieldDescriptor FieldDescriptor
 }
 
+// NewFilterGenerator creates a FilterGenerator instance
 func NewFilterGenerator(expression Expression, fieldDescriptor FieldDescriptor) *FilterGenerator {
 	return &FilterGenerator{
 		expression:      expression,
@@ -53,9 +59,10 @@ func NewFilterGenerator(expression Expression, fieldDescriptor FieldDescriptor) 
 	}
 }
 
+// GenerateFilter generates a filter from the provided expression and field information
 func (filterGenerator *FilterGenerator) GenerateFilter() (filter Filter, err error) {
-	if filterGeneratorExpression, ok := filterGenerator.expression.(FilterGeneratorExpression); ok {
-		filter = filterGeneratorExpression.GenerateFilter(filterGenerator.fieldDescriptor)
+	if filterGeneratorExpression, ok := filterGenerator.expression.(filterGeneratorExpression); ok {
+		filter = filterGeneratorExpression.generateFilter(filterGenerator.fieldDescriptor)
 	} else {
 		err = fmt.Errorf("Expected filter generator expression but received expression of type %T", filterGenerator.expression)
 	}
@@ -63,21 +70,21 @@ func (filterGenerator *FilterGenerator) GenerateFilter() (filter Filter, err err
 	return
 }
 
-type FilterGeneratorExpression interface {
-	GenerateFilter(FieldDescriptor) Filter
+type filterGeneratorExpression interface {
+	generateFilter(FieldDescriptor) Filter
 }
 
-func (parenExpression *ParenExpression) GenerateFilter(fieldDescriptor FieldDescriptor) Filter {
-	filterGeneratorExpression := parenExpression.expression.(FilterGeneratorExpression)
-	return filterGeneratorExpression.GenerateFilter(fieldDescriptor)
+func (parenExpression *ParenExpression) generateFilter(fieldDescriptor FieldDescriptor) Filter {
+	filterGeneratorExpression := parenExpression.expression.(filterGeneratorExpression)
+	return filterGeneratorExpression.generateFilter(fieldDescriptor)
 }
 
-func (unaryExpression *UnaryExpression) GenerateFilter(fieldDescriptor FieldDescriptor) Filter {
-	filterGeneratorExpression := unaryExpression.expression.(FilterGeneratorExpression)
-	filter := filterGeneratorExpression.GenerateFilter(fieldDescriptor)
+func (unaryExpression *UnaryExpression) generateFilter(fieldDescriptor FieldDescriptor) Filter {
+	filterGeneratorExpression := unaryExpression.expression.(filterGeneratorExpression)
+	filter := filterGeneratorExpression.generateFilter(fieldDescriptor)
 
 	switch unaryExpression.operator.operator.tokenType {
-	case QTK_NOT:
+	case QtkNot:
 		return func(inputValue interface{}) bool {
 			return !filter(inputValue)
 		}
@@ -86,17 +93,17 @@ func (unaryExpression *UnaryExpression) GenerateFilter(fieldDescriptor FieldDesc
 	panic(fmt.Sprintf("Encountered invalid operator: %v", unaryExpression.operator.operator.value))
 }
 
-func (binaryExpression *BinaryExpression) GenerateFilter(fieldDescriptor FieldDescriptor) Filter {
+func (binaryExpression *BinaryExpression) generateFilter(fieldDescriptor FieldDescriptor) Filter {
 	if !binaryExpression.IsComparison() {
-		lhs := binaryExpression.lhs.(FilterGeneratorExpression).GenerateFilter(fieldDescriptor)
-		rhs := binaryExpression.rhs.(FilterGeneratorExpression).GenerateFilter(fieldDescriptor)
+		lhs := binaryExpression.lhs.(filterGeneratorExpression).generateFilter(fieldDescriptor)
+		rhs := binaryExpression.rhs.(filterGeneratorExpression).generateFilter(fieldDescriptor)
 
 		switch binaryExpression.operator.operator.tokenType {
-		case QTK_AND:
+		case QtkAnd:
 			return func(inputValue interface{}) bool {
 				return lhs(inputValue) && rhs(inputValue)
 			}
-		case QTK_OR:
+		case QtkOr:
 			return func(inputValue interface{}) bool {
 				return lhs(inputValue) || rhs(inputValue)
 			}
@@ -105,171 +112,171 @@ func (binaryExpression *BinaryExpression) GenerateFilter(fieldDescriptor FieldDe
 		}
 	}
 
-	lhs := binaryExpression.lhs.(ValueType)
-	rhs := binaryExpression.rhs.(ValueType)
+	lhs := binaryExpression.lhs.(valueType)
+	rhs := binaryExpression.rhs.(valueType)
 
-	var fieldComparator FieldComparator
+	var comparator fieldComparator
 
 	switch binaryExpression.operator.operator.tokenType {
-	case QTK_CMP_GLOB:
-		fieldComparator = globComparator
-	case QTK_CMP_REGEXP:
-		fieldComparator = regexpComparator
+	case QtkCmpGlob:
+		comparator = globComparator
+	case QtkCmpRegexp:
+		comparator = regexpComparator
 	default:
-		fieldComparator = basicFieldComparators[binaryExpression.operator.operator.tokenType][lhs.FieldType(fieldDescriptor)]
+		comparator = basicFieldComparators[binaryExpression.operator.operator.tokenType][lhs.FieldType(fieldDescriptor)]
 	}
 
 	return func(inputValue interface{}) bool {
-		return fieldComparator(lhs.Value(inputValue, fieldDescriptor), rhs.Value(inputValue, fieldDescriptor))
+		return comparator(lhs.getValue(inputValue, fieldDescriptor), rhs.getValue(inputValue, fieldDescriptor))
 	}
 }
 
-type ValueType interface {
+type valueType interface {
 	TypeDescriptor
-	Value(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{}
+	getValue(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{}
 }
 
-func (stringLiteral *StringLiteral) Value(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
+func (stringLiteral *StringLiteral) getValue(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
 	return stringLiteral.value.value
 }
 
-func (numberLiteral *NumberLiteral) Value(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
+func (numberLiteral *NumberLiteral) getValue(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
 	return numberLiteral.number
 }
 
-func (dateLiteral *DateLiteral) Value(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
+func (dateLiteral *DateLiteral) getValue(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
 	return dateLiteral.dateTime
 }
 
-func (globLiteral *GlobLiteral) Value(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
+func (globLiteral *GlobLiteral) getValue(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
 	return globLiteral.glob
 }
 
-func (regexLiteral *RegexLiteral) Value(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
+func (regexLiteral *RegexLiteral) getValue(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
 	return regexLiteral.regex
 }
 
-func (identifier *Identifier) Value(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
+func (identifier *Identifier) getValue(inputValue interface{}, fieldDescriptor FieldDescriptor) interface{} {
 	return fieldDescriptor.FieldValue(inputValue, identifier.identifier.value)
 }
 
-type FieldComparator func(interface{}, interface{}) bool
+type fieldComparator func(interface{}, interface{}) bool
 
-var basicFieldComparators = map[QueryTokenType]map[FieldType]FieldComparator{
-	QTK_CMP_EQ: map[FieldType]FieldComparator{
-		FT_NUMBER: func(value1 interface{}, value2 interface{}) bool {
+var basicFieldComparators = map[QueryTokenType]map[FieldType]fieldComparator{
+	QtkCmpEq: {
+		FtNumber: func(value1 interface{}, value2 interface{}) bool {
 			num1 := value1.(float64)
 			num2 := value2.(float64)
 
 			return num1 == num2
 		},
-		FT_STRING: func(value1 interface{}, value2 interface{}) bool {
+		FtString: func(value1 interface{}, value2 interface{}) bool {
 			str1 := value1.(string)
 			str2 := value2.(string)
 
 			return str1 == str2
 		},
-		FT_DATE: func(value1 interface{}, value2 interface{}) bool {
+		FtDate: func(value1 interface{}, value2 interface{}) bool {
 			time1 := value1.(time.Time)
 			time2 := value2.(time.Time)
 
 			return time1.Equal(time2)
 		},
 	},
-	QTK_CMP_NE: map[FieldType]FieldComparator{
-		FT_NUMBER: func(value1 interface{}, value2 interface{}) bool {
+	QtkCmpNe: {
+		FtNumber: func(value1 interface{}, value2 interface{}) bool {
 			num1 := value1.(float64)
 			num2 := value2.(float64)
 
 			return num1 != num2
 		},
-		FT_STRING: func(value1 interface{}, value2 interface{}) bool {
+		FtString: func(value1 interface{}, value2 interface{}) bool {
 			str1 := value1.(string)
 			str2 := value2.(string)
 
 			return str1 != str2
 		},
-		FT_DATE: func(value1 interface{}, value2 interface{}) bool {
+		FtDate: func(value1 interface{}, value2 interface{}) bool {
 			time1 := value1.(time.Time)
 			time2 := value2.(time.Time)
 
 			return !time1.Equal(time2)
 		},
 	},
-	QTK_CMP_GT: map[FieldType]FieldComparator{
-		FT_NUMBER: func(value1 interface{}, value2 interface{}) bool {
+	QtkCmpGt: {
+		FtNumber: func(value1 interface{}, value2 interface{}) bool {
 			num1 := value1.(float64)
 			num2 := value2.(float64)
 
 			return num1 > num2
 		},
-		FT_STRING: func(value1 interface{}, value2 interface{}) bool {
+		FtString: func(value1 interface{}, value2 interface{}) bool {
 			str1 := value1.(string)
 			str2 := value2.(string)
 
 			return str1 > str2
 		},
-		FT_DATE: func(value1 interface{}, value2 interface{}) bool {
+		FtDate: func(value1 interface{}, value2 interface{}) bool {
 			time1 := value1.(time.Time)
 			time2 := value2.(time.Time)
 
 			return time1.After(time2)
 		},
 	},
-	QTK_CMP_GE: map[FieldType]FieldComparator{
-		FT_NUMBER: func(value1 interface{}, value2 interface{}) bool {
+	QtkCmpGe: {
+		FtNumber: func(value1 interface{}, value2 interface{}) bool {
 			num1 := value1.(float64)
 			num2 := value2.(float64)
 
 			return num1 >= num2
 		},
-		FT_STRING: func(value1 interface{}, value2 interface{}) bool {
+		FtString: func(value1 interface{}, value2 interface{}) bool {
 			str1 := value1.(string)
 			str2 := value2.(string)
 
 			return str1 >= str2
 		},
-		FT_DATE: func(value1 interface{}, value2 interface{}) bool {
+		FtDate: func(value1 interface{}, value2 interface{}) bool {
 			time1 := value1.(time.Time)
 			time2 := value2.(time.Time)
 
 			return time1.After(time2) || time1.Equal(time2)
 		},
 	},
-	QTK_CMP_LT: map[FieldType]FieldComparator{
-		FT_NUMBER: func(value1 interface{}, value2 interface{}) bool {
+	QtkCmpLt: {
+		FtNumber: func(value1 interface{}, value2 interface{}) bool {
 			num1 := value1.(float64)
 			num2 := value2.(float64)
 
 			return num1 < num2
 		},
-		FT_STRING: func(value1 interface{}, value2 interface{}) bool {
+		FtString: func(value1 interface{}, value2 interface{}) bool {
 			str1 := value1.(string)
 			str2 := value2.(string)
 
 			return str1 < str2
 		},
-		FT_DATE: func(value1 interface{}, value2 interface{}) bool {
+		FtDate: func(value1 interface{}, value2 interface{}) bool {
 			time1 := value1.(time.Time)
 			time2 := value2.(time.Time)
 
 			return time1.Before(time2)
 		},
 	},
-	QTK_CMP_LE: map[FieldType]FieldComparator{
-		FT_NUMBER: func(value1 interface{}, value2 interface{}) bool {
+	QtkCmpLe: {
+		FtNumber: func(value1 interface{}, value2 interface{}) bool {
 			num1 := value1.(float64)
 			num2 := value2.(float64)
 
 			return num1 <= num2
 		},
-		FT_STRING: func(value1 interface{}, value2 interface{}) bool {
+		FtString: func(value1 interface{}, value2 interface{}) bool {
 			str1 := value1.(string)
 			str2 := value2.(string)
 
 			return str1 <= str2
 		},
-		FT_DATE: func(value1 interface{}, value2 interface{}) bool {
+		FtDate: func(value1 interface{}, value2 interface{}) bool {
 			time1 := value1.(time.Time)
 			time2 := value2.(time.Time)
 
