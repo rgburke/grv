@@ -404,19 +404,21 @@ func (diffView *DiffView) HandleAction(action Action) (err error) {
 	return
 }
 
-// Line returns the rendered line from the diff view at the specified line index (if the line exists)
-func (diffView *DiffView) Line(lineIndex uint) (line string, lineExists bool) {
+// Line returns the rendered line from the diff view at the specified line index
+func (diffView *DiffView) Line(lineIndex uint) (line string) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
 	diffLines := diffView.commitDiffs[diffView.activeCommit]
 	lineNum := uint(len(diffLines.lines))
 
-	if lineIndex < lineNum {
-		diffLine := diffLines.lines[lineIndex]
-		line = diffLine.line
-		lineExists = true
+	if lineIndex >= lineNum {
+		log.Errorf("Invalid lineIndex: %v", lineIndex)
+		return
 	}
+
+	diffLine := diffLines.lines[lineIndex]
+	line = diffLine.line
 
 	return
 }

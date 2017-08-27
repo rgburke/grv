@@ -465,20 +465,20 @@ func DetermineRenderedCodePoint(codePoint rune, column uint, config Config) (ren
 }
 
 // Line returns the text contained on the specified line index
-func (win *Window) Line(lineIndex uint) (line string, lineExists bool) {
-	if lineIndex < win.rows {
-		if win.border && lineIndex == 0 || lineIndex+1 == win.rows {
-			lineExists = true
-			return
-		}
+func (win *Window) Line(lineIndex uint) (line string) {
+	if lineIndex >= win.rows {
+		log.Errorf("Invalid lineIndex: %v", lineIndex)
+		return
+	}
 
-		line = win.lines[lineIndex].String()
+	if win.border && lineIndex == 0 || lineIndex+1 == win.rows {
+		return
+	}
 
-		if win.border && len(line) > 0 {
-			line = line[1:]
-		}
+	line = win.lines[lineIndex].String()
 
-		lineExists = true
+	if win.border && len(line) > 0 {
+		line = line[1:]
 	}
 
 	return

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -14,11 +15,12 @@ var testText = []string{
 
 type TestInputProvidor struct{}
 
-func (inputProvidor *TestInputProvidor) Line(lineIndex uint) (line string, lineExists bool) {
-	if lineIndex < inputProvidor.LineNumber() {
-		line = testText[lineIndex]
-		lineExists = true
+func (inputProvidor *TestInputProvidor) Line(lineIndex uint) (line string) {
+	if lineIndex >= inputProvidor.LineNumber() {
+		panic(fmt.Sprintf("Invalid lineIndex: %v", lineIndex))
 	}
+
+	line = testText[lineIndex]
 
 	return
 }
@@ -177,45 +179,45 @@ func TestSearchFindAll(t *testing.T) {
 	search := createSearch(SdForward, `[Tt]est`, t)
 
 	expectedMatches := []SearchMatch{
-		SearchMatch{
+		{
 			RowIndex: 0,
 			MatchIndexes: []SearchMatchIndex{
-				SearchMatchIndex{
+				{
 					ByteStartIndex: 0,
 					ByteEndIndex:   4,
 				},
-				SearchMatchIndex{
+				{
 					ByteStartIndex: 13,
 					ByteEndIndex:   17,
 				},
 			},
 		},
-		SearchMatch{
+		{
 			RowIndex: 1,
 			MatchIndexes: []SearchMatchIndex{
-				SearchMatchIndex{
+				{
 					ByteStartIndex: 1,
 					ByteEndIndex:   5,
 				},
 			},
 		},
-		SearchMatch{
+		{
 			RowIndex: 2,
 			MatchIndexes: []SearchMatchIndex{
-				SearchMatchIndex{
+				{
 					ByteStartIndex: 0,
 					ByteEndIndex:   4,
 				},
-				SearchMatchIndex{
+				{
 					ByteStartIndex: 14,
 					ByteEndIndex:   18,
 				},
 			},
 		},
-		SearchMatch{
+		{
 			RowIndex: 3,
 			MatchIndexes: []SearchMatchIndex{
-				SearchMatchIndex{
+				{
 					ByteStartIndex: 0,
 					ByteEndIndex:   4,
 				},

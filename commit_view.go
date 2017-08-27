@@ -413,13 +413,14 @@ func (commitView *CommitView) OnSearchMatch(startPos *ViewPos, matchLineIndex ui
 }
 
 // Line returns the rendered line at the index provided
-func (commitView *CommitView) Line(lineIndex uint) (line string, lineExists bool) {
+func (commitView *CommitView) Line(lineIndex uint) (line string) {
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 
 	if lineIndex >= commitSetState.commitNum {
+		log.Errorf("Invalid lineIndex: %v", lineIndex)
 		return
 	}
 
@@ -449,8 +450,6 @@ func (commitView *CommitView) Line(lineIndex uint) (line string, lineExists bool
 		log.Errorf("Error when retrieving row string: %v", err)
 		return
 	}
-
-	lineExists = true
 
 	return
 }

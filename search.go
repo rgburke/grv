@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"regexp"
 	"runtime"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 const (
@@ -29,7 +27,7 @@ var actionSearchDirection = map[ActionType]SearchDirection{
 // SearchInputProvidor provides input to the search alorithm
 // This abstracts the source of the data from the search logic
 type SearchInputProvidor interface {
-	Line(lineIndex uint) (line string, lineExists bool)
+	Line(lineIndex uint) (line string)
 	LineNumber() (lineNumber uint)
 }
 
@@ -116,12 +114,12 @@ func (search *Search) findNext(startLineIndex uint) (matchedLineIndex uint, foun
 	wrapped := false
 
 	for !wrapped || currentLineIndex <= startLineIndex {
-		line, lineExists := search.inputProvidor.Line(currentLineIndex)
-		if !lineExists {
+		if currentLineIndex >= search.inputProvidor.LineNumber() {
 			currentLineIndex = 0
 			wrapped = true
-			continue
 		}
+
+		line := search.inputProvidor.Line(currentLineIndex)
 
 		if search.regex.MatchString(line) {
 			matchedLineIndex = currentLineIndex
@@ -156,11 +154,7 @@ func (search *Search) findPrev(startLineIndex uint) (matchedLineIndex uint, foun
 
 		currentLineIndex--
 
-		line, lineExists := search.inputProvidor.Line(currentLineIndex)
-		if !lineExists {
-			log.Errorf("Attempted to fetch non-existent line %v in reverse search", currentLineIndex)
-			break
-		}
+		line := search.inputProvidor.Line(currentLineIndex)
 
 		if search.regex.MatchString(line) {
 			matchedLineIndex = currentLineIndex
@@ -178,13 +172,8 @@ func (search *Search) findPrev(startLineIndex uint) (matchedLineIndex uint, foun
 
 // FindAll find all matches across the entire input provided
 func (search *Search) FindAll() (matches []SearchMatch) {
-	lineIndex := uint(0)
-
-	for {
-		line, lineExists := search.inputProvidor.Line(lineIndex)
-		if !lineExists {
-			break
-		}
+	for lineIndex := uint(0); lineIndex < search.inputProvidor.LineNumber(); lineIndex++ {
+		line := search.inputProvidor.Line(lineIndex)
 
 		lineMatches := search.regex.FindAllStringIndex(line, -1)
 
@@ -203,9 +192,7 @@ func (search *Search) FindAll() (matches []SearchMatch) {
 			matches = append(matches, searchMatch)
 		}
 
-		lineIndex++
-
-		if lineIndex%searchMaxIterationsBeforeYeild == 0 {
+		if (lineIndex+1)%searchMaxIterationsBeforeYeild == 0 {
 			runtime.Gosched()
 		}
 	}

@@ -562,19 +562,21 @@ func (refView *RefView) OnSearchMatch(startPos *ViewPos, matchLineIndex uint) {
 	}
 }
 
-// Line returns the rendered line (if it exists) specified by the provided line index
-func (refView *RefView) Line(lineIndex uint) (line string, lineExists bool) {
+// Line returns the rendered line specified by the provided line index
+func (refView *RefView) Line(lineIndex uint) (line string) {
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
 
 	renderedRefs := refView.renderedRefs.RenderedRefs()
 	renderedRefNum := uint(len(renderedRefs))
 
-	if lineIndex < renderedRefNum {
-		renderedRef := renderedRefs[lineIndex]
-		line = renderedRef.value
-		lineExists = true
+	if lineIndex >= renderedRefNum {
+		log.Errorf("Invalid lineIndex: %v", lineIndex)
+		return
 	}
+
+	renderedRef := renderedRefs[lineIndex]
+	line = renderedRef.value
 
 	return
 }
