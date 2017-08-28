@@ -91,7 +91,7 @@ func (diffLine *diffLineData) determineDiffLineType() {
 
 type diffLines struct {
 	lines   []*diffLineData
-	viewPos *ViewPos
+	viewPos ViewPos
 }
 
 // DiffView contains all state for the diff view
@@ -100,7 +100,7 @@ type DiffView struct {
 	repoData      RepoData
 	activeCommit  *Commit
 	commitDiffs   map[*Commit]*diffLines
-	viewPos       *ViewPos
+	viewPos       ViewPos
 	viewDimension ViewDimension
 	handlers      map[ActionType]diffViewHandler
 	active        bool
@@ -113,7 +113,7 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 	diffView := &DiffView{
 		repoData:    repoData,
 		channels:    channels,
-		viewPos:     NewViewPos(),
+		viewPos:     NewViewPosition(),
 		commitDiffs: make(map[*Commit]*diffLines),
 		handlers: map[ActionType]diffViewHandler{
 			ActionPrevLine:    moveUpDiffLine,
@@ -154,8 +154,8 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	lineNum := uint(len(diffLines.lines))
 	viewPos.DetermineViewStartRow(rows, lineNum)
 
-	lineIndex := viewPos.viewStartRowIndex
-	startColumn := viewPos.viewStartColumn
+	lineIndex := viewPos.ViewStartRowIndex()
+	startColumn := viewPos.ViewStartColumn()
 
 	for rowIndex := uint(0); rowIndex < rows && lineIndex < lineNum; rowIndex++ {
 		diffLine := diffLines.lines[lineIndex]
@@ -211,7 +211,7 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 		lineIndex++
 	}
 
-	if err = win.SetSelectedRow((viewPos.activeRowIndex-viewPos.viewStartRowIndex)+1, diffView.active); err != nil {
+	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, diffView.active); err != nil {
 		return
 	}
 
@@ -221,7 +221,7 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 		return
 	}
 
-	if err = win.SetFooter(CmpCommitviewFooter, "Line %v of %v", viewPos.activeRowIndex+1, lineNum); err != nil {
+	if err = win.SetFooter(CmpCommitviewFooter, "Line %v of %v", viewPos.ActiveRowIndex()+1, lineNum); err != nil {
 		return
 	}
 
@@ -281,7 +281,7 @@ func (diffView *DiffView) OnCommitSelect(commit *Commit) (err error) {
 	}
 
 	diffView.activeCommit = commit
-	diffView.viewPos = NewViewPos()
+	diffView.viewPos = NewViewPosition()
 	diffView.channels.UpdateDisplay()
 
 	return
@@ -370,12 +370,12 @@ func (diffView *DiffView) HandleKeyPress(keystring string) (err error) {
 }
 
 // ViewPos returns the current view position
-func (diffView *DiffView) ViewPos() *ViewPos {
+func (diffView *DiffView) ViewPos() ViewPos {
 	return diffView.viewPos
 }
 
 // OnSearchMatch sets the current view position to the search match position
-func (diffView *DiffView) OnSearchMatch(startPos *ViewPos, matchLineIndex uint) {
+func (diffView *DiffView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
@@ -386,7 +386,7 @@ func (diffView *DiffView) OnSearchMatch(startPos *ViewPos, matchLineIndex uint) 
 		return
 	}
 
-	viewPos.activeRowIndex = matchLineIndex
+	viewPos.SetActiveRowIndex(matchLineIndex)
 }
 
 // HandleAction checks if the diff view supports the provided action and executes it if so
@@ -485,7 +485,7 @@ func moveUpDiffPage(diffView *DiffView, action Action) (err error) {
 func scrollDiffViewRight(diffView *DiffView, action Action) (err error) {
 	viewPos := diffView.viewPos
 	viewPos.MovePageRight(diffView.viewDimension.cols)
-	log.Debugf("Scrolling right. View starts at column %v", viewPos.viewStartColumn)
+	log.Debugf("Scrolling right. View starts at column %v", viewPos.ViewStartColumn())
 	diffView.channels.UpdateDisplay()
 
 	return
@@ -495,7 +495,7 @@ func scrollDiffViewLeft(diffView *DiffView, action Action) (err error) {
 	viewPos := diffView.viewPos
 
 	if viewPos.MovePageLeft(diffView.viewDimension.cols) {
-		log.Debugf("Scrolling left. View starts at column %v", viewPos.viewStartColumn)
+		log.Debugf("Scrolling left. View starts at column %v", viewPos.ViewStartColumn())
 		diffView.channels.UpdateDisplay()
 	}
 

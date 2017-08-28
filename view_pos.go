@@ -1,23 +1,66 @@
 package main
 
 // ViewPos manages the display positioning of a view
-type ViewPos struct {
+type ViewPos interface {
+	ActiveRowIndex() uint
+	SetActiveRowIndex(activeRowIndex uint)
+	ViewStartRowIndex() uint
+	ViewStartColumn() uint
+	SelectedRowIndex() uint
+	DetermineViewStartRow(viewRows, rows uint)
+	MoveLineDown(rows uint) (changed bool)
+	MoveLineUp() (changed bool)
+	MovePageDown(pageRows, rows uint) (changed bool)
+	MovePageUp(pageRows uint) (changed bool)
+	MovePageRight(cols uint)
+	MovePageLeft(cols uint) (changed bool)
+	MoveToFirstLine() (changed bool)
+	MoveToLastLine(rows uint) (changed bool)
+}
+
+// ViewPosition implements the ViewPos interface
+type ViewPosition struct {
 	activeRowIndex    uint
 	viewStartRowIndex uint
 	viewStartColumn   uint
 }
 
-// NewViewPos creates a new instance
-func NewViewPos() *ViewPos {
-	return &ViewPos{
+// NewViewPosition creates a new instance
+func NewViewPosition() *ViewPosition {
+	return &ViewPosition{
 		activeRowIndex:    0,
 		viewStartRowIndex: 0,
 		viewStartColumn:   1,
 	}
 }
 
+// ActiveRowIndex returns the row index the curosr is on
+func (viewPos *ViewPosition) ActiveRowIndex() uint {
+	return viewPos.activeRowIndex
+}
+
+// SetActiveRowIndex sets the row index the cursor is on
+func (viewPos *ViewPosition) SetActiveRowIndex(activeRowIndex uint) {
+	viewPos.activeRowIndex = activeRowIndex
+}
+
+// ViewStartRowIndex returns the row index the view should be drawn from
+func (viewPos *ViewPosition) ViewStartRowIndex() uint {
+	return viewPos.viewStartRowIndex
+}
+
+// ViewStartColumn returns the column the display should be drawn from
+func (viewPos *ViewPosition) ViewStartColumn() uint {
+	return viewPos.viewStartColumn
+}
+
+// SelectedRowIndex calculates the offset of the active row
+func (viewPos *ViewPosition) SelectedRowIndex() uint {
+	return viewPos.activeRowIndex - viewPos.viewStartRowIndex
+}
+
 // DetermineViewStartRow determines the row the view should start displaying from based on the current cursor position
-func (viewPos *ViewPos) DetermineViewStartRow(viewRows, rows uint) {
+func (viewPos *ViewPosition) DetermineViewStartRow(viewRows, rows uint) {
 	if rows > 0 && viewPos.activeRowIndex >= rows {
 		viewPos.activeRowIndex = rows - 1
 	}
@@ -32,7 +75,7 @@ func (viewPos *ViewPos) DetermineViewStartRow(viewRows, rows uint) {
 }
 
 // MoveLineDown moves the cursor down one line
-func (viewPos *ViewPos) MoveLineDown(rows uint) (changed bool) {
+func (viewPos *ViewPosition) MoveLineDown(rows uint) (changed bool) {
 	if viewPos.activeRowIndex+1 < rows {
 		viewPos.activeRowIndex++
 		changed = true
@@ -42,7 +85,7 @@ func (viewPos *ViewPos) MoveLineDown(rows uint) (changed bool) {
 }
 
 // MoveLineUp moves the cursor up one line
-func (viewPos *ViewPos) MoveLineUp() (changed bool) {
+func (viewPos *ViewPosition) MoveLineUp() (changed bool) {
 	if viewPos.activeRowIndex > 0 {
 		viewPos.activeRowIndex--
 		changed = true
@@ -52,7 +95,7 @@ func (viewPos *ViewPos) MoveLineUp() (changed bool) {
 }
 
 // MovePageDown moves the cursor and display down a page
-func (viewPos *ViewPos) MovePageDown(pageRows, rows uint) (changed bool) {
+func (viewPos *ViewPosition) MovePageDown(pageRows, rows uint) (changed bool) {
 	if viewPos.activeRowIndex+1 < rows {
 		viewPos.activeRowIndex += Min(pageRows, rows-(viewPos.activeRowIndex+1))
 		viewPos.viewStartRowIndex = viewPos.activeRowIndex
@@ -63,7 +106,7 @@ func (viewPos *ViewPos) MovePageDown(pageRows, rows uint) (changed bool) {
 }
 
 // MovePageUp moves the cursor and display up a page
-func (viewPos *ViewPos) MovePageUp(pageRows uint) (changed bool) {
+func (viewPos *ViewPosition) MovePageUp(pageRows uint) (changed bool) {
 	if viewPos.activeRowIndex > 0 {
 		viewPos.activeRowIndex -= Min(pageRows, viewPos.activeRowIndex)
 		viewPos.viewStartRowIndex = viewPos.activeRowIndex
@@ -74,13 +117,13 @@ func (viewPos *ViewPos) MovePageUp(pageRows uint) (changed bool) {
 }
 
 // MovePageRight scrolls the view right a page (half the available view width)
-func (viewPos *ViewPos) MovePageRight(cols uint) {
+func (viewPos *ViewPosition) MovePageRight(cols uint) {
 	halfPage := cols / 2
 	viewPos.viewStartColumn += halfPage
 }
 
 // MovePageLeft scrolls the view left a page (half the available view width)
-func (viewPos *ViewPos) MovePageLeft(cols uint) (changed bool) {
+func (viewPos *ViewPosition) MovePageLeft(cols uint) (changed bool) {
 	if viewPos.viewStartColumn > 1 {
 		halfPage := cols / 2
 
@@ -97,7 +140,7 @@ func (viewPos *ViewPos) MovePageLeft(cols uint) (changed bool) {
 }
 
 // MoveToFirstLine moves the cursor to the first line of the view
-func (viewPos *ViewPos) MoveToFirstLine() (changed bool) {
+func (viewPos *ViewPosition) MoveToFirstLine() (changed bool) {
 	if viewPos.activeRowIndex > 0 {
 		viewPos.activeRowIndex = 0
 		changed = true
@@ -107,7 +150,7 @@ func (viewPos *ViewPos) MoveToFirstLine() (changed bool) {
 }
 
 // MoveToLastLine moves the cursor to the last line of the view
-func (viewPos *ViewPos) MoveToLastLine(rows uint) (changed bool) {
+func (viewPos *ViewPosition) MoveToLastLine(rows uint) (changed bool) {
 	if rows > 0 && viewPos.activeRowIndex+1 != rows {
 		viewPos.activeRowIndex = rows - 1
 		changed = true

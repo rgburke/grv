@@ -160,7 +160,7 @@ type RefView struct {
 	refListeners  []RefListener
 	active        bool
 	renderedRefs  renderedRefSet
-	viewPos       *ViewPos
+	viewPos       ViewPos
 	viewDimension ViewDimension
 	handlers      map[ActionType]refViewHandler
 	viewSearch    *ViewSearch
@@ -177,7 +177,7 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 	refView := &RefView{
 		channels:     channels,
 		repoData:     repoData,
-		viewPos:      NewViewPos(),
+		viewPos:      NewViewPosition(),
 		renderedRefs: newRenderedRefList(),
 		refLists: []*refList{
 			{
@@ -233,22 +233,20 @@ func (refView *RefView) Initialise() (err error) {
 		refView.generateRenderedRefs()
 
 		_, headBranch := refView.repoData.Head()
-		viewPos := refView.viewPos
-		viewPos.activeRowIndex = 1
+		activeRowIndex := uint(1)
 
 		if headBranch != nil {
-			viewPos.activeRowIndex = 1
-
 			for _, branch := range localBranches {
 				if branch.name == headBranch.name {
 					log.Debugf("Setting branch %v as selected branch", branch.name)
 					break
 				}
 
-				viewPos.activeRowIndex++
+				activeRowIndex++
 			}
 		}
 
+		refView.viewPos.SetActiveRowIndex(activeRowIndex)
 		refView.channels.UpdateDisplay()
 
 		return nil
@@ -322,8 +320,8 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	rows := win.Rows() - 2
 	viewPos := refView.viewPos
 	viewPos.DetermineViewStartRow(rows, renderedRefNum)
-	refIndex := viewPos.viewStartRowIndex
-	startColumn := viewPos.viewStartColumn
+	refIndex := viewPos.ViewStartRowIndex()
+	startColumn := viewPos.ViewStartColumn()
 
 	for winRowIndex := uint(0); winRowIndex < rows && refIndex < renderedRefNum; winRowIndex++ {
 		renderedRef := renderedRefs[refIndex]
@@ -340,7 +338,7 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 		refIndex++
 	}
 
-	if err = win.SetSelectedRow((viewPos.activeRowIndex-viewPos.viewStartRowIndex)+1, refView.active); err != nil {
+	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, refView.active); err != nil {
 		return
 	}
 
@@ -350,7 +348,7 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 		return
 	}
 
-	selectedRenderedRef := renderedRefs[viewPos.activeRowIndex]
+	selectedRenderedRef := renderedRefs[viewPos.ActiveRowIndex()]
 	if err = refView.renderFooter(win, selectedRenderedRef); err != nil {
 		return
 	}
@@ -543,12 +541,12 @@ func (refView *RefView) ViewID() ViewID {
 }
 
 // ViewPos returns the current cursor position in the view
-func (refView *RefView) ViewPos() *ViewPos {
+func (refView *RefView) ViewPos() ViewPos {
 	return refView.viewPos
 }
 
 // OnSearchMatch updates the view position to the matched search position
-func (refView *RefView) OnSearchMatch(startPos *ViewPos, matchLineIndex uint) {
+func (refView *RefView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
 
@@ -556,7 +554,7 @@ func (refView *RefView) OnSearchMatch(startPos *ViewPos, matchLineIndex uint) {
 	renderedRef := renderedRefs[matchLineIndex]
 
 	if isSelectableRenderedRef(renderedRef.renderedRefType) {
-		refView.viewPos.activeRowIndex = matchLineIndex
+		refView.viewPos.SetActiveRowIndex(matchLineIndex)
 	} else {
 		log.Debugf("Unable to select search match at index %v as it is not a selectable type", matchLineIndex)
 	}
@@ -615,31 +613,31 @@ func (refView *RefView) HandleAction(action Action) (err error) {
 func moveUpRef(refView *RefView, action Action) (err error) {
 	viewPos := refView.viewPos
 
-	if viewPos.activeRowIndex == 0 {
+	if viewPos.ActiveRowIndex() == 0 {
 		return
 	}
 
 	log.Debug("Moving up one ref")
 
 	renderedRefs := refView.renderedRefs.RenderedRefs()
-	startIndex := viewPos.activeRowIndex
-	viewPos.activeRowIndex--
+	startIndex := viewPos.ActiveRowIndex()
+	activeRowIndex := startIndex - 1
 
-	for viewPos.activeRowIndex > 0 {
-		renderedRef := renderedRefs[viewPos.activeRowIndex]
+	for activeRowIndex > 0 {
+		renderedRef := renderedRefs[activeRowIndex]
 
 		if isSelectableRenderedRef(renderedRef.renderedRefType) {
 			break
 		}
 
-		viewPos.activeRowIndex--
+		activeRowIndex--
 	}
 
-	renderedRef := renderedRefs[viewPos.activeRowIndex]
+	renderedRef := renderedRefs[activeRowIndex]
 	if isSelectableRenderedRef(renderedRef.renderedRefType) {
+		viewPos.SetActiveRowIndex(activeRowIndex)
 		refView.channels.UpdateDisplay()
 	} else {
-		viewPos.activeRowIndex = startIndex
 		log.Debug("No valid ref entry to move to")
 	}
 
@@ -651,30 +649,30 @@ func moveDownRef(refView *RefView, action Action) (err error) {
 	renderedRefNum := uint(len(renderedRefs))
 	viewPos := refView.viewPos
 
-	if renderedRefNum == 0 || !(viewPos.activeRowIndex < renderedRefNum-1) {
+	if renderedRefNum == 0 || !(viewPos.ActiveRowIndex() < renderedRefNum-1) {
 		return
 	}
 
 	log.Debug("Moving down one ref")
 
-	startIndex := viewPos.activeRowIndex
-	viewPos.activeRowIndex++
+	startIndex := viewPos.ActiveRowIndex()
+	activeRowIndex := startIndex + 1
 
-	for viewPos.activeRowIndex < renderedRefNum-1 {
-		renderedRef := renderedRefs[viewPos.activeRowIndex]
+	for activeRowIndex < renderedRefNum-1 {
+		renderedRef := renderedRefs[activeRowIndex]
 
 		if isSelectableRenderedRef(renderedRef.renderedRefType) {
 			break
 		}
 
-		viewPos.activeRowIndex++
+		activeRowIndex++
 	}
 
-	renderedRef := renderedRefs[viewPos.activeRowIndex]
+	renderedRef := renderedRefs[activeRowIndex]
 	if isSelectableRenderedRef(renderedRef.renderedRefType) {
+		viewPos.SetActiveRowIndex(activeRowIndex)
 		refView.channels.UpdateDisplay()
 	} else {
-		viewPos.activeRowIndex = startIndex
 		log.Debug("No valid ref entry to move to")
 	}
 
@@ -685,7 +683,7 @@ func moveUpRefPage(refView *RefView, action Action) (err error) {
 	pageSize := refView.viewDimension.rows - 2
 	viewPos := refView.viewPos
 
-	for viewPos.activeRowIndex > 0 && pageSize > 0 {
+	for viewPos.ActiveRowIndex() > 0 && pageSize > 0 {
 		if err = moveUpRef(refView, action); err != nil {
 			break
 		} else {
@@ -702,7 +700,7 @@ func moveDownRefPage(refView *RefView, action Action) (err error) {
 	pageSize := refView.viewDimension.rows - 2
 	viewPos := refView.viewPos
 
-	for viewPos.activeRowIndex+1 < renderedRefNum && pageSize > 0 {
+	for viewPos.ActiveRowIndex()+1 < renderedRefNum && pageSize > 0 {
 		if err = moveDownRef(refView, action); err != nil {
 			break
 		} else {
@@ -716,7 +714,7 @@ func moveDownRefPage(refView *RefView, action Action) (err error) {
 func scrollRefViewRight(refView *RefView, action Action) (err error) {
 	viewPos := refView.viewPos
 	viewPos.MovePageRight(refView.viewDimension.cols)
-	log.Debugf("Scrolling right. View starts at column %v", viewPos.viewStartColumn)
+	log.Debugf("Scrolling right. View starts at column %v", viewPos.ViewStartColumn())
 	refView.channels.UpdateDisplay()
 
 	return
@@ -726,7 +724,7 @@ func scrollRefViewLeft(refView *RefView, action Action) (err error) {
 	viewPos := refView.viewPos
 
 	if viewPos.MovePageLeft(refView.viewDimension.cols) {
-		log.Debugf("Scrolling left. View starts at column %v", viewPos.viewStartColumn)
+		log.Debugf("Scrolling left. View starts at column %v", viewPos.ViewStartColumn())
 		refView.channels.UpdateDisplay()
 	}
 
@@ -759,7 +757,7 @@ func moveToLastRef(refView *RefView, action Action) (err error) {
 
 func selectRef(refView *RefView, action Action) (err error) {
 	renderedRefs := refView.renderedRefs.RenderedRefs()
-	renderedRef := renderedRefs[refView.viewPos.activeRowIndex]
+	renderedRef := renderedRefs[refView.viewPos.ActiveRowIndex()]
 
 	switch renderedRef.renderedRefType {
 	case RvLocalBranchGroup, RvRemoteBranchGroup, RvTagGroup:

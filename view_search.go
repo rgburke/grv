@@ -9,8 +9,8 @@ import (
 // SearchableView is a view that supports searching functionality
 type SearchableView interface {
 	SearchInputProvidor
-	ViewPos() *ViewPos
-	OnSearchMatch(startPos *ViewPos, matchLineIndex uint)
+	ViewPos() ViewPos
+	OnSearchMatch(startPos ViewPos, matchLineIndex uint)
 }
 
 // ViewSearch manages search functionality for a view
@@ -92,10 +92,10 @@ func (viewSearch *ViewSearch) findNextMatch() (err error) {
 
 	viewSearch.channels.ReportStatus("Searching...")
 	log.Debugf("Searching for next occurrence of pattern %v starting from row index :%v",
-		pattern, viewPos.activeRowIndex)
+		pattern, viewPos.ActiveRowIndex())
 
 	go func() {
-		matchLineIndex, found := viewSearch.search.FindNext(viewPos.activeRowIndex)
+		matchLineIndex, found := viewSearch.search.FindNext(viewPos.ActiveRowIndex())
 
 		viewSearch.lock.Lock()
 		viewSearch.lastSearchFoundMatch = found
@@ -122,10 +122,10 @@ func (viewSearch *ViewSearch) findPrevMatch() (err error) {
 
 	viewSearch.channels.ReportStatus("Searching...")
 	log.Debugf("Searching for previous occurrence of pattern %v starting from row index :%v",
-		pattern, viewPos.activeRowIndex)
+		pattern, viewPos.ActiveRowIndex())
 
 	go func() {
-		matchLineIndex, found := viewSearch.search.FindPrev(viewPos.activeRowIndex)
+		matchLineIndex, found := viewSearch.search.FindPrev(viewPos.ActiveRowIndex())
 
 		viewSearch.lock.Lock()
 		viewSearch.lastSearchFoundMatch = found

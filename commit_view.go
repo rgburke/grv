@@ -25,7 +25,7 @@ type loadingCommitsRefreshTask struct {
 }
 
 type referenceViewData struct {
-	viewPos        *ViewPos
+	viewPos        ViewPos
 	tableFormatter *TableFormatter
 }
 
@@ -100,7 +100,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	viewPos := refViewData.viewPos
 	viewPos.DetermineViewStartRow(rows, commitSetState.commitNum)
 
-	commitCh, err := commitView.repoData.Commits(commitView.activeRef, viewPos.viewStartRowIndex, rows)
+	commitCh, err := commitView.repoData.Commits(commitView.activeRef, viewPos.ViewStartRowIndex(), rows)
 	if err != nil {
 		return err
 	}
@@ -119,12 +119,12 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		rowIndex++
 	}
 
-	if err = tableFormatter.Render(win, viewPos.viewStartColumn, true); err != nil {
+	if err = tableFormatter.Render(win, viewPos.ViewStartColumn(), true); err != nil {
 		return
 	}
 
 	if commitSetState.commitNum > 0 {
-		if err = win.SetSelectedRow((viewPos.activeRowIndex-viewPos.viewStartRowIndex)+1, commitView.active); err != nil {
+		if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, commitView.active); err != nil {
 			return
 		}
 	}
@@ -137,7 +137,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	if commitSetState.commitNum == 0 {
 		selectedCommit = 0
 	} else {
-		selectedCommit = viewPos.activeRowIndex + 1
+		selectedCommit = viewPos.ActiveRowIndex() + 1
 	}
 
 	var footerText bytes.Buffer
@@ -308,7 +308,7 @@ func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) 
 	refViewData, refViewDataExists := commitView.refViewData[oid]
 	if !refViewDataExists {
 		refViewData = &referenceViewData{
-			viewPos:        NewViewPos(),
+			viewPos:        NewViewPosition(),
 			tableFormatter: NewTableFormatter(cvColumnNum),
 		}
 
@@ -327,7 +327,7 @@ func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) 
 	var commit *Commit
 
 	if refViewDataExists {
-		commit, err = commitView.repoData.CommitByIndex(commitView.activeRef, refViewData.viewPos.activeRowIndex)
+		commit, err = commitView.repoData.CommitByIndex(commitView.activeRef, refViewData.viewPos.ActiveRowIndex())
 	} else {
 		commit, err = commitView.repoData.Commit(commitView.activeRef)
 	}
@@ -392,13 +392,13 @@ func (commitView *CommitView) selectCommit(commitIndex uint) (err error) {
 }
 
 // ViewPos returns the current view position
-func (commitView *CommitView) ViewPos() *ViewPos {
+func (commitView *CommitView) ViewPos() ViewPos {
 	refViewData := commitView.refViewData[commitView.activeRef]
 	return refViewData.viewPos
 }
 
 // OnSearchMatch updates the view position when there is a search match
-func (commitView *CommitView) OnSearchMatch(startPos *ViewPos, matchLineIndex uint) {
+func (commitView *CommitView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
@@ -409,7 +409,7 @@ func (commitView *CommitView) OnSearchMatch(startPos *ViewPos, matchLineIndex ui
 		return
 	}
 
-	viewPos.activeRowIndex = matchLineIndex
+	viewPos.SetActiveRowIndex(matchLineIndex)
 }
 
 // Line returns the rendered line at the index provided
@@ -489,7 +489,7 @@ func moveUpCommit(commitView *CommitView, action Action) (err error) {
 
 	if viewPos.MoveLineUp() {
 		log.Debug("Moving up one commit")
-		if err = commitView.selectCommit(viewPos.activeRowIndex); err != nil {
+		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
 			return
 		}
 		commitView.channels.UpdateDisplay()
@@ -504,7 +504,7 @@ func moveDownCommit(commitView *CommitView, action Action) (err error) {
 
 	if viewPos.MoveLineDown(commitSetState.commitNum) {
 		log.Debug("Moving down one commit")
-		if err = commitView.selectCommit(viewPos.activeRowIndex); err != nil {
+		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
 			return
 		}
 		commitView.channels.UpdateDisplay()
@@ -518,7 +518,7 @@ func moveUpCommitPage(commitView *CommitView, action Action) (err error) {
 
 	if viewPos.MovePageUp(commitView.viewDimension.rows - 2) {
 		log.Debug("Moving up one page")
-		if err = commitView.selectCommit(viewPos.activeRowIndex); err != nil {
+		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
 			return
 		}
 		commitView.channels.UpdateDisplay()
@@ -533,7 +533,7 @@ func moveDownCommitPage(commitView *CommitView, action Action) (err error) {
 
 	if viewPos.MovePageDown(commitView.viewDimension.rows-2, commitSetState.commitNum) {
 		log.Debug("Moving down one page")
-		if err = commitView.selectCommit(viewPos.activeRowIndex); err != nil {
+		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
 			return
 		}
 		commitView.channels.UpdateDisplay()
@@ -545,7 +545,7 @@ func moveDownCommitPage(commitView *CommitView, action Action) (err error) {
 func scrollCommitViewRight(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.ViewPos()
 	viewPos.MovePageRight(commitView.viewDimension.cols)
-	log.Debugf("Scrolling right. View starts at column %v", viewPos.viewStartColumn)
+	log.Debugf("Scrolling right. View starts at column %v", viewPos.ViewStartColumn())
 	commitView.channels.UpdateDisplay()
 
 	return
@@ -555,7 +555,7 @@ func scrollCommitViewLeft(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.ViewPos()
 
 	if viewPos.MovePageLeft(commitView.viewDimension.cols) {
-		log.Debugf("Scrolling left. View starts at column %v", viewPos.viewStartColumn)
+		log.Debugf("Scrolling left. View starts at column %v", viewPos.ViewStartColumn())
 		commitView.channels.UpdateDisplay()
 	}
 
@@ -567,7 +567,7 @@ func moveToFirstCommit(commitView *CommitView, action Action) (err error) {
 
 	if viewPos.MoveToFirstLine() {
 		log.Debug("Moving up to first commit")
-		if err = commitView.selectCommit(viewPos.activeRowIndex); err != nil {
+		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
 			return
 		}
 		commitView.channels.UpdateDisplay()
@@ -582,7 +582,7 @@ func moveToLastCommit(commitView *CommitView, action Action) (err error) {
 
 	if viewPos.MoveToLastLine(commitSetState.commitNum) {
 		log.Debug("Moving to last commit")
-		if err = commitView.selectCommit(viewPos.activeRowIndex); err != nil {
+		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
 			return
 		}
 		commitView.channels.UpdateDisplay()
