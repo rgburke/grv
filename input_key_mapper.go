@@ -236,16 +236,18 @@ func controlKeyString(keyPressEvent Key) string {
 
 // TokeniseKeys breaks a key string sequence down in to the individual keys is consists of
 func TokeniseKeys(keysString string) (keys []string) {
-	for i := 0; i < len(keysString); i++ {
-		if keysString[i] == '<' {
-			if key, isSpecialKey := specialKeyString(keysString[i:]); isSpecialKey {
+	runes := []rune(keysString)
+
+	for i := 0; i < len(runes); i++ {
+		if runes[i] == '<' {
+			if key, isSpecialKey := specialKeyString(string(runes[i:])); isSpecialKey {
 				keys = append(keys, key)
 				i += len(key) - 1
 				continue
 			}
 		}
 
-		keys = append(keys, string(keysString[i]))
+		keys = append(keys, string(runes[i]))
 	}
 
 	return
