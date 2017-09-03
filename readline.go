@@ -14,6 +14,7 @@ package main
 //	rl_catch_signals = 0;
 //	rl_catch_sigwinch = 0;
 //	rl_change_environment = 0;
+//	rl_bind_key('\t', NULL);
 //
 //	history_write_timestamps = 1;
 //	history_comment_char = '#';
