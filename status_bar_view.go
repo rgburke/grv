@@ -6,7 +6,6 @@ import (
 	"unicode/utf8"
 
 	log "github.com/Sirupsen/logrus"
-	rw "github.com/mattn/go-runewidth"
 )
 
 // The different prompt types grv uses
@@ -167,9 +166,7 @@ func (statusBarView *StatusBarView) Render(win RenderWindow) (err error) {
 				break
 			}
 
-			if rw.RuneWidth(char) > 0 {
-				characters++
-			}
+			characters += RuneWidth(char)
 		}
 
 		err = win.SetCursor(0, uint(characters))

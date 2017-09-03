@@ -64,6 +64,66 @@ func TestAbs(t *testing.T) {
 	}
 }
 
+func TestIsNonPrintableCharacter(t *testing.T) {
+	var isPrintableTests = []struct {
+		arg            rune
+		expectedResult bool
+	}{
+		{
+			arg:            0,
+			expectedResult: true,
+		},
+		{
+			arg:            31,
+			expectedResult: true,
+		},
+		{
+			arg:            32,
+			expectedResult: false,
+		},
+	}
+
+	for _, isPrintableCharTest := range isPrintableTests {
+		actualResult := IsNonPrintableCharacter(isPrintableCharTest.arg)
+
+		if actualResult != isPrintableCharTest.expectedResult {
+			t.Errorf("IsNonPrintableCharacter return value does not match expected value. Expected: %v, Actual: %v", isPrintableCharTest.expectedResult, actualResult)
+		}
+	}
+}
+
+func TestRuneWidth(t *testing.T) {
+	var runeWidthTests = []struct {
+		arg            rune
+		expectedResult int
+	}{
+		{
+			arg:            0,
+			expectedResult: 2,
+		},
+		{
+			arg:            'a',
+			expectedResult: 1,
+		},
+		{
+			arg:            'ü',
+			expectedResult: 1,
+		},
+		{
+			arg:            '世',
+			expectedResult: 2,
+		},
+	}
+
+	for _, runeWidthCharTest := range runeWidthTests {
+		actualResult := RuneWidth(runeWidthCharTest.arg)
+
+		if actualResult != runeWidthCharTest.expectedResult {
+			t.Errorf("RuneWidth return value does not match expected value. Expected: %v, Actual: %v", runeWidthCharTest.expectedResult, actualResult)
+		}
+	}
+}
+
 func TestNonPrintableCharString(t *testing.T) {
 	var printableCharTests = []struct {
 		arg            rune
