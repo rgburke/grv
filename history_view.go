@@ -260,8 +260,3 @@ func (historyView *HistoryView) ActiveView() AbstractView {
 
 	return historyView.views[historyView.activeViewPos]
 }
-
-// Title returns the title for the history view
-func (historyView *HistoryView) Title() string {
-	return "History View"
-}

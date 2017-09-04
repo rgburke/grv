@@ -10,9 +10,6 @@ const (
 
 	CmpAllviewSearchMatch
 
-	CmpMainviewActiveView
-	CmpMainviewNormalView
-
 	CmpRefviewTitle
 	CmpRefviewFooter
 	CmpRefviewLocalBranchesHeader
@@ -246,14 +243,6 @@ func NewDefaultTheme() MutableTheme {
 			CmpDiffviewDifflineLineRemoved: {
 				bgcolor: ColorNone,
 				fgcolor: ColorRed,
-			},
-			CmpMainviewActiveView: {
-				bgcolor: ColorWhite,
-				fgcolor: ColorBlue,
-			},
-			CmpMainviewNormalView: {
-				bgcolor: ColorBlue,
-				fgcolor: ColorWhite,
 			},
 			CmpRefviewTitle: {
 				bgcolor: ColorNone,

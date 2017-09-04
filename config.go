@@ -18,7 +18,6 @@ const (
 	cfThemeDefaultValue    = "default"
 
 	cfAllView       = "All"
-	cfMainView      = "MainView"
 	cfHistoryView   = "HistoryView"
 	cfStatusView    = "StatusView"
 	cfRefView       = "RefView"
@@ -53,7 +52,6 @@ var themeColors = map[string]ThemeColor{
 
 var viewIDNames = map[string]ViewID{
 	cfAllView:       ViewAll,
-	cfMainView:      ViewMain,
 	cfHistoryView:   ViewHistory,
 	cfStatusView:    ViewStatus,
 	cfRefView:       ViewRef,
@@ -66,9 +64,6 @@ var viewIDNames = map[string]ViewID{
 
 var themeComponents = map[string]ThemeComponentID{
 	cfAllView + ".SearchMatch": CmpAllviewSearchMatch,
-
-	cfMainView + ".ActiveView": CmpMainviewActiveView,
-	cfMainView + ".NormalView": CmpMainviewNormalView,
 
 	cfRefView + ".Title":                CmpRefviewTitle,
 	cfRefView + ".Footer":               CmpRefviewFooter,

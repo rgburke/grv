@@ -50,7 +50,6 @@ type WindowViewCollection interface {
 	AbstractView
 	Render(ViewDimension) ([]*Window, error)
 	ActiveView() AbstractView
-	Title() string
 }
 
 // RootView exposes functionality of the view at the top of the hierarchy
@@ -80,7 +79,6 @@ type View struct {
 	promptActive  bool
 	errorView     *ErrorView
 	errorViewWin  *Window
-	activeViewWin *Window
 	errors        []error
 	lock          sync.Mutex
 }
@@ -97,7 +95,6 @@ func NewView(repoData RepoData, channels *Channels, config ConfigSetter) (view *
 	view.statusView = NewStatusView(view, repoData, channels, config)
 	view.errorView = NewErrorView()
 	view.errorViewWin = NewWindow("errorView", config)
-	view.activeViewWin = NewWindow("activeView", config)
 
 	return
 }
@@ -119,13 +116,13 @@ func (view *View) Initialise() (err error) {
 func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error) {
 	log.Debug("Rendering View")
 
-	if viewDimension.rows < 4 {
+	if viewDimension.rows < 3 {
 		log.Errorf("Terminal is not large enough to render GRV")
 		return
 	}
 
 	activeViewDim := viewDimension
-	activeViewDim.rows -= 3
+	activeViewDim.rows -= 2
 
 	statusViewDim := viewDimension
 	statusViewDim.rows = 2
@@ -141,33 +138,9 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 	childView := view.views[view.activeViewPos]
 	view.lock.Unlock()
 
-	startRow := uint(0)
-	if err = view.renderActiveView(activeViewDim.cols); err != nil {
-		return
-	}
-
-	wins = append(wins, view.activeViewWin)
-	startRow++
-
 	activeViewWins, err := childView.Render(activeViewDim)
 	if err != nil {
 		return
-	}
-
-	for _, win := range activeViewWins {
-		win.OffsetPosition(int(startRow), 0)
-	}
-
-	wins = append(wins, activeViewWins...)
-	startRow += activeViewDim.rows
-
-	if errorViewDim.rows > 0 {
-		if wins, err = view.renderErrorView(wins, errorViewDim, activeViewDim); err != nil {
-			return
-		}
-
-		view.errorViewWin.OffsetPosition(int(startRow), 0)
-		startRow += errorViewDim.rows
 	}
 
 	statusViewWins, err := view.statusView.Render(statusViewDim)
@@ -176,10 +149,14 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 	}
 
 	for _, win := range statusViewWins {
-		win.OffsetPosition(int(startRow), 0)
+		win.OffsetPosition(int(activeViewDim.rows+errorViewDim.rows), 0)
 	}
 
-	wins = append(wins, statusViewWins...)
+	wins = append(activeViewWins, statusViewWins...)
+
+	if errorViewDim.rows > 0 {
+		wins, err = view.renderErrorView(wins, errorViewDim, activeViewDim)
+	}
 
 	return wins, err
 }
@@ -208,57 +185,13 @@ func (view *View) determineErrorViewDimensions(errorViewDim, activeViewDim *View
 func (view *View) renderErrorView(wins []*Window, errorViewDim, activeViewDim ViewDimension) (allWins []*Window, err error) {
 	view.errorViewWin.Resize(errorViewDim)
 	view.errorViewWin.Clear()
+	view.errorViewWin.SetPosition(activeViewDim.rows, 0)
 
 	if err = view.errorView.Render(view.errorViewWin); err != nil {
 		return
 	}
 
 	allWins = append(wins, view.errorViewWin)
-
-	return
-}
-
-func (view *View) renderActiveView(availableCols uint) (err error) {
-	viewTitles := make([]string, len(view.views))
-	cols := uint(0)
-
-	for index, childView := range view.views {
-		viewTitles[index] = fmt.Sprintf(" [%v] %v ", index+1, childView.Title())
-		cols += uint(len(viewTitles)) + 1
-	}
-
-	if cols > availableCols {
-		maxColsPerView := availableCols / uint(len(viewTitles))
-
-		for index, viewTitle := range viewTitles {
-			if uint(len(viewTitle)) > maxColsPerView {
-				viewTitles[index] = fmt.Sprintf("%*s ", maxColsPerView-1, viewTitles[index])
-			}
-		}
-	}
-
-	win := view.activeViewWin
-	win.Resize(ViewDimension{rows: 1, cols: availableCols})
-	win.Clear()
-	win.SetPosition(0, 0)
-	win.ApplyStyle(CmpMainviewNormalView)
-
-	lineBuilder, err := view.activeViewWin.LineBuilder(0, 1)
-	if err != nil {
-		return
-	}
-
-	for index, viewTitle := range viewTitles {
-		var themeComponentID ThemeComponentID
-
-		if uint(index) == view.activeViewPos {
-			themeComponentID = CmpMainviewActiveView
-		} else {
-			themeComponentID = CmpMainviewNormalView
-		}
-
-		lineBuilder.AppendWithStyle(themeComponentID, "%v", viewTitle)
-	}
 
 	return
 }
@@ -381,9 +314,4 @@ func (view *View) prompt(action Action) (err error) {
 // SetErrors sets errors to be displayed in the error view
 func (view *View) SetErrors(errors []error) {
 	view.errors = errors
-}
-
-// Title returns the title of this view
-func (view *View) Title() string {
-	return "Main View"
 }

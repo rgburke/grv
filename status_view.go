@@ -108,8 +108,3 @@ func (statusView *StatusView) RenderHelpBar(lineBuilder *LineBuilder) (err error
 func (statusView *StatusView) ActiveView() (childView AbstractView) {
 	return statusView.statusBarView
 }
-
-// Title returns the title of the status view
-func (statusView *StatusView) Title() string {
-	return "Status View"
-}
