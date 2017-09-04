@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"os"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -26,6 +28,7 @@ func main() {
 	grv := NewGRV()
 
 	if err := grv.Initialise(args.repoFilePath); err != nil {
+		fmt.Fprintf(os.Stderr, "FATAL: Unable to initialise grv: %v\n", err)
 		grv.Free()
 		log.Fatal(err)
 	}

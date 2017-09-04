@@ -140,19 +140,24 @@ func NewRepoDataLoader(channels *Channels) *RepoDataLoader {
 // Free releases any resources
 func (repoDataLoader *RepoDataLoader) Free() {
 	log.Info("Freeing RepoDataLoader")
-	repoDataLoader.repo.Free()
+
+	if repoDataLoader.repo != nil {
+		repoDataLoader.repo.Free()
+	}
 }
 
 // Initialise attempts to access the repository
-func (repoDataLoader *RepoDataLoader) Initialise(repoPath string) (err error) {
+func (repoDataLoader *RepoDataLoader) Initialise(repoPath string) error {
 	log.Infof("Opening repository at %v", repoPath)
 
 	repo, err := git.OpenRepository(repoPath)
-	if err == nil {
-		repoDataLoader.repo = repo
+	if err != nil {
+		return err
 	}
 
-	return
+	repoDataLoader.repo = repo
+
+	return nil
 }
 
 // Path returns the file path location of the repository
