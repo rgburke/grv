@@ -129,6 +129,8 @@ func TestCommitFieldValuesAreExtracted(t *testing.T) {
 		t.Fatalf("Unable to determine working directory: %v", err)
 	}
 
+	folderPath += "/.."
+
 	repo, err := git.OpenRepository(folderPath)
 	if err != nil {
 		t.Fatalf("Unable to open repo: %v", err)
