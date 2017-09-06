@@ -39,15 +39,15 @@ const (
 )
 
 var themeColors = map[string]ThemeColor{
-	"NONE":    ColorNone,
-	"BLACK":   ColorBlack,
-	"RED":     ColorRed,
-	"GREEN":   ColorGreen,
-	"YELLOW":  ColorYellow,
-	"BLUE":    ColorBlue,
-	"MAGENTA": ColorMagenta,
-	"CYAN":    ColorCyan,
-	"WHITE":   ColorWhite,
+	"None":    ColorNone,
+	"Black":   ColorBlack,
+	"Red":     ColorRed,
+	"Green":   ColorGreen,
+	"Yellow":  ColorYellow,
+	"Blue":    ColorBlue,
+	"Magenta": ColorMagenta,
+	"Cyan":    ColorCyan,
+	"White":   ColorWhite,
 }
 
 var viewIDNames = map[string]ViewID{
