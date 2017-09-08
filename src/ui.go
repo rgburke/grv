@@ -56,6 +56,8 @@ type UI interface {
 	Resize() error
 	ViewDimension() ViewDimension
 	Update([]*Window) error
+	Suspend()
+	Resume() error
 	Free()
 }
 
@@ -188,10 +190,24 @@ func (ui *NCursesUI) initialiseNCurses() (err error) {
 	return
 }
 
+// Suspend ends ncurses to leave the terminal in the correct state when
+// GRV is suspended
+func (ui *NCursesUI) Suspend() {
+	gc.End()
+}
+
+// Resume reinitialises ncurses
+func (ui *NCursesUI) Resume() (err error) {
+	ui.stdscr.Refresh()
+	return ui.Resize()
+}
+
 // Resize determines the current terminal dimensions reinitialises NCurses
 func (ui *NCursesUI) Resize() (err error) {
 	ui.windowsLock.Lock()
 	defer ui.windowsLock.Unlock()
+
+	log.Info("Resizing display")
 
 	ui.Free()
 

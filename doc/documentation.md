@@ -34,6 +34,7 @@ N                       Move to last search match
 <S-Tab> or <C-w>W       Move to previous view
 f       or <C-w>o       Toggle current view full screen
 <C-w>t                  Toggle views layout
+<C-z>                   Suspend GRV
 ```
 
 Ref View specific key bindings:
@@ -222,28 +223,29 @@ map All <Down> <grv-prev-line>
 The set of actions available is:
 
 ```
-<grv-nop>
+<grv-clear-search>
 <grv-exit>
-<grv-prompt>
-<grv-search-prompt>
-<grv-reverse-search-prompt>
+<grv-suspend>
 <grv-filter-prompt>
+<grv-first-line>
+<grv-full-screen-view>
+<grv-last-line>
+<grv-next-line>
+<grv-next-page>
+<grv-next-view>
+<grv-nop>
+<grv-prev-line>
+<grv-prev-page>
+<grv-prev-view>
+<grv-prompt>
+<grv-reverse-search-prompt>
+<grv-scroll-left>
+<grv-scroll-right>
 <grv-search-find-next>
 <grv-search-find-prev>
-<grv-clear-search>
-<grv-show-status>
-<grv-next-line>
-<grv-prev-line>
-<grv-next-page>
-<grv-prev-page>
-<grv-scroll-right>
-<grv-scroll-left>
-<grv-first-line>
-<grv-last-line>
+<grv-search-prompt>
 <grv-select>
-<grv-next-view>
-<grv-prev-view>
-<grv-full-screen-view>
+<grv-show-status>
 <grv-toggle-view-layout>
 ```
 

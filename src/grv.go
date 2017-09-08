@@ -181,6 +181,28 @@ func (grv *GRV) Free() {
 	grv.repoData.Free()
 }
 
+// Suspend prepares GRV to be suspended and sends a SIGTSTP
+// to every process in the process group
+func (grv *GRV) Suspend() {
+	log.Info("Suspending GRV")
+
+	grv.ui.Suspend()
+	if err := syscall.Kill(0, syscall.SIGTSTP); err != nil {
+		log.Errorf("Error when attempting to suspend GRV: %v", err)
+	}
+}
+
+// Resume is called on receipt of a SIGCONT and reinitialises the UI
+func (grv *GRV) Resume() {
+	log.Info("Resuming GRV")
+
+	if err := grv.ui.Resume(); err != nil {
+		log.Errorf("Error when attempting to resume GRV: %v", err)
+	}
+
+	grv.channels.displayCh <- true
+}
+
 // End signals GRV to stop
 func (grv *GRV) End() {
 	log.Info("Stopping GRV")
@@ -338,10 +360,15 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, in
 				}
 			}
 		case action := <-actionCh:
-			if action.ActionType == ActionExit {
+			switch action.ActionType {
+			case ActionExit:
 				grv.End()
-			} else if err := grv.view.HandleAction(action); err != nil {
-				errorCh <- err
+			case ActionSuspend:
+				grv.Suspend()
+			default:
+				if err := grv.view.HandleAction(action); err != nil {
+					errorCh <- err
+				}
 			}
 		case _, ok := <-exitCh:
 			if !ok {
@@ -358,7 +385,7 @@ func (grv *GRV) runSignalHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bo
 
 	signalCh := make(chan os.Signal, 1)
 
-	signal.Notify(signalCh, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGWINCH)
+	signal.Notify(signalCh, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGWINCH, syscall.SIGCONT)
 
 	for {
 		select {
@@ -369,6 +396,8 @@ func (grv *GRV) runSignalHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bo
 			case syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP:
 				grv.End()
 				return
+			case syscall.SIGCONT:
+				grv.Resume()
 			case syscall.SIGWINCH:
 				if err := grv.ui.Resize(); err != nil {
 					log.Errorf("Unable to resize display: %v", err)

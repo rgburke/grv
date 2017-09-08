@@ -11,6 +11,7 @@ type ActionType int
 const (
 	ActionNone ActionType = iota
 	ActionExit
+	ActionSuspend
 	ActionPrompt
 	ActionSearchPrompt
 	ActionReverseSearchPrompt
@@ -47,6 +48,7 @@ type Action struct {
 var actionKeys = map[string]ActionType{
 	"<grv-nop>":                   ActionNone,
 	"<grv-exit>":                  ActionExit,
+	"<grv-suspend>":               ActionSuspend,
 	"<grv-prompt>":                ActionPrompt,
 	"<grv-search-prompt>":         ActionSearchPrompt,
 	"<grv-reverse-search-prompt>": ActionReverseSearchPrompt,
@@ -83,6 +85,9 @@ var defaultKeyBindings = map[ActionType]map[ViewID][]string{
 	},
 	ActionReverseSearchPrompt: {
 		ViewMain: {ReverseSearchPromptText},
+	},
+	ActionSuspend: {
+		ViewAll: {"<C-z>"},
 	},
 	ActionSearchFindNext: {
 		ViewAll: {"n"},
