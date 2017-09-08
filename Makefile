@@ -11,8 +11,12 @@ all: $(BINARY)
 $(BINARY): $(SOURCES)
 	$(GOCMD) build -o $(BINARY) $(SOURCE_DIR)
 
+.PHONY: update
+update:
+	$(GOCMD) get ./...
+
 .PHONY: test
-test: $(BINARY)
+test: update $(BINARY)
 	$(GOCMD) test $(SOURCE_DIR)
 	$(GOCMD) vet $(SOURCE_DIR)
 	$(GOLINT) $(SOURCE_DIR)
