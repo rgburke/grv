@@ -298,10 +298,10 @@ Or equivalently:
 summary REGEXP "^Bug Fix:.*"
 ```
 
-For more inforation about the supported GLOB syntax see 
+For more inforation about the supported GLOB syntax see:
 [https://github.com/gobwas/glob](https://github.com/gobwas/glob)
 
-For more information about the supported regex syntax see
+For more information about the supported regex syntax see:
 [https://golang.org/s/re2syntax](https://golang.org/s/re2syntax)
 
 Comparisons can be composed together using the following logical operators,
