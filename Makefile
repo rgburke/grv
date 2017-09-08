@@ -14,6 +14,7 @@ $(BINARY): $(SOURCES)
 .PHONY: update
 update:
 	$(GOCMD) get ./...
+	$(GOCMD) get github.com/golang/lint/golint
 
 .PHONY: test
 test: update $(BINARY)

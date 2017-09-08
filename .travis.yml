@@ -1,0 +1,13 @@
+language: go
+
+addons:
+  apt:
+    packages:
+      - libncurses5-dev
+      - libncursesw5-dev
+      - libreadline-dev
+      - libgit2-24
+      - libgit2-dev
+
+script:
+  - make test
