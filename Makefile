@@ -6,7 +6,7 @@ SOURCE_DIR=./src
 GIT2GO_DIR=$(GOPATH)/src/gopkg.in/libgit2/git2go.v25
 
 SOURCES!=find $(SOURCE_DIR) -maxdepth 1 -name '*.go' ! -name '*_test.go' -type f
-BUILD_FLAGS=--tags static
+BUILD_FLAGS=-v --tags static
 
 all: $(BINARY)
 
