@@ -1,4 +1,4 @@
-# GRV - Git Repository Viewer
+# GRV - Git Repository Viewer [![Build Status](https://travis-ci.org/rgburke/grv.svg?branch=master)](https://travis-ci.org/rgburke/grv)
 
 GRV is a terminal based interface for viewing git repositories. It allows
 refs, commits and diffs to be viewed, searched and filtered. The behaviour

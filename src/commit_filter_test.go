@@ -125,15 +125,14 @@ func TestCommitFieldTypes(t *testing.T) {
 }
 
 func TestCommitFieldValuesAreExtracted(t *testing.T) {
+	t.SkipNow()
+
 	folderPath, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Unable to determine working directory: %v", err)
 	}
 
 	folderPath += "/.."
-
-	fmt.Println(folderPath)
-	t.SkipNow()
 
 	repo, err := git.OpenRepository(folderPath)
 	if err != nil {
