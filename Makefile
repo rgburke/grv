@@ -2,16 +2,18 @@ GOCMD=go
 GOLINT=golint
 
 BINARY=grv
-SOURCE_DIR=./src
+SOURCE_DIR=./cmd/grv
 GIT2GO_DIR=$(GOPATH)/src/gopkg.in/libgit2/git2go.v25
-
-SOURCES!=find $(SOURCE_DIR) -maxdepth 1 -name '*.go' ! -name '*_test.go' -type f
-BUILD_FLAGS=-v --tags static
+BUILD_FLAGS=--tags static
 
 all: $(BINARY)
 
-$(BINARY): build-libgit2 $(SOURCES)
+$(BINARY): build-libgit2
 	$(GOCMD) build $(BUILD_FLAGS) -o $(BINARY) $(SOURCE_DIR)
+
+.PHONY: install
+install: build-libgit2
+	$(GOCMD) install $(BUILD_FLAGS) $(SOURCE_DIR)
 
 .PHONY: update
 update:

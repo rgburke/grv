@@ -18,4 +18,24 @@ Documentation for GRV is available [here](doc/documentation.md)
 
 ## Build instructions
 
-**Coming soon**
+GRV depends on the following libraries:
+
+ - libncursesw
+ - libreadline
+ - libcurl
+
+To install GRV run:
+
+```
+go get -d https://github.com/rgburke/grv/cmd/grv
+cd $GOPATH/src/github.com/rgburke/grv
+make install
+```
+
+This will install GRV to `$GOPATH/bin`. A static libgit2 will be built and
+included in GRV when built this way. Alternatively if libgit2 (>= 0.25) is
+installed on your system GRV can be built normally:
+
+```
+go install ./cmd/grv
+```
