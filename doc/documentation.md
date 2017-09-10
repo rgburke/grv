@@ -12,6 +12,19 @@ GRV is comprised of three views:
  - **Commit View** - Lists commits for the selected ref.
  - **Diff View** - Displays the diff for the selected commit.
 
+## Command Line Arguments
+
+GRV accepts the following command line arguments:
+
+```
+-logFile string
+        Log file path (default "grv.log")
+-logLevel string
+        Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG] (default "NONE")
+-repoFilePath string
+        Repository file path (default ".")
+```
+
 ## Key Bindings
 
 The key bindings below are common to all views in GRV:
