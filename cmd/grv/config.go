@@ -15,7 +15,9 @@ const (
 	cfGrvConfigDir         = "/grv"
 	cfGrvrcFile            = "/grvrc"
 	cfTabWidthMinValue     = 1
+	cfTabWidthDefaultValue = 8
 	cfThemeDefaultValue    = "default"
+	cfColdThemeName        = "cold"
 
 	cfAllView       = "All"
 	cfHistoryView   = "HistoryView"
@@ -158,13 +160,14 @@ func NewConfiguration(keyBindings KeyBindings, channels *Channels) *Configuratio
 		keyBindings: keyBindings,
 		themes: map[string]MutableTheme{
 			cfThemeDefaultValue: NewDefaultTheme(),
+			cfColdThemeName:     NewColdTheme(),
 		},
 		channels: channels,
 	}
 
 	config.variables = map[ConfigVariable]*ConfigurationVariable{
 		CfTabWidth: {
-			value:     8,
+			value:     cfTabWidthDefaultValue,
 			validator: tabWidithValidator{},
 		},
 		CfTheme: {
