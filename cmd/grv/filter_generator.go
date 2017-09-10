@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	glob "github.com/gobwas/glob"
 )
 
@@ -24,20 +25,27 @@ func CreateFilter(query string, fieldDescriptor FieldDescriptor) (filter Filter,
 
 	expression, _, err := queryParser.Parse()
 	if err != nil {
+		log.Debugf("Errors encountered when parsing query")
 		errors = append(errors, err)
 		return
 	}
 
+	log.Debugf("Received query: %v", expression)
+
 	expressionProcessor := NewExpressionProcessor(expression, fieldDescriptor)
 
 	if expression, errors = expressionProcessor.Process(); len(errors) > 0 {
+		log.Debugf("Errors encountered when processing query")
 		return
 	}
+
+	log.Infof("Creating filter for processed expression: %v", expression)
 
 	filterGenerator := NewFilterGenerator(expression, fieldDescriptor)
 
 	filter, err = filterGenerator.GenerateFilter()
 	if err != nil {
+		log.Debugf("Errors encountered when generating filter from expression")
 		errors = append(errors, err)
 		return
 	}

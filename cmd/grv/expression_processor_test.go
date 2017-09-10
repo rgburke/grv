@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"regexp"
 	"testing"
@@ -516,10 +517,6 @@ func TestExpressionsAreValid(t *testing.T) {
 					operator: &QueryToken{
 						value:     "=",
 						tokenType: QtkCmpEq,
-						startPos: QueryScannerPos{
-							line: 1,
-							col:  8,
-						},
 					},
 				},
 				lhs: &Identifier{
@@ -529,12 +526,16 @@ func TestExpressionsAreValid(t *testing.T) {
 				},
 				rhs: &StringLiteral{
 					value: &QueryToken{
-						value: "Invalid Date",
+						value: "2017-09-1",
+						startPos: QueryScannerPos{
+							line: 1,
+							col:  14,
+						},
 					},
 				},
 			},
 			expectedErrors: []error{
-				errors.New("1:8: Attempting to compare different types - LHS Type: Date vs RHS Type: String"),
+				fmt.Errorf("1:14: Invalid date: 2017-09-1. Format must be either %v or %v", queryDateFormat, queryDateTimeFormat),
 			},
 		},
 		{
@@ -605,29 +606,28 @@ func TestExpressionsAreValid(t *testing.T) {
 					operator: &QueryToken{
 						value:     "REGEXP",
 						tokenType: QtkCmpRegexp,
-						startPos: QueryScannerPos{
-							line: 1,
-							col:  15,
-						},
 					},
 				},
 				lhs: &Identifier{
 					identifier: &QueryToken{
 						value: "AuthorName",
-						startPos: QueryScannerPos{
-							line: 1,
-							col:  1,
-						},
 					},
 				},
 				rhs: &StringLiteral{
 					value: &QueryToken{
 						value: "[Invalid Regex",
+						startPos: QueryScannerPos{
+							line: 1,
+							col:  20,
+						},
 					},
 				},
 			},
 			expectedErrors: []error{
-				errors.New("1:15: Argument on RHS has invalid type: String. Allowed types are: Regex"),
+				func() error {
+					_, err := regexp.Compile("[Invalid Regex")
+					return fmt.Errorf("1:20: Invalid regex [Invalid Regex: %v", err)
+				}(),
 			},
 		},
 		{

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"gopkg.in/libgit2/git2go.v25"
+	git "gopkg.in/libgit2/git2go.v25"
 )
 
 func TestCommitFieldExistence(t *testing.T) {

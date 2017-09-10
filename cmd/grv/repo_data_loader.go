@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
-	"gopkg.in/libgit2/git2go.v25"
+	git "gopkg.in/libgit2/git2go.v25"
 )
 
 const (

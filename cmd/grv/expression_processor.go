@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	glob "github.com/gobwas/glob"
 )
 
@@ -35,8 +36,19 @@ func NewExpressionProcessor(expression Expression, fieldTypeDescriptor FieldType
 // Process performs type conversion and validates the expression
 func (expressionProcessor *ExpressionProcessor) Process() (expression Expression, errors []error) {
 	if logicalExpression, ok := expressionProcessor.expression.(LogicalExpression); ok {
-		logicalExpression.ConvertTypes(expressionProcessor.fieldTypeDescriptor)
-		errors = logicalExpression.Validate(expressionProcessor.fieldTypeDescriptor)
+		log.Debugf("Performing type conversion on expression comparisons")
+		if errors = logicalExpression.ConvertTypes(expressionProcessor.fieldTypeDescriptor); len(errors) > 0 {
+			log.Debugf("ConvertTypes returned errors")
+			return
+		}
+
+		log.Debugf("Performing expression validation")
+		if errors = logicalExpression.Validate(expressionProcessor.fieldTypeDescriptor); len(errors) > 0 {
+			log.Debugf("Expression is not valid")
+			return
+		}
+
+		log.Debugf("Finished processing expression")
 		expression = logicalExpression
 	} else {
 		errors = append(errors, fmt.Errorf("Expected logical expression but received expression of type %v",
@@ -164,7 +176,7 @@ func (dateLiteral *DateLiteral) Equal(expression Expression) bool {
 
 // String converts the date value into a string format
 func (dateLiteral *DateLiteral) String() string {
-	return dateLiteral.dateTime.Format(queryDateTimeFormat)
+	return "Date{" + dateLiteral.dateTime.Format(queryDateTimeFormat) + "}"
 }
 
 // Pos returns the position this date appeared at in the input stream
@@ -195,7 +207,7 @@ func (regexLiteral *RegexLiteral) Equal(expression Expression) bool {
 
 // String returns the regex string used to construct this instance
 func (regexLiteral *RegexLiteral) String() string {
-	return regexLiteral.regex.String()
+	return "Regex{" + regexLiteral.regex.String() + "}"
 }
 
 // Pos returns the position this regex appeared in the input stream
@@ -226,7 +238,7 @@ func (globLiteral *GlobLiteral) Equal(expression Expression) bool {
 
 // String returns the string representation of the glob
 func (globLiteral *GlobLiteral) String() string {
-	return globLiteral.globString.value
+	return "Glob{" + globLiteral.globString.value + "}"
 }
 
 // Pos returns the position the glob appeared in the input stream
@@ -276,7 +288,7 @@ type ValidatableExpression interface {
 type LogicalExpression interface {
 	Expression
 	ValidatableExpression
-	ConvertTypes(FieldTypeDescriptor)
+	ConvertTypes(FieldTypeDescriptor) []error
 }
 
 // GenerateExpressionError generates an error with expression position information included
@@ -290,10 +302,12 @@ func GenerateExpressionError(expression Expression, errorMessage string, args ..
 }
 
 // ConvertTypes defers the call to the child expression if it is a logical expression
-func (parenExpression *ParenExpression) ConvertTypes(fieldTypeDescriptor FieldTypeDescriptor) {
+func (parenExpression *ParenExpression) ConvertTypes(fieldTypeDescriptor FieldTypeDescriptor) (errors []error) {
 	if logicalExpression, ok := parenExpression.expression.(LogicalExpression); ok {
-		logicalExpression.ConvertTypes(fieldTypeDescriptor)
+		errors = append(errors, logicalExpression.ConvertTypes(fieldTypeDescriptor)...)
 	}
+
+	return
 }
 
 // Validate checks the child expression is valid
@@ -310,10 +324,12 @@ func (parenExpression *ParenExpression) Validate(fieldTypeDescriptor FieldTypeDe
 }
 
 // ConvertTypes defers the call to the child expression
-func (unaryExpression *UnaryExpression) ConvertTypes(fieldTypeDescriptor FieldTypeDescriptor) {
+func (unaryExpression *UnaryExpression) ConvertTypes(fieldTypeDescriptor FieldTypeDescriptor) (errors []error) {
 	if logicalExpression, ok := unaryExpression.expression.(LogicalExpression); ok {
-		logicalExpression.ConvertTypes(fieldTypeDescriptor)
+		errors = append(errors, logicalExpression.ConvertTypes(fieldTypeDescriptor)...)
 	}
+
+	return
 }
 
 // Validate checks the child expression is valid
@@ -333,25 +349,31 @@ func (unaryExpression *UnaryExpression) Validate(fieldTypeDescriptor FieldTypeDe
 
 // ConvertTypes defers the call to the child expressions if they're logical
 // Otherwise performs type conversion on the child expressions if necessary
-func (binaryExpression *BinaryExpression) ConvertTypes(fieldTypeDescriptor FieldTypeDescriptor) {
+func (binaryExpression *BinaryExpression) ConvertTypes(fieldTypeDescriptor FieldTypeDescriptor) (errors []error) {
 	if !binaryExpression.IsComparison() {
 		if logicalExpression, ok := binaryExpression.lhs.(LogicalExpression); ok {
-			logicalExpression.ConvertTypes(fieldTypeDescriptor)
+			errors = append(errors, logicalExpression.ConvertTypes(fieldTypeDescriptor)...)
 		}
 
 		if logicalExpression, ok := binaryExpression.rhs.(LogicalExpression); ok {
-			logicalExpression.ConvertTypes(fieldTypeDescriptor)
+			errors = append(errors, logicalExpression.ConvertTypes(fieldTypeDescriptor)...)
 		}
 
 		return
 	}
 
-	binaryExpression.processDateComparison(fieldTypeDescriptor)
-	binaryExpression.processGlobComparison(fieldTypeDescriptor)
-	binaryExpression.processRegexComparison(fieldTypeDescriptor)
+	if err := binaryExpression.processDateComparison(fieldTypeDescriptor); err != nil {
+		errors = append(errors, err)
+	} else if err := binaryExpression.processGlobComparison(fieldTypeDescriptor); err != nil {
+		errors = append(errors, err)
+	} else if err := binaryExpression.processRegexComparison(fieldTypeDescriptor); err != nil {
+		errors = append(errors, err)
+	}
+
+	return
 }
 
-func (binaryExpression *BinaryExpression) processDateComparison(fieldTypeDescriptor FieldTypeDescriptor) {
+func (binaryExpression *BinaryExpression) processDateComparison(fieldTypeDescriptor FieldTypeDescriptor) (err error) {
 	isDateComparison, dateString, datePtr := binaryExpression.isDateComparison(fieldTypeDescriptor)
 	if !isDateComparison {
 		return
@@ -365,12 +387,13 @@ func (binaryExpression *BinaryExpression) processDateComparison(fieldTypeDescrip
 	case dateTimeFormatPattern.MatchString(dateString.value.value):
 		dateFormat = queryDateTimeFormat
 	default:
-		return
+		return GenerateExpressionError(dateString, "Invalid date: %v. Format must be either %v or %v",
+			dateString.value.value, queryDateFormat, queryDateTimeFormat)
 	}
 
 	utcDateTime, err := time.Parse(dateFormat, dateString.value.value)
 	if err != nil {
-		return
+		return GenerateExpressionError(dateString, "Unable to parse date %v: %v", dateString.value.value, err)
 	}
 
 	dateTime := time.Date(utcDateTime.Year(), utcDateTime.Month(), utcDateTime.Day(), utcDateTime.Hour(),
@@ -380,6 +403,8 @@ func (binaryExpression *BinaryExpression) processDateComparison(fieldTypeDescrip
 		dateTime:   dateTime,
 		stringTime: dateString.value,
 	}
+
+	return
 }
 
 func (binaryExpression *BinaryExpression) isDateComparison(fieldTypeDescriptor FieldTypeDescriptor) (isDateComparison bool, dateString *StringLiteral, datePtr *Expression) {
@@ -411,7 +436,7 @@ func (binaryExpression *BinaryExpression) isDateComparison(fieldTypeDescriptor F
 	return
 }
 
-func (binaryExpression *BinaryExpression) processGlobComparison(fieldTypeDescriptor FieldTypeDescriptor) {
+func (binaryExpression *BinaryExpression) processGlobComparison(fieldTypeDescriptor FieldTypeDescriptor) (err error) {
 	isGlobComparison, globString, globPtr := binaryExpression.isGlobComparison(fieldTypeDescriptor)
 	if !isGlobComparison {
 		return
@@ -419,13 +444,15 @@ func (binaryExpression *BinaryExpression) processGlobComparison(fieldTypeDescrip
 
 	glob, err := glob.Compile(globString.value.value)
 	if err != nil {
-		return
+		return GenerateExpressionError(globString, "Invalid glob %v: %v", globString.value.value, err)
 	}
 
 	*globPtr = &GlobLiteral{
 		glob:       glob,
 		globString: globString.value,
 	}
+
+	return
 }
 
 func (binaryExpression *BinaryExpression) isGlobComparison(fieldTypeDescriptor FieldTypeDescriptor) (isGlobComparison bool, globString *StringLiteral, globPtr *Expression) {
@@ -458,7 +485,7 @@ func (binaryExpression *BinaryExpression) isGlobComparison(fieldTypeDescriptor F
 	return
 }
 
-func (binaryExpression *BinaryExpression) processRegexComparison(fieldTypeDescriptor FieldTypeDescriptor) {
+func (binaryExpression *BinaryExpression) processRegexComparison(fieldTypeDescriptor FieldTypeDescriptor) (err error) {
 	isRegexComparison, regexString, regexPtr := binaryExpression.isRegexComparison(fieldTypeDescriptor)
 	if !isRegexComparison {
 		return
@@ -466,13 +493,15 @@ func (binaryExpression *BinaryExpression) processRegexComparison(fieldTypeDescri
 
 	regex, err := regexp.Compile(regexString.value.value)
 	if err != nil {
-		return
+		return GenerateExpressionError(regexString, "Invalid regex %v: %v", regexString.value.value, err)
 	}
 
 	*regexPtr = &RegexLiteral{
 		regex:       regex,
 		regexString: regexString.value,
 	}
+
+	return
 }
 
 func (binaryExpression *BinaryExpression) isRegexComparison(fieldTypeDescriptor FieldTypeDescriptor) (isRegexComparison bool, regexString *StringLiteral, regexPtr *Expression) {
