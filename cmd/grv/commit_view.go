@@ -607,14 +607,44 @@ func addCommitFilter(commitView *CommitView, action Action) (err error) {
 		return
 	}
 
-	err = commitView.repoData.AddCommitFilter(commitView.activeRef, commitFilter)
+	if err = commitView.repoData.AddCommitFilter(commitView.activeRef, commitFilter); err != nil {
+		return
+	}
+
+	commitView.ViewPos().SetActiveRowIndex(0)
+
+	go func() {
+		// TODO: Works in practice, but there is no guarantee the filtered commit set will have
+		// been populated after 250ms. Need an event based mechanism to be notified when a filtered
+		// set has started to be populated so that the first commit can be selected
+		time.Sleep(250 * time.Millisecond)
+		commitView.lock.Lock()
+		defer commitView.lock.Unlock()
+
+		if err := commitView.selectCommit(commitView.ViewPos().ActiveRowIndex()); err != nil {
+			log.Errorf("Unable to select commit after filter has been applied: %v", err)
+		}
+	}()
+
 	commitView.channels.UpdateDisplay()
 
 	return
 }
 
 func removeCommitFilter(commitView *CommitView, action Action) (err error) {
-	err = commitView.repoData.RemoveCommitFilter(commitView.activeRef)
+	if err = commitView.repoData.RemoveCommitFilter(commitView.activeRef); err != nil {
+		return
+	}
+
+	commitView.ViewPos().SetActiveRowIndex(0)
+
+	commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, commitView.ViewPos().ActiveRowIndex())
+	if err != nil {
+		return
+	}
+
+	commitView.notifyCommitListeners(commit)
+
 	commitView.channels.UpdateDisplay()
 
 	return
