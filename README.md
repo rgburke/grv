@@ -8,9 +8,9 @@ section for more information.
 
 GRV is currently under development and not feature complete.
 
-## Screenshot
+## Demo
 
-![Screenshot](doc/grv-screenshot.png)
+![Demo](doc/grv.gif)
 
 ## Documentation
 
