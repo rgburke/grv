@@ -27,7 +27,7 @@ GRV depends on the following libraries:
 To install GRV run:
 
 ```
-go get -d https://github.com/rgburke/grv/cmd/grv
+go get -d github.com/rgburke/grv/cmd/grv
 cd $GOPATH/src/github.com/rgburke/grv
 make install
 ```
