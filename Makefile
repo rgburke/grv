@@ -3,7 +3,8 @@ GOLINT=golint
 
 BINARY=grv
 SOURCE_DIR=./cmd/grv
-GIT2GO_DIR=$(GOPATH)/src/gopkg.in/libgit2/git2go.v25
+GRV_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+GIT2GO_DIR=$(GRV_DIR)../../../gopkg.in/libgit2/git2go.v25
 BUILD_FLAGS=--tags static
 
 all: $(BINARY)
