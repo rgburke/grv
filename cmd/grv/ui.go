@@ -2,7 +2,8 @@ package main
 
 // Link against ncurses with wide character support in case goncurses doesn't
 
-// #cgo pkg-config: ncursesw
+// #cgo !darwin pkg-config: ncursesw
+// #cgo darwin openbsd LDFLAGS: -lncurses
 // #include <stdlib.h>
 // #include <locale.h>
 // #include <sys/select.h>
@@ -390,7 +391,8 @@ func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 			fdZero(rfds)
 			fdSet(stdinFd, rfds)
 			fdSet(pipeFd, rfds)
-			_, err = syscall.Select(pipeFd+1, rfds, nil, nil, nil)
+			/* TODO: Find way not to avoid checking return value */
+			syscall.Select(pipeFd+1, rfds, nil, nil, nil)
 
 			switch {
 			case err != nil:
