@@ -33,7 +33,7 @@ make install
 ```
 
 This will install GRV to `$GOPATH/bin`. A static libgit2 will be built and
-included in GRV when built this way. Alternatively if libgit2 (>= 0.25) is
+included in GRV when built this way. Alternatively if libgit2 0.25 is
 installed on your system GRV can be built normally:
 
 ```
