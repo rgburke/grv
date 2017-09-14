@@ -87,12 +87,12 @@ func (nwin *nCursesWindow) setHidden(isHidden bool) {
 // NCursesUI implements the UI and InputUI interfaces
 // It manages displaying grv in the terminal and receiving input
 type NCursesUI struct {
-	windows     map[*Window]*nCursesWindow
-	windowsLock sync.RWMutex
-	stdscr      *nCursesWindow
-	config      Config
-	colors      map[ThemeColor]int16
-	pipe        signalPipe
+	windows map[*Window]*nCursesWindow
+	lock    sync.Mutex
+	stdscr  *nCursesWindow
+	config  Config
+	colors  map[ThemeColor]int16
+	pipe    signalPipe
 }
 
 // NewNCursesDisplay creates a new NCursesUI instance
@@ -116,6 +116,13 @@ func NewNCursesDisplay(config Config) *NCursesUI {
 
 // Free releases ncurses resourese used
 func (ui *NCursesUI) Free() {
+	ui.lock.Lock()
+	defer ui.lock.Unlock()
+
+	ui.free()
+}
+
+func (ui *NCursesUI) free() {
 	log.Info("Deleting NCurses windows")
 
 	for _, nwin := range ui.windows {
@@ -132,6 +139,9 @@ func (ui *NCursesUI) Free() {
 
 // Initialise sets up NCurses
 func (ui *NCursesUI) Initialise() (err error) {
+	ui.lock.Lock()
+	defer ui.lock.Unlock()
+
 	log.Info("Initialising NCurses")
 
 	emptyCString := C.CString("")
@@ -174,7 +184,8 @@ func (ui *NCursesUI) initialiseNCurses() (err error) {
 			log.Errorf("Error calling UseDefaultColors: %v", e)
 		}
 
-		ui.onConfigVariableChange(CfTheme)
+		theme := ui.config.GetTheme()
+		ui.initialiseColorPairsFromTheme(theme)
 	}
 
 	gc.Echo(false)
@@ -194,23 +205,33 @@ func (ui *NCursesUI) initialiseNCurses() (err error) {
 // Suspend ends ncurses to leave the terminal in the correct state when
 // GRV is suspended
 func (ui *NCursesUI) Suspend() {
+	ui.lock.Lock()
+	defer ui.lock.Unlock()
+
 	gc.End()
 }
 
 // Resume reinitialises ncurses
 func (ui *NCursesUI) Resume() (err error) {
+	ui.lock.Lock()
+	defer ui.lock.Unlock()
+
 	ui.stdscr.Refresh()
-	return ui.Resize()
+	return ui.resize()
 }
 
 // Resize determines the current terminal dimensions reinitialises NCurses
 func (ui *NCursesUI) Resize() (err error) {
-	ui.windowsLock.Lock()
-	defer ui.windowsLock.Unlock()
+	ui.lock.Lock()
+	defer ui.lock.Unlock()
 
+	return ui.resize()
+}
+
+func (ui *NCursesUI) resize() (err error) {
 	log.Info("Resizing display")
 
-	ui.Free()
+	ui.free()
 
 	var winSize C.struct_winsize
 
@@ -228,6 +249,9 @@ func (ui *NCursesUI) Resize() (err error) {
 
 // ViewDimension returns the dimensions of the terminal
 func (ui *NCursesUI) ViewDimension() ViewDimension {
+	ui.lock.Lock()
+	defer ui.lock.Unlock()
+
 	y, x := ui.stdscr.MaxYX()
 	viewDimension := ViewDimension{rows: uint(y), cols: uint(x)}
 
@@ -238,6 +262,9 @@ func (ui *NCursesUI) ViewDimension() ViewDimension {
 
 // Update draws the provided windows to the terminal display
 func (ui *NCursesUI) Update(wins []*Window) (err error) {
+	ui.lock.Lock()
+	defer ui.lock.Unlock()
+
 	log.Debug("Updating display")
 
 	if err = ui.createAndUpdateWindows(wins); err != nil {
@@ -258,7 +285,6 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 
 	winMap := make(map[*Window]bool)
 
-	ui.windowsLock.RLock()
 	for _, win := range wins {
 		winMap[win] = true
 	}
@@ -285,16 +311,14 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 			newWins = append(newWins, win)
 		}
 	}
-	ui.windowsLock.RUnlock()
 
 	if len(newWins) > 0 {
-		ui.windowsLock.Lock()
-		defer ui.windowsLock.Unlock()
 		var nwinRaw *gc.Window
 		var nwin *nCursesWindow
 
 		for _, win := range newWins {
-			log.Debugf("Creating new NCurses window %v with position row:%v,col:%v and dimensions rows:%v,cols:%v", win.ID(), win.startRow, win.startCol, win.rows, win.cols)
+			log.Debugf("Creating new NCurses window %v with position row:%v,col:%v and dimensions rows:%v,cols:%v",
+				win.ID(), win.startRow, win.startCol, win.rows, win.cols)
 			if nwinRaw, err = gc.NewWindow(int(win.rows), int(win.cols), int(win.startRow), int(win.startCol)); err != nil {
 				return
 			}
@@ -313,8 +337,6 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 }
 
 func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
-	ui.windowsLock.RLock()
-	defer ui.windowsLock.RUnlock()
 	var cursorWin *Window
 
 	for _, win := range wins {
@@ -412,14 +434,14 @@ func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 
 	var activeWin *nCursesWindow
 
-	ui.windowsLock.RLock()
+	ui.lock.Lock()
 	for _, nwin := range ui.windows {
 		if y, x := nwin.MaxYX(); y > 0 && x > 0 {
 			activeWin = nwin
 			break
 		}
 	}
-	ui.windowsLock.RUnlock()
+	ui.lock.Unlock()
 
 	if activeWin != nil {
 		if force {
@@ -441,6 +463,9 @@ func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 
 // CancelGetInput causes an invocation of GetInput (which is blocking) to return
 func (ui *NCursesUI) CancelGetInput() error {
+	ui.lock.Lock()
+	defer ui.lock.Unlock()
+
 	_, err := ui.pipe.write.Write([]byte{0})
 	return err
 }
@@ -448,6 +473,13 @@ func (ui *NCursesUI) CancelGetInput() error {
 func (ui *NCursesUI) onConfigVariableChange(configVariable ConfigVariable) {
 	theme := ui.config.GetTheme()
 
+	ui.lock.Lock()
+	defer ui.lock.Unlock()
+
+	ui.initialiseColorPairsFromTheme(theme)
+}
+
+func (ui *NCursesUI) initialiseColorPairsFromTheme(theme Theme) {
 	for themeComponentID, themeComponent := range theme.GetAllComponents() {
 		fgcolor := ui.colors[themeComponent.fgcolor]
 		bgcolor := ui.colors[themeComponent.bgcolor]
