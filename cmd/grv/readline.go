@@ -1,7 +1,7 @@
 package main
 
-// #cgo darwin CFLAGS: -I/usr/local/Cellar/readline/7.0/include
-// #cgo darwin LDFLAGS: -L/usr/local/Cellar/readline/7.0/lib
+// #cgo darwin CFLAGS: -I/usr/local/opt/readline/include
+// #cgo darwin LDFLAGS: -L/usr/local/opt/readline/lib
 // #cgo LDFLAGS: -lreadline -lhistory
 //
 // // TODO: Find way of determining paths above in Makefile and providing them
