@@ -23,6 +23,9 @@ GRV depends on the following libraries:
  - libncursesw
  - libreadline
  - libcurl
+ - cmake (to build libgit2)
+
+Building GRV on OSX requires homebrew and for readline to be installed using homebrew.
 
 To install GRV run:
 
