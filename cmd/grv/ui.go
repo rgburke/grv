@@ -413,8 +413,12 @@ func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 			fdZero(rfds)
 			fdSet(stdinFd, rfds)
 			fdSet(pipeFd, rfds)
-			/* TODO: Find way not to avoid checking return value */
-			syscall.Select(pipeFd+1, rfds, nil, nil, nil)
+			nullPointer := uintptr(unsafe.Pointer(nil))
+
+			if _, _, errno := syscall.Syscall6(syscall.SYS_SELECT, uintptr(pipeFd+1), uintptr(unsafe.Pointer(rfds)),
+				nullPointer, nullPointer, nullPointer, 0); errno != 0 {
+				err = errno
+			}
 
 			switch {
 			case err != nil:
