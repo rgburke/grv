@@ -8,6 +8,14 @@ func NewDefaultTheme() MutableTheme {
 				bgcolor: ColorYellow,
 				fgcolor: ColorNone,
 			},
+			CmpAllviewActiveViewSelectedRow: {
+				bgcolor: ColorWhite,
+				fgcolor: ColorGreen,
+			},
+			CmpAllviewInactiveViewSelectedRow: {
+				bgcolor: ColorNone,
+				fgcolor: ColorNone,
+			},
 			CmpCommitviewTitle: {
 				bgcolor: ColorNone,
 				fgcolor: ColorCyan,
@@ -166,6 +174,14 @@ func NewColdTheme() MutableTheme {
 		components: map[ThemeComponentID]*ThemeComponent{
 			CmpAllviewSearchMatch: {
 				bgcolor: ColorYellow,
+				fgcolor: ColorNone,
+			},
+			CmpAllviewActiveViewSelectedRow: {
+				bgcolor: ColorWhite,
+				fgcolor: ColorBlue,
+			},
+			CmpAllviewInactiveViewSelectedRow: {
+				bgcolor: ColorNone,
 				fgcolor: ColorNone,
 			},
 			CmpCommitviewTitle: {

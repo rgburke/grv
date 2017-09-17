@@ -9,6 +9,8 @@ const (
 	CmpNone ThemeComponentID = iota
 
 	CmpAllviewSearchMatch
+	CmpAllviewActiveViewSelectedRow
+	CmpAllviewInactiveViewSelectedRow
 
 	CmpRefviewTitle
 	CmpRefviewFooter

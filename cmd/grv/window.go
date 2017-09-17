@@ -299,8 +299,12 @@ func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
 	}
 
 	var attr gc.Char = gc.A_REVERSE
+	var themeComponentID ThemeComponentID
 
-	if !active {
+	if active {
+		themeComponentID = CmpAllviewActiveViewSelectedRow
+	} else {
+		themeComponentID = CmpAllviewInactiveViewSelectedRow
 		attr |= gc.A_DIM
 	}
 
@@ -308,7 +312,7 @@ func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
 
 	for _, cell := range line.cells {
 		cell.style.attr |= attr
-		cell.style.themeComponentID = CmpNone
+		cell.style.themeComponentID = themeComponentID
 	}
 
 	return nil
