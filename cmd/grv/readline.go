@@ -4,10 +4,6 @@ package main
 // #cgo darwin LDFLAGS: -L/usr/local/opt/readline/lib
 // #cgo LDFLAGS: -lreadline -lhistory
 //
-// // TODO: Find way of determining paths above in Makefile and providing them
-// // as build flags
-//
-//
 // #include <stdio.h>
 // #include <stdlib.h>
 // #include <readline/readline.h>
