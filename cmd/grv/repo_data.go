@@ -2,10 +2,16 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
 	slice "github.com/bradfitz/slice"
+)
+
+const (
+	gitRepositoryDirectoryName = ".git"
 )
 
 // OnCommitsLoaded is called when all commits are loaded for the specified oid
@@ -478,8 +484,48 @@ func (repoData *RepositoryData) Free() {
 
 // Initialise performs setup to allow loading data from the repository
 func (repoData *RepositoryData) Initialise(repoPath string) (err error) {
-	if err = repoData.repoDataLoader.Initialise(repoPath); err != nil {
+	path, err := repoData.processPath(repoPath)
+	if err != nil {
 		return
+	}
+
+	if err = repoData.repoDataLoader.Initialise(path); err != nil {
+		return
+	}
+
+	return
+}
+
+func (repoData *RepositoryData) processPath(repoPath string) (processedPath string, err error) {
+	path, err := filepath.EvalSymlinks(repoPath)
+	if err != nil {
+		return
+	}
+
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return
+	}
+
+	for {
+		gitDirPath := filepath.Join(path, gitRepositoryDirectoryName)
+		log.Debugf("gitDirPath: %v", gitDirPath)
+
+		if _, err = os.Stat(gitDirPath); err != nil {
+			if !os.IsNotExist(err) {
+				break
+			}
+		} else {
+			processedPath = gitDirPath
+			break
+		}
+
+		if path == "/" {
+			err = fmt.Errorf("Unable to find a git repository in %v or any of its parent directories", repoPath)
+			break
+		}
+
+		path = filepath.Dir(path)
 	}
 
 	return
