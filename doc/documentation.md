@@ -38,6 +38,7 @@ h       or <Left>       Scroll left
 <C-f>   or <PageDown>   Move one page down
 gg                      Move to first line
 G                       Move to last line
+zz                      Center view
 /                       Search forwards
 ?                       Search backwards
 n                       Move to next search match
@@ -147,6 +148,8 @@ The set of screen components that can be customised is:
 
 ```
 All.SearchMatch
+All.ActiveViewSelectedRow
+All.InactiveViewSelectedRow
 
 CommitView.Author
 CommitView.Date
