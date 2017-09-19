@@ -124,6 +124,7 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 			ActionScrollLeft:  scrollDiffViewLeft,
 			ActionFirstLine:   moveToFirstDiffLine,
 			ActionLastLine:    moveToLastDiffLine,
+			ActionCenterView:  centerDiffView,
 		},
 	}
 
@@ -520,6 +521,17 @@ func moveToLastDiffLine(diffView *DiffView, action Action) (err error) {
 
 	if viewPos.MoveToLastLine(lineNum) {
 		log.Debugf("Moving to last line in diff view")
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func centerDiffView(diffView *DiffView, action Action) (err error) {
+	viewPos := diffView.viewPos
+
+	if viewPos.CenterActiveRow(diffView.viewDimension.rows - 2) {
+		log.Debug("Centering DiffView")
 		diffView.channels.UpdateDisplay()
 	}
 

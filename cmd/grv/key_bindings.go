@@ -37,6 +37,7 @@ const (
 	ActionToggleViewLayout
 	ActionAddFilter
 	ActionRemoveFilter
+	ActionCenterView
 )
 
 // Action represents a type of actions and its arguments to be executed
@@ -74,6 +75,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-toggle-view-layout>":    ActionToggleViewLayout,
 	"<grv-add-filter>":            ActionAddFilter,
 	"<grv-remove-filter>":         ActionRemoveFilter,
+	"<grv-center-view>":           ActionCenterView,
 }
 
 var defaultKeyBindings = map[ActionType]map[ViewID][]string{
@@ -141,6 +143,9 @@ var defaultKeyBindings = map[ActionType]map[ViewID][]string{
 	ActionRemoveFilter: {
 		ViewCommit: {"<C-r>"},
 		ViewRef:    {"<C-r>"},
+	},
+	ActionCenterView: {
+		ViewAll: {"zz"},
 	},
 }
 

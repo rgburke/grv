@@ -209,6 +209,7 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 			ActionSelect:       selectRef,
 			ActionAddFilter:    addRefFilter,
 			ActionRemoveFilter: removeRefFilter,
+			ActionCenterView:   centerRefView,
 		},
 	}
 
@@ -812,6 +813,17 @@ func removeRefFilter(refView *RefView, action Action) (err error) {
 		refView.channels.ReportStatus("Removed ref filter")
 	} else {
 		refView.channels.ReportStatus("No ref filter applied to remove")
+	}
+
+	return
+}
+
+func centerRefView(refView *RefView, action Action) (err error) {
+	viewPos := refView.viewPos
+
+	if viewPos.CenterActiveRow(refView.viewDimension.rows - 2) {
+		log.Debug("Centering RefView")
+		refView.channels.UpdateDisplay()
 	}
 
 	return

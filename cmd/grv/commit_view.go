@@ -67,6 +67,7 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 			ActionLastLine:     moveToLastCommit,
 			ActionAddFilter:    addCommitFilter,
 			ActionRemoveFilter: removeCommitFilter,
+			ActionCenterView:   centerCommitView,
 		},
 	}
 
@@ -646,6 +647,17 @@ func removeCommitFilter(commitView *CommitView, action Action) (err error) {
 	commitView.notifyCommitListeners(commit)
 
 	commitView.channels.UpdateDisplay()
+
+	return
+}
+
+func centerCommitView(commitView *CommitView, action Action) (err error) {
+	viewPos := commitView.ViewPos()
+
+	if viewPos.CenterActiveRow(commitView.viewDimension.rows - 2) {
+		log.Debug("Centering CommitView")
+		commitView.channels.UpdateDisplay()
+	}
 
 	return
 }

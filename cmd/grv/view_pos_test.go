@@ -216,6 +216,36 @@ func TestMoveToLastLineDoesNotUpdateActiveRowIndexIfAlreadyOnLastLine(t *testing
 	checkViewPosResult(false, result, t)
 }
 
+func TestCenterActiveRowIncreasesViewStartRowIndexWhenActiveRowIsMoreThanHalfWayDownView(t *testing.T) {
+	expected := newViewPos(7, 2, 1)
+
+	actual := newViewPos(7, 0, 1)
+	result := actual.CenterActiveRow(10)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestCenterActiveRowDecreasesViewStartRowIndexWhenActiveRowIsLessThanHalfWayDownView(t *testing.T) {
+	expected := newViewPos(11, 6, 1)
+
+	actual := newViewPos(11, 9, 1)
+	result := actual.CenterActiveRow(11)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestCenterActiveRowDoesNothingIfViewAlreadyCentered(t *testing.T) {
+	expected := newViewPos(15, 10, 1)
+
+	actual := newViewPos(15, 10, 1)
+	result := actual.CenterActiveRow(11)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(false, result, t)
+}
+
 func TestDetermineViewStartRowSetsViewStartRowIndexToActiveRowIndexIfGreater(t *testing.T) {
 	expected := newViewPos(5, 5, 1)
 

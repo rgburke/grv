@@ -16,6 +16,7 @@ type ViewPos interface {
 	MovePageLeft(cols uint) (changed bool)
 	MoveToFirstLine() (changed bool)
 	MoveToLastLine(rows uint) (changed bool)
+	CenterActiveRow(pageRows uint) (changed bool)
 }
 
 // ViewPosition implements the ViewPos interface
@@ -153,6 +154,22 @@ func (viewPos *ViewPosition) MoveToFirstLine() (changed bool) {
 func (viewPos *ViewPosition) MoveToLastLine(rows uint) (changed bool) {
 	if rows > 0 && viewPos.activeRowIndex+1 != rows {
 		viewPos.activeRowIndex = rows - 1
+		changed = true
+	}
+
+	return
+}
+
+// CenterActiveRow updates the view start position to center the cursor
+func (viewPos *ViewPosition) CenterActiveRow(pageRows uint) (changed bool) {
+	selectedRow := viewPos.SelectedRowIndex()
+	centerRow := (pageRows / 2)
+
+	if selectedRow > centerRow {
+		viewPos.viewStartRowIndex += selectedRow - centerRow
+		changed = true
+	} else if centerRow > selectedRow {
+		viewPos.viewStartRowIndex -= Min(centerRow-selectedRow, viewPos.viewStartRowIndex)
 		changed = true
 	}
 
