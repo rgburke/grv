@@ -387,6 +387,7 @@ func (commitView *CommitView) selectCommit(commitIndex uint) (err error) {
 		return
 	}
 
+	commitView.ViewPos().SetActiveRowIndex(commitIndex)
 	commitView.notifyCommitListeners(selectedCommit)
 
 	return
@@ -410,7 +411,7 @@ func (commitView *CommitView) OnSearchMatch(startPos ViewPos, matchLineIndex uin
 		return
 	}
 
-	viewPos.SetActiveRowIndex(matchLineIndex)
+	commitView.selectCommit(matchLineIndex)
 }
 
 // Line returns the rendered line at the index provided
@@ -637,14 +638,9 @@ func removeCommitFilter(commitView *CommitView, action Action) (err error) {
 		return
 	}
 
-	commitView.ViewPos().SetActiveRowIndex(0)
-
-	commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, commitView.ViewPos().ActiveRowIndex())
-	if err != nil {
+	if err = commitView.selectCommit(0); err != nil {
 		return
 	}
-
-	commitView.notifyCommitListeners(commit)
 
 	commitView.channels.UpdateDisplay()
 
