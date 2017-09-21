@@ -125,6 +125,7 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 			ActionFirstLine:   moveToFirstDiffLine,
 			ActionLastLine:    moveToLastDiffLine,
 			ActionCenterView:  centerDiffView,
+			ActionSelect:      selectDiffLine,
 		},
 	}
 
@@ -242,6 +243,23 @@ func (diffView *DiffView) RenderStatusBar(lineBuilder *LineBuilder) (err error) 
 
 // RenderHelpBar does nothing
 func (diffView *DiffView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
+	diffView.lock.Lock()
+	defer diffView.lock.Unlock()
+
+	if diffView.activeCommit == nil {
+		return
+	}
+
+	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	lineIndex := diffView.viewPos.ActiveRowIndex()
+	line := diffLines.lines[lineIndex]
+
+	if line.lineType == dltDiffStatsFile {
+		RenderKeyBindingHelp(diffView.ViewID(), lineBuilder, []ActionMessage{
+			{action: ActionSelect, message: "Jump to file diff"},
+		})
+	}
+
 	return
 }
 
@@ -536,4 +554,40 @@ func centerDiffView(diffView *DiffView, action Action) (err error) {
 	}
 
 	return
+}
+
+func selectDiffLine(diffView *DiffView, action Action) (err error) {
+	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	lineIndex := diffView.viewPos.ActiveRowIndex()
+	diffLine := diffLines.lines[lineIndex]
+
+	if diffLine.lineType != dltDiffStatsFile {
+		return
+	}
+
+	sepIndex := strings.LastIndex(diffLine.line, "|")
+
+	if sepIndex == -1 || sepIndex >= len(diffLine.line)-1 {
+		return fmt.Errorf("Unable to determine file path from line: %v", diffLine.line)
+	}
+
+	filePart := strings.TrimRight(diffLine.line[0:sepIndex], " ")
+	pattern := fmt.Sprintf("diff --git a/%v b/%v", filePart, filePart)
+
+	for lineIndex++; lineIndex < uint(len(diffLines.lines)); lineIndex++ {
+		diffLine = diffLines.lines[lineIndex]
+
+		if strings.HasPrefix(diffLine.line, pattern) {
+			break
+		}
+	}
+
+	if lineIndex >= uint(len(diffLines.lines)) {
+		return fmt.Errorf("Unable to find diff for file: %v", filePart)
+	}
+
+	diffView.viewPos.SetActiveRowIndex(lineIndex)
+	defer diffView.channels.UpdateDisplay()
+
+	return centerDiffView(diffView, action)
 }
