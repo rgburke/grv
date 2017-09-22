@@ -80,11 +80,6 @@ func (errorView *ErrorView) ViewID() ViewID {
 	return ViewError
 }
 
-// RenderStatusBar does nothing
-func (errorView *ErrorView) RenderStatusBar(*LineBuilder) (err error) {
-	return
-}
-
 // RenderHelpBar does nothing
 func (errorView *ErrorView) RenderHelpBar(*LineBuilder) (err error) {
 	return

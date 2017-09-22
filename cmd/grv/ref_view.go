@@ -363,11 +363,6 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 	return
 }
 
-// RenderStatusBar does nothing
-func (refView *RefView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
-	return
-}
-
 // RenderHelpBar generates key binding help info for the ref view
 func (refView *RefView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	RenderKeyBindingHelp(refView.ViewID(), lineBuilder, []ActionMessage{

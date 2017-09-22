@@ -178,11 +178,6 @@ func (statusBarView *StatusBarView) Render(win RenderWindow) (err error) {
 	return
 }
 
-// RenderStatusBar does nothing
-func (statusBarView *StatusBarView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
-	return
-}
-
 // RenderHelpBar renders help information for the status bar view
 func (statusBarView *StatusBarView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	message := ""

@@ -35,7 +35,6 @@ type AbstractView interface {
 	HandleAction(Action) error
 	OnActiveChange(bool)
 	ViewID() ViewID
-	RenderStatusBar(*LineBuilder) error
 	RenderHelpBar(*LineBuilder) error
 }
 
@@ -193,11 +192,6 @@ func (view *View) renderErrorView(wins []*Window, errorViewDim, activeViewDim Vi
 
 	allWins = append(wins, view.errorViewWin)
 
-	return
-}
-
-// RenderStatusBar does nothing
-func (view *View) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 

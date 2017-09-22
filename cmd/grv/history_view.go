@@ -161,11 +161,6 @@ func (historyView *HistoryView) renderActiveViewFullScreen(viewDimension ViewDim
 	return
 }
 
-// RenderStatusBar does nothing
-func (historyView *HistoryView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
-	return
-}
-
 // RenderHelpBar renders key binding help info for the history view
 func (historyView *HistoryView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	RenderKeyBindingHelp(historyView.ViewID(), lineBuilder, []ActionMessage{

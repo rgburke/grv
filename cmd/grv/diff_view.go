@@ -236,11 +236,6 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	return
 }
 
-// RenderStatusBar does nothing
-func (diffView *DiffView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
-	return
-}
-
 // RenderHelpBar does nothing
 func (diffView *DiffView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	diffView.lock.Lock()

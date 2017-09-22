@@ -69,11 +69,6 @@ func (helpBarView *HelpBarView) Render(win RenderWindow) (err error) {
 	return
 }
 
-// RenderStatusBar does nothing
-func (helpBarView *HelpBarView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
-	return
-}
-
 // RenderHelpBar does nothing
 func (helpBarView *HelpBarView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	return

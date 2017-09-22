@@ -226,11 +226,6 @@ func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIn
 	return
 }
 
-// RenderStatusBar does nothing
-func (commitView *CommitView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
-	return
-}
-
 // RenderHelpBar shows key bindings custom to the commit view
 func (commitView *CommitView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	RenderKeyBindingHelp(commitView.ViewID(), lineBuilder, []ActionMessage{

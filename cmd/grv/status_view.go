@@ -93,11 +93,6 @@ func (statusView *StatusView) Render(viewDimension ViewDimension) (wins []*Windo
 	return
 }
 
-// RenderStatusBar does nothing
-func (statusView *StatusView) RenderStatusBar(lineBuilder *LineBuilder) (err error) {
-	return
-}
-
 // RenderHelpBar does nothing
 func (statusView *StatusView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	return
