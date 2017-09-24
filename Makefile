@@ -37,7 +37,7 @@ build-libgit2: update
 test: $(BINARY) update-test
 	$(GOCMD) test $(BUILD_FLAGS) $(SOURCE_DIR)
 	$(GOCMD) vet $(SOURCE_DIR)
-	$(GOLINT) $(SOURCE_DIR)
+	$(GOLINT) -set_exit_status $(SOURCE_DIR)
 
 .PHONY: clean
 clean:
