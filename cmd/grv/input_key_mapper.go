@@ -7,7 +7,7 @@ import (
 	"unicode"
 
 	log "github.com/Sirupsen/logrus"
-	gc "github.com/rthornton128/goncurses"
+	gc "github.com/rgburke/goncurses"
 )
 
 const (

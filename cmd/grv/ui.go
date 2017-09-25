@@ -32,7 +32,7 @@ import (
 	"unsafe"
 
 	log "github.com/Sirupsen/logrus"
-	gc "github.com/rthornton128/goncurses"
+	gc "github.com/rgburke/goncurses"
 )
 
 const (
@@ -40,6 +40,45 @@ const (
 	UINoKey         = -1
 	inputNoWinSleep = 50 * time.Millisecond
 )
+
+var systemColors = map[SystemColorValue]int16{
+	ColorNone:    -1,
+	ColorBlack:   gc.C_BLACK,
+	ColorRed:     gc.C_RED,
+	ColorGreen:   gc.C_GREEN,
+	ColorYellow:  gc.C_YELLOW,
+	ColorBlue:    gc.C_BLUE,
+	ColorMagenta: gc.C_MAGENTA,
+	ColorCyan:    gc.C_CYAN,
+	ColorWhite:   gc.C_WHITE,
+}
+
+var convert256To16Color = []int16{
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+	0, 4, 4, 4, 12, 12, 2, 6, 4, 4, 12, 12, 2, 2, 6, 4,
+	12, 12, 2, 2, 2, 6, 12, 12, 10, 10, 10, 10, 14, 12, 10, 10,
+	10, 10, 10, 14, 1, 5, 4, 4, 12, 12, 3, 8, 4, 4, 12, 12,
+	2, 2, 6, 4, 12, 12, 2, 2, 2, 6, 12, 12, 10, 10, 10, 10,
+	14, 12, 10, 10, 10, 10, 10, 14, 1, 1, 5, 4, 12, 12, 1, 1,
+	5, 4, 12, 12, 3, 3, 8, 4, 12, 12, 2, 2, 2, 6, 12, 12,
+	10, 10, 10, 10, 14, 12, 10, 10, 10, 10, 10, 14, 1, 1, 1, 5,
+	12, 12, 1, 1, 1, 5, 12, 12, 1, 1, 1, 5, 12, 12, 3, 3,
+	3, 7, 12, 12, 10, 10, 10, 10, 14, 12, 10, 10, 10, 10, 10, 14,
+	9, 9, 9, 9, 13, 12, 9, 9, 9, 9, 13, 12, 9, 9, 9, 9,
+	13, 12, 9, 9, 9, 9, 13, 12, 11, 11, 11, 11, 7, 12, 10, 10,
+	10, 10, 10, 14, 9, 9, 9, 9, 9, 13, 9, 9, 9, 9, 9, 13,
+	9, 9, 9, 9, 9, 13, 9, 9, 9, 9, 9, 13, 9, 9, 9, 9,
+	9, 13, 11, 11, 11, 11, 11, 15, 0, 0, 0, 0, 0, 0, 8, 8,
+	8, 8, 8, 8, 7, 7, 7, 7, 7, 7, 15, 15, 15, 15, 15, 15,
+}
+
+var color256Components = []byte{0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff}
+
+var color256GreyComponents = []byte{
+	0x08, 0x12, 0x1c, 0x26, 0x30, 0x3a, 0x44, 0x4e,
+	0x58, 0x62, 0x6c, 0x76, 0x80, 0x8a, 0x94, 0x9e,
+	0xa8, 0xb2, 0xbc, 0xc6, 0xd0, 0xda, 0xe4, 0xee,
+}
 
 // Key is a raw code received from ncurses
 type Key int
@@ -87,12 +126,13 @@ func (nwin *nCursesWindow) setHidden(isHidden bool) {
 // NCursesUI implements the UI and InputUI interfaces
 // It manages displaying grv in the terminal and receiving input
 type NCursesUI struct {
-	windows map[*Window]*nCursesWindow
-	lock    sync.Mutex
-	stdscr  *nCursesWindow
-	config  Config
-	colors  map[ThemeColor]int16
-	pipe    signalPipe
+	windows       map[*Window]*nCursesWindow
+	lock          sync.Mutex
+	stdscr        *nCursesWindow
+	config        Config
+	pipe          signalPipe
+	maxColors     int
+	maxColorPairs int
 }
 
 // NewNCursesDisplay creates a new NCursesUI instance
@@ -100,17 +140,6 @@ func NewNCursesDisplay(config Config) *NCursesUI {
 	return &NCursesUI{
 		windows: make(map[*Window]*nCursesWindow),
 		config:  config,
-		colors: map[ThemeColor]int16{
-			ColorNone:    -1,
-			ColorBlack:   gc.C_BLACK,
-			ColorRed:     gc.C_RED,
-			ColorGreen:   gc.C_GREEN,
-			ColorYellow:  gc.C_YELLOW,
-			ColorBlue:    gc.C_BLUE,
-			ColorMagenta: gc.C_MAGENTA,
-			ColorCyan:    gc.C_CYAN,
-			ColorWhite:   gc.C_WHITE,
-		},
 	}
 }
 
@@ -183,6 +212,11 @@ func (ui *NCursesUI) initialiseNCurses() (err error) {
 		if e := gc.UseDefaultColors(); e != nil {
 			log.Errorf("Error calling UseDefaultColors: %v", e)
 		}
+
+		ui.maxColors = gc.Colors()
+		ui.maxColorPairs = gc.ColorPairs()
+
+		log.Infof("COLORS: %v, COLOR_PAIRS: %v", ui.maxColors, ui.maxColorPairs)
 
 		theme := ui.config.GetTheme()
 		ui.initialiseColorPairsFromTheme(theme)
@@ -485,13 +519,101 @@ func (ui *NCursesUI) onConfigVariableChange(configVariable ConfigVariable) {
 
 func (ui *NCursesUI) initialiseColorPairsFromTheme(theme Theme) {
 	for themeComponentID, themeComponent := range theme.GetAllComponents() {
-		fgcolor := ui.colors[themeComponent.fgcolor]
-		bgcolor := ui.colors[themeComponent.bgcolor]
+		if int(themeComponentID) >= ui.maxColorPairs {
+			log.Errorf("Not enough color pairs for theme. Required: %v, Actual: %v",
+				len(theme.GetAllComponents()), ui.maxColorPairs)
+			break
+		}
+
+		fgcolor := ui.getNCursesColor(themeComponent.fgcolor)
+		bgcolor := ui.getNCursesColor(themeComponent.bgcolor)
+
+		log.Debugf("Initialising color pair for ThemeComponentID %v - %v:%v", themeComponentID, fgcolor, bgcolor)
 
 		if err := gc.InitPair(int16(themeComponentID), fgcolor, bgcolor); err != nil {
 			log.Errorf("Error when seting color pair %v:%v - %v", fgcolor, bgcolor, err)
 		}
 	}
+}
+
+func (ui *NCursesUI) getNCursesColor(themeColor ThemeColor) (colorNumber int16) {
+	switch themeColor := themeColor.(type) {
+	case *SystemColor:
+		if systemColorNumber, ok := systemColors[themeColor.systemColorValue]; ok {
+			colorNumber = systemColorNumber
+		} else {
+			log.Errorf("Invalid SystemColorValue: %v", themeColor.systemColorValue)
+		}
+	case *ColorNumber:
+		colorNumber = themeColor.number
+	case *RGBColor:
+		redIndex := getColorComponentIndex(themeColor.red, color256Components)
+		greenIndex := getColorComponentIndex(themeColor.green, color256Components)
+		blueIndex := getColorComponentIndex(themeColor.blue, color256Components)
+
+		greyRedIndex := getColorComponentIndex(themeColor.red, color256GreyComponents)
+		greyGreenIndex := getColorComponentIndex(themeColor.green, color256GreyComponents)
+		greyBlueIndex := getColorComponentIndex(themeColor.blue, color256GreyComponents)
+		greyIndex := (greyRedIndex + greyGreenIndex + greyBlueIndex) / 3
+		greyValue := color256GreyComponents[greyIndex]
+
+		colorDistance := colorDistanceSquared(themeColor.red, themeColor.green, themeColor.blue,
+			color256Components[redIndex], color256Components[greenIndex], color256Components[blueIndex])
+
+		greyColorDistance := colorDistanceSquared(themeColor.red, themeColor.green, themeColor.blue,
+			greyValue, greyValue, greyValue)
+
+		if colorDistance < greyColorDistance {
+			colorNumber = int16(16 + (36 * redIndex) + (6 * greenIndex) + blueIndex)
+		} else {
+			colorNumber = int16(232 + greyIndex)
+		}
+	default:
+		log.Errorf("Unsupported ThemeColor type: %T", themeColor)
+	}
+
+	if colorNumber != -1 && ui.maxColors < 256 {
+		colorNumber = convert256To16Color[colorNumber]
+
+		if ui.maxColors < 16 && colorNumber > 8 {
+			colorNumber -= 8
+		}
+	}
+
+	return
+}
+
+func getColorComponentIndex(value byte, components []byte) int {
+	low := 0
+	high := len(components) - 1
+
+	for low <= high {
+		mid := (low + high) / 2
+
+		if value < components[mid] {
+			high = mid - 1
+		} else if value > components[mid] {
+			low = mid + 1
+		} else {
+			return mid
+		}
+	}
+
+	if low > len(components)-1 {
+		return high
+	} else if high < 0 {
+		return low
+	} else if (components[low] - value) < (value - components[high]) {
+		return low
+	}
+
+	return high
+}
+
+func colorDistanceSquared(r1, g1, b1, r2, g2, b2 byte) int {
+	return (int(r1) - int(r2)) * (int(r1) - int(r2)) *
+		(int(g1) - int(g2)) * (int(g1) - int(g2)) *
+		(int(b1) - int(b2)) * (int(b1) - int(b2))
 }
 
 func fdZero(set *syscall.FdSet) {

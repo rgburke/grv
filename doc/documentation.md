@@ -125,13 +125,15 @@ example, to define a new theme "mytheme" and set it as the active theme:
 
 ```
 theme --name mytheme --component CommitView.Date      --bgcolor None --fgcolor Red
-theme --name mytheme --component RefView.Tag          --bgcolor Blue --fgcolor Yellow
-theme --name mytheme --component StatusBarView.Normal --bgcolor None --fgcolor None
+theme --name mytheme --component RefView.Tag          --bgcolor Blue --fgcolor 36
+theme --name mytheme --component StatusBarView.Normal --bgcolor None --fgcolor f14a98
 set theme mytheme
 ```
 
-The set of possible colors is:
+GRV supports 256 colors (when available). Provided colors will be mapped to
+the nearest available color. The allowed color values are:
 
+**System Colors**
 ```
 None
 Black
@@ -142,6 +144,16 @@ Blue
 Magenta
 Cyan
 White
+```
+
+**Terminal Color Numbers**
+```
+0 - 255
+```
+
+**Hex Colors**
+```
+000000 - ffffff
 ```
 
 The set of screen components that can be customised is:

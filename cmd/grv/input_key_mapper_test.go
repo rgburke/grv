@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
-	gc "github.com/rthornton128/goncurses"
+	gc "github.com/rgburke/goncurses"
 	"github.com/stretchr/testify/mock"
 )
 

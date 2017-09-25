@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -40,7 +42,7 @@ const (
 	CfTheme ConfigVariable = "theme"
 )
 
-var themeColors = map[string]ThemeColor{
+var systemColorValues = map[string]SystemColorValue{
 	"None":    ColorNone,
 	"Black":   ColorBlack,
 	"Red":     ColorRed,
@@ -112,6 +114,10 @@ var themeComponents = map[string]ThemeComponentID{
 	cfErrorView + ".Footer": CmpErrorViewFooter,
 	cfErrorView + ".Errors": CmpErrorViewErrors,
 }
+
+var colorNumberPattern = regexp.MustCompile(`[0-9]{1,3}`)
+var hexColorPattern = regexp.MustCompile(`[a-fA-F0-9]{6}`)
+var systemColorPattern = regexp.MustCompile(`[a-zA-Z]+`)
 
 // Config exposes a read only interface for configuration
 type Config interface {
@@ -372,13 +378,44 @@ func (config *Configuration) processThemeCommand(themeCommand *ThemeCommand, inp
 }
 
 func getThemeColor(color *ConfigToken, inputSource string) (ThemeColor, error) {
-	themeColor, ok := themeColors[color.value]
-
-	if !ok {
-		return ColorNone, generateConfigError(inputSource, color, "Invalid color: %v", color.value)
+	switch {
+	case hexColorPattern.MatchString(color.value):
+		return getRGBColor(color.value)
+	case colorNumberPattern.MatchString(color.value):
+		return getColorNumber(color.value)
+	case systemColorPattern.MatchString(color.value):
+		return getSystemColor(color.value)
 	}
 
-	return themeColor, nil
+	return nil, generateConfigError(inputSource, color, "Invalid color: %v", color.value)
+}
+
+func getColorNumber(colorNumberString string) (ThemeColor, error) {
+	colorNumber, err := strconv.Atoi(colorNumberString)
+	if err != nil || colorNumber < 0 || colorNumber > 255 {
+		return nil, fmt.Errorf("Invalid color number: %v, Must be decimal integer in range 0 - 255", colorNumberString)
+	}
+
+	return NewColorNumber(int16(colorNumber)), nil
+}
+
+func getRGBColor(hexColorString string) (ThemeColor, error) {
+	rgb, err := hex.DecodeString(hexColorString)
+	if err != nil || len(rgb) != 3 {
+		return nil, fmt.Errorf("Invalid hex color: %v, must be 3 byte hex value", hexColorString)
+	}
+
+	return NewRGBColor(rgb[0], rgb[1], rgb[2]), nil
+}
+
+func getSystemColor(systemColorString string) (ThemeColor, error) {
+	systemColorValue, ok := systemColorValues[systemColorString]
+	if !ok {
+		return nil, fmt.Errorf("Invalid system color: %v, must be one of: %v",
+			systemColorString, reflect.ValueOf(systemColorValues).MapKeys())
+	}
+
+	return NewSystemColor(systemColorValue), nil
 }
 
 func (config *Configuration) getVariable(configVariable ConfigVariable) *ConfigurationVariable {

@@ -58,12 +58,17 @@ const (
 	CmpCount
 )
 
-// ThemeColor is a display color that grv supports
-type ThemeColor int
+// ThemeColor is a color that can be specified for a theme
+type ThemeColor interface {
+	themeColor()
+}
 
-// The set of display colors grv supports
+// SystemColorValue represents one of the 8 basic system colors
+type SystemColorValue int
+
+// The set of SystemColorValues
 const (
-	ColorNone ThemeColor = iota
+	ColorNone SystemColorValue = iota
 	ColorBlack
 	ColorRed
 	ColorGreen
@@ -73,6 +78,52 @@ const (
 	ColorCyan
 	ColorWhite
 )
+
+// SystemColor stores the value of a system color
+type SystemColor struct {
+	systemColorValue SystemColorValue
+}
+
+// NewSystemColor creates a new instance
+func NewSystemColor(systemColorValue SystemColorValue) ThemeColor {
+	return &SystemColor{
+		systemColorValue: systemColorValue,
+	}
+}
+
+func (systemColor *SystemColor) themeColor() {}
+
+// ColorNumber stores the terminal color number (0 - 255) for a color
+type ColorNumber struct {
+	number int16
+}
+
+// NewColorNumber creates a new instance
+func NewColorNumber(number int16) ThemeColor {
+	return &ColorNumber{
+		number: number,
+	}
+}
+
+func (colorNumber *ColorNumber) themeColor() {}
+
+// RGBColor stores the red, green and blue components of a color
+type RGBColor struct {
+	red   byte
+	green byte
+	blue  byte
+}
+
+// NewRGBColor creates a new instance
+func NewRGBColor(red, green, blue byte) ThemeColor {
+	return &RGBColor{
+		red:   red,
+		green: green,
+		blue:  blue,
+	}
+}
+
+func (rgbColor *RGBColor) themeColor() {}
 
 // ThemeComponent stores the color information for a theme component
 type ThemeComponent struct {
@@ -134,8 +185,8 @@ func (themeComponents *ThemeComponents) CreateOrGetComponent(themeComponentID Th
 
 func getDefaultThemeComponent() ThemeComponent {
 	return ThemeComponent{
-		bgcolor: ColorNone,
-		fgcolor: ColorNone,
+		bgcolor: NewSystemColor(ColorNone),
+		fgcolor: NewSystemColor(ColorNone),
 	}
 }
 

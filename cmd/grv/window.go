@@ -7,7 +7,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	rw "github.com/mattn/go-runewidth"
-	gc "github.com/rthornton128/goncurses"
+	gc "github.com/rgburke/goncurses"
 )
 
 // RenderWindow represents a window that will be drawn to the display

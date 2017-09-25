@@ -1,11 +1,12 @@
 package main
 
 import (
+	"reflect"
 	"testing"
 )
 
 func checkThemeComponent(expectedThemeComponent, actualThemeComponent ThemeComponent, t *testing.T) {
-	if expectedThemeComponent != actualThemeComponent {
+	if !reflect.DeepEqual(expectedThemeComponent, actualThemeComponent) {
 		t.Errorf("ThemeComponent does not match expected value. Expected: %v, Actual: %v", expectedThemeComponent, actualThemeComponent)
 	}
 }
@@ -15,12 +16,12 @@ func TestDefaultThemeHasComponentsSet(t *testing.T) {
 
 	tests := map[ThemeComponentID]ThemeComponent{
 		CmpAllviewSearchMatch: {
-			bgcolor: ColorYellow,
-			fgcolor: ColorNone,
+			bgcolor: NewSystemColor(ColorYellow),
+			fgcolor: NewSystemColor(ColorNone),
 		},
 		CmpErrorViewErrors: {
-			bgcolor: ColorRed,
-			fgcolor: ColorWhite,
+			bgcolor: NewSystemColor(ColorRed),
+			fgcolor: NewSystemColor(ColorWhite),
 		},
 	}
 
@@ -42,8 +43,8 @@ func TestDefaultThemeComponentIsReturnedIfNotConfiguredForProvidedId(t *testing.
 func TestThemeComponentCanBeSet(t *testing.T) {
 	theme := NewTheme()
 	expectedThemeComponent := ThemeComponent{
-		bgcolor: ColorBlack,
-		fgcolor: ColorMagenta,
+		bgcolor: NewSystemColor(ColorBlack),
+		fgcolor: NewSystemColor(ColorMagenta),
 	}
 
 	themeComponent := theme.CreateOrGetComponent(CmpAllviewSearchMatch)
@@ -58,8 +59,8 @@ func TestGetAllComponentsDefaultsComponentsNotSet(t *testing.T) {
 	theme := NewTheme()
 	tests := map[ThemeComponentID]ThemeComponent{
 		CmpAllviewSearchMatch: {
-			bgcolor: ColorYellow,
-			fgcolor: ColorBlue,
+			bgcolor: NewSystemColor(ColorYellow),
+			fgcolor: NewSystemColor(ColorBlue),
 		},
 		CmpErrorViewErrors: getDefaultThemeComponent(),
 	}
