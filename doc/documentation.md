@@ -159,6 +159,7 @@ White
 The set of screen components that can be customised is:
 
 ```
+All.Default
 All.SearchMatch
 All.ActiveViewSelectedRow
 All.InactiveViewSelectedRow

@@ -404,6 +404,8 @@ func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
 func drawWindow(win *Window, nwin *nCursesWindow) {
 	log.Debugf("Drawing window %v", win.ID())
 
+	nwin.SetBackground(gc.ColorPair(int16(CmpAllviewDefault)))
+
 	for rowIndex := uint(0); rowIndex < win.rows; rowIndex++ {
 		line := win.lines[rowIndex]
 		nwin.Move(int(rowIndex), 0)
@@ -518,6 +520,10 @@ func (ui *NCursesUI) onConfigVariableChange(configVariable ConfigVariable) {
 }
 
 func (ui *NCursesUI) initialiseColorPairsFromTheme(theme Theme) {
+	defaultComponent := theme.GetComponent(CmpAllviewDefault)
+	fgDefault := ui.getNCursesColor(defaultComponent.fgcolor)
+	bgDefault := ui.getNCursesColor(defaultComponent.bgcolor)
+
 	for themeComponentID, themeComponent := range theme.GetAllComponents() {
 		if int(themeComponentID) >= ui.maxColorPairs {
 			log.Errorf("Not enough color pairs for theme. Required: %v, Actual: %v",
@@ -527,6 +533,13 @@ func (ui *NCursesUI) initialiseColorPairsFromTheme(theme Theme) {
 
 		fgcolor := ui.getNCursesColor(themeComponent.fgcolor)
 		bgcolor := ui.getNCursesColor(themeComponent.bgcolor)
+
+		if fgcolor == -1 {
+			fgcolor = fgDefault
+		}
+		if bgcolor == -1 {
+			bgcolor = bgDefault
+		}
 
 		log.Debugf("Initialising color pair for ThemeComponentID %v - %v:%v", themeComponentID, fgcolor, bgcolor)
 

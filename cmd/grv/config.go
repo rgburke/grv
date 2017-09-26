@@ -67,6 +67,7 @@ var viewIDNames = map[string]ViewID{
 }
 
 var themeComponents = map[string]ThemeComponentID{
+	cfAllView + ".Default":                 CmpAllviewDefault,
 	cfAllView + ".SearchMatch":             CmpAllviewSearchMatch,
 	cfAllView + ".ActiveViewSelectedRow":   CmpAllviewActiveViewSelectedRow,
 	cfAllView + ".InactiveViewSelectedRow": CmpAllviewInactiveViewSelectedRow,

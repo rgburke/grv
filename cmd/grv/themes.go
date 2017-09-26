@@ -4,6 +4,10 @@ package main
 func NewDefaultTheme() MutableTheme {
 	return &ThemeComponents{
 		components: map[ThemeComponentID]*ThemeComponent{
+			CmpAllviewDefault: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
 			CmpAllviewSearchMatch: {
 				bgcolor: NewSystemColor(ColorYellow),
 				fgcolor: NewSystemColor(ColorNone),
@@ -172,6 +176,10 @@ func NewDefaultTheme() MutableTheme {
 func NewColdTheme() MutableTheme {
 	return &ThemeComponents{
 		components: map[ThemeComponentID]*ThemeComponent{
+			CmpAllviewDefault: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
 			CmpAllviewSearchMatch: {
 				bgcolor: NewSystemColor(ColorYellow),
 				fgcolor: NewSystemColor(ColorNone),

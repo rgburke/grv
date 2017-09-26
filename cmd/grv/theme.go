@@ -8,6 +8,7 @@ type ThemeComponentID int16
 const (
 	CmpNone ThemeComponentID = iota
 
+	CmpAllviewDefault
 	CmpAllviewSearchMatch
 	CmpAllviewActiveViewSelectedRow
 	CmpAllviewInactiveViewSelectedRow

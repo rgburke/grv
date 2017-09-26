@@ -257,7 +257,7 @@ func (win *Window) Clear() {
 		for _, cell := range line.cells {
 			cell.codePoints.Reset()
 			cell.codePoints.WriteRune(' ')
-			cell.style.themeComponentID = CmpNone
+			cell.style.themeComponentID = CmpAllviewDefault
 			cell.style.attr = gc.A_NORMAL
 			cell.style.acsChar = 0
 		}
