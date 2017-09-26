@@ -17,6 +17,7 @@ $(BINARY): build-libgit2
 
 .PHONY: install
 install: $(BINARY)
+	install -m755 -d $(GOBIN_DIR)
 	install -m755 $(BINARY) $(GOBIN_DIR)
 
 .PHONY: update
