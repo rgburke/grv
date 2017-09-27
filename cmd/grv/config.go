@@ -18,8 +18,9 @@ const (
 	cfGrvrcFile            = "/grvrc"
 	cfTabWidthMinValue     = 1
 	cfTabWidthDefaultValue = 8
-	cfThemeDefaultValue    = "default"
+	cfClassicThemeName     = "classic"
 	cfColdThemeName        = "cold"
+	cfSolarizedThemeName   = "solarized"
 
 	cfAllView       = "All"
 	cfHistoryView   = "HistoryView"
@@ -168,8 +169,9 @@ func NewConfiguration(keyBindings KeyBindings, channels *Channels) *Configuratio
 	config := &Configuration{
 		keyBindings: keyBindings,
 		themes: map[string]MutableTheme{
-			cfThemeDefaultValue: NewDefaultTheme(),
-			cfColdThemeName:     NewColdTheme(),
+			cfClassicThemeName:   NewClassicTheme(),
+			cfColdThemeName:      NewColdTheme(),
+			cfSolarizedThemeName: NewSolarizedTheme(),
 		},
 		channels: channels,
 	}
@@ -180,7 +182,7 @@ func NewConfiguration(keyBindings KeyBindings, channels *Channels) *Configuratio
 			validator: tabWidithValidator{},
 		},
 		CfTheme: {
-			value: cfThemeDefaultValue,
+			value: cfSolarizedThemeName,
 			validator: themeValidator{
 				config: config,
 			},

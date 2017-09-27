@@ -11,26 +11,6 @@ func checkThemeComponent(expectedThemeComponent, actualThemeComponent ThemeCompo
 	}
 }
 
-func TestDefaultThemeHasComponentsSet(t *testing.T) {
-	theme := NewDefaultTheme()
-
-	tests := map[ThemeComponentID]ThemeComponent{
-		CmpAllviewSearchMatch: {
-			bgcolor: NewSystemColor(ColorYellow),
-			fgcolor: NewSystemColor(ColorNone),
-		},
-		CmpErrorViewErrors: {
-			bgcolor: NewSystemColor(ColorRed),
-			fgcolor: NewSystemColor(ColorWhite),
-		},
-	}
-
-	for themeComponentID, expectedThemeComponent := range tests {
-		actualThemeComponent := theme.GetComponent(themeComponentID)
-		checkThemeComponent(expectedThemeComponent, actualThemeComponent, t)
-	}
-}
-
 func TestDefaultThemeComponentIsReturnedIfNotConfiguredForProvidedId(t *testing.T) {
 	theme := NewTheme()
 	expectedThemeComponent := getDefaultThemeComponent()

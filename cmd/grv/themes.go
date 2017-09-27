@@ -1,7 +1,7 @@
 package main
 
-// NewDefaultTheme creates the default theme of grv
-func NewDefaultTheme() MutableTheme {
+// NewClassicTheme creates the classic theme of grv
+func NewClassicTheme() MutableTheme {
 	return &ThemeComponents{
 		components: map[ThemeComponentID]*ThemeComponent{
 			CmpAllviewDefault: {
@@ -339,6 +339,179 @@ func NewColdTheme() MutableTheme {
 			CmpErrorViewErrors: {
 				bgcolor: NewSystemColor(ColorRed),
 				fgcolor: NewSystemColor(ColorWhite),
+			},
+		},
+	}
+}
+
+// NewSolarizedTheme creates the solarized theme of grv
+// Solarized color codes Copyright (c) 2011 Ethan Schoonover
+func NewSolarizedTheme() MutableTheme {
+	return &ThemeComponents{
+		components: map[ThemeComponentID]*ThemeComponent{
+			CmpAllviewDefault: {
+				bgcolor: NewColorNumber(234),
+				fgcolor: NewColorNumber(244),
+			},
+			CmpAllviewSearchMatch: {
+				bgcolor: NewColorNumber(136),
+				fgcolor: NewColorNumber(254),
+			},
+			CmpAllviewActiveViewSelectedRow: {
+				bgcolor: NewColorNumber(234),
+				fgcolor: NewColorNumber(254),
+			},
+			CmpAllviewInactiveViewSelectedRow: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(245),
+			},
+			CmpCommitviewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(37),
+			},
+			CmpCommitviewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(37),
+			},
+			CmpCommitviewShortOid: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(136),
+			},
+			CmpCommitviewDate: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(33),
+			},
+			CmpCommitviewAuthor: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(64),
+			},
+			CmpCommitviewSummary: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpCommitviewTag: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(160),
+			},
+			CmpCommitviewLocalBranch: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(37),
+			},
+			CmpCommitviewRemoteBranch: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(125),
+			},
+			CmpDiffviewDifflineNormal: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpDiffviewDifflineDiffCommitAuthor: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(61),
+			},
+			CmpDiffviewDifflineDiffCommitAuthorDate: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(136),
+			},
+			CmpDiffviewDifflineDiffCommitCommitter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(125),
+			},
+			CmpDiffviewDifflineDiffCommitCommitterDate: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(136),
+			},
+			CmpDiffviewDifflineDiffCommitSummary: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpDiffviewDifflineDiffStatsFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(33),
+			},
+			CmpDiffviewDifflineGitDiffHeader: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(136),
+			},
+			CmpDiffviewDifflineGitDiffExtendedHeader: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(33),
+			},
+			CmpDiffviewDifflineUnifiedDiffHeader: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(136),
+			},
+			CmpDiffviewDifflineHunkStart: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(37),
+			},
+			CmpDiffviewDifflineHunkHeader: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(33),
+			},
+			CmpDiffviewDifflineLineAdded: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(64),
+			},
+			CmpDiffviewDifflineLineRemoved: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(160),
+			},
+			CmpRefviewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(37),
+			},
+			CmpRefviewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(37),
+			},
+			CmpRefviewLocalBranchesHeader: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(125),
+			},
+			CmpRefviewRemoteBranchesHeader: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(125),
+			},
+			CmpRefviewLocalBranch: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpRefviewRemoteBranch: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpRefviewTagsHeader: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(125),
+			},
+			CmpRefviewTag: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpStatusbarviewNormal: {
+				bgcolor: NewColorNumber(235),
+				fgcolor: NewColorNumber(136),
+			},
+			CmpHelpbarviewSpecial: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(125),
+			},
+			CmpHelpbarviewNormal: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpErrorViewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(37),
+			},
+			CmpErrorViewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(37),
+			},
+			CmpErrorViewErrors: {
+				bgcolor: NewColorNumber(160),
+				fgcolor: NewColorNumber(245),
 			},
 		},
 	}
