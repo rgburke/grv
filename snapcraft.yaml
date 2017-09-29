@@ -26,6 +26,7 @@ parts:
                         - golang-go
                         - make
                         - build-essential
+                        - pkg-config
                         - cmake
                         - libncurses5-dev
                         - libncursesw5-dev
