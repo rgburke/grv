@@ -26,6 +26,7 @@ const (
 	ViewStatusBar
 	ViewHelpBar
 	ViewError
+	ViewGitStatus
 )
 
 // AbstractView exposes common functionality amongst all views

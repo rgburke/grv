@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	gitRepositoryDirectoryName = ".git"
+	// GitRepositoryDirectoryName is the name of the git directory in a git repository
+	GitRepositoryDirectoryName = ".git"
 )
 
 // OnCommitsLoaded is called when all commits are loaded for the specified oid
@@ -22,6 +23,11 @@ type OnBranchesLoaded func(localBranches, remoteBranches []*Branch) error
 
 // OnTagsLoaded is called when all tags have been loaded
 type OnTagsLoaded func([]*Tag) error
+
+// StatusListener is notified when git status has changed
+type StatusListener interface {
+	OnStatusChanged(status *Status)
+}
 
 // RepoData houses all data loaded from the repository
 type RepoData interface {
@@ -41,6 +47,9 @@ type RepoData interface {
 	AddCommitFilter(*Oid, *CommitFilter) error
 	RemoveCommitFilter(*Oid) error
 	Diff(commit *Commit) (*Diff, error)
+	LoadStatus() (err error)
+	Status() *Status
+	RegisterStatusListener(StatusListener)
 }
 
 type commitSet interface {
@@ -453,6 +462,59 @@ func (refCommitSets *refCommitSets) removeCommitFilter(oid *Oid) (err error) {
 	return
 }
 
+type statusManager struct {
+	repoDataLoader  *RepoDataLoader
+	status          *Status
+	statusListeners []StatusListener
+	lock            sync.Mutex
+}
+
+func newStatusManager(repoDataLoader *RepoDataLoader) *statusManager {
+	return &statusManager{
+		repoDataLoader: repoDataLoader,
+		status:         newStatus(),
+	}
+}
+
+func (statusManager *statusManager) loadStatus() (err error) {
+	newStatus, err := statusManager.repoDataLoader.LoadStatus()
+	if err != nil {
+		return
+	}
+
+	statusManager.lock.Lock()
+	defer statusManager.lock.Unlock()
+
+	if !statusManager.status.Equal(newStatus) {
+		log.Debugf("Git status has changed. Notifying status listeners.")
+		statusManager.status = newStatus
+
+		for _, statusListener := range statusManager.statusListeners {
+			statusListener.OnStatusChanged(newStatus)
+		}
+	}
+
+	return
+}
+
+func (statusManager *statusManager) getStatus() *Status {
+	statusManager.lock.Lock()
+	defer statusManager.lock.Unlock()
+
+	return statusManager.status
+}
+
+func (statusManager *statusManager) registerStatusListener(statusListener StatusListener) {
+	if statusListener == nil {
+		return
+	}
+
+	statusManager.lock.Lock()
+	defer statusManager.lock.Unlock()
+
+	statusManager.statusListeners = append(statusManager.statusListeners, statusListener)
+}
+
 // RepositoryData implements RepoData and stores all loaded repository data
 type RepositoryData struct {
 	channels       *Channels
@@ -463,6 +525,7 @@ type RepositoryData struct {
 	localTags      *tagSet
 	commitRefSet   *commitRefSet
 	refCommitSets  *refCommitSets
+	statusManager  *statusManager
 }
 
 // NewRepositoryData creates a new instance
@@ -474,6 +537,7 @@ func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *Repo
 		localTags:      newTagSet(),
 		commitRefSet:   newCommitRefSet(),
 		refCommitSets:  newRefCommitSets(channels),
+		statusManager:  newStatusManager(repoDataLoader),
 	}
 }
 
@@ -493,22 +557,17 @@ func (repoData *RepositoryData) Initialise(repoPath string) (err error) {
 		return
 	}
 
-	return
+	return repoData.LoadStatus()
 }
 
 func (repoData *RepositoryData) processPath(repoPath string) (processedPath string, err error) {
-	path, err := filepath.EvalSymlinks(repoPath)
-	if err != nil {
-		return
-	}
-
-	path, err = filepath.Abs(path)
+	path, err := CanonicalPath(repoPath)
 	if err != nil {
 		return
 	}
 
 	for {
-		gitDirPath := filepath.Join(path, gitRepositoryDirectoryName)
+		gitDirPath := filepath.Join(path, GitRepositoryDirectoryName)
 		log.Debugf("gitDirPath: %v", gitDirPath)
 
 		if _, err = os.Stat(gitDirPath); err != nil {
@@ -845,4 +904,20 @@ func (repoData *RepositoryData) RemoveCommitFilter(oid *Oid) error {
 // Diff loads a diff for the specified oid
 func (repoData *RepositoryData) Diff(commit *Commit) (*Diff, error) {
 	return repoData.repoDataLoader.Diff(commit)
+}
+
+// LoadStatus loads the current git status
+func (repoData *RepositoryData) LoadStatus() (err error) {
+	log.Debugf("Loading git status")
+	return repoData.statusManager.loadStatus()
+}
+
+// Status returns the cached git status
+func (repoData *RepositoryData) Status() *Status {
+	return repoData.statusManager.getStatus()
+}
+
+// RegisterStatusListener registers a listener to be notified when git status changes
+func (repoData *RepositoryData) RegisterStatusListener(statusListener StatusListener) {
+	repoData.statusManager.registerStatusListener(statusListener)
 }

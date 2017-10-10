@@ -1,23 +1,27 @@
+// GRV is a terminal interface for viewing git repositories
 package main
 
 import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	fs "github.com/rjeczalik/notify"
 )
 
 const (
-	grvInputBufferSize   = 100
-	grvActionBufferSize  = 100
-	grvErrorBufferSize   = 100
-	grvDisplayBufferSize = 50
-	grvMaxDrawFrequency  = time.Millisecond * 50
-	grvMinErrorDisplay   = time.Second * 2
+	grvInputBufferSize       = 100
+	grvActionBufferSize      = 100
+	grvErrorBufferSize       = 100
+	grvDisplayBufferSize     = 50
+	grvMaxDrawFrequency      = time.Millisecond * 50
+	grvMinErrorDisplay       = time.Second * 2
+	grvMaxGitStatusFrequency = time.Millisecond * 500
 )
 
 type gRVChannels struct {
@@ -228,6 +232,8 @@ func (grv *GRV) Run() {
 	go grv.runHandlerLoop(&waitGroup, channels.exitCh, channels.inputKeyCh, channels.actionCh, channels.errorCh)
 	waitGroup.Add(1)
 	go grv.runSignalHandlerLoop(&waitGroup, channels.exitCh)
+	waitGroup.Add(1)
+	go grv.runFileSystemMonitorLoop(&waitGroup, channels.exitCh)
 
 	channels.displayCh <- true
 
@@ -270,23 +276,25 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	defer log.Info("Display loop stopping")
 	log.Info("Starting display loop")
 
-	displayTimerCh := time.NewTicker(grvMaxDrawFrequency)
-	defer displayTimerCh.Stop()
-	refreshRequestReceived := false
-	channels := &Channels{errorCh: errorCh}
-
 	var errors []error
 	lastErrorReceivedTime := time.Now()
+	channels := &Channels{errorCh: errorCh}
+
+	timer := time.NewTimer(time.Hour)
+	timer.Stop()
+	timerActive := false
 
 	for {
 		select {
 		case <-displayCh:
 			log.Debug("Received display refresh request")
-			refreshRequestReceived = true
-		case <-displayTimerCh.C:
-			if !refreshRequestReceived {
-				break
+
+			if !timerActive {
+				timer.Reset(grvMaxDrawFrequency)
+				timerActive = true
 			}
+		case <-timer.C:
+			timerActive = false
 
 			if lastErrorReceivedTime.Before(time.Now().Add(-grvMinErrorDisplay)) {
 				errors = nil
@@ -308,8 +316,6 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 				channels.ReportError(err)
 				break
 			}
-
-			refreshRequestReceived = false
 		case err := <-errorCh:
 			log.Errorf("Error channel received error: %v", err)
 			errors = append(errors, err)
@@ -326,7 +332,11 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 			}
 
 			lastErrorReceivedTime = time.Now()
-			refreshRequestReceived = true
+
+			if !timerActive {
+				timer.Reset(grvMaxDrawFrequency)
+				timerActive = true
+			}
 		case _, ok := <-exitCh:
 			if !ok {
 				return
@@ -404,6 +414,66 @@ func (grv *GRV) runSignalHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bo
 				}
 
 				grv.channels.displayCh <- true
+			}
+		case _, ok := <-exitCh:
+			if !ok {
+				return
+			}
+		}
+	}
+}
+
+func (grv *GRV) runFileSystemMonitorLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool) {
+	defer waitGroup.Done()
+	defer log.Info("FileSystem Monitor loop stopping")
+	log.Info("FileSystem loop starting")
+
+	channels := grv.channels.Channels()
+	eventCh := make(chan fs.EventInfo, 1)
+	repoGitDir := grv.repoData.Path()
+	repoFilePath := strings.TrimSuffix(repoGitDir, GitRepositoryDirectoryName+"/")
+	watchDir := repoFilePath + "..."
+
+	if err := fs.Watch(watchDir, eventCh, fs.All); err != nil {
+		log.Errorf("Unable to watch path for filesystem events %v: %v", watchDir, err)
+		return
+	}
+
+	defer fs.Stop(eventCh)
+
+	log.Infof("Watching filesystem events for path: %v", watchDir)
+
+	timer := time.NewTimer(time.Hour)
+	timer.Stop()
+	timerActive := false
+
+	ignorePaths := map[string]bool{}
+
+	logFile := LogFile()
+	log.Debugf("CANON: %v", logFile)
+	if logFile != "" {
+		ignorePaths[logFile] = true
+
+		if canonicalLogFile, err := CanonicalPath(logFile); err == nil {
+			ignorePaths[canonicalLogFile] = true
+			log.Debugf("CANON: %v", canonicalLogFile)
+		}
+	}
+
+	for {
+		select {
+		case event := <-eventCh:
+			if _, ignore := ignorePaths[event.Path()]; !ignore {
+				log.Debugf("FS event: %v", event)
+				if !timerActive {
+					timer.Reset(grvMaxGitStatusFrequency)
+					timerActive = true
+				}
+			}
+		case <-timer.C:
+			timerActive = false
+			if err := grv.repoData.LoadStatus(); err != nil {
+				channels.ReportError(err)
 			}
 		case _, ok := <-exitCh:
 			if !ok {

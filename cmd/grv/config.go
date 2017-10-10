@@ -31,6 +31,7 @@ const (
 	cfStatusBarView = "StatusBarView"
 	cfHelpBarView   = "HelpBarView"
 	cfErrorView     = "ErrorView"
+	cfGitStatusView = "GitStatusView"
 )
 
 // ConfigVariable stores a config variable name
@@ -65,6 +66,7 @@ var viewIDNames = map[string]ViewID{
 	cfStatusBarView: ViewStatusBar,
 	cfHelpBarView:   ViewHelpBar,
 	cfErrorView:     ViewError,
+	cfGitStatusView: ViewGitStatus,
 }
 
 var themeComponents = map[string]ThemeComponentID{
@@ -106,6 +108,15 @@ var themeComponents = map[string]ThemeComponentID{
 	cfDiffView + ".HunkHeader":            CmpDiffviewDifflineHunkHeader,
 	cfDiffView + ".AddedLine":             CmpDiffviewDifflineLineAdded,
 	cfDiffView + ".RemovedLine":           CmpDiffviewDifflineLineRemoved,
+
+	cfGitStatusView + ".StagedTitle":     CmpGitStatusStagedTitle,
+	cfGitStatusView + ".UnstagedTitle":   CmpGitStatusUnstagedTitle,
+	cfGitStatusView + ".UntrackedTitle":  CmpGitStatusUntrackedTitle,
+	cfGitStatusView + ".ConflictedTitle": CmpGitStatusConflictedTitle,
+	cfGitStatusView + ".StagedFile":      CmpGitStatusStagedFile,
+	cfGitStatusView + ".UnstagedFile":    CmpGitStatusUnstagedFile,
+	cfGitStatusView + ".UntrackedFile":   CmpGitStatusUntrackedFile,
+	cfGitStatusView + ".ConflictedFile":  CmpGitStatusConflictedFile,
 
 	cfStatusBarView + ".Normal": CmpStatusbarviewNormal,
 

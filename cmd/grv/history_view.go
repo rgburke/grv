@@ -18,14 +18,24 @@ const (
 	voCount
 )
 
+type viewPosition int
+
+const (
+	vp1 viewPosition = iota
+	vp2
+	vp3
+)
+
 // HistoryView manages the history view and it's child views
 type HistoryView struct {
 	channels             *Channels
 	refView              WindowView
 	commitView           WindowView
 	diffView             WindowView
+	gitStatusView        WindowView
 	views                []WindowView
 	viewWins             map[WindowView]*Window
+	layout               map[viewPosition]WindowView
 	activeViewPos        uint
 	active               bool
 	fullScreenActiveView bool
@@ -44,36 +54,57 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 	refView := NewRefView(repoData, channels)
 	commitView := NewCommitView(repoData, channels)
 	diffView := NewDiffView(repoData, channels)
+	gitStatusView := NewGitStatusView(repoData, channels)
 
 	refViewWin := NewWindow("refView", config)
 	commitViewWin := NewWindow("commitView", config)
 	diffViewWin := NewWindow("diffView", config)
+	gitStatusViewWin := NewWindow("gitStatusView", config)
 
 	refView.RegisterRefListener(commitView)
 	commitView.RegisterCommitListner(diffView)
 
-	return &HistoryView{
-		channels:    channels,
-		refView:     refView,
-		commitView:  commitView,
-		diffView:    diffView,
-		views:       []WindowView{refView, commitView, diffView},
-		orientation: voDefault,
+	historyView := &HistoryView{
+		channels:      channels,
+		refView:       refView,
+		commitView:    commitView,
+		diffView:      diffView,
+		gitStatusView: gitStatusView,
+		views:         []WindowView{refView, commitView, diffView},
+		orientation:   voDefault,
 		viewWins: map[WindowView]*Window{
-			refView:    refViewWin,
-			commitView: commitViewWin,
-			diffView:   diffViewWin,
+			refView:       refViewWin,
+			commitView:    commitViewWin,
+			diffView:      diffViewWin,
+			gitStatusView: gitStatusViewWin,
+		},
+		layout: map[viewPosition]WindowView{
+			vp1: refView,
+			vp2: commitView,
+			vp3: diffView,
 		},
 		activeViewPos: 1,
 	}
+
+	commitView.RegisterCommitListner(historyView)
+	commitView.RegisterStatusSelectedListener(historyView)
+
+	return historyView
 }
 
 // Initialise sets up the history view and calls initialise on its child views
 func (historyView *HistoryView) Initialise() (err error) {
-	for _, childView := range historyView.views {
-		if err = childView.Initialise(); err != nil {
-			break
-		}
+	if err = historyView.refView.Initialise(); err != nil {
+		return
+	}
+	if err = historyView.commitView.Initialise(); err != nil {
+		return
+	}
+	if err = historyView.diffView.Initialise(); err != nil {
+		return
+	}
+	if err = historyView.gitStatusView.Initialise(); err != nil {
+		return
 	}
 
 	return
@@ -91,7 +122,8 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 
 	viewLayouts := historyView.determineViewDimensions(viewDimension)
 
-	for view, viewLayout := range viewLayouts {
+	for vp, viewLayout := range viewLayouts {
+		view := historyView.layout[vp]
 		win := historyView.viewWins[view]
 		win.Resize(viewLayout.viewDimension)
 		win.Clear()
@@ -107,40 +139,36 @@ func (historyView *HistoryView) Render(viewDimension ViewDimension) (wins []*Win
 	return
 }
 
-func (historyView *HistoryView) determineViewDimensions(viewDimension ViewDimension) map[WindowView]viewLayout {
-	refViewLayout := viewLayout{viewDimension: viewDimension}
-	commitViewLayout := viewLayout{viewDimension: viewDimension}
-	diffViewLayout := viewLayout{viewDimension: viewDimension}
+func (historyView *HistoryView) determineViewDimensions(viewDimension ViewDimension) map[viewPosition]viewLayout {
+	vp1Layout := viewLayout{viewDimension: viewDimension}
+	vp2Layout := viewLayout{viewDimension: viewDimension}
+	vp3Layout := viewLayout{viewDimension: viewDimension}
 
-	refViewLayout.viewDimension.cols = Min(hvBranchViewWidth, viewDimension.cols/2)
+	vp1Layout.viewDimension.cols = Min(hvBranchViewWidth, viewDimension.cols/2)
 
 	if historyView.orientation == voColumn {
-		remainingCols := viewDimension.cols - refViewLayout.viewDimension.cols
+		remainingCols := viewDimension.cols - vp1Layout.viewDimension.cols
 
-		commitViewLayout.viewDimension.cols = remainingCols / 2
-		commitViewLayout.startCol = refViewLayout.viewDimension.cols
+		vp2Layout.viewDimension.cols = remainingCols / 2
+		vp2Layout.startCol = vp1Layout.viewDimension.cols
 
-		diffViewLayout.viewDimension.cols = remainingCols - commitViewLayout.viewDimension.cols
-		diffViewLayout.startCol = viewDimension.cols - diffViewLayout.viewDimension.cols
+		vp3Layout.viewDimension.cols = remainingCols - vp2Layout.viewDimension.cols
+		vp3Layout.startCol = viewDimension.cols - vp3Layout.viewDimension.cols
 	} else {
-		commitViewLayout.viewDimension.cols = viewDimension.cols - refViewLayout.viewDimension.cols
-		commitViewLayout.viewDimension.rows = viewDimension.rows / 2
-		commitViewLayout.startCol = refViewLayout.viewDimension.cols
+		vp2Layout.viewDimension.cols = viewDimension.cols - vp1Layout.viewDimension.cols
+		vp2Layout.viewDimension.rows = viewDimension.rows / 2
+		vp2Layout.startCol = vp1Layout.viewDimension.cols
 
-		diffViewLayout.viewDimension.cols = viewDimension.cols - refViewLayout.viewDimension.cols
-		diffViewLayout.viewDimension.rows = viewDimension.rows - commitViewLayout.viewDimension.rows
-		diffViewLayout.startRow = commitViewLayout.viewDimension.rows
-		diffViewLayout.startCol = refViewLayout.viewDimension.cols
+		vp3Layout.viewDimension.cols = viewDimension.cols - vp1Layout.viewDimension.cols
+		vp3Layout.viewDimension.rows = viewDimension.rows - vp2Layout.viewDimension.rows
+		vp3Layout.startRow = vp2Layout.viewDimension.rows
+		vp3Layout.startCol = vp1Layout.viewDimension.cols
 	}
 
-	log.Debugf("RefView layout: %v", refViewLayout)
-	log.Debugf("CommitView layout: %v", commitViewLayout)
-	log.Debugf("DiffView layout: %v", diffViewLayout)
-
-	return map[WindowView]viewLayout{
-		historyView.refView:    refViewLayout,
-		historyView.commitView: commitViewLayout,
-		historyView.diffView:   diffViewLayout,
+	return map[viewPosition]viewLayout{
+		vp1: vp1Layout,
+		vp2: vp2Layout,
+		vp3: vp3Layout,
 	}
 }
 
@@ -254,4 +282,37 @@ func (historyView *HistoryView) ActiveView() AbstractView {
 	defer historyView.lock.Unlock()
 
 	return historyView.views[historyView.activeViewPos]
+}
+
+// OnCommitSelect ensures the diff view is visible
+func (historyView *HistoryView) OnCommitSelect(commit *Commit) (err error) {
+	historyView.lock.Lock()
+	defer historyView.lock.Unlock()
+
+	historyView.setChildViewAtPosition(historyView.diffView, vp3)
+
+	return
+}
+
+// OnStatusSelected ensures the git status view is visible
+func (historyView *HistoryView) OnStatusSelected(status *Status) (err error) {
+	historyView.lock.Lock()
+	defer historyView.lock.Unlock()
+
+	historyView.setChildViewAtPosition(historyView.gitStatusView, vp3)
+
+	return
+}
+
+func (historyView *HistoryView) setChildViewAtPosition(view WindowView, vp viewPosition) {
+	if historyView.views[vp] != view {
+		historyView.views[vp].OnActiveChange(false)
+
+		historyView.views[vp] = view
+		historyView.layout[vp] = view
+
+		view.OnActiveChange(historyView.activeViewPos == uint(vp))
+
+		historyView.channels.UpdateDisplay()
+	}
 }

@@ -47,6 +47,15 @@ const (
 	CmpDiffviewDifflineLineAdded
 	CmpDiffviewDifflineLineRemoved
 
+	CmpGitStatusStagedTitle
+	CmpGitStatusUnstagedTitle
+	CmpGitStatusUntrackedTitle
+	CmpGitStatusConflictedTitle
+	CmpGitStatusStagedFile
+	CmpGitStatusUnstagedFile
+	CmpGitStatusUntrackedFile
+	CmpGitStatusConflictedFile
+
 	CmpStatusbarviewNormal
 
 	CmpHelpbarviewSpecial

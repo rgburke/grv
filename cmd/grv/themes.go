@@ -168,6 +168,38 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorRed),
 				fgcolor: NewSystemColor(ColorWhite),
 			},
+			CmpGitStatusStagedTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorMagenta),
+			},
+			CmpGitStatusUnstagedTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorMagenta),
+			},
+			CmpGitStatusUntrackedTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorMagenta),
+			},
+			CmpGitStatusConflictedTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorMagenta),
+			},
+			CmpGitStatusStagedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorGreen),
+			},
+			CmpGitStatusUnstagedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+			},
+			CmpGitStatusUntrackedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+			},
+			CmpGitStatusConflictedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+			},
 		},
 	}
 }
@@ -339,6 +371,38 @@ func NewColdTheme() MutableTheme {
 			CmpErrorViewErrors: {
 				bgcolor: NewSystemColor(ColorRed),
 				fgcolor: NewSystemColor(ColorWhite),
+			},
+			CmpGitStatusStagedTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpGitStatusUnstagedTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpGitStatusUntrackedTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpGitStatusConflictedTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpGitStatusStagedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorGreen),
+			},
+			CmpGitStatusUnstagedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+			},
+			CmpGitStatusUntrackedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+			},
+			CmpGitStatusConflictedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
 			},
 		},
 	}
@@ -512,6 +576,38 @@ func NewSolarizedTheme() MutableTheme {
 			CmpErrorViewErrors: {
 				bgcolor: NewColorNumber(160),
 				fgcolor: NewColorNumber(245),
+			},
+			CmpGitStatusStagedTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(61),
+			},
+			CmpGitStatusUnstagedTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(61),
+			},
+			CmpGitStatusUntrackedTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(61),
+			},
+			CmpGitStatusConflictedTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(61),
+			},
+			CmpGitStatusStagedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(64),
+			},
+			CmpGitStatusUnstagedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(160),
+			},
+			CmpGitStatusUntrackedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(160),
+			},
+			CmpGitStatusConflictedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(160),
 			},
 		},
 	}

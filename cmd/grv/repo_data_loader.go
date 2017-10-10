@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
+	slice "github.com/bradfitz/slice"
 	git "gopkg.in/libgit2/git2go.v25"
 )
 
@@ -59,6 +61,171 @@ type Commit struct {
 type Diff struct {
 	diffText bytes.Buffer
 	stats    bytes.Buffer
+}
+
+// StatusEntryType describes the type of change a status entry has undergone
+type StatusEntryType int
+
+// The set of supported StatusEntryTypes
+const (
+	SetNew StatusEntryType = iota
+	SetModified
+	SetDeleted
+	SetRenamed
+	SetTypeChange
+	SetConflicted
+)
+
+var statusEntryTypeMap = map[git.Status]StatusEntryType{
+	git.StatusIndexNew:        SetNew,
+	git.StatusIndexModified:   SetModified,
+	git.StatusIndexDeleted:    SetDeleted,
+	git.StatusIndexRenamed:    SetRenamed,
+	git.StatusIndexTypeChange: SetTypeChange,
+	git.StatusWtNew:           SetNew,
+	git.StatusWtModified:      SetModified,
+	git.StatusWtDeleted:       SetDeleted,
+	git.StatusWtTypeChange:    SetTypeChange,
+	git.StatusWtRenamed:       SetRenamed,
+	git.StatusConflicted:      SetConflicted,
+}
+
+// StatusEntry contains data for a single status entry
+type StatusEntry struct {
+	statusEntryType StatusEntryType
+	diffDelta       git.DiffDelta
+	rawStatusEntry  git.StatusEntry
+}
+
+func newStatusEntry(gitStatus git.Status, statusType StatusType, rawStatusEntry git.StatusEntry) *StatusEntry {
+	var diffDelta git.DiffDelta
+
+	if statusType == StStaged {
+		diffDelta = rawStatusEntry.HeadToIndex
+	} else {
+		diffDelta = rawStatusEntry.IndexToWorkdir
+	}
+
+	return &StatusEntry{
+		statusEntryType: statusEntryTypeMap[gitStatus],
+		diffDelta:       diffDelta,
+		rawStatusEntry:  rawStatusEntry,
+	}
+}
+
+// StatusType describes the different stages a status entry can be in
+type StatusType int
+
+// The different status stages
+const (
+	StStaged StatusType = iota
+	StUnstaged
+	StUntracked
+	StConflicted
+)
+
+var statusTypeMap = map[git.Status]StatusType{
+	git.StatusIndexNew | git.StatusIndexModified | git.StatusIndexDeleted | git.StatusIndexRenamed | git.StatusIndexTypeChange: StStaged,
+	git.StatusWtModified | git.StatusWtDeleted | git.StatusWtTypeChange | git.StatusWtRenamed:                                  StUnstaged,
+	git.StatusWtNew:      StUntracked,
+	git.StatusConflicted: StConflicted,
+}
+
+// Status contains all git status data
+type Status struct {
+	entries map[StatusType][]*StatusEntry
+}
+
+func newStatus() *Status {
+	return &Status{
+		entries: make(map[StatusType][]*StatusEntry),
+	}
+}
+
+// StatusTypes returns the current status stages which have entries
+func (status *Status) StatusTypes() (statusTypes []StatusType) {
+	for statusType := range status.entries {
+		statusTypes = append(statusTypes, statusType)
+	}
+
+	slice.Sort(statusTypes, func(i, j int) bool {
+		return statusTypes[i] < statusTypes[j]
+	})
+
+	return
+}
+
+// Entries returns the status entries for the provided status type
+func (status *Status) Entries(statusType StatusType) []*StatusEntry {
+	statusEntries, ok := status.entries[statusType]
+	if !ok {
+		return nil
+	}
+
+	return statusEntries
+}
+
+// IsEmpty returns true if there are no entries
+func (status *Status) IsEmpty() bool {
+	entryNum := 0
+
+	for _, statusEntries := range status.entries {
+		entryNum += len(statusEntries)
+	}
+
+	return entryNum == 0
+}
+
+func (status *Status) addEntry(rawStatusEntry git.StatusEntry) {
+	for rawStatus, statusType := range statusTypeMap {
+		processedRawStatus := rawStatusEntry.Status & rawStatus
+
+		if processedRawStatus > 0 {
+			if _, ok := status.entries[statusType]; !ok {
+				statusEntries := make([]*StatusEntry, 0)
+				status.entries[statusType] = statusEntries
+			}
+
+			status.entries[statusType] = append(status.entries[statusType],
+				newStatusEntry(processedRawStatus, statusType, rawStatusEntry))
+		}
+	}
+}
+
+// Equal returns true if both status' contain the same files in the same stages
+func (status *Status) Equal(other *Status) bool {
+	statusTypes := status.StatusTypes()
+	otherStatusTypes := other.StatusTypes()
+
+	if !reflect.DeepEqual(statusTypes, otherStatusTypes) {
+		return false
+	}
+
+	for _, statusType := range statusTypes {
+		if !statusEntriesEqual(status.Entries(statusType), other.Entries(statusType)) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func statusEntriesEqual(entries, otherEntries []*StatusEntry) bool {
+	if len(entries) != len(otherEntries) {
+		return false
+	}
+
+	// Simply check if the same set of files have been modified in the same way
+	for entryIndex, entry := range entries {
+		otherEntry := otherEntries[entryIndex]
+
+		if entry.diffDelta.Status != otherEntry.diffDelta.Status ||
+			entry.diffDelta.NewFile.Path != otherEntry.diffDelta.NewFile.Path {
+			return false
+		}
+	}
+
+	return true
 }
 
 // String returns the oid hash
@@ -430,4 +597,37 @@ func (repoDataLoader *RepoDataLoader) Diff(commit *Commit) (diff *Diff, err erro
 	}
 
 	return
+}
+
+// LoadStatus loads git status and populates a Status instance with the data
+func (repoDataLoader *RepoDataLoader) LoadStatus() (*Status, error) {
+	statusOptions := git.StatusOptions{
+		Show:  git.StatusShowIndexAndWorkdir,
+		Flags: git.StatusOptIncludeUntracked,
+	}
+
+	statusList, err := repoDataLoader.repo.StatusList(&statusOptions)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to determine repository status: %v", err)
+	}
+
+	defer statusList.Free()
+
+	entryCount, err := statusList.EntryCount()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to determine repository status: %v", err)
+	}
+
+	status := newStatus()
+
+	for i := 0; i < entryCount; i++ {
+		statusEntry, err := statusList.ByIndex(i)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to determine repository status: %v", err)
+		}
+
+		status.addEntry(statusEntry)
+	}
+
+	return status, nil
 }

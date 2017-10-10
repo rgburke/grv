@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
 	rw "github.com/mattn/go-runewidth"
 )
@@ -50,4 +51,14 @@ func NonPrintableCharString(codePoint rune) string {
 	}
 
 	return string(codePoint)
+}
+
+// CanonicalPath returns the canonical version of the provided path
+func CanonicalPath(path string) (canonicalPath string, err error) {
+	canonicalPath, err = filepath.EvalSymlinks(path)
+	if err != nil {
+		return
+	}
+
+	return filepath.Abs(canonicalPath)
 }

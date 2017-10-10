@@ -299,11 +299,13 @@ func (refView *RefView) RegisterRefListener(refListener RefListener) {
 func (refView *RefView) notifyRefListeners(refName string, oid *Oid) (err error) {
 	log.Debugf("Notifying RefListeners of selected oid %v", oid)
 
-	for _, refListener := range refView.refListeners {
-		if err = refListener.OnRefSelect(refName, oid); err != nil {
-			break
+	go func() {
+		for _, refListener := range refView.refListeners {
+			if err = refListener.OnRefSelect(refName, oid); err != nil {
+				break
+			}
 		}
-	}
+	}()
 
 	return
 }

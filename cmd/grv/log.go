@@ -17,6 +17,8 @@ const (
 	logFileDateFormat = "2006-01-02 15:04:05.000-0700"
 )
 
+var logFile string
+
 type fileHook struct{}
 
 func (hook fileHook) Fire(entry *log.Entry) (err error) {
@@ -75,12 +77,19 @@ func (formatter logFormatter) formatBracketEntry(buffer *bytes.Buffer, value str
 	buffer.WriteString("] ")
 }
 
+// LogFile returns the path of the file GRV is logging to
+func LogFile() string {
+	return logFile
+}
+
 // InitialiseLogging sets up logging
 func InitialiseLogging(logLevel, logFilePath string) {
 	if logLevel == MnLogLevelDefault {
 		log.SetOutput(ioutil.Discard)
 		return
 	}
+
+	logFile = logFilePath
 
 	logLevels := map[string]log.Level{
 		"PANIC": log.PanicLevel,
