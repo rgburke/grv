@@ -48,7 +48,6 @@ type RepoData interface {
 	RemoveCommitFilter(*Oid) error
 	Diff(commit *Commit) (*Diff, error)
 	LoadStatus() (err error)
-	Status() *Status
 	RegisterStatusListener(StatusListener)
 }
 
@@ -472,7 +471,6 @@ type statusManager struct {
 func newStatusManager(repoDataLoader *RepoDataLoader) *statusManager {
 	return &statusManager{
 		repoDataLoader: repoDataLoader,
-		status:         newStatus(),
 	}
 }
 
@@ -485,7 +483,7 @@ func (statusManager *statusManager) loadStatus() (err error) {
 	statusManager.lock.Lock()
 	defer statusManager.lock.Unlock()
 
-	if !statusManager.status.Equal(newStatus) {
+	if statusManager.status == nil || !statusManager.status.Equal(newStatus) {
 		log.Debugf("Git status has changed. Notifying status listeners.")
 		statusManager.status = newStatus
 
@@ -508,6 +506,8 @@ func (statusManager *statusManager) registerStatusListener(statusListener Status
 	if statusListener == nil {
 		return
 	}
+
+	log.Debugf("Registering status listener %T", statusListener)
 
 	statusManager.lock.Lock()
 	defer statusManager.lock.Unlock()
@@ -910,11 +910,6 @@ func (repoData *RepositoryData) Diff(commit *Commit) (*Diff, error) {
 func (repoData *RepositoryData) LoadStatus() (err error) {
 	log.Debugf("Loading git status")
 	return repoData.statusManager.loadStatus()
-}
-
-// Status returns the cached git status
-func (repoData *RepositoryData) Status() *Status {
-	return repoData.statusManager.getStatus()
 }
 
 // RegisterStatusListener registers a listener to be notified when git status changes

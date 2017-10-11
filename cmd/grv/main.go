@@ -25,6 +25,7 @@ func main() {
 	args := parseArgs()
 	InitialiseLogging(args.logLevel, args.logFilePath)
 
+	log.Debugf("Creating GRV instance")
 	grv := NewGRV()
 
 	if err := grv.Initialise(args.repoFilePath); err != nil {

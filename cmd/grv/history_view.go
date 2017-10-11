@@ -94,6 +94,8 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 
 // Initialise sets up the history view and calls initialise on its child views
 func (historyView *HistoryView) Initialise() (err error) {
+	log.Info("Initialising HistoryView")
+
 	if err = historyView.refView.Initialise(); err != nil {
 		return
 	}
@@ -289,6 +291,7 @@ func (historyView *HistoryView) OnCommitSelect(commit *Commit) (err error) {
 	historyView.lock.Lock()
 	defer historyView.lock.Unlock()
 
+	log.Debugf("Replacing GitStatusView with DiffView")
 	historyView.setChildViewAtPosition(historyView.diffView, vp3)
 
 	return
@@ -299,6 +302,7 @@ func (historyView *HistoryView) OnStatusSelected(status *Status) (err error) {
 	historyView.lock.Lock()
 	defer historyView.lock.Unlock()
 
+	log.Debugf("Replacing DiffView with GitStatusView")
 	historyView.setChildViewAtPosition(historyView.gitStatusView, vp3)
 
 	return

@@ -450,13 +450,13 @@ func (grv *GRV) runFileSystemMonitorLoop(waitGroup *sync.WaitGroup, exitCh <-cha
 	ignorePaths := map[string]bool{}
 
 	logFile := LogFile()
-	log.Debugf("CANON: %v", logFile)
 	if logFile != "" {
 		ignorePaths[logFile] = true
+		log.Debugf("Ignoring filesystem events for log file %v", logFile)
 
 		if canonicalLogFile, err := CanonicalPath(logFile); err == nil {
 			ignorePaths[canonicalLogFile] = true
-			log.Debugf("CANON: %v", canonicalLogFile)
+			log.Debugf("Ignoring filesystem events for log file canonical path %v", canonicalLogFile)
 		}
 	}
 
@@ -464,7 +464,8 @@ func (grv *GRV) runFileSystemMonitorLoop(waitGroup *sync.WaitGroup, exitCh <-cha
 		select {
 		case event := <-eventCh:
 			if _, ignore := ignorePaths[event.Path()]; !ignore {
-				log.Debugf("FS event: %v", event)
+				log.Debugf("FileSystem event: %v", event)
+
 				if !timerActive {
 					timer.Reset(grvMaxGitStatusFrequency)
 					timerActive = true

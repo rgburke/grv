@@ -87,8 +87,6 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 	}
 
 	commitView.viewSearch = NewViewSearch(commitView, channels)
-
-	log.Debugf("Registering CommitView as StatusListener")
 	commitView.repoData.RegisterStatusListener(commitView)
 
 	return commitView
@@ -371,7 +369,7 @@ func (refreshTask *loadingCommitsRefreshTask) start() {
 }
 
 func (refreshTask *loadingCommitsRefreshTask) stop() {
-	log.Debugf("Stopping commit load refresh task %v", refreshTask.ticker)
+	log.Debug("Stopping commit load refresh task")
 
 	if refreshTask.ticker != nil {
 		refreshTask.ticker.Stop()
@@ -472,8 +470,10 @@ func (commitView *CommitView) OnStatusChanged(newStatus *Status) {
 		viewPos := commitView.ViewPos()
 
 		if oldStatus.IsEmpty() && !newStatus.IsEmpty() {
+			log.Debug("Status now visible: Moving active row index one line up")
 			viewPos.MoveLineDown(commitView.lineNumber())
 		} else if !oldStatus.IsEmpty() && newStatus.IsEmpty() {
+			log.Debug("Status no longer visible: Moving active row index one line down")
 			viewPos.MoveLineUp()
 			commitView.channels.ReportError(commitView.selectCommit(viewPos.ActiveRowIndex()))
 		}

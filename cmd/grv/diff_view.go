@@ -136,6 +136,7 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 
 // Initialise does nothing
 func (diffView *DiffView) Initialise() (err error) {
+	log.Info("Initialising DiffView")
 	return
 }
 

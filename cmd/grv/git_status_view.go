@@ -84,6 +84,8 @@ func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 	gitStatusView.lock.Lock()
 	defer gitStatusView.lock.Unlock()
 
+	log.Debug("Rendering GitStatusView")
+
 	renderedStatus := gitStatusView.renderedStatus
 	renderedStatusNum := uint(len(renderedStatus))
 	rows := win.Rows() - 2
@@ -248,8 +250,6 @@ func moveUpStatusEntry(gitStatusView *GitStatusView, action Action) (err error) 
 }
 
 func moveDownStatusEntry(gitStatusView *GitStatusView, action Action) (err error) {
-	log.Debug("Moving up one status entry")
-
 	viewPos := gitStatusView.viewPos
 	renderedStatus := gitStatusView.renderedStatus
 	renderedStatusNum := uint(len(renderedStatus))
