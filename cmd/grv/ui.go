@@ -133,6 +133,7 @@ type NCursesUI struct {
 	pipe          signalPipe
 	maxColors     int
 	maxColorPairs int
+	suspended     bool
 }
 
 // NewNCursesDisplay creates a new NCursesUI instance
@@ -243,6 +244,8 @@ func (ui *NCursesUI) Suspend() {
 	defer ui.lock.Unlock()
 
 	gc.End()
+	ui.suspended = true
+	ui.cancelGetInput()
 }
 
 // Resume reinitialises ncurses
@@ -251,6 +254,7 @@ func (ui *NCursesUI) Resume() (err error) {
 	defer ui.lock.Unlock()
 
 	ui.stdscr.Refresh()
+	ui.suspended = false
 	return ui.resize()
 }
 
@@ -439,6 +443,10 @@ func drawWindow(win *Window, nwin *nCursesWindow) {
 func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 	key = UINoKey
 
+	if ui.suspended {
+		return
+	}
+
 	if !force {
 		rfds := &syscall.FdSet{}
 		stdinFd := syscall.Stdin
@@ -506,6 +514,10 @@ func (ui *NCursesUI) CancelGetInput() error {
 	ui.lock.Lock()
 	defer ui.lock.Unlock()
 
+	return ui.cancelGetInput()
+}
+
+func (ui *NCursesUI) cancelGetInput() error {
 	_, err := ui.pipe.write.Write([]byte{0})
 	return err
 }
