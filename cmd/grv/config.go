@@ -94,6 +94,8 @@ var themeComponents = map[string]ThemeComponentID{
 	cfCommitView + ".LocalBranch":  CmpCommitviewLocalBranch,
 	cfCommitView + ".RemoteBranch": CmpCommitviewRemoteBranch,
 
+	cfDiffView + ".Title":                 CmpDiffviewTitle,
+	cfDiffView + ".Footer":                CmpDiffviewFooter,
 	cfDiffView + ".Normal":                CmpDiffviewDifflineNormal,
 	cfDiffView + ".CommitAuthor":          CmpDiffviewDifflineDiffCommitAuthor,
 	cfDiffView + ".CommitAuthorDate":      CmpDiffviewDifflineDiffCommitAuthorDate,

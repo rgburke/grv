@@ -94,12 +94,14 @@ type diffLines struct {
 	viewPos ViewPos
 }
 
+type diffID string
+
 // DiffView contains all state for the diff view
 type DiffView struct {
 	channels      *Channels
 	repoData      RepoData
-	activeCommit  *Commit
-	commitDiffs   map[*Commit]*diffLines
+	activeDiff    diffID
+	diffs         map[diffID]*diffLines
 	viewPos       ViewPos
 	viewDimension ViewDimension
 	handlers      map[ActionType]diffViewHandler
@@ -111,10 +113,10 @@ type DiffView struct {
 // NewDiffView creates a new diff view instance
 func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 	diffView := &DiffView{
-		repoData:    repoData,
-		channels:    channels,
-		viewPos:     NewViewPosition(),
-		commitDiffs: make(map[*Commit]*diffLines),
+		repoData: repoData,
+		channels: channels,
+		viewPos:  NewViewPosition(),
+		diffs:    make(map[diffID]*diffLines),
 		handlers: map[ActionType]diffViewHandler{
 			ActionPrevLine:    moveUpDiffLine,
 			ActionNextLine:    moveDownDiffLine,
@@ -147,13 +149,13 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 
 	diffView.viewDimension = win.ViewDimensions()
 
-	if diffView.activeCommit == nil {
+	if diffView.activeDiff == "" {
 		return
 	}
 
 	rows := win.Rows() - 2
 	viewPos := diffView.viewPos
-	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	diffLines := diffView.diffs[diffView.activeDiff]
 	lineNum := uint(len(diffLines.lines))
 	viewPos.DetermineViewStartRow(rows, lineNum)
 
@@ -220,11 +222,11 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 
 	win.DrawBorder()
 
-	if err = win.SetTitle(CmpCommitviewTitle, "Diff for commit %v", diffView.activeCommit.commit.Id().String()); err != nil {
+	if err = win.SetTitle(CmpDiffviewTitle, "Diff for %v", diffView.activeDiff); err != nil {
 		return
 	}
 
-	if err = win.SetFooter(CmpCommitviewFooter, "Line %v of %v", viewPos.ActiveRowIndex()+1, lineNum); err != nil {
+	if err = win.SetFooter(CmpDiffviewFooter, "Line %v of %v", viewPos.ActiveRowIndex()+1, lineNum); err != nil {
 		return
 	}
 
@@ -242,11 +244,11 @@ func (diffView *DiffView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
-	if diffView.activeCommit == nil {
+	if diffView.activeDiff == "" {
 		return
 	}
 
-	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	diffLines := diffView.diffs[diffView.activeDiff]
 	lineIndex := diffView.viewPos.ActiveRowIndex()
 	line := diffLines.lines[lineIndex]
 
@@ -280,31 +282,34 @@ func (diffView *DiffView) OnCommitSelect(commit *Commit) (err error) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
-	if diffLines, ok := diffView.commitDiffs[diffView.activeCommit]; ok {
-		diffLines.viewPos = diffView.viewPos
-	}
+	diffID := diffID(commit.oid.String())
 
-	if diffLines, ok := diffView.commitDiffs[commit]; ok {
-		diffView.activeCommit = commit
+	if diffLines, ok := diffView.diffs[diffID]; ok {
+		diffView.activeDiff = diffID
 		diffView.viewPos = diffLines.viewPos
 		diffView.channels.UpdateDisplay()
 		return
 	}
 
-	if err = diffView.generateDiffLines(commit); err != nil {
+	lines, err := diffView.generateDiffLines(commit)
+	if err != nil {
 		return
 	}
 
-	diffView.activeCommit = commit
-	diffView.viewPos = NewViewPosition()
+	diffLines := &diffLines{
+		lines:   lines,
+		viewPos: NewViewPosition(),
+	}
+
+	diffView.activeDiff = diffID
+	diffView.diffs[diffID] = diffLines
+	diffView.viewPos = diffLines.viewPos
 	diffView.channels.UpdateDisplay()
 
 	return
 }
 
-func (diffView *DiffView) generateDiffLines(commit *Commit) (err error) {
-	var lines []*diffLineData
-
+func (diffView *DiffView) generateDiffLines(commit *Commit) (lines []*diffLineData, err error) {
 	author := commit.commit.Author()
 	committer := commit.commit.Committer()
 
@@ -371,10 +376,6 @@ func (diffView *DiffView) generateDiffLines(commit *Commit) (err error) {
 		})
 	}
 
-	diffView.commitDiffs[commit] = &diffLines{
-		lines: lines,
-	}
-
 	return
 }
 
@@ -424,7 +425,7 @@ func (diffView *DiffView) Line(lineIndex uint) (line string) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
-	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	diffLines := diffView.diffs[diffView.activeDiff]
 	lineNum := uint(len(diffLines.lines))
 
 	if lineIndex >= lineNum {
@@ -443,14 +444,14 @@ func (diffView *DiffView) LineNumber() (lineNumber uint) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
-	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	diffLines := diffView.diffs[diffView.activeDiff]
 	lineNum := uint(len(diffLines.lines))
 
 	return lineNum
 }
 
 func moveDownDiffLine(diffView *DiffView, action Action) (err error) {
-	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	diffLines := diffView.diffs[diffView.activeDiff]
 	lineNum := uint(len(diffLines.lines))
 	viewPos := diffView.viewPos
 
@@ -474,7 +475,7 @@ func moveUpDiffLine(diffView *DiffView, action Action) (err error) {
 }
 
 func moveDownDiffPage(diffView *DiffView, action Action) (err error) {
-	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	diffLines := diffView.diffs[diffView.activeDiff]
 	lineNum := uint(len(diffLines.lines))
 	viewPos := diffView.viewPos
 
@@ -529,7 +530,7 @@ func moveToFirstDiffLine(diffView *DiffView, action Action) (err error) {
 }
 
 func moveToLastDiffLine(diffView *DiffView, action Action) (err error) {
-	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	diffLines := diffView.diffs[diffView.activeDiff]
 	lineNum := uint(len(diffLines.lines))
 	viewPos := diffView.viewPos
 
@@ -553,7 +554,7 @@ func centerDiffView(diffView *DiffView, action Action) (err error) {
 }
 
 func selectDiffLine(diffView *DiffView, action Action) (err error) {
-	diffLines := diffView.commitDiffs[diffView.activeCommit]
+	diffLines := diffView.diffs[diffView.activeDiff]
 	lineIndex := diffView.viewPos.ActiveRowIndex()
 	diffLine := diffLines.lines[lineIndex]
 

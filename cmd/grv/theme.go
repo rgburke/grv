@@ -32,6 +32,8 @@ const (
 	CmpCommitviewLocalBranch
 	CmpCommitviewRemoteBranch
 
+	CmpDiffviewTitle
+	CmpDiffviewFooter
 	CmpDiffviewDifflineNormal
 	CmpDiffviewDifflineDiffCommitAuthor
 	CmpDiffviewDifflineDiffCommitAuthorDate

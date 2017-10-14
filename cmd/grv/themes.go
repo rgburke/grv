@@ -56,6 +56,14 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorMagenta),
 			},
+			CmpDiffviewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpDiffviewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
 			CmpDiffviewDifflineNormal: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
@@ -259,6 +267,14 @@ func NewColdTheme() MutableTheme {
 			CmpCommitviewRemoteBranch: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorMagenta),
+			},
+			CmpDiffviewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpDiffviewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
 			},
 			CmpDiffviewDifflineNormal: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -464,6 +480,14 @@ func NewSolarizedTheme() MutableTheme {
 			CmpCommitviewRemoteBranch: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(125),
+			},
+			CmpDiffviewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(37),
+			},
+			CmpDiffviewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(37),
 			},
 			CmpDiffviewDifflineNormal: {
 				bgcolor: NewSystemColor(ColorNone),
