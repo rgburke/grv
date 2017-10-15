@@ -342,7 +342,7 @@ func (diffView *DiffView) generateDiffLines(commit *Commit) (lines []*diffLineDa
 		},
 	)
 
-	diff, err := diffView.repoData.Diff(commit)
+	diff, err := diffView.repoData.DiffCommit(commit)
 	if err != nil {
 		return
 	}

@@ -46,7 +46,8 @@ type RepoData interface {
 	Commit(oid *Oid) (*Commit, error)
 	AddCommitFilter(*Oid, *CommitFilter) error
 	RemoveCommitFilter(*Oid) error
-	Diff(commit *Commit) (*Diff, error)
+	DiffCommit(commit *Commit) (*Diff, error)
+	DiffFile(statusType StatusType, path string) (*Diff, error)
 	LoadStatus() (err error)
 	RegisterStatusListener(StatusListener)
 }
@@ -901,9 +902,17 @@ func (repoData *RepositoryData) RemoveCommitFilter(oid *Oid) error {
 	return repoData.refCommitSets.removeCommitFilter(oid)
 }
 
-// Diff loads a diff for the specified oid
-func (repoData *RepositoryData) Diff(commit *Commit) (*Diff, error) {
-	return repoData.repoDataLoader.Diff(commit)
+// DiffCommit loads a diff between the commit with the specified oid and its parent
+// If the commit has more than one parent no diff is returned
+func (repoData *RepositoryData) DiffCommit(commit *Commit) (*Diff, error) {
+	return repoData.repoDataLoader.DiffCommit(commit)
+}
+
+// DiffFile Generates a diff for the provided file
+// If statusType is StStaged then the diff is between HEAD and the index
+// If statusType is StUnstaged then the diff is between index and the working directory
+func (repoData *RepositoryData) DiffFile(statusType StatusType, path string) (*Diff, error) {
+	return repoData.repoDataLoader.DiffFile(statusType, path)
 }
 
 // LoadStatus loads the current git status

@@ -524,8 +524,9 @@ func (repoDataLoader *RepoDataLoader) Commit(oid *Oid) (commit *Commit, err erro
 	return
 }
 
-// Diff generates a diff for the provided commit
-func (repoDataLoader *RepoDataLoader) Diff(commit *Commit) (diff *Diff, err error) {
+// DiffCommit loads a diff between the commit with the specified oid and its parent
+// If the commit has more than one parent no diff is returned
+func (repoDataLoader *RepoDataLoader) DiffCommit(commit *Commit) (diff *Diff, err error) {
 	diff = &Diff{}
 
 	if commit.commit.ParentCount() > 1 {
@@ -593,6 +594,96 @@ func (repoDataLoader *RepoDataLoader) Diff(commit *Commit) (diff *Diff, err erro
 
 		if err := patch.Free(); err != nil {
 			log.Errorf("Error when freeing patch: %v", err)
+		}
+	}
+
+	return
+}
+
+// DiffFile Generates a diff for the provided file
+// If statusType is StStaged then the diff is between HEAD and the index
+// If statusType is StUnstaged then the diff is between index and the working directory
+func (repoDataLoader *RepoDataLoader) DiffFile(statusType StatusType, path string) (diff *Diff, err error) {
+	diff = &Diff{}
+	var rawDiff *git.Diff
+	var index *git.Index
+	var options git.DiffOptions
+
+	switch statusType {
+	case StStaged:
+		var oid *Oid
+		var commit *Commit
+		var tree *git.Tree
+
+		if oid, _, err = repoDataLoader.Head(); err != nil {
+			return
+		}
+
+		if commit, err = repoDataLoader.Commit(oid); err != nil {
+			return
+		}
+
+		if tree, err = commit.commit.Tree(); err != nil {
+			return
+		}
+
+		if index, err = repoDataLoader.repo.Index(); err != nil {
+			return
+		}
+
+		if options, err = git.DefaultDiffOptions(); err != nil {
+			return
+		}
+
+		if rawDiff, err = repoDataLoader.repo.DiffTreeToIndex(tree, index, &options); err != nil {
+			return
+		}
+	case StUnstaged:
+		if index, err = repoDataLoader.repo.Index(); err != nil {
+			return
+		}
+
+		if options, err = git.DefaultDiffOptions(); err != nil {
+			return
+		}
+
+		if rawDiff, err = repoDataLoader.repo.DiffIndexToWorkdir(index, &options); err != nil {
+			return
+		}
+	default:
+		return
+	}
+
+	numDeltas, err := rawDiff.NumDeltas()
+	if err != nil {
+		return
+	}
+
+	var diffDelta git.DiffDelta
+	var patch *git.Patch
+	var patchString string
+
+	for i := 0; i < numDeltas; i++ {
+		if diffDelta, err = rawDiff.GetDelta(i); err != nil {
+			return
+		}
+
+		if diffDelta.NewFile.Path == path {
+			if patch, err = rawDiff.Patch(i); err != nil {
+				return
+			}
+
+			if patchString, err = patch.String(); err != nil {
+				return
+			}
+
+			diff.diffText.WriteString(patchString)
+
+			if err := patch.Free(); err != nil {
+				log.Errorf("Error when freeing patch: %v", err)
+			}
+
+			break
 		}
 	}
 
