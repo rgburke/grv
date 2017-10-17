@@ -44,16 +44,24 @@ type renderedStatusEntry struct {
 	StatusEntry      *StatusEntry
 }
 
+// GitStatusEntrySelectedListener is notified when either a file
+// or a non-file entry is selected in the GitStatusView
+type GitStatusEntrySelectedListener interface {
+	OnFileSelected(statusType StatusType, path string)
+	OnNonFileEntrySelected()
+}
+
 // GitStatusView manages displaying git status data
 type GitStatusView struct {
-	repoData       RepoData
-	channels       *Channels
-	status         *Status
-	renderedStatus []*renderedStatusEntry
-	viewPos        ViewPos
-	handlers       map[ActionType]gitStatusViewHandler
-	active         bool
-	lock           sync.Mutex
+	repoData               RepoData
+	channels               *Channels
+	status                 *Status
+	renderedStatus         []*renderedStatusEntry
+	viewPos                ViewPos
+	handlers               map[ActionType]gitStatusViewHandler
+	active                 bool
+	entrySelectedListeners []GitStatusEntrySelectedListener
+	lock                   sync.Mutex
 }
 
 // NewGitStatusView created a new GitStatusView
@@ -159,6 +167,66 @@ func (gitStatusView *GitStatusView) RenderHelpBar(*LineBuilder) (err error) {
 	return
 }
 
+// RegisterGitStatusFileSelectedListener registers a listener to be notified when the selected entry changes
+func (gitStatusView *GitStatusView) RegisterGitStatusFileSelectedListener(entrySelectedListener GitStatusEntrySelectedListener) {
+	gitStatusView.lock.Lock()
+	defer gitStatusView.lock.Unlock()
+
+	log.Debugf("Registering %T as a GitStatusFileSelectedListener", entrySelectedListener)
+	gitStatusView.entrySelectedListeners = append(gitStatusView.entrySelectedListeners, entrySelectedListener)
+}
+
+func (gitStatusView *GitStatusView) notifyFileEntrySelected(renderedStatus *renderedStatusEntry) {
+	log.Debugf("Notifying git status file selected listeners that file is selected")
+
+	go func() {
+		for _, entrySelectedListener := range gitStatusView.entrySelectedListeners {
+			entrySelectedListener.OnFileSelected(renderedStatus.statusType, renderedStatus.StatusEntry.diffDelta.NewFile.Path)
+		}
+	}()
+
+	return
+}
+
+func (gitStatusView *GitStatusView) notifyNonFileEntrySelected() {
+	log.Debugf("Notifying git status file selected listeners that a non-file is selected")
+
+	go func() {
+		for _, entrySelectedListener := range gitStatusView.entrySelectedListeners {
+			entrySelectedListener.OnNonFileEntrySelected()
+		}
+	}()
+
+	return
+}
+
+func (gitStatusView *GitStatusView) selectEntry(index uint) (err error) {
+	renderedStatusNum := uint(len(gitStatusView.renderedStatus))
+
+	if index > 0 && index >= renderedStatusNum {
+		return fmt.Errorf("Invalid rendered status index: %v out of %v entries", index, renderedStatusNum)
+	}
+
+	gitStatusView.viewPos.SetActiveRowIndex(index)
+
+	if renderedStatusNum == 0 {
+		return
+	}
+
+	renderedStatusEntry := gitStatusView.renderedStatus[index]
+	log.Debugf("Selecting git status entry with index %v: %v", index, renderedStatusEntry.text)
+
+	if renderedStatusEntry.StatusEntry != nil {
+		if renderedStatusEntry.statusType != StUntracked {
+			gitStatusView.notifyFileEntrySelected(renderedStatusEntry)
+		}
+	} else {
+		gitStatusView.notifyNonFileEntrySelected()
+	}
+
+	return
+}
+
 // OnStatusChanged updates the git status view with the latest git status
 func (gitStatusView *GitStatusView) OnStatusChanged(status *Status) {
 	gitStatusView.lock.Lock()
@@ -170,11 +238,16 @@ func (gitStatusView *GitStatusView) OnStatusChanged(status *Status) {
 	renderedStatus := gitStatusView.renderedStatus
 	renderedStatusNum := uint(len(renderedStatus))
 	viewPos := gitStatusView.viewPos
+	index := viewPos.ActiveRowIndex()
 
 	if renderedStatusNum == 0 {
-		viewPos.SetActiveRowIndex(0)
+		index = 0
 	} else if viewPos.ActiveRowIndex() >= renderedStatusNum {
-		viewPos.SetActiveRowIndex(renderedStatusNum - 1)
+		index = renderedStatusNum - 1
+	}
+
+	if err := gitStatusView.selectEntry(index); err != nil {
+		log.Errorf("Error when attempting to selected status entry at index %v out of %v entries", index, renderedStatusNum)
 	}
 }
 
@@ -243,6 +316,8 @@ func moveUpStatusEntry(gitStatusView *GitStatusView, action Action) (err error) 
 		}
 	}
 
+	gitStatusView.selectEntry(viewPos.ActiveRowIndex())
+
 	log.Debug("Moved up one status entry")
 	gitStatusView.channels.UpdateDisplay()
 
@@ -267,6 +342,8 @@ func moveDownStatusEntry(gitStatusView *GitStatusView, action Action) (err error
 			break
 		}
 	}
+
+	gitStatusView.selectEntry(viewPos.ActiveRowIndex())
 
 	log.Debug("Moved down one status entry")
 	gitStatusView.channels.UpdateDisplay()

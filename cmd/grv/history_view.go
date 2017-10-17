@@ -63,6 +63,7 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 
 	refView.RegisterRefListener(commitView)
 	commitView.RegisterCommitListner(diffView)
+	gitStatusView.RegisterGitStatusFileSelectedListener(diffView)
 
 	historyView := &HistoryView{
 		channels:      channels,
@@ -88,6 +89,8 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 
 	commitView.RegisterCommitListner(historyView)
 	commitView.RegisterStatusSelectedListener(historyView)
+
+	gitStatusView.RegisterGitStatusFileSelectedListener(historyView)
 
 	return historyView
 }
@@ -306,6 +309,26 @@ func (historyView *HistoryView) OnStatusSelected(status *Status) (err error) {
 	historyView.setChildViewAtPosition(historyView.gitStatusView, vp3)
 
 	return
+}
+
+// OnFileSelected ensures the diff view is visible when a file entry is selected in
+// the git status view
+func (historyView *HistoryView) OnFileSelected(statusType StatusType, path string) {
+	historyView.lock.Lock()
+	defer historyView.lock.Unlock()
+
+	log.Debugf("Replacing CommitView with DiffView")
+	historyView.setChildViewAtPosition(historyView.diffView, vp2)
+}
+
+// OnNonFileEntrySelected ensures the commit view is visible when a file entry is selected in
+// the git status view
+func (historyView *HistoryView) OnNonFileEntrySelected() {
+	historyView.lock.Lock()
+	defer historyView.lock.Unlock()
+
+	log.Debugf("Replacing DiffView with CommitView")
+	historyView.setChildViewAtPosition(historyView.commitView, vp2)
 }
 
 func (historyView *HistoryView) setChildViewAtPosition(view WindowView, vp viewPosition) {

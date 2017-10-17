@@ -291,7 +291,7 @@ func (diffView *DiffView) OnCommitSelect(commit *Commit) (err error) {
 		return
 	}
 
-	lines, err := diffView.generateDiffLines(commit)
+	lines, err := diffView.generateDiffLinesForCommit(commit)
 	if err != nil {
 		return
 	}
@@ -309,7 +309,41 @@ func (diffView *DiffView) OnCommitSelect(commit *Commit) (err error) {
 	return
 }
 
-func (diffView *DiffView) generateDiffLines(commit *Commit) (lines []*diffLineData, err error) {
+// OnFileSelected loads/fetches the diff for the selected file and refreshes the display
+func (diffView *DiffView) OnFileSelected(statusType StatusType, path string) {
+	log.Debugf("DiffView loading diff for file %v", path)
+
+	diffView.lock.Lock()
+	defer diffView.lock.Unlock()
+
+	// Reload diff each time as staged or unstaged files diffs are liable
+	// to change frequently
+	diff, err := diffView.repoData.DiffFile(statusType, path)
+	if err != nil {
+		return
+	}
+
+	lines, err := diffView.generateDiffLinesForDiff(diff)
+	if err != nil {
+		return
+	}
+
+	diffLines := &diffLines{
+		lines:   lines,
+		viewPos: NewViewPosition(),
+	}
+
+	diffID := diffID(path)
+	diffView.diffs[diffID] = diffLines
+	diffView.activeDiff = diffID
+	diffView.viewPos = diffLines.viewPos
+	diffView.channels.UpdateDisplay()
+}
+
+// OnNonFileEntrySelected does nothing
+func (diffView *DiffView) OnNonFileEntrySelected() {}
+
+func (diffView *DiffView) generateDiffLinesForCommit(commit *Commit) (lines []*diffLineData, err error) {
 	author := commit.commit.Author()
 	committer := commit.commit.Committer()
 
@@ -347,6 +381,17 @@ func (diffView *DiffView) generateDiffLines(commit *Commit) (lines []*diffLineDa
 		return
 	}
 
+	diffContent, err := diffView.generateDiffLinesForDiff(diff)
+	if err != nil {
+		return
+	}
+
+	lines = append(lines, diffContent...)
+
+	return
+}
+
+func (diffView *DiffView) generateDiffLinesForDiff(diff *Diff) (lines []*diffLineData, err error) {
 	scanner := bufio.NewScanner(bytes.NewReader(diff.stats.Bytes()))
 
 	for scanner.Scan() {
@@ -362,11 +407,11 @@ func (diffView *DiffView) generateDiffLines(commit *Commit) (lines []*diffLineDa
 		if prevLine.lineType == dltDiffStatsFile {
 			prevLine.lineType = dltNormal
 		}
-	}
 
-	lines = append(lines, &diffLineData{
-		lineType: dltNormal,
-	})
+		lines = append(lines, &diffLineData{
+			lineType: dltNormal,
+		})
+	}
 
 	scanner = bufio.NewScanner(bytes.NewReader(diff.diffText.Bytes()))
 
