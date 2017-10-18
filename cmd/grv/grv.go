@@ -91,10 +91,6 @@ func (channels *Channels) ReportError(err error) {
 
 // ReportErrors reports multiple errors to be displayed
 func (channels *Channels) ReportErrors(errors []error) {
-	if errors == nil {
-		return
-	}
-
 	for _, err := range errors {
 		channels.ReportError(err)
 	}
