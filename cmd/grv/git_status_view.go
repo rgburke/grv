@@ -61,6 +61,8 @@ type GitStatusView struct {
 	handlers               map[ActionType]gitStatusViewHandler
 	active                 bool
 	entrySelectedListeners []GitStatusEntrySelectedListener
+	viewDimension          ViewDimension
+	viewSearch             *ViewSearch
 	lock                   sync.Mutex
 }
 
@@ -71,11 +73,19 @@ func NewGitStatusView(repoData RepoData, channels *Channels) *GitStatusView {
 		channels: channels,
 		viewPos:  NewViewPosition(),
 		handlers: map[ActionType]gitStatusViewHandler{
-			ActionPrevLine: moveUpStatusEntry,
-			ActionNextLine: moveDownStatusEntry,
+			ActionPrevLine:    moveUpGitStatusEntry,
+			ActionNextLine:    moveDownGitStatusEntry,
+			ActionPrevPage:    moveUpGitStatusPage,
+			ActionNextPage:    moveDownGitStatusPage,
+			ActionScrollRight: scrollGitStatusViewRight,
+			ActionScrollLeft:  scrollGitStatusViewLeft,
+			ActionFirstLine:   moveToFirstGitStatusEntry,
+			ActionLastLine:    moveToLastGitStatusEntry,
+			ActionCenterView:  centerGitStatusView,
 		},
 	}
 
+	gitStatusView.viewSearch = NewViewSearch(gitStatusView, channels)
 	repoData.RegisterStatusListener(gitStatusView)
 
 	return gitStatusView
@@ -94,11 +104,13 @@ func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 
 	log.Debug("Rendering GitStatusView")
 
+	gitStatusView.viewDimension = win.ViewDimensions()
+
 	renderedStatus := gitStatusView.renderedStatus
 	renderedStatusNum := uint(len(renderedStatus))
 	rows := win.Rows() - 2
 
-	viewPos := gitStatusView.viewPos
+	viewPos := gitStatusView.ViewPos()
 	viewPos.DetermineViewStartRow(rows, renderedStatusNum)
 	renderedStatusIndex := viewPos.ViewStartRowIndex()
 	startColumn := viewPos.ViewStartColumn()
@@ -123,6 +135,12 @@ func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 		return
 	}
 
+	if searchActive, searchPattern, lastSearchFoundMatch := gitStatusView.viewSearch.SearchActive(); searchActive && lastSearchFoundMatch {
+		if err = win.Highlight(searchPattern, CmpAllviewSearchMatch); err != nil {
+			return
+		}
+	}
+
 	return
 }
 
@@ -132,19 +150,6 @@ func (gitStatusView *GitStatusView) renderStatusEntries(statusEntries []*StatusE
 
 // HandleKeyPress does nothing
 func (gitStatusView *GitStatusView) HandleKeyPress(keystring string) (err error) {
-	return
-}
-
-// HandleAction checks if git status view supports this action and if it does executes it
-func (gitStatusView *GitStatusView) HandleAction(action Action) (err error) {
-	gitStatusView.lock.Lock()
-	defer gitStatusView.lock.Unlock()
-
-	if handler, ok := gitStatusView.handlers[action.ActionType]; ok {
-		log.Debugf("GitStatusView handling action %v", action)
-		err = handler(gitStatusView, action)
-	}
-
 	return
 }
 
@@ -207,7 +212,7 @@ func (gitStatusView *GitStatusView) selectEntry(index uint) (err error) {
 		return fmt.Errorf("Invalid rendered status index: %v out of %v entries", index, renderedStatusNum)
 	}
 
-	gitStatusView.viewPos.SetActiveRowIndex(index)
+	gitStatusView.ViewPos().SetActiveRowIndex(index)
 
 	if renderedStatusNum == 0 {
 		return
@@ -227,6 +232,55 @@ func (gitStatusView *GitStatusView) selectEntry(index uint) (err error) {
 	return
 }
 
+// Line returns the rendered line at the specified index
+func (gitStatusView *GitStatusView) Line(lineIndex uint) (line string) {
+	gitStatusView.lock.Lock()
+	defer gitStatusView.lock.Unlock()
+
+	lineNumber := gitStatusView.lineNumber()
+	if lineIndex >= lineNumber {
+		log.Errorf("Invalid lineIndex: %v >= %v", lineIndex, lineNumber)
+		return
+	}
+
+	renderedStatusEntry := gitStatusView.renderedStatus[lineIndex]
+
+	return renderedStatusEntry.text
+}
+
+// LineNumber returns the number of lines in the view
+func (gitStatusView *GitStatusView) LineNumber() (lineNumber uint) {
+	gitStatusView.lock.Lock()
+	defer gitStatusView.lock.Unlock()
+
+	return gitStatusView.lineNumber()
+}
+
+// ViewPos returns the view position for this view
+func (gitStatusView *GitStatusView) ViewPos() ViewPos {
+	return gitStatusView.viewPos
+}
+
+// OnSearchMatch selects the line which matched the search pattern
+func (gitStatusView *GitStatusView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
+	gitStatusView.lock.Lock()
+	defer gitStatusView.lock.Unlock()
+
+	viewPos := gitStatusView.ViewPos()
+
+	if viewPos != startPos {
+		log.Debugf("Selected git status entry has changed since search started")
+		return
+	}
+
+	if gitStatusView.renderedStatus[matchLineIndex] == emptyStatusLine {
+		log.Debugf("Unable to select empty line")
+	} else {
+		gitStatusView.selectEntry(matchLineIndex)
+		gitStatusView.channels.UpdateDisplay()
+	}
+}
+
 // OnStatusChanged updates the git status view with the latest git status
 func (gitStatusView *GitStatusView) OnStatusChanged(status *Status) {
 	gitStatusView.lock.Lock()
@@ -237,7 +291,7 @@ func (gitStatusView *GitStatusView) OnStatusChanged(status *Status) {
 
 	renderedStatus := gitStatusView.renderedStatus
 	renderedStatusNum := uint(len(renderedStatus))
-	viewPos := gitStatusView.viewPos
+	viewPos := gitStatusView.ViewPos()
 	index := viewPos.ActiveRowIndex()
 
 	if renderedStatusNum == 0 {
@@ -302,8 +356,27 @@ func (gitStatusView *GitStatusView) generateRenderedStatus() {
 	gitStatusView.renderedStatus = renderedStatus
 }
 
-func moveUpStatusEntry(gitStatusView *GitStatusView, action Action) (err error) {
-	viewPos := gitStatusView.viewPos
+func (gitStatusView *GitStatusView) lineNumber() uint {
+	return uint(len(gitStatusView.renderedStatus))
+}
+
+// HandleAction checks if git status view supports this action and if it does executes it
+func (gitStatusView *GitStatusView) HandleAction(action Action) (err error) {
+	gitStatusView.lock.Lock()
+	defer gitStatusView.lock.Unlock()
+
+	if handler, ok := gitStatusView.handlers[action.ActionType]; ok {
+		log.Debugf("GitStatusView handling action %v", action)
+		err = handler(gitStatusView, action)
+	} else {
+		_, err = gitStatusView.viewSearch.HandleAction(action)
+	}
+
+	return
+}
+
+func moveUpGitStatusEntry(gitStatusView *GitStatusView, action Action) (err error) {
+	viewPos := gitStatusView.ViewPos()
 	renderedStatus := gitStatusView.renderedStatus
 
 	for viewPos.ActiveRowIndex() > 0 {
@@ -316,18 +389,19 @@ func moveUpStatusEntry(gitStatusView *GitStatusView, action Action) (err error) 
 		}
 	}
 
-	gitStatusView.selectEntry(viewPos.ActiveRowIndex())
-
-	log.Debug("Moved up one status entry")
-	gitStatusView.channels.UpdateDisplay()
+	if action.ActionType == ActionPrevLine {
+		gitStatusView.selectEntry(viewPos.ActiveRowIndex())
+		log.Debug("Moved up one status entry")
+		gitStatusView.channels.UpdateDisplay()
+	}
 
 	return
 }
 
-func moveDownStatusEntry(gitStatusView *GitStatusView, action Action) (err error) {
-	viewPos := gitStatusView.viewPos
+func moveDownGitStatusEntry(gitStatusView *GitStatusView, action Action) (err error) {
+	viewPos := gitStatusView.ViewPos()
 	renderedStatus := gitStatusView.renderedStatus
-	renderedStatusNum := uint(len(renderedStatus))
+	renderedStatusNum := gitStatusView.lineNumber()
 
 	if renderedStatusNum == 0 {
 		return
@@ -343,10 +417,118 @@ func moveDownStatusEntry(gitStatusView *GitStatusView, action Action) (err error
 		}
 	}
 
-	gitStatusView.selectEntry(viewPos.ActiveRowIndex())
+	if action.ActionType == ActionNextLine {
+		gitStatusView.selectEntry(viewPos.ActiveRowIndex())
+		log.Debug("Moved down one status entry")
+		gitStatusView.channels.UpdateDisplay()
+	}
 
-	log.Debug("Moved down one status entry")
+	return
+}
+
+func moveUpGitStatusPage(gitStatusView *GitStatusView, action Action) (err error) {
+	pageSize := gitStatusView.viewDimension.rows - 2
+	viewPos := gitStatusView.ViewPos()
+
+	for viewPos.ActiveRowIndex() > 0 && pageSize > 0 {
+		if err = moveUpGitStatusEntry(gitStatusView, action); err != nil {
+			return
+		}
+
+		pageSize--
+	}
+
+	if err = gitStatusView.selectEntry(viewPos.ActiveRowIndex()); err != nil {
+		return
+	}
+
+	log.Debug("Moved up one page")
 	gitStatusView.channels.UpdateDisplay()
+
+	return
+}
+
+func moveDownGitStatusPage(gitStatusView *GitStatusView, action Action) (err error) {
+	pageSize := gitStatusView.viewDimension.rows - 2
+	viewPos := gitStatusView.ViewPos()
+	renderedStatusNum := gitStatusView.lineNumber()
+
+	for viewPos.ActiveRowIndex()+1 < renderedStatusNum && pageSize > 0 {
+		if err = moveDownGitStatusEntry(gitStatusView, action); err != nil {
+			return
+		}
+
+		pageSize--
+	}
+
+	if err = gitStatusView.selectEntry(viewPos.ActiveRowIndex()); err != nil {
+		return
+	}
+
+	log.Debug("Moved down one page")
+	gitStatusView.channels.UpdateDisplay()
+
+	return
+}
+
+func scrollGitStatusViewRight(gitStatusView *GitStatusView, action Action) (err error) {
+	viewPos := gitStatusView.ViewPos()
+	viewPos.MovePageRight(gitStatusView.viewDimension.cols)
+	log.Debugf("Scrolling right. View starts at column %v", viewPos.ViewStartColumn())
+	gitStatusView.channels.UpdateDisplay()
+
+	return
+}
+
+func scrollGitStatusViewLeft(gitStatusView *GitStatusView, action Action) (err error) {
+	viewPos := gitStatusView.ViewPos()
+
+	if viewPos.MovePageLeft(gitStatusView.viewDimension.cols) {
+		log.Debugf("Scrolling left. View starts at column %v", viewPos.ViewStartColumn())
+		gitStatusView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveToFirstGitStatusEntry(gitStatusView *GitStatusView, action Action) (err error) {
+	viewPos := gitStatusView.ViewPos()
+
+	if viewPos.MoveToFirstLine() {
+		if err = gitStatusView.selectEntry(viewPos.ActiveRowIndex()); err != nil {
+			return
+		}
+
+		log.Debug("Selected first entry")
+		gitStatusView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveToLastGitStatusEntry(gitStatusView *GitStatusView, action Action) (err error) {
+	lineNumber := gitStatusView.lineNumber()
+	viewPos := gitStatusView.ViewPos()
+
+	if viewPos.MoveToLastLine(lineNumber) {
+		if err = gitStatusView.selectEntry(viewPos.ActiveRowIndex()); err != nil {
+			return
+		}
+
+		log.Debug("Moved to last entry")
+		gitStatusView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func centerGitStatusView(gitStatusView *GitStatusView, action Action) (err error) {
+	viewPos := gitStatusView.ViewPos()
+
+	if viewPos.CenterActiveRow(gitStatusView.viewDimension.rows - 2) {
+		log.Debug("Centering GitStatusView")
+		gitStatusView.channels.UpdateDisplay()
+	}
 
 	return
 }
