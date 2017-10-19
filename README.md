@@ -25,7 +25,7 @@ GRV depends on the following libraries:
  - libcurl
  - cmake (to build libgit2)
 
-Building GRV on OSX requires homebrew and for readline to be installed using homebrew.
+Building GRV on OSX requires homebrew, and for readline to be installed using homebrew.
 
 To install GRV run:
 
@@ -35,7 +35,19 @@ cd $GOPATH/src/github.com/rgburke/grv
 make install
 ```
 
-This will install GRV to `$GOPATH/bin`. A static libgit2 will be built and
+`grv` is currently an alias used by oh-my-zsh. To install grv with an alternative
+binary name that doesn't conflict with this alias, change the last
+step to:
+
+```
+make install BINARY=NewBinaryName
+```
+
+where `NewBinaryName` is the alternative name to use instead.
+Alternatively `unalias grv` can be added to the end of your `.zshrc` if you do
+not use the `grv` alias.
+
+The steps above will install GRV to `$GOPATH/bin`. A static libgit2 will be built and
 included in GRV when built this way. Alternatively if libgit2 0.25 is
 installed on your system GRV can be built normally:
 
