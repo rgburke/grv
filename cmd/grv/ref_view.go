@@ -226,8 +226,8 @@ func (refView *RefView) Initialise() (err error) {
 		return
 	}
 
-	if err = refView.repoData.LoadBranches(func(localBranches, remoteBranches []*Branch) error {
-		log.Debug("Branches loaded")
+	refView.repoData.LoadRefs(func(refs []Ref) (err error) {
+		log.Debug("Refs loaded")
 		refView.lock.Lock()
 		defer refView.lock.Unlock()
 
@@ -237,10 +237,12 @@ func (refView *RefView) Initialise() (err error) {
 		activeRowIndex := uint(1)
 
 		if headBranch != nil {
-			for _, branch := range localBranches {
-				if branch.name == headBranch.name {
-					log.Debugf("Setting branch %v as selected branch", branch.name)
-					break
+			for _, ref := range refs {
+				if branch, isBranch := ref.(*Branch); isBranch {
+					if !branch.IsRemote() && branch.Name() == headBranch.Name() {
+						log.Debugf("Setting branch %v as selected branch", branch.name)
+						break
+					}
 				}
 
 				activeRowIndex++
@@ -250,23 +252,8 @@ func (refView *RefView) Initialise() (err error) {
 		refView.viewPos.SetActiveRowIndex(activeRowIndex)
 		refView.channels.UpdateDisplay()
 
-		return nil
-	}); err != nil {
 		return
-	}
-
-	if err = refView.repoData.LoadLocalTags(func(tags []*Tag) error {
-		log.Debug("Local tags loaded")
-		refView.lock.Lock()
-		defer refView.lock.Unlock()
-
-		refView.generateRenderedRefs()
-		refView.channels.UpdateDisplay()
-
-		return nil
-	}); err != nil {
-		return
-	}
+	})
 
 	refView.generateRenderedRefs()
 	head, branch := refView.repoData.Head()

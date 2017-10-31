@@ -18,23 +18,30 @@ const (
 // OnCommitsLoaded is called when all commits are loaded for the specified oid
 type OnCommitsLoaded func(*Oid) error
 
-// OnBranchesLoaded is called when all local and remote branch refs have been loaded
-type OnBranchesLoaded func(localBranches, remoteBranches []*Branch) error
-
-// OnTagsLoaded is called when all tags have been loaded
-type OnTagsLoaded func([]*Tag) error
+// OnRefsLoaded is called when all refs have been loaded and processed
+type OnRefsLoaded func([]Ref) error
 
 // StatusListener is notified when git status has changed
 type StatusListener interface {
 	OnStatusChanged(status *Status)
 }
 
+// UpdatedRef contains the old and new Oid a ref points to
+type UpdatedRef struct {
+	OldRef Ref
+	NewRef Ref
+}
+
+// RefStateListener is updated when changes to refs are detected
+type RefStateListener interface {
+	OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef)
+}
+
 // RepoData houses all data loaded from the repository
 type RepoData interface {
 	Path() string
 	LoadHead() error
-	LoadBranches(OnBranchesLoaded) error
-	LoadLocalTags(OnTagsLoaded) error
+	LoadRefs(OnRefsLoaded)
 	LoadCommits(*Oid, OnCommitsLoaded) error
 	Head() (*Oid, *Branch)
 	Branches() (localBranches, remoteBranches []*Branch, loading bool)
@@ -50,6 +57,7 @@ type RepoData interface {
 	DiffFile(statusType StatusType, path string) (*Diff, error)
 	LoadStatus() (err error)
 	RegisterStatusListener(StatusListener)
+	RegisterRefStateListener(RefStateListener)
 }
 
 type commitSet interface {
@@ -282,31 +290,141 @@ type CommitSetFilterState struct {
 	filtersApplied      uint
 }
 
-type branchSet struct {
-	branches           map[*Oid]*Branch
+type refSet struct {
+	refs               map[string]Ref
 	localBranchesList  []*Branch
 	remoteBranchesList []*Branch
+	tagsList           []*Tag
 	loading            bool
+	refStateListeners  []RefStateListener
 	lock               sync.Mutex
 }
 
-func newBranchSet() *branchSet {
-	return &branchSet{
-		branches: make(map[*Oid]*Branch),
+func newRefSet() *refSet {
+	return &refSet{
+		refs: make(map[string]Ref),
 	}
 }
 
-type tagSet struct {
-	tags     map[*Oid]*Tag
-	tagsList []*Tag
-	loading  bool
-	lock     sync.Mutex
+func (refSet *refSet) registerRefStateListener(refStateListener RefStateListener) {
+	refSet.lock.Lock()
+	defer refSet.lock.Unlock()
+
+	refSet.refStateListeners = append(refSet.refStateListeners, refStateListener)
 }
 
-func newTagSet() *tagSet {
-	return &tagSet{
-		tags: make(map[*Oid]*Tag),
+func (refSet *refSet) startUpdate() bool {
+	refSet.lock.Lock()
+	defer refSet.lock.Unlock()
+
+	if refSet.loading {
+		return false
 	}
+
+	refSet.loading = true
+
+	return true
+}
+
+func (refSet *refSet) endUpdate() {
+	refSet.lock.Lock()
+	defer refSet.lock.Unlock()
+
+	refSet.loading = false
+}
+
+func (refSet *refSet) update(refs []Ref) (err error) {
+	refSet.lock.Lock()
+	defer refSet.lock.Unlock()
+
+	if !refSet.loading {
+		return fmt.Errorf("RefSet not in loading state")
+	}
+
+	var addedRefs, removedRefs []Ref
+	var updatedRefs []*UpdatedRef
+
+	refMap := make(map[string]Ref)
+	var localBranches, remoteBranches []*Branch
+	var tags []*Tag
+
+	for _, ref := range refs {
+		existingRef, isExisting := refSet.refs[ref.Name()]
+
+		if isExisting {
+			if !existingRef.Oid().Equal(ref.Oid()) {
+				updatedRefs = append(updatedRefs, &UpdatedRef{
+					OldRef: existingRef,
+					NewRef: ref,
+				})
+			}
+		} else {
+			addedRefs = append(addedRefs, ref)
+		}
+
+		refMap[ref.Name()] = ref
+
+		switch rawRef := ref.(type) {
+		case *Branch:
+			if rawRef.IsRemote() {
+				remoteBranches = append(remoteBranches, rawRef)
+			} else {
+				localBranches = append(localBranches, rawRef)
+			}
+		case *Tag:
+			tags = append(tags, rawRef)
+		}
+	}
+
+	for name, ref := range refSet.refs {
+		_, stillExists := refMap[name]
+
+		if !stillExists {
+			removedRefs = append(removedRefs, ref)
+		}
+	}
+
+	slice.Sort(localBranches, func(i, j int) bool {
+		return localBranches[i].Name() < localBranches[j].Name()
+	})
+	slice.Sort(remoteBranches, func(i, j int) bool {
+		return remoteBranches[i].Name() < remoteBranches[j].Name()
+	})
+	slice.Sort(tags, func(i, j int) bool {
+		return tags[i].Name() < tags[j].Name()
+	})
+
+	slice.Sort(addedRefs, func(i, j int) bool {
+		return addedRefs[i].Name() < addedRefs[j].Name()
+	})
+	slice.Sort(removedRefs, func(i, j int) bool {
+		return removedRefs[i].Name() < removedRefs[j].Name()
+	})
+	slice.Sort(updatedRefs, func(i, j int) bool {
+		return updatedRefs[i].NewRef.Name() < updatedRefs[j].NewRef.Name()
+	})
+
+	refSet.refs = refMap
+	refSet.localBranchesList = localBranches
+	refSet.remoteBranchesList = remoteBranches
+	refSet.tagsList = tags
+
+	if len(addedRefs) > 0 || len(removedRefs) > 0 || len(updatedRefs) > 0 {
+		refSet.notifyRefStateListeners(addedRefs, removedRefs, updatedRefs)
+	}
+
+	return
+}
+
+func (refSet *refSet) notifyRefStateListeners(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef) {
+	go func() {
+		refSet.lock.Lock()
+		defer refSet.lock.Unlock()
+
+		for _, refStateListener := range refSet.refStateListeners {
+			refStateListener.OnRefsChanged(addedRefs, removedRefs, updatedRefs)
+		}
+	}()
 }
 
 // CommitRefs contain all refs to a commit
@@ -321,9 +439,16 @@ type commitRefSet struct {
 }
 
 func newCommitRefSet() *commitRefSet {
-	return &commitRefSet{
-		commitRefs: make(map[*Oid]*CommitRefs),
-	}
+	commitRefSet := &commitRefSet{}
+	commitRefSet.clear()
+	return commitRefSet
+}
+
+func (commitRefSet *commitRefSet) clear() {
+	commitRefSet.lock.Lock()
+	defer commitRefSet.lock.Unlock()
+
+	commitRefSet.commitRefs = make(map[*Oid]*CommitRefs)
 }
 
 func (commitRefSet *commitRefSet) addTagForCommit(commit *Commit, newTag *Tag) {
@@ -522,8 +647,7 @@ type RepositoryData struct {
 	repoDataLoader *RepoDataLoader
 	head           *Oid
 	headBranch     *Branch
-	branches       *branchSet
-	localTags      *tagSet
+	refSet         *refSet
 	commitRefSet   *commitRefSet
 	refCommitSets  *refCommitSets
 	statusManager  *statusManager
@@ -534,8 +658,7 @@ func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *Repo
 	return &RepositoryData{
 		channels:       channels,
 		repoDataLoader: repoDataLoader,
-		branches:       newBranchSet(),
-		localTags:      newTagSet(),
+		refSet:         newRefSet(),
 		commitRefSet:   newCommitRefSet(),
 		refCommitSets:  newRefCommitSets(channels),
 		statusManager:  newStatusManager(repoDataLoader),
@@ -609,139 +732,63 @@ func (repoData *RepositoryData) LoadHead() (err error) {
 	return
 }
 
-// LoadBranches attempts to load local and remote branch refs from the repository
-func (repoData *RepositoryData) LoadBranches(onBranchesLoaded OnBranchesLoaded) (err error) {
-	branchSet := repoData.branches
-	branchSet.lock.Lock()
-	defer branchSet.lock.Unlock()
+// LoadRefs loads all branches and tags present in the repository
+func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
+	refSet := repoData.refSet
 
-	if branchSet.loading {
-		log.Debug("Local branches already loading")
+	if !refSet.startUpdate() {
+		log.Debugf("Already loading refs")
 		return
 	}
 
 	go func() {
-		branches, err := repoData.repoDataLoader.LoadBranches()
+		defer refSet.endUpdate()
+
+		refs, err := repoData.repoDataLoader.LoadRefs()
 		if err != nil {
 			repoData.channels.ReportError(err)
 			return
 		}
 
-		slice.Sort(branches, func(i, j int) bool {
-			return branches[i].name < branches[j].name
-		})
+		if err = refSet.update(refs); err != nil {
+			repoData.channels.ReportError(err)
+			return
+		}
 
-		var localBranchesList []*Branch
-		var remoteBranchesList []*Branch
+		if err = repoData.mapRefsToCommits(refs); err != nil {
+			repoData.channels.ReportError(err)
+			return
+		}
 
-		for _, branch := range branches {
-			if branch.isRemote {
-				remoteBranchesList = append(remoteBranchesList, branch)
-			} else {
-				localBranchesList = append(localBranchesList, branch)
+		refSet.endUpdate()
+
+		if onRefsLoaded != nil {
+			if err = onRefsLoaded(refs); err != nil {
+				repoData.channels.ReportError(err)
 			}
 		}
-
-		branchMap := make(map[*Oid]*Branch)
-		for _, branch := range branches {
-			branchMap[branch.oid] = branch
-		}
-
-		branchSet.lock.Lock()
-		branchSet.branches = branchMap
-		branchSet.localBranchesList = localBranchesList
-		branchSet.remoteBranchesList = remoteBranchesList
-		branchSet.loading = false
-		branchSet.lock.Unlock()
-
-		repoData.channels.ReportError(repoData.mapBranchesToCommits())
-		repoData.channels.ReportError(onBranchesLoaded(localBranchesList, remoteBranchesList))
 	}()
-
-	branchSet.loading = true
-
-	return
 }
 
-func (repoData *RepositoryData) mapBranchesToCommits() (err error) {
-	branchSet := repoData.branches
-	branchSet.lock.Lock()
-	defer branchSet.lock.Unlock()
-
+// TODO Become RefStateListener and only update commitRefSet for refs that have changed
+func (repoData *RepositoryData) mapRefsToCommits(refs []Ref) (err error) {
+	var commit *Commit
 	commitRefSet := repoData.commitRefSet
 
-	branches := append(branchSet.localBranchesList, branchSet.remoteBranchesList...)
+	commitRefSet.clear()
 
-	for _, branch := range branches {
-		var commit *Commit
-		commit, err = repoData.repoDataLoader.Commit(branch.oid)
+	for _, ref := range refs {
+		commit, err = repoData.repoDataLoader.Commit(ref.Oid())
 		if err != nil {
 			return
 		}
 
-		commitRefSet.addBranchForCommit(commit, branch)
-	}
-
-	return
-}
-
-// LoadLocalTags attempts to load all tags stored in the repository
-func (repoData *RepositoryData) LoadLocalTags(onTagsLoaded OnTagsLoaded) (err error) {
-	tagSet := repoData.localTags
-	tagSet.lock.Lock()
-	defer tagSet.lock.Unlock()
-
-	if tagSet.loading {
-		log.Debug("Local tags already loading")
-		return
-	}
-
-	go func() {
-		tags, err := repoData.repoDataLoader.LocalTags()
-		if err != nil {
-			repoData.channels.ReportError(err)
-			return
+		switch refInstance := ref.(type) {
+		case *Branch:
+			commitRefSet.addBranchForCommit(commit, refInstance)
+		case *Tag:
+			commitRefSet.addTagForCommit(commit, refInstance)
 		}
-
-		slice.Sort(tags, func(i, j int) bool {
-			return tags[i].name < tags[j].name
-		})
-
-		tagMap := make(map[*Oid]*Tag)
-		for _, tag := range tags {
-			tagMap[tag.oid] = tag
-		}
-
-		tagSet.lock.Lock()
-		tagSet.tags = tagMap
-		tagSet.tagsList = tags
-		tagSet.loading = false
-		tagSet.lock.Unlock()
-
-		repoData.channels.ReportError(repoData.mapTagsToCommits())
-		repoData.channels.ReportError(onTagsLoaded(tags))
-	}()
-
-	tagSet.loading = true
-
-	return
-}
-
-func (repoData *RepositoryData) mapTagsToCommits() (err error) {
-	tagSet := repoData.localTags
-	tagSet.lock.Lock()
-	defer tagSet.lock.Unlock()
-
-	commitRefSet := repoData.commitRefSet
-
-	for _, tag := range tagSet.tagsList {
-		var commit *Commit
-		commit, err = repoData.repoDataLoader.Commit(tag.oid)
-		if err != nil {
-			return
-		}
-
-		commitRefSet.addTagForCommit(commit, tag)
 	}
 
 	return
@@ -801,25 +848,25 @@ func (repoData *RepositoryData) Head() (*Oid, *Branch) {
 
 // Branches returns all loaded local and remote branches
 func (repoData *RepositoryData) Branches() (localBranches []*Branch, remoteBranches []*Branch, loading bool) {
-	branchSet := repoData.branches
-	branchSet.lock.Lock()
-	defer branchSet.lock.Unlock()
+	refSet := repoData.refSet
+	refSet.lock.Lock()
+	defer refSet.lock.Unlock()
 
-	localBranches = branchSet.localBranchesList
-	remoteBranches = branchSet.remoteBranchesList
-	loading = branchSet.loading
+	localBranches = refSet.localBranchesList
+	remoteBranches = refSet.remoteBranchesList
+	loading = refSet.loading
 
 	return
 }
 
 // LocalTags returns all loaded tags
 func (repoData *RepositoryData) LocalTags() (tags []*Tag, loading bool) {
-	tagSet := repoData.localTags
-	tagSet.lock.Lock()
-	defer tagSet.lock.Unlock()
+	refSet := repoData.refSet
+	refSet.lock.Lock()
+	defer refSet.lock.Unlock()
 
-	tags = tagSet.tagsList
-	loading = tagSet.loading
+	tags = refSet.tagsList
+	loading = refSet.loading
 
 	return
 }
@@ -924,4 +971,9 @@ func (repoData *RepositoryData) LoadStatus() (err error) {
 // RegisterStatusListener registers a listener to be notified when git status changes
 func (repoData *RepositoryData) RegisterStatusListener(statusListener StatusListener) {
 	repoData.statusManager.registerStatusListener(statusListener)
+}
+
+// RegisterRefStateListener registers a listener to be notified when a ref is added, removed or modified
+func (repoData *RepositoryData) RegisterRefStateListener(refStateListener RefStateListener) {
+	repoData.refSet.registerRefStateListener(refStateListener)
 }

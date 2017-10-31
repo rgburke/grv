@@ -37,6 +37,38 @@ type Oid struct {
 	oid *git.Oid
 }
 
+// Equal returns true if this oid is equal to the provided oid
+func (oid *Oid) Equal(other *Oid) bool {
+	if other == nil {
+		return false
+	}
+
+	return oid.oid.Cmp(other.oid) == 0
+}
+
+// String returns the oid hash
+func (oid Oid) String() string {
+	return oid.oid.String()
+}
+
+// ShortID returns a shortened oid hash
+func (oid Oid) ShortID() (shortID string) {
+	id := oid.String()
+
+	if len(id) >= rdlShortOidLen {
+		shortID = id[0:rdlShortOidLen]
+	}
+
+	return
+}
+
+// Ref is a named pointer to a commit
+type Ref interface {
+	Oid() *Oid
+	Name() string
+	IsRemote() bool
+}
+
 // Branch contains data for a branch reference
 type Branch struct {
 	oid      *Oid
@@ -44,11 +76,51 @@ type Branch struct {
 	isRemote bool
 }
 
+// Oid pointed to by this branch
+func (branch *Branch) Oid() *Oid {
+	return branch.oid
+}
+
+// Name of this branch
+func (branch *Branch) Name() string {
+	return branch.name
+}
+
+// IsRemote is true if the branch ref is remote
+func (branch *Branch) IsRemote() bool {
+	return branch.isRemote
+}
+
+// String returns branch data in a string format
+func (branch *Branch) String() string {
+	return fmt.Sprintf("%v:%v", branch.name, branch.oid)
+}
+
 // Tag contains data for a tag reference
 type Tag struct {
-	oid  *Oid
-	name string
-	tag  *git.Tag
+	oid      *Oid
+	name     string
+	isRemote bool
+}
+
+// Oid pointed to by this tag
+func (tag *Tag) Oid() *Oid {
+	return tag.oid
+}
+
+// Name of this tag
+func (tag *Tag) Name() string {
+	return tag.name
+}
+
+// IsRemote is true if the tag is remote
+func (tag *Tag) IsRemote() bool {
+	return tag.isRemote
+}
+
+// Tag returns tag data in a string format
+func (tag *Tag) String() string {
+	return fmt.Sprintf("%v:%v", tag.name, tag.oid)
 }
 
 // Commit contains data for a commit
@@ -228,32 +300,6 @@ func statusEntriesEqual(entries, otherEntries []*StatusEntry) bool {
 	return true
 }
 
-// String returns the oid hash
-func (oid Oid) String() string {
-	return oid.oid.String()
-}
-
-// ShortID returns a shortened oid hash
-func (oid Oid) ShortID() (shortID string) {
-	id := oid.String()
-
-	if len(id) >= rdlShortOidLen {
-		shortID = id[0:rdlShortOidLen]
-	}
-
-	return
-}
-
-// String returns branch data in a string format
-func (branch Branch) String() string {
-	return fmt.Sprintf("%v:%v", branch.name, branch.oid)
-}
-
-// Tag returns tag data in a string format
-func (tag Tag) String() string {
-	return fmt.Sprintf("%v:%v", tag.name, tag.oid)
-}
-
 func newInstanceCache() *instanceCache {
 	return &instanceCache{
 		oids:    make(map[string]*Oid),
@@ -361,8 +407,31 @@ func (repoDataLoader *RepoDataLoader) Head() (oid *Oid, branch *Branch, err erro
 	return
 }
 
+// LoadRefs loads all branches and tags present in the repository
+func (repoDataLoader *RepoDataLoader) LoadRefs() (refs []Ref, err error) {
+	branches, err := repoDataLoader.loadBranches()
+	if err != nil {
+		return
+	}
+
+	tags, err := repoDataLoader.loadTags()
+	if err != nil {
+		return
+	}
+
+	for _, branch := range branches {
+		refs = append(refs, branch)
+	}
+
+	for _, tag := range tags {
+		refs = append(refs, tag)
+	}
+
+	return
+}
+
 // LoadBranches loads all local branch refs currently in the repository
-func (repoDataLoader *RepoDataLoader) LoadBranches() (branches []*Branch, err error) {
+func (repoDataLoader *RepoDataLoader) loadBranches() (branches []*Branch, err error) {
 	branchIter, err := repoDataLoader.repo.NewBranchIterator(git.BranchAll)
 	if err != nil {
 		return
@@ -408,7 +477,7 @@ func (repoDataLoader *RepoDataLoader) LoadBranches() (branches []*Branch, err er
 }
 
 // LocalTags loads all tag refs in the repository
-func (repoDataLoader *RepoDataLoader) LocalTags() (tags []*Tag, err error) {
+func (repoDataLoader *RepoDataLoader) loadTags() (tags []*Tag, err error) {
 	log.Debug("Loading local tags")
 
 	refIter, err := repoDataLoader.repo.NewReferenceIterator()
@@ -424,13 +493,11 @@ func (repoDataLoader *RepoDataLoader) LocalTags() (tags []*Tag, err error) {
 		}
 
 		if !ref.IsRemote() && ref.IsTag() {
-			tag, _ := repoDataLoader.repo.LookupTag(ref.Target())
 			oid := repoDataLoader.cache.getOid(ref.Target())
 
 			newTag := &Tag{
 				oid:  oid,
 				name: ref.Shorthand(),
-				tag:  tag,
 			}
 			tags = append(tags, newTag)
 
