@@ -342,6 +342,15 @@ func (cache *instanceCache) getCommit(rawCommit *git.Commit) *Commit {
 	return commit
 }
 
+func (cache *instanceCache) getCachedCommit(oid *Oid) (commit *Commit, exists bool) {
+	cache.commitLock.Lock()
+	defer cache.commitLock.Unlock()
+
+	commit, exists = cache.commits[oid.String()]
+
+	return
+}
+
 // NewRepoDataLoader creates a new instance
 func NewRepoDataLoader(channels *Channels) *RepoDataLoader {
 	return &RepoDataLoader{
@@ -548,6 +557,10 @@ func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) 
 
 // Commit loads a commit for the provided oid (if it points to a commit)
 func (repoDataLoader *RepoDataLoader) Commit(oid *Oid) (commit *Commit, err error) {
+	if cachedCommit, isCached := repoDataLoader.cache.getCachedCommit(oid); isCached {
+		return cachedCommit, nil
+	}
+
 	object, err := repoDataLoader.repo.Lookup(oid.oid)
 	if err != nil {
 		log.Debugf("Error when attempting to lookup object with ID %v", oid)
