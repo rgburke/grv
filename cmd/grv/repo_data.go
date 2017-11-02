@@ -307,6 +307,12 @@ func newRefSet() *refSet {
 }
 
 func (refSet *refSet) registerRefStateListener(refStateListener RefStateListener) {
+	if refStateListener == nil {
+		return
+	}
+
+	log.Debugf("Registering ref state listener %T", refStateListener)
+
 	refSet.lock.Lock()
 	defer refSet.lock.Unlock()
 
@@ -336,6 +342,8 @@ func (refSet *refSet) endUpdate() {
 func (refSet *refSet) update(refs []Ref) (err error) {
 	refSet.lock.Lock()
 	defer refSet.lock.Unlock()
+
+	log.Debugf("Updating refs in refSet")
 
 	if !refSet.loading {
 		return fmt.Errorf("RefSet not in loading state")
@@ -410,18 +418,20 @@ func (refSet *refSet) update(refs []Ref) (err error) {
 	refSet.tagsList = tags
 
 	if len(addedRefs) > 0 || len(removedRefs) > 0 || len(updatedRefs) > 0 {
+		log.Debugf("Refs Changed - new: %v, removed: %v, updated: %v")
 		refSet.notifyRefStateListeners(addedRefs, removedRefs, updatedRefs)
+	} else {
+		log.Debugf("No new, removed or modified refs")
 	}
 
 	return
 }
 
 func (refSet *refSet) notifyRefStateListeners(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef) {
-	go func() {
-		refSet.lock.Lock()
-		defer refSet.lock.Unlock()
+	refStateListeners := append([]RefStateListener(nil), refSet.refStateListeners...)
 
-		for _, refStateListener := range refSet.refStateListeners {
+	go func() {
+		for _, refStateListener := range refStateListeners {
 			refStateListener.OnRefsChanged(addedRefs, removedRefs, updatedRefs)
 		}
 	}()
@@ -736,6 +746,8 @@ func (repoData *RepositoryData) LoadHead() (err error) {
 func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 	refSet := repoData.refSet
 
+	log.Debug("Loading refs")
+
 	if !refSet.startUpdate() {
 		log.Debugf("Already loading refs")
 		return
@@ -750,17 +762,19 @@ func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 			return
 		}
 
-		if err = refSet.update(refs); err != nil {
-			repoData.channels.ReportError(err)
-			return
-		}
-
 		if err = repoData.mapRefsToCommits(refs); err != nil {
 			repoData.channels.ReportError(err)
 			return
 		}
 
+		if err = refSet.update(refs); err != nil {
+			repoData.channels.ReportError(err)
+			return
+		}
+
 		refSet.endUpdate()
+
+		log.Debug("Refs loaded")
 
 		if onRefsLoaded != nil {
 			if err = onRefsLoaded(refs); err != nil {
@@ -772,6 +786,8 @@ func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 
 // TODO Become RefStateListener and only update commitRefSet for refs that have changed
 func (repoData *RepositoryData) mapRefsToCommits(refs []Ref) (err error) {
+	log.Debug("Mapping refs to commits")
+
 	var commit *Commit
 	commitRefSet := repoData.commitRefSet
 

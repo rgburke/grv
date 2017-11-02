@@ -252,6 +252,8 @@ func (refView *RefView) Initialise() (err error) {
 		refView.viewPos.SetActiveRowIndex(activeRowIndex)
 		refView.channels.UpdateDisplay()
 
+		refView.repoData.RegisterRefStateListener(refView)
+
 		return
 	})
 
@@ -295,6 +297,17 @@ func (refView *RefView) notifyRefListeners(refName string, oid *Oid) (err error)
 	}()
 
 	return
+}
+
+// OnRefsChanged checks if refs have been added or removed and updates the ref view if so
+func (refView *RefView) OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef) {
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
+
+	if len(addedRefs) > 0 || len(removedRefs) > 0 {
+		refView.generateRenderedRefs()
+		refView.channels.UpdateDisplay()
+	}
 }
 
 // Render generates and writes the ref view to the provided window
