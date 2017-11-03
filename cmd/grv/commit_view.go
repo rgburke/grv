@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -242,7 +243,7 @@ func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIn
 	colIndex++
 	if len(commitRefs.tags) > 0 {
 		for _, tag := range commitRefs.tags {
-			if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CmpCommitviewTag, "<%v>", tag.name); err != nil {
+			if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CmpCommitviewTag, "<%v>", tag.Shorthand()); err != nil {
 				return
 			}
 
@@ -255,11 +256,11 @@ func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIn
 	if len(commitRefs.branches) > 0 {
 		for _, branch := range commitRefs.branches {
 			if branch.isRemote {
-				if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CmpCommitviewLocalBranch, "{%v}", branch.name); err != nil {
+				if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CmpCommitviewLocalBranch, "{%v}", branch.Shorthand()); err != nil {
 					return
 				}
 			} else {
-				if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CmpCommitviewRemoteBranch, "[%v]", branch.name); err != nil {
+				if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CmpCommitviewRemoteBranch, "[%v]", branch.Shorthand()); err != nil {
 					return
 				}
 			}
@@ -380,8 +381,15 @@ func (refreshTask *loadingCommitsRefreshTask) stop() {
 }
 
 // OnRefSelect handles a new ref being selected and fetches/loads the relevant commits to display
-func (commitView *CommitView) OnRefSelect(refName string, oid *Oid) (err error) {
-	log.Debugf("CommitView loading commits for selected oid %v", oid)
+func (commitView *CommitView) OnRefSelect(oid *Oid, ref Ref) (err error) {
+	var refName string
+	if ref == nil || reflect.ValueOf(ref).IsNil() {
+		refName = "HEAD"
+	} else {
+		refName = ref.Shorthand()
+	}
+
+	log.Debugf("CommitView loading commits for selected ref %v:%v", refName, oid)
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 

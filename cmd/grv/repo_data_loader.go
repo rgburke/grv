@@ -66,14 +66,16 @@ func (oid Oid) ShortID() (shortID string) {
 type Ref interface {
 	Oid() *Oid
 	Name() string
+	Shorthand() string
 	IsRemote() bool
 }
 
 // Branch contains data for a branch reference
 type Branch struct {
-	oid      *Oid
-	name     string
-	isRemote bool
+	oid       *Oid
+	name      string
+	shorthand string
+	isRemote  bool
 }
 
 // Oid pointed to by this branch
@@ -84,6 +86,11 @@ func (branch *Branch) Oid() *Oid {
 // Name of this branch
 func (branch *Branch) Name() string {
 	return branch.name
+}
+
+// Shorthand name of this branch
+func (branch *Branch) Shorthand() string {
+	return branch.shorthand
 }
 
 // IsRemote is true if the branch ref is remote
@@ -98,9 +105,10 @@ func (branch *Branch) String() string {
 
 // Tag contains data for a tag reference
 type Tag struct {
-	oid      *Oid
-	name     string
-	isRemote bool
+	oid       *Oid
+	name      string
+	shorthand string
+	isRemote  bool
 }
 
 // Oid pointed to by this tag
@@ -111,6 +119,11 @@ func (tag *Tag) Oid() *Oid {
 // Name of this tag
 func (tag *Tag) Name() string {
 	return tag.name
+}
+
+// Shorthand name of this tag
+func (tag *Tag) Shorthand() string {
+	return tag.shorthand
 }
 
 // IsRemote is true if the tag is remote
@@ -406,8 +419,9 @@ func (repoDataLoader *RepoDataLoader) Head() (oid *Oid, branch *Branch, err erro
 		}
 
 		branch = &Branch{
-			name: branchName,
-			oid:  oid,
+			oid:       oid,
+			shorthand: branchName,
+			name:      ref.Name(),
 		}
 	}
 
@@ -471,9 +485,10 @@ func (repoDataLoader *RepoDataLoader) loadBranches() (branches []*Branch, err er
 		oid := repoDataLoader.cache.getOid(rawOid)
 
 		newBranch := &Branch{
-			oid:      oid,
-			name:     branchName,
-			isRemote: branch.IsRemote(),
+			oid:       oid,
+			name:      branch.Reference.Name(),
+			shorthand: branchName,
+			isRemote:  branch.IsRemote(),
 		}
 
 		branches = append(branches, newBranch)
@@ -505,8 +520,9 @@ func (repoDataLoader *RepoDataLoader) loadTags() (tags []*Tag, err error) {
 			oid := repoDataLoader.cache.getOid(ref.Target())
 
 			newTag := &Tag{
-				oid:  oid,
-				name: ref.Shorthand(),
+				oid:       oid,
+				name:      ref.Name(),
+				shorthand: ref.Shorthand(),
 			}
 			tags = append(tags, newTag)
 

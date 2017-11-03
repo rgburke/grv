@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -47,6 +46,7 @@ type refList struct {
 type RenderedRef struct {
 	value           string
 	oid             *Oid
+	ref             Ref
 	renderedRefType RenderedRefType
 	refList         *refList
 	refNum          uint
@@ -169,7 +169,7 @@ type RefView struct {
 
 // RefListener is notified when a reference is selected
 type RefListener interface {
-	OnRefSelect(refName string, oid *Oid) error
+	OnRefSelect(oid *Oid, ref Ref) error
 }
 
 // NewRefView creates a new instance
@@ -260,14 +260,7 @@ func (refView *RefView) Initialise() (err error) {
 	refView.generateRenderedRefs()
 	head, branch := refView.repoData.Head()
 
-	var branchName string
-	if branch == nil {
-		branchName = getDetachedHeadDisplayValue(head)
-	} else {
-		branchName = branch.name
-	}
-
-	err = refView.notifyRefListeners(branchName, head)
+	err = refView.notifyRefListeners(head, branch)
 
 	return
 }
@@ -285,12 +278,12 @@ func (refView *RefView) RegisterRefListener(refListener RefListener) {
 	refView.refListeners = append(refView.refListeners, refListener)
 }
 
-func (refView *RefView) notifyRefListeners(refName string, oid *Oid) (err error) {
+func (refView *RefView) notifyRefListeners(oid *Oid, ref Ref) (err error) {
 	log.Debugf("Notifying RefListeners of selected oid %v", oid)
 
 	go func() {
 		for _, refListener := range refView.refListeners {
-			if err = refListener.OnRefSelect(refName, oid); err != nil {
+			if err = refListener.OnRefSelect(oid, ref); err != nil {
 				break
 			}
 		}
@@ -492,8 +485,9 @@ func generateBranches(refView *RefView, refList *refList, renderedRefs renderedR
 
 	for _, branch := range branches {
 		renderedRefs.Add(&RenderedRef{
-			value:           fmt.Sprintf("   %s", branch.name),
-			oid:             branch.oid,
+			value:           fmt.Sprintf("   %s", branch.Shorthand()),
+			oid:             branch.Oid(),
+			ref:             branch,
 			renderedRefType: branchRenderedRefType,
 			refNum:          branchNum,
 		})
@@ -516,8 +510,9 @@ func generateTags(refView *RefView, refList *refList, renderedRefs renderedRefSe
 
 	for tagIndex, tag := range tags {
 		renderedRefs.Add(&RenderedRef{
-			value:           fmt.Sprintf("   %s", tag.name),
-			oid:             tag.oid,
+			value:           fmt.Sprintf("   %s", tag.Shorthand()),
+			oid:             tag.Oid(),
+			ref:             tag,
 			renderedRefType: RvTag,
 			refNum:          uint(tagIndex + 1),
 		})
@@ -765,7 +760,7 @@ func selectRef(refView *RefView, action Action) (err error) {
 		refView.channels.UpdateDisplay()
 	case RvLocalBranch, RvRemoteBranch, RvTag:
 		log.Debugf("Selecting ref %v:%v", renderedRef.value, renderedRef.oid)
-		if err = refView.notifyRefListeners(strings.TrimLeft(renderedRef.value, " "), renderedRef.oid); err != nil {
+		if err = refView.notifyRefListeners(renderedRef.oid, renderedRef.ref); err != nil {
 			return
 		}
 		refView.channels.UpdateDisplay()
