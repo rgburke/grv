@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -68,106 +69,22 @@ type commitSet interface {
 	CommitSetState() CommitSetState
 }
 
-type rawCommitSet struct {
-	commits []*Commit
-	loading bool
-	lock    sync.Mutex
-}
-
-func newRawCommitSet() *rawCommitSet {
-	return &rawCommitSet{
-		commits: make([]*Commit, 0),
-	}
-}
-
-// Add a commit to the commit set
-func (rawCommitSet *rawCommitSet) AddCommit(commit *Commit) (err error) {
-	rawCommitSet.lock.Lock()
-	defer rawCommitSet.lock.Unlock()
-
-	if rawCommitSet.loading {
-		rawCommitSet.commits = append(rawCommitSet.commits, commit)
-	} else {
-		err = fmt.Errorf("Cannot add commit when CommitSet is not in loading state")
-	}
-
-	return
-}
-
-// Commit returns the commit at the provided index (or nil if the index is invalid)
-func (rawCommitSet *rawCommitSet) Commit(index uint) (commit *Commit) {
-	rawCommitSet.lock.Lock()
-	defer rawCommitSet.lock.Unlock()
-
-	if index < uint(len(rawCommitSet.commits)) {
-		commit = rawCommitSet.commits[index]
-	}
-
-	return
-}
-
-// CommitStream returns a channel through which all the commits in this set can be read
-func (rawCommitSet *rawCommitSet) CommitStream() <-chan *Commit {
-	ch := make(chan *Commit)
-
-	go func() {
-		defer close(ch)
-		var commit *Commit
-		index := 0
-
-		for {
-			rawCommitSet.lock.Lock()
-
-			length := len(rawCommitSet.commits)
-			if index < length {
-				commit = rawCommitSet.commits[index]
-			}
-
-			rawCommitSet.lock.Unlock()
-
-			if commit != nil {
-				ch <- commit
-				commit = nil
-				index++
-			} else {
-				return
-			}
-		}
-	}()
-
-	return ch
-}
-
-// SetLoading sets whether this commit set is still loading or not
-func (rawCommitSet *rawCommitSet) SetLoading(loading bool) {
-	rawCommitSet.lock.Lock()
-	defer rawCommitSet.lock.Unlock()
-
-	rawCommitSet.loading = loading
-}
-
-// CommitSetState returns the current state of the commit set
-func (rawCommitSet *rawCommitSet) CommitSetState() CommitSetState {
-	rawCommitSet.lock.Lock()
-	defer rawCommitSet.lock.Unlock()
-
-	return CommitSetState{
-		loading:   rawCommitSet.loading,
-		commitNum: uint(len(rawCommitSet.commits)),
-	}
-}
-
 type filteredCommitSet struct {
 	commits      []*Commit
-	commitSet    commitSet
+	loading      bool
+	child        commitSet
 	commitFilter *CommitFilter
 	lock         sync.Mutex
 }
 
-func newFilteredCommitSet(commitSet commitSet, commitFilter *CommitFilter) *filteredCommitSet {
+func newBaseFilteredCommitSet() *filteredCommitSet {
+	return newFilteredCommitSet(nil, nil)
+}
+
+func newFilteredCommitSet(child commitSet, commitFilter *CommitFilter) *filteredCommitSet {
 	return &filteredCommitSet{
 		commits:      make([]*Commit, 0),
-		commitSet:    commitSet,
+		child:        child,
 		commitFilter: commitFilter,
 	}
 }
@@ -176,17 +93,31 @@ func (filteredCommitSet *filteredCommitSet) initialiseFromCommitSet() {
 	filteredCommitSet.lock.Lock()
 	defer filteredCommitSet.lock.Unlock()
 
-	for commit := range filteredCommitSet.commitSet.CommitStream() {
-		filteredCommitSet.addCommitIfFilterMatches(commit)
+	if filteredCommitSet.hasChild() {
+		for commit := range filteredCommitSet.child.CommitStream() {
+			filteredCommitSet.addCommitIfFilterMatches(commit)
+		}
 	}
 }
 
 // CommitSet returns the child commit set of this filter
-func (filteredCommitSet *filteredCommitSet) CommitSet() commitSet {
+func (filteredCommitSet *filteredCommitSet) Child() commitSet {
 	filteredCommitSet.lock.Lock()
 	defer filteredCommitSet.lock.Unlock()
 
-	return filteredCommitSet.commitSet
+	return filteredCommitSet.child
+}
+
+// HasChild returns true if this commitSet has a child commitSet
+func (filteredCommitSet *filteredCommitSet) HasChild() bool {
+	filteredCommitSet.lock.Lock()
+	defer filteredCommitSet.lock.Unlock()
+
+	return filteredCommitSet.hasChild()
+}
+
+func (filteredCommitSet *filteredCommitSet) hasChild() bool {
+	return !(filteredCommitSet.child == nil || reflect.ValueOf(filteredCommitSet.child).IsNil())
 }
 
 // AddCommit adds the commit to the child and then itself if the filter matches
@@ -194,11 +125,17 @@ func (filteredCommitSet *filteredCommitSet) AddCommit(commit *Commit) (err error
 	filteredCommitSet.lock.Lock()
 	defer filteredCommitSet.lock.Unlock()
 
-	if err = filteredCommitSet.commitSet.AddCommit(commit); err != nil {
-		return
-	}
+	if filteredCommitSet.hasChild() {
+		if err = filteredCommitSet.child.AddCommit(commit); err != nil {
+			return
+		}
 
-	filteredCommitSet.addCommitIfFilterMatches(commit)
+		filteredCommitSet.addCommitIfFilterMatches(commit)
+	} else if filteredCommitSet.loading {
+		filteredCommitSet.commits = append(filteredCommitSet.commits, commit)
+	} else {
+		err = fmt.Errorf("Cannot add commit when CommitSet is not in loading state")
+	}
 
 	return
 }
@@ -255,7 +192,14 @@ func (filteredCommitSet *filteredCommitSet) CommitStream() <-chan *Commit {
 
 // SetLoading is defered onto the underlying raw commit set
 func (filteredCommitSet *filteredCommitSet) SetLoading(loading bool) {
-	filteredCommitSet.commitSet.SetLoading(loading)
+	filteredCommitSet.lock.Lock()
+	defer filteredCommitSet.lock.Unlock()
+
+	if filteredCommitSet.hasChild() {
+		filteredCommitSet.child.SetLoading(loading)
+	} else {
+		filteredCommitSet.loading = loading
+	}
 }
 
 // CommitSetState returns the state of this commit set
@@ -263,18 +207,25 @@ func (filteredCommitSet *filteredCommitSet) CommitSetState() CommitSetState {
 	filteredCommitSet.lock.Lock()
 	defer filteredCommitSet.lock.Unlock()
 
-	commitSetState := filteredCommitSet.commitSet.CommitSetState()
+	if filteredCommitSet.hasChild() {
+		commitSetState := filteredCommitSet.child.CommitSetState()
 
-	if commitSetState.filterState == nil {
-		commitSetState.filterState = &CommitSetFilterState{
-			unfilteredCommitNum: commitSetState.commitNum,
+		if commitSetState.filterState == nil {
+			commitSetState.filterState = &CommitSetFilterState{
+				unfilteredCommitNum: commitSetState.commitNum,
+			}
 		}
+
+		commitSetState.commitNum = uint(len(filteredCommitSet.commits))
+		commitSetState.filterState.filtersApplied++
+
+		return commitSetState
 	}
 
-	commitSetState.commitNum = uint(len(filteredCommitSet.commits))
-	commitSetState.filterState.filtersApplied++
-
-	return commitSetState
+	return CommitSetState{
+		loading:   filteredCommitSet.loading,
+		commitNum: uint(len(filteredCommitSet.commits)),
+	}
 }
 
 // CommitSetState describes the current state of a commit set for a ref
@@ -587,11 +538,16 @@ func (refCommitSets *refCommitSets) removeCommitFilter(oid *Oid) (err error) {
 
 	filteredCommitSet, ok := commitSet.(*filteredCommitSet)
 	if !ok {
+		log.Errorf("Unknown commitSet type %T", commitSet)
+		return
+	}
+
+	if !filteredCommitSet.HasChild() {
 		refCommitSets.channels.ReportStatus("No commit filter applied to remove")
 		return
 	}
 
-	refCommitSets.commits[oid] = filteredCommitSet.CommitSet()
+	refCommitSets.commits[oid] = filteredCommitSet.Child()
 	refCommitSets.channels.ReportStatus("Removed commit filter")
 
 	return
@@ -822,7 +778,7 @@ func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsL
 		return
 	}
 
-	commitSet := newRawCommitSet()
+	commitSet := newBaseFilteredCommitSet()
 	commitSet.SetLoading(true)
 	repoData.refCommitSets.setCommitSet(oid, commitSet)
 
