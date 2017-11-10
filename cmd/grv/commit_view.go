@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -52,10 +51,9 @@ type StatusSelectedListener interface {
 type CommitView struct {
 	channels                *Channels
 	repoData                RepoData
-	activeRef               *Oid
-	activeRefName           string
+	activeRef               Ref
 	active                  bool
-	refViewData             map[*Oid]*referenceViewData
+	refViewData             map[string]*referenceViewData
 	handlers                map[ActionType]commitViewHandler
 	refreshTask             *loadingCommitsRefreshTask
 	commitListeners         []CommitListener
@@ -71,7 +69,7 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 	commitView := &CommitView{
 		channels:    channels,
 		repoData:    repoData,
-		refViewData: make(map[*Oid]*referenceViewData),
+		refViewData: make(map[string]*referenceViewData),
 		handlers: map[ActionType]commitViewHandler{
 			ActionPrevLine:     moveUpCommit,
 			ActionNextLine:     moveDownCommit,
@@ -108,9 +106,9 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 
 	commitView.viewDimension = win.ViewDimensions()
 
-	refViewData, ok := commitView.refViewData[commitView.activeRef]
+	refViewData, ok := commitView.refViewData[commitView.activeRef.Name()]
 	if !ok {
-		return fmt.Errorf("No RefViewData exists for oid %v", commitView.activeRef)
+		return fmt.Errorf("No RefViewData exists for ref %v", commitView.activeRef.Name())
 	}
 
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
@@ -172,7 +170,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		}
 	}
 
-	if err = win.SetTitle(CmpCommitviewTitle, "Commits for %v", commitView.activeRefName); err != nil {
+	if err = win.SetTitle(CmpCommitviewTitle, "Commits for %v", commitView.activeRef.Shorthand()); err != nil {
 		return
 	}
 
@@ -381,15 +379,8 @@ func (refreshTask *loadingCommitsRefreshTask) stop() {
 }
 
 // OnRefSelect handles a new ref being selected and fetches/loads the relevant commits to display
-func (commitView *CommitView) OnRefSelect(oid *Oid, ref Ref) (err error) {
-	var refName string
-	if ref == nil || reflect.ValueOf(ref).IsNil() {
-		refName = "HEAD"
-	} else {
-		refName = ref.Shorthand()
-	}
-
-	log.Debugf("CommitView loading commits for selected ref %v:%v", refName, oid)
+func (commitView *CommitView) OnRefSelect(ref Ref) (err error) {
+	log.Debugf("CommitView loading commits for selected ref %v:%v", ref.Shorthand(), ref.Oid())
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
@@ -400,38 +391,37 @@ func (commitView *CommitView) OnRefSelect(oid *Oid, ref Ref) (err error) {
 	refreshTask := newLoadingCommitsRefreshTask(time.Millisecond*cvLoadRefreshMs, commitView.channels)
 	commitView.refreshTask = refreshTask
 
-	if err = commitView.repoData.LoadCommits(oid, func(oid *Oid) error {
+	if err = commitView.repoData.LoadCommits(ref, func(Ref) error {
 		commitView.lock.Lock()
 		defer commitView.lock.Unlock()
 
 		refreshTask.stop()
 
-		commitSetState := commitView.repoData.CommitSetState(oid)
-		commitView.channels.ReportStatus("Loaded %v commits for ref %v", commitSetState.commitNum, refName)
+		commitSetState := commitView.repoData.CommitSetState(ref)
+		commitView.channels.ReportStatus("Loaded %v commits for ref %v", commitSetState.commitNum, ref.Shorthand())
 
 		return nil
 	}); err != nil {
 		return
 	}
 
-	commitView.activeRef = oid
-	commitView.activeRefName = refName
+	commitView.activeRef = ref
 
-	refViewData, refViewDataExists := commitView.refViewData[oid]
+	refViewData, refViewDataExists := commitView.refViewData[ref.Name()]
 	if !refViewDataExists {
 		refViewData = &referenceViewData{
 			viewPos:        NewViewPosition(),
 			tableFormatter: NewTableFormatter(cvColumnNum),
 		}
 
-		commitView.refViewData[oid] = refViewData
+		commitView.refViewData[ref.Name()] = refViewData
 	}
 
-	commitSetState := commitView.repoData.CommitSetState(oid)
+	commitSetState := commitView.repoData.CommitSetState(ref)
 
 	if commitSetState.loading {
 		commitView.refreshTask.start()
-		commitView.channels.ReportStatus("Loading commits for ref %v", refName)
+		commitView.channels.ReportStatus("Loading commits for ref %v", ref.Shorthand())
 	} else {
 		commitView.refreshTask.stop()
 	}
@@ -453,7 +443,7 @@ func (commitView *CommitView) OnRefSelect(oid *Oid, ref Ref) (err error) {
 
 		commit, err = commitView.repoData.CommitByIndex(commitView.activeRef, commitIndex)
 	} else {
-		commit, err = commitView.repoData.Commit(commitView.activeRef)
+		commit, err = commitView.repoData.Commit(commitView.activeRef.Oid())
 	}
 
 	if err != nil {
@@ -499,15 +489,15 @@ func (commitView *CommitView) statusVisible() bool {
 		return false
 	}
 
-	head, branch := commitView.repoData.Head()
+	head := commitView.repoData.Head()
 
-	if branch.isRemote {
+	if head.IsRemote() {
 		return false
 	}
 
 	activeBranch := commitView.activeRef
 
-	if !head.oid.Equal(activeBranch.oid) {
+	if !head.Oid().Equal(activeBranch.Oid()) {
 		return false
 	}
 
@@ -587,7 +577,7 @@ func (commitView *CommitView) selectCommit(lineIndex uint) (err error) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 
 	if commitSetState.commitNum == 0 {
-		return fmt.Errorf("Cannot select commit as there are no commits for ref %v", commitView.activeRef)
+		return fmt.Errorf("Cannot select commit as there are no commits for ref %v", commitView.activeRef.Name())
 	}
 
 	if commitIndex >= commitSetState.commitNum {
@@ -607,7 +597,7 @@ func (commitView *CommitView) selectCommit(lineIndex uint) (err error) {
 
 // ViewPos returns the current view position
 func (commitView *CommitView) ViewPos() ViewPos {
-	refViewData := commitView.refViewData[commitView.activeRef]
+	refViewData := commitView.refViewData[commitView.activeRef.Name()]
 	return refViewData.viewPos
 }
 
@@ -638,9 +628,9 @@ func (commitView *CommitView) Line(lineIndex uint) (line string) {
 		return
 	}
 
-	refViewData, ok := commitView.refViewData[commitView.activeRef]
+	refViewData, ok := commitView.refViewData[commitView.activeRef.Name()]
 	if !ok {
-		log.Errorf("Not refViewData for ref %v", commitView.activeRef)
+		log.Errorf("Not refViewData for ref %v", commitView.activeRef.Name())
 		return
 	}
 

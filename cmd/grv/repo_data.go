@@ -17,7 +17,7 @@ const (
 )
 
 // OnCommitsLoaded is called when all commits are loaded for the specified oid
-type OnCommitsLoaded func(*Oid) error
+type OnCommitsLoaded func(Ref) error
 
 // OnRefsLoaded is called when all refs have been loaded and processed
 type OnRefsLoaded func([]Ref) error
@@ -43,17 +43,17 @@ type RepoData interface {
 	Path() string
 	LoadHead() error
 	LoadRefs(OnRefsLoaded)
-	LoadCommits(*Oid, OnCommitsLoaded) error
-	Head() (*Oid, *Branch)
+	LoadCommits(Ref, OnCommitsLoaded) error
+	Head() Ref
 	Branches() (localBranches, remoteBranches []*Branch, loading bool)
 	LocalTags() (tags []*Tag, loading bool)
 	RefsForCommit(*Commit) *CommitRefs
-	CommitSetState(*Oid) CommitSetState
-	Commits(oid *Oid, startIndex, count uint) (<-chan *Commit, error)
-	CommitByIndex(oid *Oid, index uint) (*Commit, error)
+	CommitSetState(Ref) CommitSetState
+	Commits(ref Ref, startIndex, count uint) (<-chan *Commit, error)
+	CommitByIndex(ref Ref, index uint) (*Commit, error)
 	Commit(oid *Oid) (*Commit, error)
-	AddCommitFilter(*Oid, *CommitFilter) error
-	RemoveCommitFilter(*Oid) error
+	AddCommitFilter(Ref, *CommitFilter) error
+	RemoveCommitFilter(Ref) error
 	DiffCommit(commit *Commit) (*Diff, error)
 	DiffFile(statusType StatusType, path string) (*Diff, error)
 	LoadStatus() (err error)
@@ -466,44 +466,44 @@ func (commitRefSet *commitRefSet) refsForCommit(commit *Commit) (commitRefsCopy 
 }
 
 type refCommitSets struct {
-	commits  map[*Oid]commitSet
+	commits  map[string]commitSet
 	channels *Channels
 	lock     sync.Mutex
 }
 
 func newRefCommitSets(channels *Channels) *refCommitSets {
 	return &refCommitSets{
-		commits:  make(map[*Oid]commitSet),
+		commits:  make(map[string]commitSet),
 		channels: channels,
 	}
 }
 
-func (refCommitSets *refCommitSets) commitSet(oid *Oid) (commitSet commitSet, exists bool) {
+func (refCommitSets *refCommitSets) commitSet(ref Ref) (commitSet commitSet, exists bool) {
 	refCommitSets.lock.Lock()
 	defer refCommitSets.lock.Unlock()
 
-	commitSet, exists = refCommitSets.commits[oid]
+	commitSet, exists = refCommitSets.commits[ref.Name()]
 	return
 }
 
-func (refCommitSets *refCommitSets) setCommitSet(oid *Oid, commitSet commitSet) {
+func (refCommitSets *refCommitSets) setCommitSet(ref Ref, commitSet commitSet) {
 	refCommitSets.lock.Lock()
 	defer refCommitSets.lock.Unlock()
 
-	refCommitSets.commits[oid] = commitSet
+	refCommitSets.commits[ref.Name()] = commitSet
 }
 
-func (refCommitSets *refCommitSets) addCommitFilter(oid *Oid, commitFilter *CommitFilter) (err error) {
+func (refCommitSets *refCommitSets) addCommitFilter(ref Ref, commitFilter *CommitFilter) (err error) {
 	refCommitSets.lock.Lock()
 	defer refCommitSets.lock.Unlock()
 
-	commitSet, ok := refCommitSets.commits[oid]
+	commitSet, ok := refCommitSets.commits[ref.Name()]
 	if !ok {
-		return fmt.Errorf("No CommitSet exists for ref with id: %v", oid)
+		return fmt.Errorf("No CommitSet exists for ref: %v", ref.Name())
 	}
 
 	filteredCommitSet := newFilteredCommitSet(commitSet, commitFilter)
-	refCommitSets.commits[oid] = filteredCommitSet
+	refCommitSets.commits[ref.Name()] = filteredCommitSet
 
 	go func() {
 		beforeState := commitSet.CommitSetState()
@@ -527,13 +527,13 @@ func (refCommitSets *refCommitSets) addCommitFilter(oid *Oid, commitFilter *Comm
 	return
 }
 
-func (refCommitSets *refCommitSets) removeCommitFilter(oid *Oid) (err error) {
+func (refCommitSets *refCommitSets) removeCommitFilter(ref Ref) (err error) {
 	refCommitSets.lock.Lock()
 	defer refCommitSets.lock.Unlock()
 
-	commitSet, ok := refCommitSets.commits[oid]
+	commitSet, ok := refCommitSets.commits[ref.Name()]
 	if !ok {
-		return fmt.Errorf("No CommitSet exists for ref with id: %v", oid)
+		return fmt.Errorf("No CommitSet exists for ref: %v", ref.Name())
 	}
 
 	filteredCommitSet, ok := commitSet.(*filteredCommitSet)
@@ -547,7 +547,7 @@ func (refCommitSets *refCommitSets) removeCommitFilter(oid *Oid) (err error) {
 		return
 	}
 
-	refCommitSets.commits[oid] = filteredCommitSet.Child()
+	refCommitSets.commits[ref.Name()] = filteredCommitSet.Child()
 	refCommitSets.channels.ReportStatus("Removed commit filter")
 
 	return
@@ -611,8 +611,7 @@ func (statusManager *statusManager) registerStatusListener(statusListener Status
 type RepositoryData struct {
 	channels       *Channels
 	repoDataLoader *RepoDataLoader
-	head           *Oid
-	headBranch     *Branch
+	head           Ref
 	refSet         *refSet
 	commitRefSet   *commitRefSet
 	refCommitSets  *refCommitSets
@@ -687,13 +686,12 @@ func (repoData *RepositoryData) Path() string {
 
 // LoadHead attempts to load the HEAD reference
 func (repoData *RepositoryData) LoadHead() (err error) {
-	head, branch, err := repoData.repoDataLoader.Head()
+	head, err := repoData.repoDataLoader.Head()
 	if err != nil {
 		return
 	}
 
 	repoData.head = head
-	repoData.headBranch = branch
 
 	return
 }
@@ -767,55 +765,55 @@ func (repoData *RepositoryData) mapRefsToCommits(refs []Ref) (err error) {
 }
 
 // LoadCommits attempts to load all commits for the provided oid
-func (repoData *RepositoryData) LoadCommits(oid *Oid, onCommitsLoaded OnCommitsLoaded) (err error) {
-	if _, ok := repoData.refCommitSets.commitSet(oid); ok {
-		log.Debugf("Commits already loading/loaded for oid %v", oid)
+func (repoData *RepositoryData) LoadCommits(ref Ref, onCommitsLoaded OnCommitsLoaded) (err error) {
+	if _, ok := repoData.refCommitSets.commitSet(ref); ok {
+		log.Debugf("Commits already loading/loaded for ref %v", ref.Name())
 		return
 	}
 
-	commitCh, err := repoData.repoDataLoader.Commits(oid)
+	commitCh, err := repoData.repoDataLoader.Commits(ref.Oid())
 	if err != nil {
 		return
 	}
 
 	commitSet := newBaseFilteredCommitSet()
 	commitSet.SetLoading(true)
-	repoData.refCommitSets.setCommitSet(oid, commitSet)
+	repoData.refCommitSets.setCommitSet(ref, commitSet)
 
 	go func() {
-		log.Debugf("Receiving commits from RepoDataLoader for oid %v", oid)
+		log.Debugf("Receiving commits from RepoDataLoader for ref %v at %v", ref.Name(), ref.Oid())
 
 		for commit := range commitCh {
-			commitSet, ok := repoData.refCommitSets.commitSet(oid)
+			commitSet, ok := repoData.refCommitSets.commitSet(ref)
 			if !ok {
-				log.Errorf("Error when loading commits: No CommitSet exists for ref with id: %v", oid)
+				log.Errorf("Error when loading commits: No CommitSet exists for ref %v", ref.Name())
 				return
 			}
 
 			if err := commitSet.AddCommit(commit); err != nil {
-				log.Errorf("Error when loading commits for oid %v: %v", oid, err)
+				log.Errorf("Error when loading commits for ref %v: %v", ref.Name(), err)
 				return
 			}
 		}
 
-		commitSet, ok := repoData.refCommitSets.commitSet(oid)
+		commitSet, ok := repoData.refCommitSets.commitSet(ref)
 		if !ok {
-			log.Errorf("No CommitSet exists for ref with id: %v", oid)
+			log.Errorf("No CommitSet exists for ref %v", ref.Name())
 			return
 		}
 
 		commitSet.SetLoading(false)
-		log.Debugf("Finished loading commits for oid %v", oid)
+		log.Debugf("Finished loading commits for ref %v", ref.Name())
 
-		repoData.channels.ReportError(onCommitsLoaded(oid))
+		repoData.channels.ReportError(onCommitsLoaded(ref))
 	}()
 
 	return
 }
 
 // Head returns the loaded HEAD ref
-func (repoData *RepositoryData) Head() (*Oid, *Branch) {
-	return repoData.head, repoData.headBranch
+func (repoData *RepositoryData) Head() Ref {
+	return repoData.head
 }
 
 // Branches returns all loaded local and remote branches
@@ -849,8 +847,8 @@ func (repoData *RepositoryData) RefsForCommit(commit *Commit) *CommitRefs {
 }
 
 // CommitSetState returns the current commit set state for the provided oid
-func (repoData *RepositoryData) CommitSetState(oid *Oid) CommitSetState {
-	if commitSet, ok := repoData.refCommitSets.commitSet(oid); ok {
+func (repoData *RepositoryData) CommitSetState(ref Ref) CommitSetState {
+	if commitSet, ok := repoData.refCommitSets.commitSet(ref); ok {
 		return commitSet.CommitSetState()
 	}
 
@@ -861,10 +859,10 @@ func (repoData *RepositoryData) CommitSetState(oid *Oid) CommitSetState {
 }
 
 // Commits returns a channel from which the commit range specified can be read
-func (repoData *RepositoryData) Commits(oid *Oid, startIndex, count uint) (<-chan *Commit, error) {
-	commitSet, ok := repoData.refCommitSets.commitSet(oid)
+func (repoData *RepositoryData) Commits(ref Ref, startIndex, count uint) (<-chan *Commit, error) {
+	commitSet, ok := repoData.refCommitSets.commitSet(ref)
 	if !ok {
-		return nil, fmt.Errorf("No commits loaded for oid %v", oid)
+		return nil, fmt.Errorf("No commits loaded for ref %v", ref.Name())
 	}
 
 	commitCh := make(chan *Commit)
@@ -893,14 +891,14 @@ func (repoData *RepositoryData) Commits(oid *Oid, startIndex, count uint) (<-cha
 }
 
 // CommitByIndex returns the loaded commit for the provided ref and index
-func (repoData *RepositoryData) CommitByIndex(oid *Oid, index uint) (commit *Commit, err error) {
-	commitSet, ok := repoData.refCommitSets.commitSet(oid)
+func (repoData *RepositoryData) CommitByIndex(ref Ref, index uint) (commit *Commit, err error) {
+	commitSet, ok := repoData.refCommitSets.commitSet(ref)
 	if !ok {
-		return nil, fmt.Errorf("No commits loaded for oid %v", oid)
+		return nil, fmt.Errorf("No commits loaded for ref %v", ref.Name())
 	}
 
 	if commit = commitSet.Commit(index); commit == nil {
-		err = fmt.Errorf("Commit index %v is invalid for branch %v", index, oid)
+		err = fmt.Errorf("Commit index %v is invalid for ref %v", index, ref.Name())
 	}
 
 	return
@@ -912,13 +910,13 @@ func (repoData *RepositoryData) Commit(oid *Oid) (*Commit, error) {
 }
 
 // AddCommitFilter adds the filter to the specified ref
-func (repoData *RepositoryData) AddCommitFilter(oid *Oid, commitFilter *CommitFilter) error {
-	return repoData.refCommitSets.addCommitFilter(oid, commitFilter)
+func (repoData *RepositoryData) AddCommitFilter(ref Ref, commitFilter *CommitFilter) error {
+	return repoData.refCommitSets.addCommitFilter(ref, commitFilter)
 }
 
 // RemoveCommitFilter removes a filter (if one exists) for the specified oid
-func (repoData *RepositoryData) RemoveCommitFilter(oid *Oid) error {
-	return repoData.refCommitSets.removeCommitFilter(oid)
+func (repoData *RepositoryData) RemoveCommitFilter(ref Ref) error {
+	return repoData.refCommitSets.removeCommitFilter(ref)
 }
 
 // DiffCommit loads a diff between the commit with the specified oid and its parent

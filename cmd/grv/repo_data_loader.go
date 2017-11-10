@@ -136,6 +136,31 @@ func (tag *Tag) String() string {
 	return fmt.Sprintf("%v:%v", tag.name, tag.oid)
 }
 
+// HEAD represents the HEAD ref
+type HEAD struct {
+	oid *Oid
+}
+
+// Oid pointed to by head
+func (head *HEAD) Oid() *Oid {
+	return head.oid
+}
+
+// Name of HEAD ref
+func (head *HEAD) Name() string {
+	return "HEAD"
+}
+
+// Shorthand name of HEAD ref
+func (head *HEAD) Shorthand() string {
+	return head.Name()
+}
+
+// IsRemote is always false
+func (head *HEAD) IsRemote() bool {
+	return false
+}
+
 // Commit contains data for a commit
 type Commit struct {
 	oid    *Oid
@@ -401,27 +426,31 @@ func (repoDataLoader *RepoDataLoader) Path() string {
 }
 
 // Head loads the current HEAD ref
-func (repoDataLoader *RepoDataLoader) Head() (oid *Oid, branch *Branch, err error) {
+func (repoDataLoader *RepoDataLoader) Head() (ref Ref, err error) {
 	log.Debug("Loading HEAD")
-	ref, err := repoDataLoader.repo.Head()
+	rawRef, err := repoDataLoader.repo.Head()
 	if err != nil {
 		return
 	}
 
-	oid = repoDataLoader.cache.getOid(ref.Target())
+	oid := repoDataLoader.cache.getOid(rawRef.Target())
 
-	if ref.IsBranch() {
-		rawBranch := ref.Branch()
+	if rawRef.IsBranch() {
+		rawBranch := rawRef.Branch()
 		var branchName string
 		branchName, err = rawBranch.Name()
 		if err != nil {
 			return
 		}
 
-		branch = &Branch{
+		ref = &Branch{
 			oid:       oid,
 			shorthand: branchName,
-			name:      ref.Name(),
+			name:      rawRef.Name(),
+		}
+	} else {
+		ref = &HEAD{
+			oid: oid,
 		}
 	}
 
@@ -440,6 +469,15 @@ func (repoDataLoader *RepoDataLoader) LoadRefs() (refs []Ref, err error) {
 	tags, err := repoDataLoader.loadTags()
 	if err != nil {
 		return
+	}
+
+	head, err := repoDataLoader.Head()
+	if err != nil {
+		return
+	}
+
+	if _, isDetached := head.(*HEAD); isDetached {
+		refs = append(refs, head)
 	}
 
 	for _, branch := range branches {
@@ -707,15 +745,15 @@ func (repoDataLoader *RepoDataLoader) DiffFile(statusType StatusType, path strin
 
 	switch statusType {
 	case StStaged:
-		var oid *Oid
+		var head Ref
 		var commit *Commit
 		var tree *git.Tree
 
-		if oid, _, err = repoDataLoader.Head(); err != nil {
+		if head, err = repoDataLoader.Head(); err != nil {
 			return
 		}
 
-		if commit, err = repoDataLoader.Commit(oid); err != nil {
+		if commit, err = repoDataLoader.Commit(head.Oid()); err != nil {
 			return
 		}
 

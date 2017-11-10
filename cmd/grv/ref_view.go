@@ -45,7 +45,6 @@ type refList struct {
 // RenderedRef represents a reference's string value and meta data
 type RenderedRef struct {
 	value           string
-	oid             *Oid
 	ref             Ref
 	renderedRefType RenderedRefType
 	refList         *refList
@@ -169,7 +168,7 @@ type RefView struct {
 
 // RefListener is notified when a reference is selected
 type RefListener interface {
-	OnRefSelect(oid *Oid, ref Ref) error
+	OnRefSelect(ref Ref) error
 }
 
 // NewRefView creates a new instance
@@ -233,13 +232,13 @@ func (refView *RefView) Initialise() (err error) {
 
 		refView.generateRenderedRefs()
 
-		_, headBranch := refView.repoData.Head()
+		head := refView.repoData.Head()
 		activeRowIndex := uint(1)
 
-		if headBranch != nil {
+		if _, headIsBranch := head.(*Branch); headIsBranch {
 			for _, ref := range refs {
 				if branch, isBranch := ref.(*Branch); isBranch {
-					if !branch.IsRemote() && branch.Name() == headBranch.Name() {
+					if !branch.IsRemote() && branch.Name() == head.Name() {
 						log.Debugf("Setting branch %v as selected branch", branch.name)
 						break
 					}
@@ -258,9 +257,9 @@ func (refView *RefView) Initialise() (err error) {
 	})
 
 	refView.generateRenderedRefs()
-	head, branch := refView.repoData.Head()
+	head := refView.repoData.Head()
 
-	err = refView.notifyRefListeners(head, branch)
+	err = refView.notifyRefListeners(head)
 
 	return
 }
@@ -278,12 +277,12 @@ func (refView *RefView) RegisterRefListener(refListener RefListener) {
 	refView.refListeners = append(refView.refListeners, refListener)
 }
 
-func (refView *RefView) notifyRefListeners(oid *Oid, ref Ref) (err error) {
-	log.Debugf("Notifying RefListeners of selected oid %v", oid)
+func (refView *RefView) notifyRefListeners(ref Ref) (err error) {
+	log.Debugf("Notifying RefListeners of selected ref %v", ref.Name())
 
 	go func() {
 		for _, refListener := range refView.refListeners {
-			if err = refListener.OnRefSelect(oid, ref); err != nil {
+			if err = refListener.OnRefSelect(ref); err != nil {
 				break
 			}
 		}
@@ -467,13 +466,14 @@ func generateBranches(refView *RefView, refList *refList, renderedRefs renderedR
 	if refList.renderedRefType == RvLocalBranchGroup {
 		branchRenderedRefType = RvLocalBranch
 		branches = localBranches
+		head := refView.repoData.Head()
 
-		if head, headBranch := refView.repoData.Head(); headBranch == nil {
+		if _, isDetached := head.(*HEAD); isDetached {
 			renderedRefs.Add(&RenderedRef{
-				value:           fmt.Sprintf("   %s", getDetachedHeadDisplayValue(head)),
-				oid:             head,
+				value:           fmt.Sprintf("   %s", getDetachedHeadDisplayValue(head.Oid())),
 				renderedRefType: branchRenderedRefType,
 				refNum:          branchNum,
+				ref:             head,
 			})
 
 			branchNum++
@@ -486,7 +486,6 @@ func generateBranches(refView *RefView, refList *refList, renderedRefs renderedR
 	for _, branch := range branches {
 		renderedRefs.Add(&RenderedRef{
 			value:           fmt.Sprintf("   %s", branch.Shorthand()),
-			oid:             branch.Oid(),
 			ref:             branch,
 			renderedRefType: branchRenderedRefType,
 			refNum:          branchNum,
@@ -511,7 +510,6 @@ func generateTags(refView *RefView, refList *refList, renderedRefs renderedRefSe
 	for tagIndex, tag := range tags {
 		renderedRefs.Add(&RenderedRef{
 			value:           fmt.Sprintf("   %s", tag.Shorthand()),
-			oid:             tag.Oid(),
 			ref:             tag,
 			renderedRefType: RvTag,
 			refNum:          uint(tagIndex + 1),
@@ -759,8 +757,8 @@ func selectRef(refView *RefView, action Action) (err error) {
 		refView.generateRenderedRefs()
 		refView.channels.UpdateDisplay()
 	case RvLocalBranch, RvRemoteBranch, RvTag:
-		log.Debugf("Selecting ref %v:%v", renderedRef.value, renderedRef.oid)
-		if err = refView.notifyRefListeners(renderedRef.oid, renderedRef.ref); err != nil {
+		log.Debugf("Selecting ref %v:%v", renderedRef.ref.Name(), renderedRef.ref.Oid())
+		if err = refView.notifyRefListeners(renderedRef.ref); err != nil {
 			return
 		}
 		refView.channels.UpdateDisplay()
