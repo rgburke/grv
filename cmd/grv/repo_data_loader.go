@@ -13,6 +13,8 @@ import (
 )
 
 const (
+	// RdlHeadRef is the HEAD ref name
+	RdlHeadRef          = "HEAD"
 	rdlCommitBufferSize = 100
 	rdlDiffStatsCols    = 80
 	rdlShortOidLen      = 7
@@ -148,7 +150,7 @@ func (head *HEAD) Oid() *Oid {
 
 // Name of HEAD ref
 func (head *HEAD) Name() string {
-	return "HEAD"
+	return RdlHeadRef
 }
 
 // Shorthand name of HEAD ref
@@ -573,8 +575,6 @@ func (repoDataLoader *RepoDataLoader) loadTags() (tags []*Tag, err error) {
 
 // Commits loads all commits for the provided ref and returns a channel from which the loaded commits can be read
 func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) {
-	log.Debugf("Loading commits for oid %v", oid)
-
 	revWalk, err := repoDataLoader.repo.Walk()
 	if err != nil {
 		return nil, err
@@ -585,10 +585,37 @@ func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) 
 		return nil, err
 	}
 
+	log.Debugf("Loading commits for oid %v", oid)
+
+	return repoDataLoader.loadCommits(revWalk), nil
+}
+
+// CommitRange accepts a range of the form rev..rev and returns a stream of commits in this range
+func (repoDataLoader *RepoDataLoader) CommitRange(commitRange string) (<-chan *Commit, error) {
+	revWalk, err := repoDataLoader.repo.Walk()
+	if err != nil {
+		return nil, err
+	}
+
+	revWalk.Sorting(git.SortTime)
+	if err := revWalk.PushRange(commitRange); err != nil {
+		return nil, err
+	}
+
+	log.Debugf("Loading commits for range %v", commitRange)
+
+	return repoDataLoader.loadCommits(revWalk), nil
+}
+
+func (repoDataLoader *RepoDataLoader) loadCommits(revWalk *git.RevWalk) <-chan *Commit {
 	commitCh := make(chan *Commit, rdlCommitBufferSize)
 
 	go func() {
+		defer close(commitCh)
+		defer revWalk.Free()
+
 		commitNum := 0
+
 		if err := revWalk.Iterate(func(commit *git.Commit) bool {
 			if repoDataLoader.channels.Exit() {
 				return false
@@ -596,17 +623,16 @@ func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) 
 
 			commitNum++
 			commitCh <- repoDataLoader.cache.getCommit(commit)
+
 			return true
 		}); err != nil {
-			log.Errorf("Error when iterating over commits for oid %v: %v", oid, err)
+			log.Errorf("Error when iterating over commits: %v", err)
 		}
 
-		close(commitCh)
-		revWalk.Free()
-		log.Debugf("Loaded %v commits for oid %v", commitNum, oid)
+		log.Debugf("Loaded %v commits", commitNum)
 	}()
 
-	return commitCh, nil
+	return commitCh
 }
 
 // Commit loads a commit for the provided oid (if it points to a commit)
@@ -654,6 +680,18 @@ func (repoDataLoader *RepoDataLoader) Commit(oid *Oid) (commit *Commit, err erro
 	}
 
 	commit = repoDataLoader.cache.getCommit(rawCommit)
+
+	return
+}
+
+// MergeBase finds the best common ancestor between two commits
+func (repoDataLoader *RepoDataLoader) MergeBase(oid1, oid2 *Oid) (commonAncestor *Oid, err error) {
+	rawOid, err := repoDataLoader.repo.MergeBase(oid1.oid, oid2.oid)
+	if err != nil {
+		err = fmt.Errorf("Unable to find common ancestor for oids %v and %v: %v", oid1, oid2, err)
+	}
+
+	commonAncestor = repoDataLoader.cache.getOid(rawOid)
 
 	return
 }

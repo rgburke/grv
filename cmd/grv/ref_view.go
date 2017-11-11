@@ -296,7 +296,20 @@ func (refView *RefView) OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs 
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
 
+	updateDisplay := false
+
 	if len(addedRefs) > 0 || len(removedRefs) > 0 {
+		updateDisplay = true
+	} else {
+		for _, updatedRef := range updatedRefs {
+			if updatedRef.NewRef.Name() == RdlHeadRef {
+				updateDisplay = true
+				break
+			}
+		}
+	}
+
+	if updateDisplay {
 		refView.generateRenderedRefs()
 		refView.channels.UpdateDisplay()
 	}

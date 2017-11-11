@@ -14,6 +14,7 @@ import (
 const (
 	// GitRepositoryDirectoryName is the name of the git directory in a git repository
 	GitRepositoryDirectoryName = ".git"
+	updatedRefChannelSize      = 256
 )
 
 // OnCommitsLoaded is called when all commits are loaded for the specified oid
@@ -31,6 +32,12 @@ type StatusListener interface {
 type UpdatedRef struct {
 	OldRef Ref
 	NewRef Ref
+}
+
+// String returns a string representation of an updated ref
+func (updatedRef UpdatedRef) String() string {
+	return fmt.Sprintf("%v: %v -> %v",
+		updatedRef.NewRef.Name(), updatedRef.OldRef.Oid(), updatedRef.NewRef.Oid())
 }
 
 // RefStateListener is updated when changes to refs are detected
@@ -67,6 +74,8 @@ type commitSet interface {
 	CommitStream() <-chan *Commit
 	SetLoading(loading bool)
 	CommitSetState() CommitSetState
+	Update(commonAncestor *Commit, update []*Commit)
+	Clone() commitSet
 }
 
 type filteredCommitSet struct {
@@ -228,6 +237,115 @@ func (filteredCommitSet *filteredCommitSet) CommitSetState() CommitSetState {
 	}
 }
 
+func (filteredCommitSet *filteredCommitSet) Update(commonAncestor *Commit, update []*Commit) {
+	filteredCommitSet.lock.Lock()
+	defer filteredCommitSet.lock.Unlock()
+
+	if filteredCommitSet.hasChild() {
+		filteredCommitSet.child.Update(commonAncestor, update)
+	}
+
+	ancestorIndex := filteredCommitSet.commitIndex(commonAncestor)
+	log.Debugf("Common ancestor index: %v", ancestorIndex)
+
+	if ancestorIndex < 0 {
+		ancestorIndex = -(ancestorIndex + 1)
+	}
+
+	filteredCommitSet.commits = append(update, filteredCommitSet.commits[ancestorIndex:]...)
+}
+
+func (filteredCommitSet *filteredCommitSet) commitIndex(commit *Commit) int {
+	commits := filteredCommitSet.commits
+
+	// Heuristic check
+	// The majority of the time branches are updated simply
+	// by fast forwarding to the latest commit. The common ancestor
+	// will be the first commit in the array in this case.
+	// Therefore do a quick check to see if the common ancestor
+	// appears within the first 5 commits
+	for i := 0; i < len(commits) && i < 5; i++ {
+		if commits[i].oid.Equal(commit.oid) {
+			return i
+		}
+	}
+
+	var low, high, mid int
+	targetDate := commit.commit.Author().When
+	high = len(commits) - 1
+	low = 0
+
+	for low <= high {
+		mid = (low + high) / 2
+		date := commits[mid].commit.Author().When
+
+		if targetDate.Before(date) {
+			high = mid - 1
+		} else if targetDate.After(date) {
+			low = mid + 1
+		} else {
+			break
+		}
+	}
+
+	if low > high {
+		return -(low + 1)
+	}
+
+	if commits[mid].oid.Equal(commit.oid) {
+		return mid
+	}
+
+	for i := 1; ; i++ {
+		lowIndex := mid - i
+		highIndex := mid + i
+
+		if lowIndex > -1 {
+			if commits[lowIndex].commit.Author().When.Equal(targetDate) {
+				if commits[lowIndex].oid.Equal(commit.oid) {
+					return lowIndex
+				}
+			} else {
+				lowIndex = -1
+			}
+		}
+
+		if highIndex < len(commits) {
+			if commits[highIndex].commit.Author().When.Equal(targetDate) {
+				if commits[highIndex].oid.Equal(commit.oid) {
+					return highIndex
+				}
+			} else {
+				highIndex = len(commits)
+			}
+		}
+
+		if lowIndex < 0 && highIndex >= len(commits) {
+			break
+		}
+	}
+
+	return -(mid + 1)
+}
+
+func (filteredCommitSet *filteredCommitSet) Clone() commitSet {
+	filteredCommitSet.lock.Lock()
+	defer filteredCommitSet.lock.Unlock()
+
+	var child commitSet
+	if filteredCommitSet.hasChild() {
+		child = filteredCommitSet.child.Clone()
+	}
+
+	clone := newBaseFilteredCommitSet()
+	clone.child = child
+	clone.commitFilter = filteredCommitSet.commitFilter
+	clone.commits = append([]*Commit(nil), filteredCommitSet.commits...)
+	clone.loading = filteredCommitSet.loading
+
+	return clone
+}
+
 // CommitSetState describes the current state of a commit set for a ref
 type CommitSetState struct {
 	loading     bool
@@ -369,7 +487,8 @@ func (refSet *refSet) update(refs []Ref) (err error) {
 	refSet.tagsList = tags
 
 	if len(addedRefs) > 0 || len(removedRefs) > 0 || len(updatedRefs) > 0 {
-		log.Debugf("Refs Changed - new: %v, removed: %v, updated: %v")
+		log.Debugf("Refs Changed - new: %v, removed: %v, updated: %v",
+			len(addedRefs), len(removedRefs), len(updatedRefs))
 		refSet.notifyRefStateListeners(addedRefs, removedRefs, updatedRefs)
 	} else {
 		log.Debugf("No new, removed or modified refs")
@@ -616,6 +735,7 @@ type RepositoryData struct {
 	commitRefSet   *commitRefSet
 	refCommitSets  *refCommitSets
 	statusManager  *statusManager
+	refUpdateCh    chan *UpdatedRef
 }
 
 // NewRepositoryData creates a new instance
@@ -627,11 +747,13 @@ func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *Repo
 		commitRefSet:   newCommitRefSet(),
 		refCommitSets:  newRefCommitSets(channels),
 		statusManager:  newStatusManager(repoDataLoader),
+		refUpdateCh:    make(chan *UpdatedRef, updatedRefChannelSize),
 	}
 }
 
 // Free free's any underlying resources
 func (repoData *RepositoryData) Free() {
+	close(repoData.refUpdateCh)
 	repoData.repoDataLoader.Free()
 }
 
@@ -645,6 +767,9 @@ func (repoData *RepositoryData) Initialise(repoPath string) (err error) {
 	if err = repoData.repoDataLoader.Initialise(path); err != nil {
 		return
 	}
+
+	go repoData.processUpdatedRefs()
+	repoData.RegisterRefStateListener(repoData)
 
 	return repoData.LoadStatus()
 }
@@ -709,6 +834,11 @@ func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 
 	go func() {
 		defer refSet.endUpdate()
+
+		if err := repoData.LoadHead(); err != nil {
+			repoData.channels.ReportError(err)
+			return
+		}
 
 		refs, err := repoData.repoDataLoader.LoadRefs()
 		if err != nil {
@@ -946,4 +1076,69 @@ func (repoData *RepositoryData) RegisterStatusListener(statusListener StatusList
 // RegisterRefStateListener registers a listener to be notified when a ref is added, removed or modified
 func (repoData *RepositoryData) RegisterRefStateListener(refStateListener RefStateListener) {
 	repoData.refSet.registerRefStateListener(refStateListener)
+}
+
+// OnRefsChanged processes modified refs and loads any missing commits
+func (repoData *RepositoryData) OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef) {
+	for _, updatedRef := range updatedRefs {
+		select {
+		case repoData.refUpdateCh <- updatedRef:
+		default:
+			log.Errorf("Unable process UpdatedRef %v", updatedRef)
+		}
+	}
+}
+
+func (repoData *RepositoryData) processUpdatedRefs() {
+	log.Info("Starting UpdatedRef processor")
+
+	for updatedRef := range repoData.refUpdateCh {
+		oldRef := updatedRef.OldRef
+		newRef := updatedRef.NewRef
+
+		log.Debugf("Processing ref update for %v", updatedRef)
+
+		commitSet, exists := repoData.refCommitSets.commitSet(oldRef)
+		if !exists {
+			log.Debugf("No commitSet for oid %v", oldRef.Oid())
+			continue
+		}
+
+		commonAncestor, err := repoData.repoDataLoader.MergeBase(newRef.Oid(), oldRef.Oid())
+		if err != nil {
+			log.Errorf("Unable to update commits for ref %v: %v", newRef.Name(), err)
+			continue
+		}
+		log.Debugf("Common ancestor is %v", commonAncestor)
+
+		commonAncestorCommit, err := repoData.repoDataLoader.Commit(commonAncestor)
+		if err != nil {
+			log.Errorf("Unable to load common ancestor commit with id %v: %v", commonAncestor, err)
+			continue
+		}
+
+		commitRange := fmt.Sprintf("%v..%v", oldRef.Oid(), newRef.Oid())
+		commitCh, err := repoData.repoDataLoader.CommitRange(commitRange)
+		if err != nil {
+			log.Errorf("Unable to load commits for range %v: %v", newRef.Name(), err)
+			continue
+		}
+		log.Debugf("Reading commits for range %v", commitRange)
+
+		var commits []*Commit
+		for commit := range commitCh {
+			commits = append(commits, commit)
+		}
+
+		if repoData.channels.Exit() {
+			return
+		}
+
+		log.Debugf("Update ref %v with %v commits", newRef.Name(), len(commits))
+		commitSet.Update(commonAncestorCommit, commits)
+
+		repoData.refCommitSets.setCommitSet(newRef, commitSet)
+
+		repoData.channels.UpdateDisplay()
+	}
 }
