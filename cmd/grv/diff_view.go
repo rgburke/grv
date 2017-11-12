@@ -275,8 +275,8 @@ func (diffView *DiffView) ViewID() ViewID {
 	return ViewDiff
 }
 
-// OnCommitSelect loads/fetches the diff for the selected commit and refreshes the display
-func (diffView *DiffView) OnCommitSelect(commit *Commit) (err error) {
+// OnCommitSelected loads/fetches the diff for the selected commit and refreshes the display
+func (diffView *DiffView) OnCommitSelected(commit *Commit) (err error) {
 	log.Debugf("DiffView loading diff for selected commit %v", commit.commit.Id())
 
 	diffView.lock.Lock()

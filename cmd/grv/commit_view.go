@@ -37,9 +37,9 @@ type referenceViewData struct {
 	tableFormatter *TableFormatter
 }
 
-// CommitListener is notified when a commit is selected
-type CommitListener interface {
-	OnCommitSelect(*Commit) error
+// CommitViewListener is notified when a commit is selected
+type CommitViewListener interface {
+	OnCommitSelected(*Commit) error
 }
 
 // StatusSelectedListener is notified when the status entry is selected in the commit view
@@ -56,7 +56,7 @@ type CommitView struct {
 	refViewData             map[string]*referenceViewData
 	handlers                map[ActionType]commitViewHandler
 	refreshTask             *loadingCommitsRefreshTask
-	commitListeners         []CommitListener
+	commitViewListeners     []CommitViewListener
 	statusSelectedListeners []StatusSelectedListener
 	viewDimension           ViewDimension
 	viewSearch              *ViewSearch
@@ -450,7 +450,7 @@ func (commitView *CommitView) OnRefSelect(ref Ref) (err error) {
 		return
 	}
 
-	commitView.notifyCommitListeners(commit)
+	commitView.notifyCommitViewListeners(commit)
 
 	return
 }
@@ -520,20 +520,20 @@ func (commitView *CommitView) ViewID() ViewID {
 	return ViewCommit
 }
 
-// RegisterCommitListner accepts a listener to be notified when a commit is selected
-func (commitView *CommitView) RegisterCommitListner(commitListener CommitListener) {
+// RegisterCommitViewListener accepts a listener to be notified when a commit is selected
+func (commitView *CommitView) RegisterCommitViewListener(commitViewListener CommitViewListener) {
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
-	commitView.commitListeners = append(commitView.commitListeners, commitListener)
+	commitView.commitViewListeners = append(commitView.commitViewListeners, commitViewListener)
 }
 
-func (commitView *CommitView) notifyCommitListeners(commit *Commit) {
+func (commitView *CommitView) notifyCommitViewListeners(commit *Commit) {
 	log.Debugf("Notifying commit listeners of selected commit %v", commit.commit.Id().String())
 
 	go func() {
-		for _, commitListener := range commitView.commitListeners {
-			if err := commitListener.OnCommitSelect(commit); err != nil {
+		for _, commitViewListener := range commitView.commitViewListeners {
+			if err := commitViewListener.OnCommitSelected(commit); err != nil {
 				commitView.channels.ReportError(err)
 			}
 		}
@@ -590,7 +590,7 @@ func (commitView *CommitView) selectCommit(lineIndex uint) (err error) {
 	}
 
 	commitView.ViewPos().SetActiveRowIndex(lineIndex)
-	commitView.notifyCommitListeners(selectedCommit)
+	commitView.notifyCommitViewListeners(selectedCommit)
 
 	return
 }

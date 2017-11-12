@@ -62,7 +62,7 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 	gitStatusViewWin := NewWindow("gitStatusView", config)
 
 	refView.RegisterRefListener(commitView)
-	commitView.RegisterCommitListner(diffView)
+	commitView.RegisterCommitViewListener(diffView)
 	gitStatusView.RegisterGitStatusFileSelectedListener(diffView)
 
 	historyView := &HistoryView{
@@ -87,7 +87,7 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 		activeViewPos: 1,
 	}
 
-	commitView.RegisterCommitListner(historyView)
+	commitView.RegisterCommitViewListener(historyView)
 	commitView.RegisterStatusSelectedListener(historyView)
 
 	gitStatusView.RegisterGitStatusFileSelectedListener(historyView)
@@ -289,8 +289,8 @@ func (historyView *HistoryView) ActiveView() AbstractView {
 	return historyView.views[historyView.activeViewPos]
 }
 
-// OnCommitSelect ensures the diff view is visible
-func (historyView *HistoryView) OnCommitSelect(commit *Commit) (err error) {
+// OnCommitSelected ensures the diff view is visible
+func (historyView *HistoryView) OnCommitSelected(commit *Commit) (err error) {
 	historyView.lock.Lock()
 	defer historyView.lock.Unlock()
 
