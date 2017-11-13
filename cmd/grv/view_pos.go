@@ -71,7 +71,7 @@ func (viewPos *ViewPosition) DetermineViewStartRow(viewRows, rows uint) {
 	} else if rowDiff := viewPos.activeRowIndex - viewPos.viewStartRowIndex; rowDiff >= viewRows {
 		viewPos.viewStartRowIndex += (rowDiff - viewRows) + 1
 	} else if visibleRows := rows - (viewPos.viewStartRowIndex + 1); visibleRows < viewRows && viewPos.viewStartRowIndex > 0 {
-		viewPos.viewStartRowIndex -= Min(viewPos.viewStartRowIndex, (viewRows-visibleRows)-1)
+		viewPos.viewStartRowIndex -= MinUint(viewPos.viewStartRowIndex, (viewRows-visibleRows)-1)
 	}
 }
 
@@ -98,7 +98,7 @@ func (viewPos *ViewPosition) MoveLineUp() (changed bool) {
 // MovePageDown moves the cursor and display down a page
 func (viewPos *ViewPosition) MovePageDown(pageRows, rows uint) (changed bool) {
 	if viewPos.activeRowIndex+1 < rows {
-		viewPos.activeRowIndex += Min(pageRows, rows-(viewPos.activeRowIndex+1))
+		viewPos.activeRowIndex += MinUint(pageRows, rows-(viewPos.activeRowIndex+1))
 		viewPos.viewStartRowIndex = viewPos.activeRowIndex
 		changed = true
 	}
@@ -109,7 +109,7 @@ func (viewPos *ViewPosition) MovePageDown(pageRows, rows uint) (changed bool) {
 // MovePageUp moves the cursor and display up a page
 func (viewPos *ViewPosition) MovePageUp(pageRows uint) (changed bool) {
 	if viewPos.activeRowIndex > 0 {
-		viewPos.activeRowIndex -= Min(pageRows, viewPos.activeRowIndex)
+		viewPos.activeRowIndex -= MinUint(pageRows, viewPos.activeRowIndex)
 		viewPos.viewStartRowIndex = viewPos.activeRowIndex
 		changed = true
 	}
@@ -169,7 +169,7 @@ func (viewPos *ViewPosition) CenterActiveRow(pageRows uint) (changed bool) {
 		viewPos.viewStartRowIndex += selectedRow - centerRow
 		changed = true
 	} else if centerRow > selectedRow {
-		viewPos.viewStartRowIndex -= Min(centerRow-selectedRow, viewPos.viewStartRowIndex)
+		viewPos.viewStartRowIndex -= MinUint(centerRow-selectedRow, viewPos.viewStartRowIndex)
 		changed = true
 	}
 

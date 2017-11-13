@@ -149,7 +149,7 @@ func (historyView *HistoryView) determineViewDimensions(viewDimension ViewDimens
 	vp2Layout := viewLayout{viewDimension: viewDimension}
 	vp3Layout := viewLayout{viewDimension: viewDimension}
 
-	vp1Layout.viewDimension.cols = Min(hvBranchViewWidth, viewDimension.cols/2)
+	vp1Layout.viewDimension.cols = MinUint(hvBranchViewWidth, viewDimension.cols/2)
 
 	if historyView.orientation == voColumn {
 		remainingCols := viewDimension.cols - vp1Layout.viewDimension.cols

@@ -17,11 +17,14 @@ const (
 	updatedRefChannelSize      = 256
 )
 
-// OnCommitsLoaded is called when all commits are loaded for the specified oid
-type OnCommitsLoaded func(Ref) error
-
 // OnRefsLoaded is called when all refs have been loaded and processed
 type OnRefsLoaded func([]Ref) error
+
+// CommitSetListener is notified of load and update events for commit sets
+type CommitSetListener interface {
+	OnCommitsLoaded(Ref)
+	OnCommitsUpdated(ref Ref, updateStartIndex, newCommitNum int)
+}
 
 // StatusListener is notified when git status has changed
 type StatusListener interface {
@@ -50,7 +53,7 @@ type RepoData interface {
 	Path() string
 	LoadHead() error
 	LoadRefs(OnRefsLoaded)
-	LoadCommits(Ref, OnCommitsLoaded) error
+	LoadCommits(Ref) error
 	Head() Ref
 	Branches() (localBranches, remoteBranches []*Branch, loading bool)
 	LocalTags() (tags []*Tag, loading bool)
@@ -66,6 +69,7 @@ type RepoData interface {
 	LoadStatus() (err error)
 	RegisterStatusListener(StatusListener)
 	RegisterRefStateListener(RefStateListener)
+	RegisterCommitSetListener(CommitSetListener)
 }
 
 type commitSet interface {
@@ -74,7 +78,7 @@ type commitSet interface {
 	CommitStream() <-chan *Commit
 	SetLoading(loading bool)
 	CommitSetState() CommitSetState
-	Update(commonAncestor *Commit, update []*Commit)
+	Update(commonAncestor *Commit, update []*Commit) (updateStartIndex int)
 	Clone() commitSet
 }
 
@@ -237,7 +241,7 @@ func (filteredCommitSet *filteredCommitSet) CommitSetState() CommitSetState {
 	}
 }
 
-func (filteredCommitSet *filteredCommitSet) Update(commonAncestor *Commit, update []*Commit) {
+func (filteredCommitSet *filteredCommitSet) Update(commonAncestor *Commit, update []*Commit) (ancestorIndex int) {
 	filteredCommitSet.lock.Lock()
 	defer filteredCommitSet.lock.Unlock()
 
@@ -245,7 +249,7 @@ func (filteredCommitSet *filteredCommitSet) Update(commonAncestor *Commit, updat
 		filteredCommitSet.child.Update(commonAncestor, update)
 	}
 
-	ancestorIndex := filteredCommitSet.commitIndex(commonAncestor)
+	ancestorIndex = filteredCommitSet.commitIndex(commonAncestor)
 	log.Debugf("Common ancestor index: %v", ancestorIndex)
 
 	if ancestorIndex < 0 {
@@ -253,6 +257,8 @@ func (filteredCommitSet *filteredCommitSet) Update(commonAncestor *Commit, updat
 	}
 
 	filteredCommitSet.commits = append(update, filteredCommitSet.commits[ancestorIndex:]...)
+
+	return ancestorIndex
 }
 
 func (filteredCommitSet *filteredCommitSet) commitIndex(commit *Commit) int {
@@ -585,9 +591,10 @@ func (commitRefSet *commitRefSet) refsForCommit(commit *Commit) (commitRefsCopy 
 }
 
 type refCommitSets struct {
-	commits  map[string]commitSet
-	channels *Channels
-	lock     sync.Mutex
+	commits            map[string]commitSet
+	commitSetListeners []CommitSetListener
+	channels           *Channels
+	lock               sync.Mutex
 }
 
 func newRefCommitSets(channels *Channels) *refCommitSets {
@@ -670,6 +677,44 @@ func (refCommitSets *refCommitSets) removeCommitFilter(ref Ref) (err error) {
 	refCommitSets.channels.ReportStatus("Removed commit filter")
 
 	return
+}
+
+func (refCommitSets *refCommitSets) registerCommitSetListener(commitSetListener CommitSetListener) {
+	refCommitSets.lock.Lock()
+	defer refCommitSets.lock.Unlock()
+
+	refCommitSets.commitSetListeners = append(refCommitSets.commitSetListeners, commitSetListener)
+}
+
+func (refCommitSets *refCommitSets) notifyCommitSetListenersCommitSetLoaded(ref Ref) {
+	refCommitSets.lock.Lock()
+	defer refCommitSets.lock.Unlock()
+
+	commitSetListeners := append([]CommitSetListener(nil), refCommitSets.commitSetListeners...)
+
+	go func() {
+		log.Debugf("Notifying CommitSetListeners commits for ref %v have loaded", ref.Name())
+
+		for _, listener := range commitSetListeners {
+			listener.OnCommitsLoaded(ref)
+		}
+	}()
+}
+
+func (refCommitSets *refCommitSets) notifyCommitSetListenersCommitSetUpdated(ref Ref, updateStartIndex, newCommitNum int) {
+	refCommitSets.lock.Lock()
+	defer refCommitSets.lock.Unlock()
+
+	commitSetListeners := append([]CommitSetListener(nil), refCommitSets.commitSetListeners...)
+
+	go func() {
+		log.Debugf("Notifying CommitSetListeners commits for ref %v have updated at index %v with %v commits",
+			ref.Name(), updateStartIndex, newCommitNum)
+
+		for _, listener := range commitSetListeners {
+			listener.OnCommitsUpdated(ref, updateStartIndex, newCommitNum)
+		}
+	}()
 }
 
 type statusManager struct {
@@ -895,7 +940,7 @@ func (repoData *RepositoryData) mapRefsToCommits(refs []Ref) (err error) {
 }
 
 // LoadCommits attempts to load all commits for the provided oid
-func (repoData *RepositoryData) LoadCommits(ref Ref, onCommitsLoaded OnCommitsLoaded) (err error) {
+func (repoData *RepositoryData) LoadCommits(ref Ref) (err error) {
 	if _, ok := repoData.refCommitSets.commitSet(ref); ok {
 		log.Debugf("Commits already loading/loaded for ref %v", ref.Name())
 		return
@@ -935,7 +980,7 @@ func (repoData *RepositoryData) LoadCommits(ref Ref, onCommitsLoaded OnCommitsLo
 		commitSet.SetLoading(false)
 		log.Debugf("Finished loading commits for ref %v", ref.Name())
 
-		repoData.channels.ReportError(onCommitsLoaded(ref))
+		repoData.refCommitSets.notifyCommitSetListenersCommitSetLoaded(ref)
 	}()
 
 	return
@@ -1078,6 +1123,11 @@ func (repoData *RepositoryData) RegisterRefStateListener(refStateListener RefSta
 	repoData.refSet.registerRefStateListener(refStateListener)
 }
 
+// RegisterCommitSetListener registers a listener to be notified when a commitSet event occurs
+func (repoData *RepositoryData) RegisterCommitSetListener(commitSetListener CommitSetListener) {
+	repoData.refCommitSets.registerCommitSetListener(commitSetListener)
+}
+
 // OnRefsChanged processes modified refs and loads any missing commits
 func (repoData *RepositoryData) OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef) {
 	for _, updatedRef := range updatedRefs {
@@ -1135,9 +1185,10 @@ func (repoData *RepositoryData) processUpdatedRefs() {
 		}
 
 		log.Debugf("Update ref %v with %v commits", newRef.Name(), len(commits))
-		commitSet.Update(commonAncestorCommit, commits)
+		updateStartIndex := commitSet.Update(commonAncestorCommit, commits)
 
 		repoData.refCommitSets.setCommitSet(newRef, commitSet)
+		repoData.refCommitSets.notifyCommitSetListenersCommitSetUpdated(newRef, updateStartIndex, len(commits))
 
 		repoData.channels.UpdateDisplay()
 	}

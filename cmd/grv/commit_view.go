@@ -95,6 +95,8 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 func (commitView *CommitView) Initialise() (err error) {
 	log.Info("Initialising CommitView")
 
+	commitView.repoData.RegisterCommitSetListener(commitView)
+
 	return
 }
 
@@ -391,17 +393,7 @@ func (commitView *CommitView) OnRefSelect(ref Ref) (err error) {
 	refreshTask := newLoadingCommitsRefreshTask(time.Millisecond*cvLoadRefreshMs, commitView.channels)
 	commitView.refreshTask = refreshTask
 
-	if err = commitView.repoData.LoadCommits(ref, func(Ref) error {
-		commitView.lock.Lock()
-		defer commitView.lock.Unlock()
-
-		refreshTask.stop()
-
-		commitSetState := commitView.repoData.CommitSetState(ref)
-		commitView.channels.ReportStatus("Loaded %v commits for ref %v", commitSetState.commitNum, ref.Shorthand())
-
-		return nil
-	}); err != nil {
+	if err = commitView.repoData.LoadCommits(ref); err != nil {
 		return
 	}
 
@@ -453,6 +445,41 @@ func (commitView *CommitView) OnRefSelect(ref Ref) (err error) {
 	commitView.notifyCommitViewListeners(commit)
 
 	return
+}
+
+// OnCommitsLoaded stops the refresh task if it's still running
+func (commitView *CommitView) OnCommitsLoaded(ref Ref) {
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
+	if commitView.refreshTask != nil && commitView.activeRef.Name() == ref.Name() {
+		log.Debugf("Commits for ref %v loaded. Stopping display refresh task")
+		commitView.refreshTask.stop()
+	}
+
+	commitSetState := commitView.repoData.CommitSetState(ref)
+	commitView.channels.ReportStatus("Loaded %v commits for ref %v", commitSetState.commitNum, ref.Shorthand())
+}
+
+// OnCommitsUpdated adjusts the active row index to take account of the newly loaded commits
+func (commitView *CommitView) OnCommitsUpdated(ref Ref, updateStartIndex, newCommitNum int) {
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
+	if commitView.activeRef.Name() == ref.Name() {
+		viewPos := commitView.ViewPos()
+		rowOffset := newCommitNum - updateStartIndex
+		activeRowIndex := MaxInt(int(viewPos.ActiveRowIndex())+rowOffset, 0)
+
+		log.Debugf("Adjusting active row index from %v -> %v for ref %v",
+			viewPos.ActiveRowIndex(), activeRowIndex, ref.Name())
+
+		if err := commitView.selectCommit(uint(activeRowIndex)); err != nil {
+			commitView.channels.ReportError(err)
+		}
+
+		commitView.channels.UpdateDisplay()
+	}
 }
 
 // OnStatusChanged updates the commit views internal status state

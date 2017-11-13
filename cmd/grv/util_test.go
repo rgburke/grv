@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestMin(t *testing.T) {
+func TestMinUint(t *testing.T) {
 	var minTests = []struct {
 		arg1           uint
 		arg2           uint
@@ -28,7 +28,7 @@ func TestMin(t *testing.T) {
 	}
 
 	for _, minTest := range minTests {
-		actualResult := Min(minTest.arg1, minTest.arg2)
+		actualResult := MinUint(minTest.arg1, minTest.arg2)
 
 		if actualResult != minTest.expectedResult {
 			t.Errorf("Min return arg does not match expected arg. Expected: %v, Actual: %v", minTest.expectedResult, actualResult)
