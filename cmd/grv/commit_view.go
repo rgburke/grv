@@ -453,7 +453,7 @@ func (commitView *CommitView) OnCommitsLoaded(ref Ref) {
 	defer commitView.lock.Unlock()
 
 	if commitView.refreshTask != nil && commitView.activeRef.Name() == ref.Name() {
-		log.Debugf("Commits for ref %v loaded. Stopping display refresh task")
+		log.Debugf("Commits for ref %v loaded. Stopping display refresh task", ref.Name())
 		commitView.refreshTask.stop()
 	}
 
