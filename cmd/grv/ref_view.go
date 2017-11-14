@@ -315,6 +315,11 @@ func (refView *RefView) OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs 
 	}
 }
 
+// OnHeadChanged does nothing
+func (refView *RefView) OnHeadChanged(oldHead, newHead Ref) {
+
+}
+
 // Render generates and writes the ref view to the provided window
 func (refView *RefView) Render(win RenderWindow) (err error) {
 	log.Debug("Rendering RefView")
@@ -412,13 +417,13 @@ func (refView *RefView) renderFooter(win RenderWindow, selectedRenderedRef *Rend
 			_, remoteBranches, _ := refView.repoData.Branches()
 			footer = fmt.Sprintf("Remote Branch %v of %v", selectedRenderedRef.refNum, len(remoteBranches))
 		case RvTagGroup:
-			if tags, loading := refView.repoData.LocalTags(); loading {
+			if tags, loading := refView.repoData.Tags(); loading {
 				footer = "Tags: Loading"
 			} else {
 				footer = fmt.Sprintf("Tags: %v", len(tags))
 			}
 		case RvTag:
-			tags, _ := refView.repoData.LocalTags()
+			tags, _ := refView.repoData.Tags()
 			footer = fmt.Sprintf("Tag %v of %v", selectedRenderedRef.refNum, len(tags))
 		}
 	}
@@ -509,7 +514,7 @@ func generateBranches(refView *RefView, refList *refList, renderedRefs renderedR
 }
 
 func generateTags(refView *RefView, refList *refList, renderedRefs renderedRefSet) {
-	tags, loading := refView.repoData.LocalTags()
+	tags, loading := refView.repoData.Tags()
 
 	if loading {
 		renderedRefs.Add(&RenderedRef{

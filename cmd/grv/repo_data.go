@@ -46,6 +46,7 @@ func (updatedRef UpdatedRef) String() string {
 // RefStateListener is updated when changes to refs are detected
 type RefStateListener interface {
 	OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef)
+	OnHeadChanged(oldHead, newHead Ref)
 }
 
 // RepoData houses all data loaded from the repository
@@ -56,7 +57,7 @@ type RepoData interface {
 	LoadCommits(Ref) error
 	Head() Ref
 	Branches() (localBranches, remoteBranches []*Branch, loading bool)
-	LocalTags() (tags []*Tag, loading bool)
+	Tags() (tags []*Tag, loading bool)
 	RefsForCommit(*Commit) *CommitRefs
 	CommitSetState(Ref) CommitSetState
 	Commits(ref Ref, startIndex, count uint) (<-chan *Commit, error)
@@ -367,6 +368,7 @@ type CommitSetFilterState struct {
 
 type refSet struct {
 	refs               map[string]Ref
+	headRef            Ref
 	localBranchesList  []*Branch
 	remoteBranchesList []*Branch
 	tagsList           []*Tag
@@ -394,7 +396,26 @@ func (refSet *refSet) registerRefStateListener(refStateListener RefStateListener
 	refSet.refStateListeners = append(refSet.refStateListeners, refStateListener)
 }
 
-func (refSet *refSet) startUpdate() bool {
+func (refSet *refSet) updateHead(head Ref) {
+	refSet.lock.Lock()
+	defer refSet.lock.Unlock()
+
+	oldHead := refSet.headRef
+	refSet.headRef = head
+
+	if oldHead != nil && !oldHead.Equal(head) {
+		refSet.notifyRefStateListenersHeadChanged(oldHead, head)
+	}
+}
+
+func (refSet *refSet) head() Ref {
+	refSet.lock.Lock()
+	defer refSet.lock.Unlock()
+
+	return refSet.headRef
+}
+
+func (refSet *refSet) startRefUpdate() bool {
 	refSet.lock.Lock()
 	defer refSet.lock.Unlock()
 
@@ -407,14 +428,14 @@ func (refSet *refSet) startUpdate() bool {
 	return true
 }
 
-func (refSet *refSet) endUpdate() {
+func (refSet *refSet) endRefUpdate() {
 	refSet.lock.Lock()
 	defer refSet.lock.Unlock()
 
 	refSet.loading = false
 }
 
-func (refSet *refSet) update(refs []Ref) (err error) {
+func (refSet *refSet) updateRefs(refs []Ref) (err error) {
 	refSet.lock.Lock()
 	defer refSet.lock.Unlock()
 
@@ -493,9 +514,7 @@ func (refSet *refSet) update(refs []Ref) (err error) {
 	refSet.tagsList = tags
 
 	if len(addedRefs) > 0 || len(removedRefs) > 0 || len(updatedRefs) > 0 {
-		log.Debugf("Refs Changed - new: %v, removed: %v, updated: %v",
-			len(addedRefs), len(removedRefs), len(updatedRefs))
-		refSet.notifyRefStateListeners(addedRefs, removedRefs, updatedRefs)
+		refSet.notifyRefStateListenersRefsChanged(addedRefs, removedRefs, updatedRefs)
 	} else {
 		log.Debugf("No new, removed or modified refs")
 	}
@@ -503,14 +522,49 @@ func (refSet *refSet) update(refs []Ref) (err error) {
 	return
 }
 
-func (refSet *refSet) notifyRefStateListeners(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef) {
+func (refSet *refSet) notifyRefStateListenersRefsChanged(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef) {
 	refStateListeners := append([]RefStateListener(nil), refSet.refStateListeners...)
 
 	go func() {
+		log.Debugf("Notifying RefStateListeners Refs Changed - new: %v, removed: %v, updated: %v",
+			len(addedRefs), len(removedRefs), len(updatedRefs))
+
 		for _, refStateListener := range refStateListeners {
 			refStateListener.OnRefsChanged(addedRefs, removedRefs, updatedRefs)
 		}
 	}()
+}
+
+func (refSet *refSet) notifyRefStateListenersHeadChanged(oldHead, newHead Ref) {
+	refStateListeners := append([]RefStateListener(nil), refSet.refStateListeners...)
+
+	go func() {
+		log.Debugf("Notifying RefStateListeners HEAD changed %v:%v -> %v:%v",
+			oldHead.Name(), oldHead.Oid(), newHead.Name(), newHead.Oid())
+
+		for _, refStateListener := range refStateListeners {
+			refStateListener.OnHeadChanged(oldHead, newHead)
+		}
+	}()
+}
+
+func (refSet *refSet) branches() (localBranchesList, remoteBranchesList []*Branch, loading bool) {
+	refSet.lock.Lock()
+	defer refSet.lock.Unlock()
+
+	localBranchesList = append(localBranchesList, refSet.localBranchesList...)
+	remoteBranchesList = append(remoteBranchesList, refSet.remoteBranchesList...)
+
+	return
+}
+
+func (refSet *refSet) tags() (tagsList []*Tag, loading bool) {
+	refSet.lock.Lock()
+	defer refSet.lock.Unlock()
+
+	tagsList = append(tagsList, refSet.tagsList...)
+
+	return
 }
 
 // CommitRefs contain all refs to a commit
@@ -861,7 +915,7 @@ func (repoData *RepositoryData) LoadHead() (err error) {
 		return
 	}
 
-	repoData.head = head
+	repoData.refSet.updateHead(head)
 
 	return
 }
@@ -872,13 +926,13 @@ func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 
 	log.Debug("Loading refs")
 
-	if !refSet.startUpdate() {
+	if !refSet.startRefUpdate() {
 		log.Debugf("Already loading refs")
 		return
 	}
 
 	go func() {
-		defer refSet.endUpdate()
+		defer refSet.endRefUpdate()
 
 		if err := repoData.LoadHead(); err != nil {
 			repoData.channels.ReportError(err)
@@ -896,12 +950,12 @@ func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 			return
 		}
 
-		if err = refSet.update(refs); err != nil {
+		if err = refSet.updateRefs(refs); err != nil {
 			repoData.channels.ReportError(err)
 			return
 		}
 
-		refSet.endUpdate()
+		refSet.endRefUpdate()
 
 		log.Debug("Refs loaded")
 
@@ -988,32 +1042,17 @@ func (repoData *RepositoryData) LoadCommits(ref Ref) (err error) {
 
 // Head returns the loaded HEAD ref
 func (repoData *RepositoryData) Head() Ref {
-	return repoData.head
+	return repoData.refSet.head()
 }
 
 // Branches returns all loaded local and remote branches
 func (repoData *RepositoryData) Branches() (localBranches []*Branch, remoteBranches []*Branch, loading bool) {
-	refSet := repoData.refSet
-	refSet.lock.Lock()
-	defer refSet.lock.Unlock()
-
-	localBranches = refSet.localBranchesList
-	remoteBranches = refSet.remoteBranchesList
-	loading = refSet.loading
-
-	return
+	return repoData.refSet.branches()
 }
 
-// LocalTags returns all loaded tags
-func (repoData *RepositoryData) LocalTags() (tags []*Tag, loading bool) {
-	refSet := repoData.refSet
-	refSet.lock.Lock()
-	defer refSet.lock.Unlock()
-
-	tags = refSet.tagsList
-	loading = refSet.loading
-
-	return
+// Tags returns all loaded tags
+func (repoData *RepositoryData) Tags() (tags []*Tag, loading bool) {
+	return repoData.refSet.tags()
 }
 
 // RefsForCommit returns the set of all refs that point to the provided commit
@@ -1126,6 +1165,11 @@ func (repoData *RepositoryData) RegisterRefStateListener(refStateListener RefSta
 // RegisterCommitSetListener registers a listener to be notified when a commitSet event occurs
 func (repoData *RepositoryData) RegisterCommitSetListener(commitSetListener CommitSetListener) {
 	repoData.refCommitSets.registerCommitSetListener(commitSetListener)
+}
+
+// OnHeadChanged does nothing
+func (repoData *RepositoryData) OnHeadChanged(oldHead, newHead Ref) {
+
 }
 
 // OnRefsChanged processes modified refs and loads any missing commits

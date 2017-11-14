@@ -70,6 +70,7 @@ type Ref interface {
 	Name() string
 	Shorthand() string
 	IsRemote() bool
+	Equal(other Ref) bool
 }
 
 // Branch contains data for a branch reference
@@ -98,6 +99,21 @@ func (branch *Branch) Shorthand() string {
 // IsRemote is true if the branch ref is remote
 func (branch *Branch) IsRemote() bool {
 	return branch.isRemote
+}
+
+// Equal returns true if the other ref is a branch equal to this one
+func (branch *Branch) Equal(other Ref) bool {
+	if other == nil {
+		return false
+	}
+
+	otherBranch, ok := other.(*Branch)
+	if !ok {
+		return false
+	}
+
+	return branch.Name() == otherBranch.Name() &&
+		branch.Oid().Equal(otherBranch.Oid())
 }
 
 // String returns branch data in a string format
@@ -133,6 +149,21 @@ func (tag *Tag) IsRemote() bool {
 	return tag.isRemote
 }
 
+// Equal returns true if the other ref is a tag equal to this one
+func (tag *Tag) Equal(other Ref) bool {
+	if other == nil {
+		return false
+	}
+
+	otherTag, ok := other.(*Tag)
+	if !ok {
+		return false
+	}
+
+	return tag.Name() == otherTag.Name() &&
+		tag.Oid().Equal(otherTag.Oid())
+}
+
 // Tag returns tag data in a string format
 func (tag *Tag) String() string {
 	return fmt.Sprintf("%v:%v", tag.name, tag.oid)
@@ -161,6 +192,20 @@ func (head *HEAD) Shorthand() string {
 // IsRemote is always false
 func (head *HEAD) IsRemote() bool {
 	return false
+}
+
+// Equal returns true if the other ref is a HEAD equal to this one
+func (head *HEAD) Equal(other Ref) bool {
+	if other == nil {
+		return false
+	}
+
+	otherHead, ok := other.(*HEAD)
+	if !ok {
+		return false
+	}
+
+	return head.Oid().Equal(otherHead.Oid())
 }
 
 // Commit contains data for a commit
@@ -493,7 +538,6 @@ func (repoDataLoader *RepoDataLoader) LoadRefs() (refs []Ref, err error) {
 	return
 }
 
-// LoadBranches loads all local branch refs currently in the repository
 func (repoDataLoader *RepoDataLoader) loadBranches() (branches []*Branch, err error) {
 	branchIter, err := repoDataLoader.repo.NewBranchIterator(git.BranchAll)
 	if err != nil {
@@ -540,7 +584,6 @@ func (repoDataLoader *RepoDataLoader) loadBranches() (branches []*Branch, err er
 	return
 }
 
-// LocalTags loads all tag refs in the repository
 func (repoDataLoader *RepoDataLoader) loadTags() (tags []*Tag, err error) {
 	log.Debug("Loading local tags")
 
