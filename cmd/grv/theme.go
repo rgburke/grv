@@ -18,6 +18,7 @@ const (
 	CmpRefviewLocalBranchesHeader
 	CmpRefviewRemoteBranchesHeader
 	CmpRefviewLocalBranch
+	CmpRefviewHead
 	CmpRefviewRemoteBranch
 	CmpRefviewTagsHeader
 	CmpRefviewTag

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -17,6 +18,7 @@ const (
 	RvLocalBranchGroup RenderedRefType = iota
 	RvRemoteBranchGroup
 	RvLocalBranch
+	RvHead
 	RvRemoteBranch
 	RvTagGroup
 	RvTag
@@ -28,6 +30,7 @@ var refToTheme = map[RenderedRefType]ThemeComponentID{
 	RvLocalBranchGroup:  CmpRefviewLocalBranchesHeader,
 	RvRemoteBranchGroup: CmpRefviewRemoteBranchesHeader,
 	RvLocalBranch:       CmpRefviewLocalBranch,
+	RvHead:              CmpRefviewHead,
 	RvRemoteBranch:      CmpRefviewRemoteBranch,
 	RvTagGroup:          CmpRefviewTagsHeader,
 	RvTag:               CmpRefviewTag,
@@ -317,7 +320,11 @@ func (refView *RefView) OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs 
 
 // OnHeadChanged does nothing
 func (refView *RefView) OnHeadChanged(oldHead, newHead Ref) {
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
 
+	refView.generateRenderedRefs()
+	refView.channels.UpdateDisplay()
 }
 
 // Render generates and writes the ref view to the provided window
@@ -410,7 +417,7 @@ func (refView *RefView) renderFooter(win RenderWindow, selectedRenderedRef *Rend
 			} else {
 				footer = fmt.Sprintf("Remote Branches: %v", len(remoteBranches))
 			}
-		case RvLocalBranch:
+		case RvLocalBranch, RvHead:
 			localBranches, _, _ := refView.repoData.Branches()
 			footer = fmt.Sprintf("Branch %v of %v", selectedRenderedRef.refNum, len(localBranches))
 		case RvRemoteBranch:
@@ -510,6 +517,18 @@ func generateBranches(refView *RefView, refList *refList, renderedRefs renderedR
 		})
 
 		branchNum++
+	}
+
+	if refList.renderedRefType == RvLocalBranchGroup {
+		head := refView.repoData.Head()
+
+		for _, renderedRef := range renderedRefs.RenderedRefs() {
+			if head.Equal(renderedRef.ref) {
+				renderedRef.value = fmt.Sprintf(" * %v", strings.TrimLeft(renderedRef.value, " "))
+				renderedRef.renderedRefType = RvHead
+				break
+			}
+		}
 	}
 }
 
@@ -774,7 +793,7 @@ func selectRef(refView *RefView, action Action) (err error) {
 		log.Debugf("Setting ref group %v to expanded %v", renderedRef.refList.name, renderedRef.refList.expanded)
 		refView.generateRenderedRefs()
 		refView.channels.UpdateDisplay()
-	case RvLocalBranch, RvRemoteBranch, RvTag:
+	case RvLocalBranch, RvHead, RvRemoteBranch, RvTag:
 		log.Debugf("Selecting ref %v:%v", renderedRef.ref.Name(), renderedRef.ref.Oid())
 		if err = refView.notifyRefListeners(renderedRef.ref); err != nil {
 			return

@@ -140,6 +140,10 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},
+			CmpRefviewHead: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorGreen),
+			},
 			CmpRefviewRemoteBranch: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
@@ -351,6 +355,10 @@ func NewColdTheme() MutableTheme {
 			CmpRefviewLocalBranch: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpRefviewHead: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorGreen),
 			},
 			CmpRefviewRemoteBranch: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -564,6 +572,10 @@ func NewSolarizedTheme() MutableTheme {
 			CmpRefviewLocalBranch: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpRefviewHead: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(64),
 			},
 			CmpRefviewRemoteBranch: {
 				bgcolor: NewSystemColor(ColorNone),

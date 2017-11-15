@@ -80,6 +80,7 @@ var themeComponents = map[string]ThemeComponentID{
 	cfRefView + ".LocalBranchesHeader":  CmpRefviewLocalBranchesHeader,
 	cfRefView + ".RemoteBranchesHeader": CmpRefviewRemoteBranchesHeader,
 	cfRefView + ".LocalBranch":          CmpRefviewLocalBranch,
+	cfRefView + ".Head":                 CmpRefviewHead,
 	cfRefView + ".RemoteBranch":         CmpRefviewRemoteBranch,
 	cfRefView + ".TagsHeader":           CmpRefviewTagsHeader,
 	cfRefView + ".Tag":                  CmpRefviewTag,
