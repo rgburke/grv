@@ -274,6 +274,13 @@ func (historyView *HistoryView) OnActiveChange(active bool) {
 			historyView.views[viewPos].OnActiveChange(false)
 		}
 	}
+
+	if active {
+		if historyView.views[historyView.activeViewPos] == historyView.refView {
+			log.Debugf("RefView active: replacing DiffView with CommitView")
+			historyView.setChildViewAtPosition(historyView.commitView, vp2)
+		}
+	}
 }
 
 // ViewID returns the view ID for the history view

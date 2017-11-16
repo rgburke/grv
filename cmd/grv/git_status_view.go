@@ -160,6 +160,12 @@ func (gitStatusView *GitStatusView) OnActiveChange(active bool) {
 	defer gitStatusView.lock.Unlock()
 
 	gitStatusView.active = active
+
+	if active {
+		if err := gitStatusView.selectEntry(gitStatusView.viewPos.ActiveRowIndex()); err != nil {
+			gitStatusView.channels.ReportError(err)
+		}
+	}
 }
 
 // ViewID returns the ViewID for the git status view
