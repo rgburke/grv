@@ -474,6 +474,20 @@ func (refView *RefView) generateRenderedRefs() {
 			})
 		}
 	}
+
+	viewPos := refView.viewPos
+	renderedRefNum := uint(len(renderedRefs.RenderedRefs()))
+
+	if viewPos.ActiveRowIndex() >= renderedRefNum {
+		viewPos.SetActiveRowIndex(renderedRefNum - 1)
+	} else {
+		renderedRef := renderedRefs.RenderedRefs()[viewPos.ActiveRowIndex()]
+
+		if renderedRef.renderedRefType == RvSpace {
+			log.Debugf("Active row is empty. Moving to previous row")
+			moveUpRef(refView, Action{ActionType: ActionPrevLine})
+		}
+	}
 }
 
 func generateBranches(refView *RefView, refList *refList, renderedRefs renderedRefSet) {
