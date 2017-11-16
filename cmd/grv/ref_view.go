@@ -419,7 +419,11 @@ func (refView *RefView) renderFooter(win RenderWindow, selectedRenderedRef *Rend
 			}
 		case RvLocalBranch, RvHead:
 			localBranches, _, _ := refView.repoData.Branches()
-			footer = fmt.Sprintf("Branch %v of %v", selectedRenderedRef.refNum, len(localBranches))
+			branchNum := len(localBranches)
+			if _, isDetached := refView.repoData.Head().(*HEAD); isDetached {
+				branchNum++
+			}
+			footer = fmt.Sprintf("Branch %v of %v", selectedRenderedRef.refNum, branchNum)
 		case RvRemoteBranch:
 			_, remoteBranches, _ := refView.repoData.Branches()
 			footer = fmt.Sprintf("Remote Branch %v of %v", selectedRenderedRef.refNum, len(remoteBranches))
