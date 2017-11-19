@@ -69,45 +69,43 @@ type Ref interface {
 	Oid() *Oid
 	Name() string
 	Shorthand() string
-	IsRemote() bool
 	Equal(other Ref) bool
 }
 
-// Branch contains data for a branch reference
-type Branch struct {
+// Branch represents a branch reference
+type Branch interface {
+	Ref
+	IsRemote() bool
+}
+
+type abstractBranch struct {
 	oid       *Oid
 	name      string
 	shorthand string
-	isRemote  bool
 }
 
 // Oid pointed to by this branch
-func (branch *Branch) Oid() *Oid {
+func (branch *abstractBranch) Oid() *Oid {
 	return branch.oid
 }
 
 // Name of this branch
-func (branch *Branch) Name() string {
+func (branch *abstractBranch) Name() string {
 	return branch.name
 }
 
 // Shorthand name of this branch
-func (branch *Branch) Shorthand() string {
+func (branch *abstractBranch) Shorthand() string {
 	return branch.shorthand
 }
 
-// IsRemote is true if the branch ref is remote
-func (branch *Branch) IsRemote() bool {
-	return branch.isRemote
-}
-
 // Equal returns true if the other ref is a branch equal to this one
-func (branch *Branch) Equal(other Ref) bool {
+func (branch *abstractBranch) Equal(other Ref) bool {
 	if other == nil {
 		return false
 	}
 
-	otherBranch, ok := other.(*Branch)
+	otherBranch, ok := other.(*abstractBranch)
 	if !ok {
 		return false
 	}
@@ -117,8 +115,51 @@ func (branch *Branch) Equal(other Ref) bool {
 }
 
 // String returns branch data in a string format
-func (branch *Branch) String() string {
+func (branch *abstractBranch) String() string {
 	return fmt.Sprintf("%v:%v", branch.name, branch.oid)
+}
+
+// LocalBranch contains data for a local branch reference
+type LocalBranch struct {
+	*abstractBranch
+	remoteBranch string
+	ahead        uint
+	behind       uint
+}
+
+func newLocalBranch(oid *Oid, name, shorthand string) *LocalBranch {
+	return &LocalBranch{
+		abstractBranch: &abstractBranch{
+			oid:       oid,
+			name:      name,
+			shorthand: shorthand,
+		},
+	}
+}
+
+// IsRemote returns false
+func (localBranch *LocalBranch) IsRemote() bool {
+	return false
+}
+
+// RemoteBranch contains data for a remote branch reference
+type RemoteBranch struct {
+	*abstractBranch
+}
+
+func newRemoteBranch(oid *Oid, name, shorthand string) *RemoteBranch {
+	return &RemoteBranch{
+		abstractBranch: &abstractBranch{
+			oid:       oid,
+			name:      name,
+			shorthand: shorthand,
+		},
+	}
+}
+
+// IsRemote returns true
+func (remoteBranch *RemoteBranch) IsRemote() bool {
+	return true
 }
 
 // Tag contains data for a tag reference
@@ -142,11 +183,6 @@ func (tag *Tag) Name() string {
 // Shorthand name of this tag
 func (tag *Tag) Shorthand() string {
 	return tag.shorthand
-}
-
-// IsRemote is true if the tag is remote
-func (tag *Tag) IsRemote() bool {
-	return tag.isRemote
 }
 
 // Equal returns true if the other ref is a tag equal to this one
@@ -490,11 +526,7 @@ func (repoDataLoader *RepoDataLoader) Head() (ref Ref, err error) {
 			return
 		}
 
-		ref = &Branch{
-			oid:       oid,
-			shorthand: branchName,
-			name:      rawRef.Name(),
-		}
+		ref = newLocalBranch(oid, rawRef.Name(), branchName)
 	} else {
 		ref = &HEAD{
 			oid: oid,
@@ -538,7 +570,7 @@ func (repoDataLoader *RepoDataLoader) LoadRefs() (refs []Ref, err error) {
 	return
 }
 
-func (repoDataLoader *RepoDataLoader) loadBranches() (branches []*Branch, err error) {
+func (repoDataLoader *RepoDataLoader) loadBranches() (branches []Branch, err error) {
 	branchIter, err := repoDataLoader.repo.NewBranchIterator(git.BranchAll)
 	if err != nil {
 		return
@@ -567,12 +599,12 @@ func (repoDataLoader *RepoDataLoader) loadBranches() (branches []*Branch, err er
 		}
 
 		oid := repoDataLoader.cache.getOid(rawOid)
+		var newBranch Branch
 
-		newBranch := &Branch{
-			oid:       oid,
-			name:      branch.Reference.Name(),
-			shorthand: branchName,
-			isRemote:  branch.IsRemote(),
+		if branch.IsRemote() {
+			newBranch = newRemoteBranch(oid, branch.Reference.Name(), branchName)
+		} else {
+			newBranch = newLocalBranch(oid, branch.Reference.Name(), branchName)
 		}
 
 		branches = append(branches, newBranch)

@@ -255,7 +255,7 @@ func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIn
 
 	if len(commitRefs.branches) > 0 {
 		for _, branch := range commitRefs.branches {
-			if branch.isRemote {
+			if branch.IsRemote() {
 				if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CmpCommitviewLocalBranch, "{%v}", branch.Shorthand()); err != nil {
 					return
 				}
@@ -517,10 +517,6 @@ func (commitView *CommitView) statusVisible() bool {
 	}
 
 	head := commitView.repoData.Head()
-
-	if head.IsRemote() {
-		return false
-	}
 
 	activeBranch := commitView.activeRef
 

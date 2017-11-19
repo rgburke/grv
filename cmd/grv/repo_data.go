@@ -56,7 +56,7 @@ type RepoData interface {
 	LoadRefs(OnRefsLoaded)
 	LoadCommits(Ref) error
 	Head() Ref
-	Branches() (localBranches, remoteBranches []*Branch, loading bool)
+	Branches() (localBranches, remoteBranches []Branch, loading bool)
 	Tags() (tags []*Tag, loading bool)
 	RefsForCommit(*Commit) *CommitRefs
 	CommitSetState(Ref) CommitSetState
@@ -369,8 +369,8 @@ type CommitSetFilterState struct {
 type refSet struct {
 	refs               map[string]Ref
 	headRef            Ref
-	localBranchesList  []*Branch
-	remoteBranchesList []*Branch
+	localBranchesList  []Branch
+	remoteBranchesList []Branch
 	tagsList           []*Tag
 	loading            bool
 	refStateListeners  []RefStateListener
@@ -449,7 +449,7 @@ func (refSet *refSet) updateRefs(refs []Ref) (err error) {
 	var updatedRefs []*UpdatedRef
 
 	refMap := make(map[string]Ref)
-	var localBranches, remoteBranches []*Branch
+	var localBranches, remoteBranches []Branch
 	var tags []*Tag
 
 	for _, ref := range refs {
@@ -469,7 +469,7 @@ func (refSet *refSet) updateRefs(refs []Ref) (err error) {
 		refMap[ref.Name()] = ref
 
 		switch rawRef := ref.(type) {
-		case *Branch:
+		case Branch:
 			if rawRef.IsRemote() {
 				remoteBranches = append(remoteBranches, rawRef)
 			} else {
@@ -548,7 +548,7 @@ func (refSet *refSet) notifyRefStateListenersHeadChanged(oldHead, newHead Ref) {
 	}()
 }
 
-func (refSet *refSet) branches() (localBranchesList, remoteBranchesList []*Branch, loading bool) {
+func (refSet *refSet) branches() (localBranchesList, remoteBranchesList []Branch, loading bool) {
 	refSet.lock.Lock()
 	defer refSet.lock.Unlock()
 
@@ -570,7 +570,7 @@ func (refSet *refSet) tags() (tagsList []*Tag, loading bool) {
 // CommitRefs contain all refs to a commit
 type CommitRefs struct {
 	tags     []*Tag
-	branches []*Branch
+	branches []Branch
 }
 
 type commitRefSet struct {
@@ -610,7 +610,7 @@ func (commitRefSet *commitRefSet) addTagForCommit(commit *Commit, newTag *Tag) {
 	commitRefs.tags = append(commitRefs.tags, newTag)
 }
 
-func (commitRefSet *commitRefSet) addBranchForCommit(commit *Commit, newBranch *Branch) {
+func (commitRefSet *commitRefSet) addBranchForCommit(commit *Commit, newBranch Branch) {
 	commitRefSet.lock.Lock()
 	defer commitRefSet.lock.Unlock()
 
@@ -621,7 +621,7 @@ func (commitRefSet *commitRefSet) addBranchForCommit(commit *Commit, newBranch *
 	}
 
 	for _, branch := range commitRefs.branches {
-		if branch.name == newBranch.name {
+		if branch.Name() == newBranch.Name() {
 			return
 		}
 	}
@@ -638,7 +638,7 @@ func (commitRefSet *commitRefSet) refsForCommit(commit *Commit) (commitRefsCopy 
 	commitRefs, ok := commitRefSet.commitRefs[commit.oid]
 	if ok {
 		commitRefsCopy.tags = append([]*Tag(nil), commitRefs.tags...)
-		commitRefsCopy.branches = append([]*Branch(nil), commitRefs.branches...)
+		commitRefsCopy.branches = append([]Branch(nil), commitRefs.branches...)
 	}
 
 	return commitRefsCopy
@@ -983,7 +983,7 @@ func (repoData *RepositoryData) mapRefsToCommits(refs []Ref) (err error) {
 		}
 
 		switch refInstance := ref.(type) {
-		case *Branch:
+		case Branch:
 			commitRefSet.addBranchForCommit(commit, refInstance)
 		case *Tag:
 			commitRefSet.addTagForCommit(commit, refInstance)
@@ -1046,7 +1046,7 @@ func (repoData *RepositoryData) Head() Ref {
 }
 
 // Branches returns all loaded local and remote branches
-func (repoData *RepositoryData) Branches() (localBranches []*Branch, remoteBranches []*Branch, loading bool) {
+func (repoData *RepositoryData) Branches() (localBranches []Branch, remoteBranches []Branch, loading bool) {
 	return repoData.refSet.branches()
 }
 
@@ -1174,6 +1174,10 @@ func (repoData *RepositoryData) OnHeadChanged(oldHead, newHead Ref) {
 
 // OnRefsChanged processes modified refs and loads any missing commits
 func (repoData *RepositoryData) OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef) {
+	repoData.addUpdatedRefsToProcessingQueue(updatedRefs)
+}
+
+func (repoData *RepositoryData) addUpdatedRefsToProcessingQueue(updatedRefs []*UpdatedRef) {
 	for _, updatedRef := range updatedRefs {
 		select {
 		case repoData.refUpdateCh <- updatedRef:
