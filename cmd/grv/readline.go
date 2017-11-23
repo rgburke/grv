@@ -15,7 +15,9 @@ package main
 // 	rl_redisplay_function = grvReadlineUpdateDisplay;
 //	rl_catch_signals = 0;
 //	rl_catch_sigwinch = 0;
+//#if RL_READLINE_VERSION >= 0x0603
 //	rl_change_environment = 0;
+//#endif
 //	rl_bind_key('\t', NULL);
 //
 //	history_write_timestamps = 1;
