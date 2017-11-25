@@ -47,6 +47,7 @@ func (updatedRef UpdatedRef) String() string {
 type RefStateListener interface {
 	OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef)
 	OnHeadChanged(oldHead, newHead Ref)
+	OnTrackingBranchesUpdated(trackingBranches []*LocalBranch)
 }
 
 // RepoData houses all data loaded from the repository
@@ -366,20 +367,33 @@ type CommitSetFilterState struct {
 	filtersApplied      uint
 }
 
-type refSet struct {
-	refs               map[string]Ref
-	headRef            Ref
-	localBranchesList  []Branch
-	remoteBranchesList []Branch
-	tagsList           []*Tag
-	loading            bool
-	refStateListeners  []RefStateListener
-	lock               sync.Mutex
+type trackingBranchState struct {
+	localBranch  *LocalBranch
+	remoteBranch *RemoteBranch
 }
 
-func newRefSet() *refSet {
+type trackingBranchUpdater interface {
+	updateTrackingBranches(trackingBranchStates []*trackingBranchState) []*LocalBranch
+}
+
+type refSet struct {
+	refs                          map[string]Ref
+	headRef                       Ref
+	localBranchesList             []Branch
+	remoteBranchesList            []Branch
+	tagsList                      []*Tag
+	remoteToLocalTrackingBranches map[string]map[string]bool
+	loading                       bool
+	refStateListeners             []RefStateListener
+	trackingBranchUpdater         trackingBranchUpdater
+	lock                          sync.Mutex
+}
+
+func newRefSet(trackingBranchUpdater trackingBranchUpdater) *refSet {
 	return &refSet{
 		refs: make(map[string]Ref),
+		remoteToLocalTrackingBranches: make(map[string]map[string]bool),
+		trackingBranchUpdater:         trackingBranchUpdater,
 	}
 }
 
@@ -449,6 +463,7 @@ func (refSet *refSet) updateRefs(refs []Ref) (err error) {
 	var updatedRefs []*UpdatedRef
 
 	refMap := make(map[string]Ref)
+	remoteToLocalTrackingBranches := make(map[string]map[string]bool)
 	var localBranches, remoteBranches []Branch
 	var tags []*Tag
 
@@ -469,11 +484,19 @@ func (refSet *refSet) updateRefs(refs []Ref) (err error) {
 		refMap[ref.Name()] = ref
 
 		switch rawRef := ref.(type) {
-		case Branch:
-			if rawRef.IsRemote() {
-				remoteBranches = append(remoteBranches, rawRef)
-			} else {
-				localBranches = append(localBranches, rawRef)
+		case *RemoteBranch:
+			remoteBranches = append(remoteBranches, rawRef)
+		case *LocalBranch:
+			localBranches = append(localBranches, rawRef)
+
+			if rawRef.IsTrackingBranch() {
+				trackingBranches, ok := remoteToLocalTrackingBranches[rawRef.remoteBranch]
+				if !ok {
+					trackingBranches = make(map[string]bool)
+					remoteToLocalTrackingBranches[rawRef.remoteBranch] = trackingBranches
+				}
+
+				trackingBranches[rawRef.Name()] = true
 			}
 		case *Tag:
 			tags = append(tags, rawRef)
@@ -508,15 +531,96 @@ func (refSet *refSet) updateRefs(refs []Ref) (err error) {
 		return updatedRefs[i].NewRef.Name() < updatedRefs[j].NewRef.Name()
 	})
 
+	oldRemoteToLocalTrackingBranches := refSet.remoteToLocalTrackingBranches
+
 	refSet.refs = refMap
 	refSet.localBranchesList = localBranches
 	refSet.remoteBranchesList = remoteBranches
 	refSet.tagsList = tags
+	refSet.remoteToLocalTrackingBranches = remoteToLocalTrackingBranches
+
+	trackingBranchStates := refSet.determineTrackingBranchesToUpdate(
+		oldRemoteToLocalTrackingBranches, remoteToLocalTrackingBranches, updatedRefs)
 
 	if len(addedRefs) > 0 || len(removedRefs) > 0 || len(updatedRefs) > 0 {
 		refSet.notifyRefStateListenersRefsChanged(addedRefs, removedRefs, updatedRefs)
 	} else {
 		log.Debugf("No new, removed or modified refs")
+	}
+
+	trackingBranches := refSet.trackingBranchUpdater.updateTrackingBranches(trackingBranchStates)
+
+	if len(trackingBranches) > 0 {
+		refSet.notifyRefStateListenersTrackingBranchesUpdated(trackingBranches)
+	}
+
+	return
+}
+
+func (refSet *refSet) determineTrackingBranchesToUpdate(remoteToLocalOld, remoteToLocalNew map[string]map[string]bool,
+	updatedRefs []*UpdatedRef) (trackingBranchStates []*trackingBranchState) {
+
+	trackingBranchesToUpdate := make(map[string]bool)
+
+	for remoteBranch, localBranches := range remoteToLocalNew {
+		existingLocalBranches, isExistingRemoteBranch := remoteToLocalOld[remoteBranch]
+
+		if isExistingRemoteBranch {
+			for localBranch := range localBranches {
+				if _, isExistingLocalbranch := existingLocalBranches[localBranch]; !isExistingLocalbranch {
+					trackingBranchesToUpdate[localBranch] = true
+				}
+			}
+		} else {
+			for localBranch := range localBranches {
+				trackingBranchesToUpdate[localBranch] = true
+			}
+		}
+	}
+
+	for _, updatedRef := range updatedRefs {
+		switch branch := updatedRef.NewRef.(type) {
+		case *LocalBranch:
+			trackingBranchesToUpdate[branch.Name()] = true
+		case *RemoteBranch:
+			localBranches, ok := remoteToLocalNew[branch.Name()]
+			if ok {
+				for localBranch := range localBranches {
+					trackingBranchesToUpdate[localBranch] = true
+				}
+			}
+		}
+	}
+
+	for trackingBranch := range trackingBranchesToUpdate {
+		branch, ok := refSet.refs[trackingBranch]
+		if !ok {
+			log.Errorf("Algorithm error: Expected ref %v to exist", trackingBranch)
+			continue
+		}
+
+		localBranch, ok := branch.(*LocalBranch)
+		if !ok {
+			log.Errorf("Algorithm error: Expected ref %v to be a LocalBranch instance", trackingBranch)
+			continue
+		}
+
+		branch, ok = refSet.refs[localBranch.remoteBranch]
+		if !ok {
+			log.Errorf("Algorithm error: Expected ref %v to exist", localBranch.remoteBranch)
+			continue
+		}
+
+		remoteBranch, ok := branch.(*RemoteBranch)
+		if !ok {
+			log.Errorf("Algorithm error: Expected ref %v to be a RemoteBranch instance", localBranch.remoteBranch)
+			continue
+		}
+
+		trackingBranchStates = append(trackingBranchStates, &trackingBranchState{
+			localBranch:  localBranch,
+			remoteBranch: remoteBranch,
+		})
 	}
 
 	return
@@ -544,6 +648,18 @@ func (refSet *refSet) notifyRefStateListenersHeadChanged(oldHead, newHead Ref) {
 
 		for _, refStateListener := range refStateListeners {
 			refStateListener.OnHeadChanged(oldHead, newHead)
+		}
+	}()
+}
+
+func (refSet *refSet) notifyRefStateListenersTrackingBranchesUpdated(trackingBranches []*LocalBranch) {
+	refStateListeners := append([]RefStateListener(nil), refSet.refStateListeners...)
+
+	go func() {
+		log.Debugf("Notifying RefStateListeners %v tracking branches have changed", len(trackingBranches))
+
+		for _, refStateListener := range refStateListeners {
+			refStateListener.OnTrackingBranchesUpdated(trackingBranches)
 		}
 	}()
 }
@@ -839,15 +955,18 @@ type RepositoryData struct {
 
 // NewRepositoryData creates a new instance
 func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *RepositoryData {
-	return &RepositoryData{
+	repoData := &RepositoryData{
 		channels:       channels,
 		repoDataLoader: repoDataLoader,
-		refSet:         newRefSet(),
 		commitRefSet:   newCommitRefSet(),
 		refCommitSets:  newRefCommitSets(channels),
 		statusManager:  newStatusManager(repoDataLoader),
 		refUpdateCh:    make(chan *UpdatedRef, updatedRefChannelSize),
 	}
+
+	repoData.refSet = newRefSet(repoData)
+
+	return repoData
 }
 
 // Free free's any underlying resources
@@ -1172,6 +1291,11 @@ func (repoData *RepositoryData) OnHeadChanged(oldHead, newHead Ref) {
 
 }
 
+// OnTrackingBranchesUpdated does nothing
+func (repoData *RepositoryData) OnTrackingBranchesUpdated(trackingBranches []*LocalBranch) {
+
+}
+
 // OnRefsChanged processes modified refs and loads any missing commits
 func (repoData *RepositoryData) OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef) {
 	repoData.addUpdatedRefsToProcessingQueue(updatedRefs)
@@ -1240,4 +1364,28 @@ func (repoData *RepositoryData) processUpdatedRefs() {
 
 		repoData.channels.UpdateDisplay()
 	}
+}
+
+func (repoData *RepositoryData) updateTrackingBranches(trackingBranchStates []*trackingBranchState) (trackingBranches []*LocalBranch) {
+	for _, trackingBranchState := range trackingBranchStates {
+		localBranch := trackingBranchState.localBranch
+		remoteBranch := trackingBranchState.remoteBranch
+
+		ahead, behind, err := repoData.repoDataLoader.AheadBehind(localBranch.Oid(), remoteBranch.Oid())
+
+		if err != nil {
+			log.Errorf("Unable to determine ahead-behind counts for ref %v: %v", localBranch.Name(), err)
+			continue
+		}
+
+		trackingBranchState.localBranch.ahead = uint(ahead)
+		trackingBranchState.localBranch.behind = uint(behind)
+
+		trackingBranches = append(trackingBranches, localBranch)
+
+		log.Debugf("%v is %v commits ahead and %v commits behind %v",
+			localBranch.Name(), ahead, behind, remoteBranch.Name())
+	}
+
+	return
 }

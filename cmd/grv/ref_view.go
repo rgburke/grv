@@ -318,8 +318,17 @@ func (refView *RefView) OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs 
 	}
 }
 
-// OnHeadChanged does nothing
+// OnHeadChanged updates the ref view display when HEAD has changed
 func (refView *RefView) OnHeadChanged(oldHead, newHead Ref) {
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
+
+	refView.generateRenderedRefs()
+	refView.channels.UpdateDisplay()
+}
+
+// OnTrackingBranchesUpdated updates the ref view display when tracking branches have updated
+func (refView *RefView) OnTrackingBranchesUpdated(trackingBranches []*LocalBranch) {
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
 

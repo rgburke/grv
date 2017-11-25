@@ -127,19 +127,44 @@ type LocalBranch struct {
 	behind       uint
 }
 
-func newLocalBranch(oid *Oid, name, shorthand string) *LocalBranch {
-	return &LocalBranch{
+func newLocalBranch(oid *Oid, rawBranch *git.Branch) (localBranch *LocalBranch, err error) {
+	shorthand, err := rawBranch.Name()
+	if err != nil {
+		return
+	}
+
+	var upstreamRef string
+	upstream, err := rawBranch.Upstream()
+	if err != nil {
+		if gitError, isGitError := err.(*git.GitError); !isGitError || gitError.Code != git.ErrNotFound {
+			return
+		}
+	} else {
+		upstreamRef = upstream.Name()
+	}
+
+	name := rawBranch.Reference.Name()
+
+	localBranch = &LocalBranch{
 		abstractBranch: &abstractBranch{
 			oid:       oid,
 			name:      name,
 			shorthand: shorthand,
 		},
+		remoteBranch: upstreamRef,
 	}
+
+	return
 }
 
 // IsRemote returns false
 func (localBranch *LocalBranch) IsRemote() bool {
 	return false
+}
+
+// IsTrackingBranch returns true if this branch is tracking a remote branch
+func (localBranch *LocalBranch) IsTrackingBranch() bool {
+	return localBranch.remoteBranch != ""
 }
 
 // RemoteBranch contains data for a remote branch reference
@@ -520,13 +545,11 @@ func (repoDataLoader *RepoDataLoader) Head() (ref Ref, err error) {
 
 	if rawRef.IsBranch() {
 		rawBranch := rawRef.Branch()
-		var branchName string
-		branchName, err = rawBranch.Name()
+		ref, err = newLocalBranch(oid, rawBranch)
+
 		if err != nil {
 			return
 		}
-
-		ref = newLocalBranch(oid, rawRef.Name(), branchName)
 	} else {
 		ref = &HEAD{
 			oid: oid,
@@ -604,7 +627,10 @@ func (repoDataLoader *RepoDataLoader) loadBranches() (branches []Branch, err err
 		if branch.IsRemote() {
 			newBranch = newRemoteBranch(oid, branch.Reference.Name(), branchName)
 		} else {
-			newBranch = newLocalBranch(oid, branch.Reference.Name(), branchName)
+			newBranch, err = newLocalBranch(oid, branch)
+			if err != nil {
+				return err
+			}
 		}
 
 		branches = append(branches, newBranch)
@@ -769,6 +795,11 @@ func (repoDataLoader *RepoDataLoader) MergeBase(oid1, oid2 *Oid) (commonAncestor
 	commonAncestor = repoDataLoader.cache.getOid(rawOid)
 
 	return
+}
+
+// AheadBehind returns the number of unique commits between two branches
+func (repoDataLoader *RepoDataLoader) AheadBehind(local, upstream *Oid) (ahead, behind int, err error) {
+	return repoDataLoader.repo.AheadBehind(local.oid, upstream.oid)
 }
 
 // DiffCommit loads a diff between the commit with the specified oid and its parent
