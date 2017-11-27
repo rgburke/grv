@@ -670,6 +670,7 @@ func (refSet *refSet) branches() (localBranchesList, remoteBranchesList []Branch
 
 	localBranchesList = append(localBranchesList, refSet.localBranchesList...)
 	remoteBranchesList = append(remoteBranchesList, refSet.remoteBranchesList...)
+	loading = refSet.loading
 
 	return
 }
@@ -679,6 +680,7 @@ func (refSet *refSet) tags() (tagsList []*Tag, loading bool) {
 	defer refSet.lock.Unlock()
 
 	tagsList = append(tagsList, refSet.tagsList...)
+	loading = refSet.loading
 
 	return
 }
@@ -1064,10 +1066,7 @@ func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 			return
 		}
 
-		if err = repoData.mapRefsToCommits(refs); err != nil {
-			repoData.channels.ReportError(err)
-			return
-		}
+		repoData.mapRefsToCommits(refs)
 
 		if err = refSet.updateRefs(refs); err != nil {
 			repoData.channels.ReportError(err)
@@ -1087,18 +1086,17 @@ func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 }
 
 // TODO Become RefStateListener and only update commitRefSet for refs that have changed
-func (repoData *RepositoryData) mapRefsToCommits(refs []Ref) (err error) {
+func (repoData *RepositoryData) mapRefsToCommits(refs []Ref) {
 	log.Debug("Mapping refs to commits")
 
-	var commit *Commit
 	commitRefSet := repoData.commitRefSet
-
 	commitRefSet.clear()
 
 	for _, ref := range refs {
-		commit, err = repoData.repoDataLoader.Commit(ref.Oid())
+		commit, err := repoData.repoDataLoader.Commit(ref.Oid())
 		if err != nil {
-			return
+			log.Errorf("Error when loading ref %v:%v - %v", ref.Name(), ref.Oid(), err)
+			continue
 		}
 
 		switch refInstance := ref.(type) {
