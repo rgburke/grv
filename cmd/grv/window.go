@@ -10,6 +10,45 @@ import (
 	gc "github.com/rgburke/goncurses"
 )
 
+// AcsChar is an Alternative Character set character
+type AcsChar gc.Char
+
+// The set of supported ACS characters
+const (
+	AcsUlcorner AcsChar = AcsChar(gc.ACS_ULCORNER)
+	AcsLlcorner         = AcsChar(gc.ACS_LLCORNER)
+	AcsUrcorner         = AcsChar(gc.ACS_URCORNER)
+	AcsLrcorner         = AcsChar(gc.ACS_LRCORNER)
+	AcsLtee             = AcsChar(gc.ACS_LTEE)
+	AcsRtee             = AcsChar(gc.ACS_RTEE)
+	AcsBtee             = AcsChar(gc.ACS_BTEE)
+	AcsTtee             = AcsChar(gc.ACS_TTEE)
+	AcsHline            = AcsChar(gc.ACS_HLINE)
+	AcsVline            = AcsChar(gc.ACS_VLINE)
+	AcsPlus             = AcsChar(gc.ACS_PLUS)
+	AcsS1               = AcsChar(gc.ACS_S1)
+	AcsS9               = AcsChar(gc.ACS_S9)
+	AcsDiamond          = AcsChar(gc.ACS_DIAMOND)
+	AcsCkboard          = AcsChar(gc.ACS_CKBOARD)
+	AcsDegree           = AcsChar(gc.ACS_DEGREE)
+	AcsPlminus          = AcsChar(gc.ACS_PLMINUS)
+	AcsBullet           = AcsChar(gc.ACS_BULLET)
+	AcsLarrow           = AcsChar(gc.ACS_LARROW)
+	AcsRarrow           = AcsChar(gc.ACS_RARROW)
+	AcsDarrow           = AcsChar(gc.ACS_DARROW)
+	AcsUarrow           = AcsChar(gc.ACS_UARROW)
+	AcsBoard            = AcsChar(gc.ACS_BOARD)
+	AcsLantern          = AcsChar(gc.ACS_LANTERN)
+	AcsBlock            = AcsChar(gc.ACS_BLOCK)
+	AcsS3               = AcsChar(gc.ACS_S3)
+	AcsS7               = AcsChar(gc.ACS_S7)
+	AcsLequal           = AcsChar(gc.ACS_LEQUAL)
+	AcsGequal           = AcsChar(gc.ACS_GEQUAL)
+	AcsPi               = AcsChar(gc.ACS_PI)
+	AcsNequal           = AcsChar(gc.ACS_NEQUAL)
+	AcsSterling         = AcsChar(gc.ACS_STERLING)
+)
+
 // RenderWindow represents a window that will be drawn to the display
 type RenderWindow interface {
 	ID() string
@@ -56,6 +95,10 @@ type cellStyle struct {
 type cell struct {
 	codePoints bytes.Buffer
 	style      cellStyle
+}
+
+func (cell *cell) setStyle(style cellStyle) {
+	cell.style = style
 }
 
 type cursor struct {
@@ -135,6 +178,25 @@ func (lineBuilder *LineBuilder) AppendWithStyle(themeComponentID ThemeComponentI
 				lineBuilder.appendToPreviousCell(renderedCodePoint.codePoint)
 			}
 		}
+	}
+
+	return lineBuilder
+}
+
+// AppendACSChar appends the provided AcsChar to the end of the line
+func (lineBuilder *LineBuilder) AppendACSChar(acsChar AcsChar, themeComponentID ThemeComponentID) *LineBuilder {
+	line := lineBuilder.line
+
+	if lineBuilder.cellIndex < uint(len(line.cells)) {
+		if lineBuilder.column >= lineBuilder.startColumn {
+			cell := line.cells[lineBuilder.cellIndex]
+			cell.codePoints.Reset()
+			cell.style.themeComponentID = themeComponentID
+			cell.style.acsChar = gc.Char(acsChar)
+			lineBuilder.cellIndex++
+		}
+
+		lineBuilder.column++
 	}
 
 	return lineBuilder
@@ -397,28 +459,60 @@ func (win *Window) DrawBorder() {
 	}
 
 	firstLine := win.lines[0]
-	firstLine.cells[0].style.acsChar = gc.ACS_ULCORNER
+	firstLine.cells[0].setStyle(cellStyle{
+		themeComponentID: CmpNone,
+		acsChar:          gc.ACS_ULCORNER,
+		attr:             gc.A_NORMAL,
+	})
 
 	for i := uint(1); i < win.cols-1; i++ {
-		firstLine.cells[i].style.acsChar = gc.ACS_HLINE
+		firstLine.cells[i].setStyle(cellStyle{
+			themeComponentID: CmpNone,
+			acsChar:          gc.ACS_HLINE,
+			attr:             gc.A_NORMAL,
+		})
 	}
 
-	firstLine.cells[win.cols-1].style.acsChar = gc.ACS_URCORNER
+	firstLine.cells[win.cols-1].setStyle(cellStyle{
+		themeComponentID: CmpNone,
+		acsChar:          gc.ACS_URCORNER,
+		attr:             gc.A_NORMAL,
+	})
 
 	for i := uint(1); i < win.rows-1; i++ {
 		line := win.lines[i]
-		line.cells[0].style.acsChar = gc.ACS_VLINE
-		line.cells[win.cols-1].style.acsChar = gc.ACS_VLINE
+		line.cells[0].setStyle(cellStyle{
+			themeComponentID: CmpNone,
+			acsChar:          gc.ACS_VLINE,
+			attr:             gc.A_NORMAL,
+		})
+		line.cells[win.cols-1].setStyle(cellStyle{
+			themeComponentID: CmpNone,
+			acsChar:          gc.ACS_VLINE,
+			attr:             gc.A_NORMAL,
+		})
 	}
 
 	lastLine := win.lines[win.rows-1]
-	lastLine.cells[0].style.acsChar = gc.ACS_LLCORNER
+	lastLine.cells[0].setStyle(cellStyle{
+		themeComponentID: CmpNone,
+		acsChar:          gc.ACS_LLCORNER,
+		attr:             gc.A_NORMAL,
+	})
 
 	for i := uint(1); i < win.cols-1; i++ {
-		lastLine.cells[i].style.acsChar = gc.ACS_HLINE
+		lastLine.cells[i].setStyle(cellStyle{
+			themeComponentID: CmpNone,
+			acsChar:          gc.ACS_HLINE,
+			attr:             gc.A_NORMAL,
+		})
 	}
 
-	lastLine.cells[win.cols-1].style.acsChar = gc.ACS_LRCORNER
+	lastLine.cells[win.cols-1].setStyle(cellStyle{
+		themeComponentID: CmpNone,
+		acsChar:          gc.ACS_LRCORNER,
+		attr:             gc.A_NORMAL,
+	})
 
 	win.border = true
 }

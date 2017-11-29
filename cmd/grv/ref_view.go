@@ -360,8 +360,20 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 			themeComponentID = CmpNone
 		}
 
-		if err = win.SetRow(winRowIndex+1, startColumn, themeComponentID, "%v", renderedRef.value); err != nil {
+		var lineBuilder *LineBuilder
+		if lineBuilder, err = win.LineBuilder(winRowIndex+1, startColumn); err != nil {
 			return
+		}
+
+		lineBuilder.AppendWithStyle(themeComponentID, "%v", renderedRef.value)
+
+		if localBranch, isLocalBranch := renderedRef.ref.(*LocalBranch); isLocalBranch && localBranch.IsTrackingBranch() {
+			lineBuilder.
+				AppendWithStyle(themeComponentID, " (").
+				AppendACSChar(AcsUarrow, themeComponentID).
+				AppendWithStyle(themeComponentID, "%v ", localBranch.ahead).
+				AppendACSChar(AcsDarrow, themeComponentID).
+				AppendWithStyle(themeComponentID, "%v)", localBranch.behind)
 		}
 
 		refIndex++
@@ -415,13 +427,13 @@ func (refView *RefView) renderFooter(win RenderWindow, selectedRenderedRef *Rend
 	} else {
 		switch selectedRenderedRef.renderedRefType {
 		case RvLocalBranchGroup:
-			if localBranches, _, loading := refView.repoData.Branches(); loading {
+			if localBranches, _, loading := refView.repoData.Branches(); loading && len(localBranches) == 0 {
 				footer = "Branches: Loading..."
 			} else {
 				footer = fmt.Sprintf("Branches: %v", len(localBranches))
 			}
 		case RvRemoteBranchGroup:
-			if _, remoteBranches, loading := refView.repoData.Branches(); loading {
+			if _, remoteBranches, loading := refView.repoData.Branches(); loading && len(remoteBranches) == 0 {
 				footer = "Remote Branches: Loading..."
 			} else {
 				footer = fmt.Sprintf("Remote Branches: %v", len(remoteBranches))
@@ -437,7 +449,7 @@ func (refView *RefView) renderFooter(win RenderWindow, selectedRenderedRef *Rend
 			_, remoteBranches, _ := refView.repoData.Branches()
 			footer = fmt.Sprintf("Remote Branch %v of %v", selectedRenderedRef.refNum, len(remoteBranches))
 		case RvTagGroup:
-			if tags, loading := refView.repoData.Tags(); loading {
+			if tags, loading := refView.repoData.Tags(); loading && len(tags) == 0 {
 				footer = "Tags: Loading"
 			} else {
 				footer = fmt.Sprintf("Tags: %v", len(tags))
@@ -502,7 +514,7 @@ func (refView *RefView) generateRenderedRefs() {
 func generateBranches(refView *RefView, refList *refList, renderedRefs renderedRefSet) {
 	localBranches, remoteBranches, loading := refView.repoData.Branches()
 
-	if loading {
+	if loading && len(localBranches) == 0 && len(remoteBranches) == 0 {
 		renderedRefs.Add(&RenderedRef{
 			value:           "   Loading...",
 			renderedRefType: RvLoading,
@@ -562,7 +574,7 @@ func generateBranches(refView *RefView, refList *refList, renderedRefs renderedR
 func generateTags(refView *RefView, refList *refList, renderedRefs renderedRefSet) {
 	tags, loading := refView.repoData.Tags()
 
-	if loading {
+	if loading && len(tags) == 0 {
 		renderedRefs.Add(&RenderedRef{
 			value:           "   Loading...",
 			renderedRefType: RvLoading,

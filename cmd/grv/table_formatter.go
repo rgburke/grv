@@ -172,10 +172,6 @@ func (tableFormatter *TableFormatter) Render(win RenderWindow, viewStartColumn u
 		}
 	}
 
-	if border {
-		win.DrawBorder()
-	}
-
 	return
 }
 

@@ -172,6 +172,8 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		}
 	}
 
+	win.DrawBorder()
+
 	if err = win.SetTitle(CmpCommitviewTitle, "Commits for %v", commitView.activeRef.Shorthand()); err != nil {
 		return
 	}

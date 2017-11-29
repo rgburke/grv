@@ -417,15 +417,17 @@ func drawWindow(win *Window, nwin *nCursesWindow) {
 		for colIndex := uint(0); colIndex < win.cols; colIndex++ {
 			cell := line.cells[colIndex]
 
-			if cell.style.acsChar != 0 {
-				nwin.AddChar(cell.style.acsChar)
-			} else if cell.codePoints.Len() > 0 {
+			if cell.style.acsChar != 0 || cell.codePoints.Len() > 0 {
 				attr := cell.style.attr | gc.ColorPair(int16(cell.style.themeComponentID))
 				if err := nwin.AttrOn(attr); err != nil {
 					log.Errorf("Error when attempting to set AttrOn with %v: %v", attr, err)
 				}
 
-				nwin.Print(cell.codePoints.String())
+				if cell.style.acsChar != 0 {
+					nwin.AddChar(cell.style.acsChar)
+				} else {
+					nwin.Print(cell.codePoints.String())
+				}
 
 				if err := nwin.AttrOff(attr); err != nil {
 					log.Errorf("Error when attempting to set AttrOff with %v: %v", attr, err)

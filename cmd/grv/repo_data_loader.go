@@ -167,6 +167,12 @@ func (localBranch *LocalBranch) IsTrackingBranch() bool {
 	return localBranch.remoteBranch != ""
 }
 
+// UpdateAheadBehind updates the ahead and behind counts of the branch
+func (localBranch *LocalBranch) UpdateAheadBehind(ahead, behind uint) {
+	localBranch.ahead = ahead
+	localBranch.behind = behind
+}
+
 // RemoteBranch contains data for a remote branch reference
 type RemoteBranch struct {
 	*abstractBranch

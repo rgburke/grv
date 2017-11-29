@@ -497,6 +497,13 @@ func (refSet *refSet) updateRefs(refs []Ref) (err error) {
 				}
 
 				trackingBranches[rawRef.Name()] = true
+
+				if isExisting {
+					if existingLocalBranch, isLocalBranch := existingRef.(*LocalBranch); isLocalBranch &&
+						existingLocalBranch.IsTrackingBranch() {
+						rawRef.UpdateAheadBehind(existingLocalBranch.ahead, existingLocalBranch.behind)
+					}
+				}
 			}
 		case *Tag:
 			tags = append(tags, rawRef)
@@ -1376,9 +1383,7 @@ func (repoData *RepositoryData) updateTrackingBranches(trackingBranchStates []*t
 			continue
 		}
 
-		trackingBranchState.localBranch.ahead = uint(ahead)
-		trackingBranchState.localBranch.behind = uint(behind)
-
+		trackingBranchState.localBranch.UpdateAheadBehind(uint(ahead), uint(behind))
 		trackingBranches = append(trackingBranches, localBranch)
 
 		log.Debugf("%v is %v commits ahead and %v commits behind %v",
