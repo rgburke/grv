@@ -173,6 +173,21 @@ func (localBranch *LocalBranch) UpdateAheadBehind(ahead, behind uint) {
 	localBranch.behind = behind
 }
 
+// Equal returns true if the other branch is a local branch equal to this one
+func (localBranch *LocalBranch) Equal(other Ref) bool {
+	if other == nil {
+		return false
+	}
+
+	otherLocalBranch, ok := other.(*LocalBranch)
+	if !ok {
+		return false
+	}
+
+	return localBranch.abstractBranch.Equal(otherLocalBranch.abstractBranch) &&
+		localBranch.remoteBranch == otherLocalBranch.remoteBranch
+}
+
 // RemoteBranch contains data for a remote branch reference
 type RemoteBranch struct {
 	*abstractBranch
@@ -191,6 +206,20 @@ func newRemoteBranch(oid *Oid, name, shorthand string) *RemoteBranch {
 // IsRemote returns true
 func (remoteBranch *RemoteBranch) IsRemote() bool {
 	return true
+}
+
+// Equal returns true if the other branch is a remote branch equal to this one
+func (remoteBranch *RemoteBranch) Equal(other Ref) bool {
+	if other == nil {
+		return false
+	}
+
+	otherRemoteBranch, ok := other.(*RemoteBranch)
+	if !ok {
+		return false
+	}
+
+	return remoteBranch.abstractBranch.Equal(otherRemoteBranch.abstractBranch)
 }
 
 // Tag contains data for a tag reference
