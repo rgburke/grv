@@ -139,6 +139,8 @@ func newLocalBranch(oid *Oid, rawBranch *git.Branch) (localBranch *LocalBranch, 
 		if gitError, isGitError := err.(*git.GitError); !isGitError || gitError.Code != git.ErrNotFound {
 			return
 		}
+
+		err = nil
 	} else {
 		upstreamRef = upstream.Name()
 	}
@@ -555,6 +557,7 @@ func (repoDataLoader *RepoDataLoader) Initialise(repoPath string) error {
 
 	repo, err := git.OpenRepository(repoPath)
 	if err != nil {
+		log.Debugf("Failed to open repository: %v", err)
 		return err
 	}
 
@@ -583,6 +586,7 @@ func (repoDataLoader *RepoDataLoader) Head() (ref Ref, err error) {
 		ref, err = newLocalBranch(oid, rawBranch)
 
 		if err != nil {
+			log.Debugf("Failed to create branch ref for HEAD: %v", err)
 			return
 		}
 	} else {
@@ -664,6 +668,8 @@ func (repoDataLoader *RepoDataLoader) loadBranches() (branches []Branch, err err
 		} else {
 			newBranch, err = newLocalBranch(oid, branch)
 			if err != nil {
+				log.Debugf("Failed to create ref instance for branch %v: %v",
+					branch.Reference.Name(), err)
 				return err
 			}
 		}
