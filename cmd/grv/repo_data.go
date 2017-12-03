@@ -287,10 +287,11 @@ func (filteredCommitSet *filteredCommitSet) commitIndex(commit *Commit) int {
 		mid = (low + high) / 2
 		date := commits[mid].commit.Author().When
 
+		// commits are sorted by date descending
 		if targetDate.Before(date) {
-			high = mid - 1
-		} else if targetDate.After(date) {
 			low = mid + 1
+		} else if targetDate.After(date) {
+			high = mid - 1
 		} else {
 			break
 		}
