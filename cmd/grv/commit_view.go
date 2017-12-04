@@ -469,6 +469,12 @@ func (commitView *CommitView) OnCommitsUpdated(ref Ref, updateStartIndex, newCom
 	defer commitView.lock.Unlock()
 
 	if commitView.activeRef.Name() == ref.Name() {
+		commitSetState := commitView.repoData.CommitSetState(ref)
+		if commitSetState.filterState != nil {
+			log.Debugf("Filters applied - leaving active row index unchanged")
+			return
+		}
+
 		viewPos := commitView.ViewPos()
 		rowOffset := newCommitNum - updateStartIndex
 		activeRowIndex := MaxInt(int(viewPos.ActiveRowIndex())+rowOffset, 0)

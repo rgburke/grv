@@ -248,7 +248,7 @@ func (filteredCommitSet *filteredCommitSet) Update(commonAncestor *Commit, updat
 	defer filteredCommitSet.lock.Unlock()
 
 	if filteredCommitSet.hasChild() {
-		filteredCommitSet.child.Update(commonAncestor, update)
+		return filteredCommitSet.child.Update(commonAncestor, update)
 	}
 
 	ancestorIndex = filteredCommitSet.commitIndex(commonAncestor)
