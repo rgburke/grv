@@ -350,3 +350,8 @@ func (historyView *HistoryView) setChildViewAtPosition(view WindowView, vp viewP
 		historyView.channels.UpdateDisplay()
 	}
 }
+
+// Title returns the title for the history view
+func (historyView *HistoryView) Title() string {
+	return "History View"
+}

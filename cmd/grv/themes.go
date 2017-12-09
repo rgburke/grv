@@ -20,6 +20,14 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},
+			CmpMainviewActiveView: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpMainviewNormalView: {
+				bgcolor: NewSystemColor(ColorBlue),
+				fgcolor: NewSystemColor(ColorWhite),
+			},
 			CmpCommitviewTitle: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
@@ -235,6 +243,14 @@ func NewColdTheme() MutableTheme {
 			CmpAllviewInactiveViewSelectedRow: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpMainviewActiveView: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpMainviewNormalView: {
+				bgcolor: NewSystemColor(ColorCyan),
+				fgcolor: NewSystemColor(ColorWhite),
 			},
 			CmpCommitviewTitle: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -452,6 +468,14 @@ func NewSolarizedTheme() MutableTheme {
 			CmpAllviewInactiveViewSelectedRow: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(245),
+			},
+			CmpMainviewActiveView: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpMainviewNormalView: {
+				bgcolor: NewColorNumber(235),
+				fgcolor: NewColorNumber(254),
 			},
 			CmpCommitviewTitle: {
 				bgcolor: NewSystemColor(ColorNone),

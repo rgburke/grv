@@ -23,6 +23,7 @@ const (
 	cfSolarizedThemeName   = "solarized"
 
 	cfAllView       = "All"
+	cfMainView      = "MainView"
 	cfHistoryView   = "HistoryView"
 	cfStatusView    = "StatusView"
 	cfRefView       = "RefView"
@@ -58,6 +59,7 @@ var systemColorValues = map[string]SystemColorValue{
 
 var viewIDNames = map[string]ViewID{
 	cfAllView:       ViewAll,
+	cfMainView:      ViewMain,
 	cfHistoryView:   ViewHistory,
 	cfStatusView:    ViewStatus,
 	cfRefView:       ViewRef,
@@ -74,6 +76,9 @@ var themeComponents = map[string]ThemeComponentID{
 	cfAllView + ".SearchMatch":             CmpAllviewSearchMatch,
 	cfAllView + ".ActiveViewSelectedRow":   CmpAllviewActiveViewSelectedRow,
 	cfAllView + ".InactiveViewSelectedRow": CmpAllviewInactiveViewSelectedRow,
+
+	cfMainView + ".ActiveView": CmpMainviewActiveView,
+	cfMainView + ".NormalView": CmpMainviewNormalView,
 
 	cfRefView + ".Title":                CmpRefviewTitle,
 	cfRefView + ".Footer":               CmpRefviewFooter,

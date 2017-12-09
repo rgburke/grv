@@ -13,6 +13,9 @@ const (
 	CmpAllviewActiveViewSelectedRow
 	CmpAllviewInactiveViewSelectedRow
 
+	CmpMainviewActiveView
+	CmpMainviewNormalView
+
 	CmpRefviewTitle
 	CmpRefviewFooter
 	CmpRefviewLocalBranchesHeader
