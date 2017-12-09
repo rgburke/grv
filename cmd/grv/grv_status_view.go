@@ -1,0 +1,110 @@
+package main
+
+import (
+	"sync"
+
+	log "github.com/Sirupsen/logrus"
+)
+
+// GRVStatusView manages the status bar view and help view displayed at the bottom of grv
+type GRVStatusView struct {
+	statusBarView WindowView
+	helpBarView   WindowView
+	statusBarWin  *Window
+	helpBarWin    *Window
+	active        bool
+	lock          sync.Mutex
+}
+
+// NewGRVStatusView creates a new instance
+func NewGRVStatusView(rootView RootView, repoData RepoData, channels *Channels, config ConfigSetter) *GRVStatusView {
+	return &GRVStatusView{
+		statusBarView: NewStatusBarView(rootView, repoData, channels, config),
+		helpBarView:   NewHelpBarView(rootView),
+		statusBarWin:  NewWindow("statusBarView", config),
+		helpBarWin:    NewWindow("helpBarView", config),
+	}
+}
+
+// Initialise does nothing
+func (grvStatusView *GRVStatusView) Initialise() (err error) {
+	return
+}
+
+// HandleKeyPress does nothing
+func (grvStatusView *GRVStatusView) HandleKeyPress(keystring string) (err error) {
+	return
+}
+
+// HandleAction passes on the action to its child views for them to habdle
+func (grvStatusView *GRVStatusView) HandleAction(action Action) (err error) {
+	if err = grvStatusView.statusBarView.HandleAction(action); err != nil {
+		return
+	}
+
+	err = grvStatusView.helpBarView.HandleAction(action)
+
+	return
+}
+
+// OnActiveChange updates the active state of this view and its child views
+func (grvStatusView *GRVStatusView) OnActiveChange(active bool) {
+	grvStatusView.lock.Lock()
+	defer grvStatusView.lock.Unlock()
+
+	log.Debugf("GRVStatusView active: %v", active)
+
+	grvStatusView.active = active
+	grvStatusView.statusBarView.OnActiveChange(active)
+	grvStatusView.helpBarView.OnActiveChange(active)
+}
+
+// ViewID returns the view ID of the status view
+func (grvStatusView *GRVStatusView) ViewID() ViewID {
+	return ViewStatus
+}
+
+// Render generates its child views and returns the windows that constitute the status view as a whole
+func (grvStatusView *GRVStatusView) Render(viewDimension ViewDimension) (wins []*Window, err error) {
+	grvStatusView.lock.Lock()
+	defer grvStatusView.lock.Unlock()
+
+	viewDimension.rows--
+
+	grvStatusView.statusBarWin.Resize(viewDimension)
+	grvStatusView.helpBarWin.Resize(viewDimension)
+
+	grvStatusView.statusBarWin.Clear()
+	grvStatusView.helpBarWin.Clear()
+
+	if err = grvStatusView.statusBarView.Render(grvStatusView.statusBarWin); err != nil {
+		return
+	}
+
+	if err = grvStatusView.helpBarView.Render(grvStatusView.helpBarWin); err != nil {
+		return
+	}
+
+	grvStatusView.statusBarWin.SetPosition(0, 0)
+	grvStatusView.helpBarWin.SetPosition(1, 0)
+
+	wins = []*Window{grvStatusView.statusBarWin, grvStatusView.helpBarWin}
+
+	return
+}
+
+// RenderHelpBar does nothing
+func (grvStatusView *GRVStatusView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
+	return
+}
+
+// ActiveView returns the status bar view
+// The help bar view is display only
+func (grvStatusView *GRVStatusView) ActiveView() (childView AbstractView) {
+	return grvStatusView.statusBarView
+}
+
+// Title returns the title of the status view
+func (grvStatusView *GRVStatusView) Title() string {
+	return "Status View"
+}

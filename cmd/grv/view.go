@@ -75,7 +75,7 @@ func (viewDimension ViewDimension) String() string {
 type View struct {
 	views         []WindowViewCollection
 	activeViewPos uint
-	statusView    WindowViewCollection
+	grvStatusView WindowViewCollection
 	channels      *Channels
 	promptActive  bool
 	errorView     *ErrorView
@@ -94,7 +94,7 @@ func NewView(repoData RepoData, channels *Channels, config ConfigSetter) (view *
 		channels: channels,
 	}
 
-	view.statusView = NewStatusView(view, repoData, channels, config)
+	view.grvStatusView = NewGRVStatusView(view, repoData, channels, config)
 	view.errorView = NewErrorView()
 	view.errorViewWin = NewWindow("errorView", config)
 	view.activeViewWin = NewWindow("activeView", config)
@@ -170,7 +170,7 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 		startRow += errorViewDim.rows
 	}
 
-	statusViewWins, err := view.statusView.Render(statusViewDim)
+	statusViewWins, err := view.grvStatusView.Render(statusViewDim)
 	if err != nil {
 		return
 	}
@@ -294,7 +294,7 @@ func (view *View) HandleAction(action Action) (err error) {
 		err = view.prompt(action)
 		return
 	case ActionShowStatus:
-		err = view.statusView.HandleAction(action)
+		err = view.grvStatusView.HandleAction(action)
 		return
 	}
 
@@ -347,7 +347,7 @@ func (view *View) ActiveView() AbstractView {
 	defer view.lock.Unlock()
 
 	if view.promptActive {
-		return view.statusView
+		return view.grvStatusView
 	}
 
 	return view.views[view.activeViewPos]
@@ -356,15 +356,15 @@ func (view *View) ActiveView() AbstractView {
 func (view *View) prompt(action Action) (err error) {
 	view.lock.Lock()
 	view.views[view.activeViewPos].OnActiveChange(false)
-	view.statusView.OnActiveChange(true)
+	view.grvStatusView.OnActiveChange(true)
 	view.promptActive = true
 	view.lock.Unlock()
 
-	err = view.statusView.HandleAction(action)
+	err = view.grvStatusView.HandleAction(action)
 
 	view.lock.Lock()
 	view.promptActive = false
-	view.statusView.OnActiveChange(false)
+	view.grvStatusView.OnActiveChange(false)
 	view.views[view.activeViewPos].OnActiveChange(true)
 	view.lock.Unlock()
 
