@@ -40,6 +40,7 @@ func NewContainerView(channels *Channels, config Config, childViews []AbstractVi
 	containerView := &ContainerView{
 		config:   config,
 		channels: channels,
+		viewWins: make(map[WindowView]*Window),
 		handlers: map[ActionType]containerViewHandler{
 			ActionNextView: nextContainerChildView,
 			ActionPrevView: prevContainerChildView,
@@ -104,7 +105,7 @@ func (containerView *ContainerView) HandleAction(action Action) (err error) {
 	if handlerExists {
 		err = handler(containerView, action)
 	} else {
-		err = containerView.ActiveView().HandleAction(action)
+		err = containerView.activeChildView().HandleAction(action)
 	}
 
 	return
@@ -128,20 +129,19 @@ func (containerView *ContainerView) onActiveChange(active bool) {
 	}
 }
 
-// ViewID returns the view id of the active child view
+// ViewID returns container view id
 func (containerView *ContainerView) ViewID() ViewID {
-	containerView.lock.Lock()
-	defer containerView.lock.Unlock()
-
-	return containerView.activeChildView().ViewID()
+	return ViewContainer
 }
 
 // RenderHelpBar is proxied to the active child view
 func (containerView *ContainerView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
-	containerView.lock.Lock()
-	defer containerView.lock.Unlock()
+	RenderKeyBindingHelp(containerView.ViewID(), lineBuilder, []ActionMessage{
+		{action: ActionNextView, message: "Next View"},
+		{action: ActionPrevView, message: "Previous View"},
+	})
 
-	return containerView.activeChildView().RenderHelpBar(lineBuilder)
+	return
 }
 
 // Render determines the layout of all child views, renders them and returns the resulting windows
@@ -245,9 +245,6 @@ func (containerView *ContainerView) ActiveView() AbstractView {
 }
 
 func (containerView *ContainerView) activeChildView() AbstractView {
-	containerView.lock.Lock()
-	defer containerView.lock.Unlock()
-
 	return containerView.childViews[containerView.activeViewIndex]
 }
 

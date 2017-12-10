@@ -1,0 +1,22 @@
+package main
+
+// StatusView manages the git status views
+type StatusView struct {
+	*ContainerView
+}
+
+// NewStatusView creates a new instance
+func NewStatusView(repoData RepoData, channels *Channels, config Config) *StatusView {
+	childViews := []AbstractView{
+		NewGitStatusView(repoData, channels),
+	}
+
+	return &StatusView{
+		ContainerView: NewContainerView(channels, config, childViews),
+	}
+}
+
+// Title returns the title of the status view
+func (statusView *StatusView) Title() string {
+	return "Status View"
+}

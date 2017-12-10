@@ -471,11 +471,11 @@ func NewSolarizedTheme() MutableTheme {
 			},
 			CmpMainviewActiveView: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(254),
 			},
 			CmpMainviewNormalView: {
 				bgcolor: NewColorNumber(235),
-				fgcolor: NewColorNumber(254),
+				fgcolor: NewSystemColor(ColorNone),
 			},
 			CmpCommitviewTitle: {
 				bgcolor: NewSystemColor(ColorNone),

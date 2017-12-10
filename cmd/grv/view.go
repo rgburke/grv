@@ -18,6 +18,7 @@ type ViewID int
 const (
 	ViewAll ViewID = iota
 	ViewMain
+	ViewContainer
 	ViewHistory
 	ViewStatus
 	ViewRef
@@ -90,6 +91,7 @@ func NewView(repoData RepoData, channels *Channels, config ConfigSetter) (view *
 	view = &View{
 		views: []WindowViewCollection{
 			NewHistoryView(repoData, channels, config),
+			NewStatusView(repoData, channels, config),
 		},
 		channels: channels,
 	}
@@ -223,7 +225,7 @@ func (view *View) renderActiveView(availableCols uint) (err error) {
 	cols := uint(0)
 
 	for index, childView := range view.views {
-		viewTitles[index] = fmt.Sprintf(" [%v] %v ", index+1, childView.Title())
+		viewTitles[index] = fmt.Sprintf(" %v ", childView.Title())
 		cols += uint(len(viewTitles)) + 1
 	}
 
@@ -294,7 +296,22 @@ func (view *View) HandleAction(action Action) (err error) {
 		err = view.prompt(action)
 		return
 	case ActionShowStatus:
+		view.lock.Lock()
+		defer view.lock.Unlock()
+
 		err = view.grvStatusView.HandleAction(action)
+		return
+	case ActionNextTab:
+		view.lock.Lock()
+		defer view.lock.Unlock()
+
+		view.nextTab()
+		return
+	case ActionPrevTab:
+		view.lock.Lock()
+		defer view.lock.Unlock()
+
+		view.prevTab()
 		return
 	}
 
@@ -303,8 +320,15 @@ func (view *View) HandleAction(action Action) (err error) {
 
 // OnActiveChange updates the active state of the currently active child view
 func (view *View) OnActiveChange(active bool) {
+	view.lock.Lock()
+	defer view.lock.Unlock()
+
 	log.Debugf("View active %v", active)
-	view.ActiveView().OnActiveChange(active)
+	view.onActiveChange(active)
+}
+
+func (view *View) onActiveChange(active bool) {
+	view.activeView().OnActiveChange(active)
 }
 
 // ViewID returns the view ID of this view
@@ -346,11 +370,28 @@ func (view *View) ActiveView() AbstractView {
 	view.lock.Lock()
 	defer view.lock.Unlock()
 
+	return view.activeView()
+}
+
+func (view *View) activeView() AbstractView {
 	if view.promptActive {
 		return view.grvStatusView
 	}
 
 	return view.views[view.activeViewPos]
+}
+
+// SetErrors sets errors to be displayed in the error view
+func (view *View) SetErrors(errors []error) {
+	view.lock.Lock()
+	defer view.lock.Unlock()
+
+	view.errors = errors
+}
+
+// Title returns the title of this view
+func (view *View) Title() string {
+	return "Main View"
 }
 
 func (view *View) prompt(action Action) (err error) {
@@ -373,12 +414,20 @@ func (view *View) prompt(action Action) (err error) {
 	return
 }
 
-// SetErrors sets errors to be displayed in the error view
-func (view *View) SetErrors(errors []error) {
-	view.errors = errors
+func (view *View) nextTab() {
+	view.activeViewPos++
+	view.activeViewPos %= uint(len(view.views))
+	view.onActiveChange(true)
+	view.channels.UpdateDisplay()
 }
 
-// Title returns the title of this view
-func (view *View) Title() string {
-	return "Main View"
+func (view *View) prevTab() {
+	if view.activeViewPos == 0 {
+		view.activeViewPos = uint(len(view.views)) - 1
+	} else {
+		view.activeViewPos--
+	}
+
+	view.onActiveChange(true)
+	view.channels.UpdateDisplay()
 }

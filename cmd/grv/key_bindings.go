@@ -38,6 +38,8 @@ const (
 	ActionAddFilter
 	ActionRemoveFilter
 	ActionCenterView
+	ActionNextTab
+	ActionPrevTab
 )
 
 // Action represents a type of actions and its arguments to be executed
@@ -76,6 +78,8 @@ var actionKeys = map[string]ActionType{
 	"<grv-add-filter>":            ActionAddFilter,
 	"<grv-remove-filter>":         ActionRemoveFilter,
 	"<grv-center-view>":           ActionCenterView,
+	"<grv-next-tab>":              ActionNextTab,
+	"<grv-prev-tab>":              ActionPrevTab,
 }
 
 var defaultKeyBindings = map[ActionType]map[ViewID][]string{
@@ -146,6 +150,12 @@ var defaultKeyBindings = map[ActionType]map[ViewID][]string{
 	},
 	ActionCenterView: {
 		ViewAll: {"zz"},
+	},
+	ActionNextTab: {
+		ViewAll: {"gt"},
+	},
+	ActionPrevTab: {
+		ViewAll: {"gT"},
 	},
 }
 
