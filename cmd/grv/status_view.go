@@ -7,8 +7,14 @@ type StatusView struct {
 
 // NewStatusView creates a new instance
 func NewStatusView(repoData RepoData, channels *Channels, config Config) *StatusView {
+	gitStatusView := NewGitStatusView(repoData, channels)
+	diffView := NewDiffView(repoData, channels)
+
+	gitStatusView.RegisterGitStatusFileSelectedListener(diffView)
+
 	childViews := []AbstractView{
-		NewGitStatusView(repoData, channels),
+		gitStatusView,
+		diffView,
 	}
 
 	return &StatusView{

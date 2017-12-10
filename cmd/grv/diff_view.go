@@ -150,7 +150,7 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	diffView.viewDimension = win.ViewDimensions()
 
 	if diffView.activeDiff == "" {
-		return
+		return diffView.renderEmptyView(win)
 	}
 
 	rows := win.Rows() - 2
@@ -235,6 +235,19 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 			return
 		}
 	}
+
+	return
+}
+
+func (diffView *DiffView) renderEmptyView(win RenderWindow) (err error) {
+	viewPos := diffView.viewPos
+	startColumn := viewPos.ViewStartColumn()
+
+	if err = win.SetRow(1, startColumn, CmpNone, " Please select an object to diff"); err != nil {
+		return
+	}
+
+	win.DrawBorder()
 
 	return
 }
