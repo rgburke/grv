@@ -115,18 +115,24 @@ func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 	renderedStatusIndex := viewPos.ViewStartRowIndex()
 	startColumn := viewPos.ViewStartColumn()
 
-	for rowIndex := uint(0); rowIndex < rows && renderedStatusIndex < renderedStatusNum; rowIndex++ {
-		renderedStatusEntry := renderedStatus[renderedStatusIndex]
-
-		if err = win.SetRow(rowIndex+1, startColumn, renderedStatusEntry.themeComponentID, " %v", renderedStatusEntry.text); err != nil {
+	if renderedStatusNum == 0 {
+		if err = win.SetRow(2, startColumn, CmpNone, "   %v", "nothing to commit, working tree clean"); err != nil {
 			return
 		}
+	} else {
+		for rowIndex := uint(0); rowIndex < rows && renderedStatusIndex < renderedStatusNum; rowIndex++ {
+			renderedStatusEntry := renderedStatus[renderedStatusIndex]
 
-		renderedStatusIndex++
-	}
+			if err = win.SetRow(rowIndex+1, startColumn, renderedStatusEntry.themeComponentID, " %v", renderedStatusEntry.text); err != nil {
+				return
+			}
 
-	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, gitStatusView.active); err != nil {
-		return
+			renderedStatusIndex++
+		}
+
+		if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, gitStatusView.active); err != nil {
+			return
+		}
 	}
 
 	win.DrawBorder()
@@ -141,10 +147,6 @@ func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 		}
 	}
 
-	return
-}
-
-func (gitStatusView *GitStatusView) renderStatusEntries(statusEntries []*StatusEntry) (err error) {
 	return
 }
 

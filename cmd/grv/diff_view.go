@@ -155,7 +155,12 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 
 	rows := win.Rows() - 2
 	viewPos := diffView.viewPos
-	diffLines := diffView.diffs[diffView.activeDiff]
+	diffLines, ok := diffView.diffs[diffView.activeDiff]
+	if !ok {
+		log.Errorf("No diff data found for %v", diffView.activeDiff)
+		return
+	}
+
 	lineNum := uint(len(diffLines.lines))
 	viewPos.DetermineViewStartRow(rows, lineNum)
 
@@ -243,7 +248,7 @@ func (diffView *DiffView) renderEmptyView(win RenderWindow) (err error) {
 	viewPos := diffView.viewPos
 	startColumn := viewPos.ViewStartColumn()
 
-	if err = win.SetRow(1, startColumn, CmpNone, " Please select an object to diff"); err != nil {
+	if err = win.SetRow(2, startColumn, CmpNone, "   No diff to display"); err != nil {
 		return
 	}
 
@@ -261,7 +266,11 @@ func (diffView *DiffView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 		return
 	}
 
-	diffLines := diffView.diffs[diffView.activeDiff]
+	diffLines, ok := diffView.diffs[diffView.activeDiff]
+	if !ok {
+		return
+	}
+
 	lineIndex := diffView.viewPos.ActiveRowIndex()
 	line := diffLines.lines[lineIndex]
 
@@ -483,7 +492,11 @@ func (diffView *DiffView) Line(lineIndex uint) (line string) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
-	diffLines := diffView.diffs[diffView.activeDiff]
+	diffLines, ok := diffView.diffs[diffView.activeDiff]
+	if !ok {
+		return
+	}
+
 	lineNum := uint(len(diffLines.lines))
 
 	if lineIndex >= lineNum {
@@ -502,14 +515,22 @@ func (diffView *DiffView) LineNumber() (lineNumber uint) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
-	diffLines := diffView.diffs[diffView.activeDiff]
+	diffLines, ok := diffView.diffs[diffView.activeDiff]
+	if !ok {
+		return
+	}
+
 	lineNum := uint(len(diffLines.lines))
 
 	return lineNum
 }
 
 func moveDownDiffLine(diffView *DiffView, action Action) (err error) {
-	diffLines := diffView.diffs[diffView.activeDiff]
+	diffLines, ok := diffView.diffs[diffView.activeDiff]
+	if !ok {
+		return
+	}
+
 	lineNum := uint(len(diffLines.lines))
 	viewPos := diffView.viewPos
 
@@ -533,7 +554,11 @@ func moveUpDiffLine(diffView *DiffView, action Action) (err error) {
 }
 
 func moveDownDiffPage(diffView *DiffView, action Action) (err error) {
-	diffLines := diffView.diffs[diffView.activeDiff]
+	diffLines, ok := diffView.diffs[diffView.activeDiff]
+	if !ok {
+		return
+	}
+
 	lineNum := uint(len(diffLines.lines))
 	viewPos := diffView.viewPos
 
@@ -588,7 +613,11 @@ func moveToFirstDiffLine(diffView *DiffView, action Action) (err error) {
 }
 
 func moveToLastDiffLine(diffView *DiffView, action Action) (err error) {
-	diffLines := diffView.diffs[diffView.activeDiff]
+	diffLines, ok := diffView.diffs[diffView.activeDiff]
+	if !ok {
+		return
+	}
+
 	lineNum := uint(len(diffLines.lines))
 	viewPos := diffView.viewPos
 
@@ -612,7 +641,11 @@ func centerDiffView(diffView *DiffView, action Action) (err error) {
 }
 
 func selectDiffLine(diffView *DiffView, action Action) (err error) {
-	diffLines := diffView.diffs[diffView.activeDiff]
+	diffLines, ok := diffView.diffs[diffView.activeDiff]
+	if !ok {
+		return
+	}
+
 	lineIndex := diffView.viewPos.ActiveRowIndex()
 	diffLine := diffLines.lines[lineIndex]
 
