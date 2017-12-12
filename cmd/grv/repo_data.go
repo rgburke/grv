@@ -68,6 +68,7 @@ type RepoData interface {
 	RemoveCommitFilter(Ref) error
 	DiffCommit(commit *Commit) (*Diff, error)
 	DiffFile(statusType StatusType, path string) (*Diff, error)
+	DiffStage(statusType StatusType) (*Diff, error)
 	LoadStatus() (err error)
 	RegisterStatusListener(StatusListener)
 	RegisterRefStateListener(RefStateListener)
@@ -1269,6 +1270,11 @@ func (repoData *RepositoryData) DiffCommit(commit *Commit) (*Diff, error) {
 // If statusType is StUnstaged then the diff is between index and the working directory
 func (repoData *RepositoryData) DiffFile(statusType StatusType, path string) (*Diff, error) {
 	return repoData.repoDataLoader.DiffFile(statusType, path)
+}
+
+// DiffStage returns a diff for all files in the provided stage
+func (repoData *RepositoryData) DiffStage(statusType StatusType) (*Diff, error) {
+	return repoData.repoDataLoader.DiffStage(statusType)
 }
 
 // LoadStatus loads the current git status

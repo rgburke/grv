@@ -16,13 +16,6 @@ const (
 	cvDateFormat    = "2006-01-02 15:04"
 )
 
-var statusTypeDisplayNames = map[StatusType]string{
-	StStaged:     "Staged",
-	StUnstaged:   "Unstaged",
-	StUntracked:  "Untracked",
-	StConflicted: "Conflicted",
-}
-
 type commitViewHandler func(*CommitView, Action) error
 
 type loadingCommitsRefreshTask struct {
@@ -307,7 +300,7 @@ func (commitView *CommitView) renderStatus(status *Status, tableFormatter *Table
 
 	for _, statusType := range status.StatusTypes() {
 		if len(status.Entries(statusType)) > 0 {
-			statusTypes = append(statusTypes, statusTypeDisplayNames[statusType])
+			statusTypes = append(statusTypes, StatusTypeDisplayName(statusType))
 		}
 	}
 

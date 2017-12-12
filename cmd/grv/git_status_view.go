@@ -13,18 +13,22 @@ var statusTypeTitle = map[StatusType]*renderedStatusEntry{
 	StStaged: {
 		text:             "Changes to be committed:",
 		themeComponentID: CmpGitStatusStagedTitle,
+		statusType:       StStaged,
 	},
 	StUnstaged: {
 		text:             "Changes not staged for commit:",
 		themeComponentID: CmpGitStatusUnstagedTitle,
+		statusType:       StUnstaged,
 	},
 	StUntracked: {
 		text:             "Untracked files:",
 		themeComponentID: CmpGitStatusUntrackedTitle,
+		statusType:       StUntracked,
 	},
 	StConflicted: {
 		text:             "Unmerged paths:",
 		themeComponentID: CmpGitStatusConflictedTitle,
+		statusType:       StConflicted,
 	},
 }
 
@@ -48,7 +52,8 @@ type renderedStatusEntry struct {
 // or a non-file entry is selected in the GitStatusView
 type GitStatusEntrySelectedListener interface {
 	OnFileSelected(statusType StatusType, path string)
-	OnNonFileEntrySelected()
+	OnStageGroupSelected(statusType StatusType)
+	OnNoEntrySelected()
 }
 
 // GitStatusView manages displaying git status data
@@ -201,12 +206,24 @@ func (gitStatusView *GitStatusView) notifyFileEntrySelected(renderedStatus *rend
 	return
 }
 
-func (gitStatusView *GitStatusView) notifyNonFileEntrySelected() {
-	log.Debugf("Notifying git status file selected listeners that a non-file is selected")
+func (gitStatusView *GitStatusView) notifyStageGroupSelected(statusType StatusType) {
+	log.Debugf("Notifying git status file selected listeners that a stage group is selected")
 
 	go func() {
 		for _, entrySelectedListener := range gitStatusView.entrySelectedListeners {
-			entrySelectedListener.OnNonFileEntrySelected()
+			entrySelectedListener.OnStageGroupSelected(statusType)
+		}
+	}()
+
+	return
+}
+
+func (gitStatusView *GitStatusView) notifyNoEntrySelected() {
+	log.Debugf("Notifying git status file selected listeners that no entry is selected")
+
+	go func() {
+		for _, entrySelectedListener := range gitStatusView.entrySelectedListeners {
+			entrySelectedListener.OnNoEntrySelected()
 		}
 	}()
 
@@ -229,12 +246,12 @@ func (gitStatusView *GitStatusView) selectEntry(index uint) (err error) {
 	renderedStatusEntry := gitStatusView.renderedStatus[index]
 	log.Debugf("Selecting git status entry with index %v: %v", index, renderedStatusEntry.text)
 
-	if renderedStatusEntry.StatusEntry != nil {
-		if renderedStatusEntry.statusType != StUntracked {
+	if renderedStatusEntry.statusType != StUntracked {
+		if renderedStatusEntry.StatusEntry != nil {
 			gitStatusView.notifyFileEntrySelected(renderedStatusEntry)
+		} else {
+			gitStatusView.notifyStageGroupSelected(renderedStatusEntry.statusType)
 		}
-	} else {
-		gitStatusView.notifyNonFileEntrySelected()
 	}
 
 	return
@@ -310,6 +327,10 @@ func (gitStatusView *GitStatusView) OnStatusChanged(status *Status) {
 
 	if err := gitStatusView.selectEntry(index); err != nil {
 		log.Errorf("Error when attempting to selected status entry at index %v out of %v entries", index, renderedStatusNum)
+	}
+
+	if renderedStatusNum == 0 {
+		gitStatusView.notifyNoEntrySelected()
 	}
 }
 

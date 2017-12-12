@@ -379,6 +379,18 @@ const (
 	StConflicted
 )
 
+var statusTypeDisplayNames = map[StatusType]string{
+	StStaged:     "Staged",
+	StUnstaged:   "Unstaged",
+	StUntracked:  "Untracked",
+	StConflicted: "Conflicted",
+}
+
+// StatusTypeDisplayName returns the display name of the StatusType
+func StatusTypeDisplayName(statusType StatusType) string {
+	return statusTypeDisplayNames[statusType]
+}
+
 var statusTypeMap = map[git.Status]StatusType{
 	git.StatusIndexNew | git.StatusIndexModified | git.StatusIndexDeleted | git.StatusIndexRenamed | git.StatusIndexTypeChange: StStaged,
 	git.StatusWtModified | git.StatusWtDeleted | git.StatusWtTypeChange | git.StatusWtRenamed:                                  StUnstaged,
@@ -874,49 +886,22 @@ func (repoDataLoader *RepoDataLoader) DiffCommit(commit *Commit) (diff *Diff, er
 	if err != nil {
 		return
 	}
-	defer func() {
-		if e := commitDiff.Free(); e != nil {
-			log.Errorf("Error when freeing commit diff: %v", e)
-		}
-	}()
+	defer commitDiff.Free()
 
-	stats, err := commitDiff.Stats()
-	if err != nil {
+	return repoDataLoader.generateDiff(commitDiff)
+}
+
+// DiffStage returns a diff for all files in the provided stage
+func (repoDataLoader *RepoDataLoader) DiffStage(statusType StatusType) (diff *Diff, err error) {
+	diff = &Diff{}
+
+	rawDiff, err := repoDataLoader.generateRawDiff(statusType)
+	if err != nil || rawDiff == nil {
 		return
 	}
+	defer rawDiff.Free()
 
-	statsText, err := stats.String(git.DiffStatsFull, rdlDiffStatsCols)
-	if err != nil {
-		return
-	}
-
-	diff.stats.WriteString(statsText)
-
-	numDeltas, err := commitDiff.NumDeltas()
-	if err != nil {
-		return
-	}
-
-	var patch *git.Patch
-	var patchString string
-
-	for i := 0; i < numDeltas; i++ {
-		if patch, err = commitDiff.Patch(i); err != nil {
-			return
-		}
-
-		if patchString, err = patch.String(); err != nil {
-			return
-		}
-
-		diff.diffText.WriteString(patchString)
-
-		if err := patch.Free(); err != nil {
-			log.Errorf("Error when freeing patch: %v", err)
-		}
-	}
-
-	return
+	return repoDataLoader.generateDiff(rawDiff)
 }
 
 // DiffFile Generates a diff for the provided file
@@ -924,7 +909,50 @@ func (repoDataLoader *RepoDataLoader) DiffCommit(commit *Commit) (diff *Diff, er
 // If statusType is StUnstaged then the diff is between index and the working directory
 func (repoDataLoader *RepoDataLoader) DiffFile(statusType StatusType, path string) (diff *Diff, err error) {
 	diff = &Diff{}
-	var rawDiff *git.Diff
+
+	rawDiff, err := repoDataLoader.generateRawDiff(statusType)
+	if err != nil || rawDiff == nil {
+		return
+	}
+	defer rawDiff.Free()
+
+	numDeltas, err := rawDiff.NumDeltas()
+	if err != nil {
+		return
+	}
+
+	var diffDelta git.DiffDelta
+	var patch *git.Patch
+	var patchString string
+
+	for i := 0; i < numDeltas; i++ {
+		if diffDelta, err = rawDiff.GetDelta(i); err != nil {
+			return
+		}
+
+		if diffDelta.NewFile.Path == path {
+			if patch, err = rawDiff.Patch(i); err != nil {
+				return
+			}
+
+			if patchString, err = patch.String(); err != nil {
+				return
+			}
+
+			diff.diffText.WriteString(patchString)
+
+			if err := patch.Free(); err != nil {
+				log.Errorf("Error when freeing patch: %v", err)
+			}
+
+			break
+		}
+	}
+
+	return
+}
+
+func (repoDataLoader *RepoDataLoader) generateRawDiff(statusType StatusType) (rawDiff *git.Diff, err error) {
 	var index *git.Index
 	var options git.DiffOptions
 
@@ -969,40 +997,47 @@ func (repoDataLoader *RepoDataLoader) DiffFile(statusType StatusType, path strin
 		if rawDiff, err = repoDataLoader.repo.DiffIndexToWorkdir(index, &options); err != nil {
 			return
 		}
-	default:
+	}
+
+	return
+}
+
+func (repoDataLoader *RepoDataLoader) generateDiff(rawDiff *git.Diff) (diff *Diff, err error) {
+	diff = &Diff{}
+
+	stats, err := rawDiff.Stats()
+	if err != nil {
 		return
 	}
+
+	statsText, err := stats.String(git.DiffStatsFull, rdlDiffStatsCols)
+	if err != nil {
+		return
+	}
+
+	diff.stats.WriteString(statsText)
 
 	numDeltas, err := rawDiff.NumDeltas()
 	if err != nil {
 		return
 	}
 
-	var diffDelta git.DiffDelta
 	var patch *git.Patch
 	var patchString string
 
 	for i := 0; i < numDeltas; i++ {
-		if diffDelta, err = rawDiff.GetDelta(i); err != nil {
+		if patch, err = rawDiff.Patch(i); err != nil {
 			return
 		}
 
-		if diffDelta.NewFile.Path == path {
-			if patch, err = rawDiff.Patch(i); err != nil {
-				return
-			}
+		if patchString, err = patch.String(); err != nil {
+			return
+		}
 
-			if patchString, err = patch.String(); err != nil {
-				return
-			}
+		diff.diffText.WriteString(patchString)
 
-			diff.diffText.WriteString(patchString)
-
-			if err := patch.Free(); err != nil {
-				log.Errorf("Error when freeing patch: %v", err)
-			}
-
-			break
+		if err := patch.Free(); err != nil {
+			log.Errorf("Error when freeing patch: %v", err)
 		}
 	}
 

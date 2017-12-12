@@ -342,9 +342,54 @@ func (diffView *DiffView) OnFileSelected(statusType StatusType, path string) {
 	// to change frequently
 	diff, err := diffView.repoData.DiffFile(statusType, path)
 	if err != nil {
+		log.Errorf("Unable to load file diff: %v", err)
 		return
 	}
 
+	if err = diffView.storeDiff(diffID(path), diff); err != nil {
+		log.Errorf("Unable to store file diff: %v", err)
+		return
+	}
+
+	diffView.channels.UpdateDisplay()
+}
+
+// OnStageGroupSelected does nothing
+func (diffView *DiffView) OnStageGroupSelected(statusType StatusType) {
+	log.Debugf("DiffView loading diff for stage %v", statusType)
+
+	diffView.lock.Lock()
+	defer diffView.lock.Unlock()
+
+	// Reload diff each time as staged or unstaged files diffs are liable
+	// to change frequently
+	diff, err := diffView.repoData.DiffStage(statusType)
+	if err != nil {
+		log.Errorf("Unable to load diff for stage %v: %v", statusType, err)
+		return
+	}
+
+	id := fmt.Sprintf("%v files", strings.ToLower(StatusTypeDisplayName(statusType)))
+	if err = diffView.storeDiff(diffID(id), diff); err != nil {
+		log.Errorf("Unable to store stage diff: %v", err)
+		return
+	}
+
+	diffView.channels.UpdateDisplay()
+}
+
+// OnNoEntrySelected clears the diff view
+func (diffView *DiffView) OnNoEntrySelected() {
+	log.Debugf("No entry selected to display diff for")
+
+	diffView.lock.Lock()
+	defer diffView.lock.Unlock()
+
+	diffView.activeDiff = diffID("")
+	diffView.channels.UpdateDisplay()
+}
+
+func (diffView *DiffView) storeDiff(diffID diffID, diff *Diff) (err error) {
 	lines, err := diffView.generateDiffLinesForDiff(diff)
 	if err != nil {
 		return
@@ -355,15 +400,12 @@ func (diffView *DiffView) OnFileSelected(statusType StatusType, path string) {
 		viewPos: NewViewPosition(),
 	}
 
-	diffID := diffID(path)
 	diffView.diffs[diffID] = diffLines
 	diffView.activeDiff = diffID
 	diffView.viewPos = diffLines.viewPos
-	diffView.channels.UpdateDisplay()
-}
 
-// OnNonFileEntrySelected does nothing
-func (diffView *DiffView) OnNonFileEntrySelected() {}
+	return
+}
 
 func (diffView *DiffView) generateDiffLinesForCommit(commit *Commit) (lines []*diffLineData, err error) {
 	author := commit.commit.Author()

@@ -328,15 +328,18 @@ func (historyView *HistoryView) OnFileSelected(statusType StatusType, path strin
 	historyView.setChildViewAtPosition(historyView.diffView, vp2)
 }
 
-// OnNonFileEntrySelected ensures the commit view is visible when a file entry is selected in
+// OnStageGroupSelected ensures the commit view is visible when a file entry is selected in
 // the git status view
-func (historyView *HistoryView) OnNonFileEntrySelected() {
+func (historyView *HistoryView) OnStageGroupSelected(statusType StatusType) {
 	historyView.lock.Lock()
 	defer historyView.lock.Unlock()
 
 	log.Debugf("Replacing DiffView with CommitView")
 	historyView.setChildViewAtPosition(historyView.commitView, vp2)
 }
+
+// OnNoEntrySelected does nothing
+func (historyView *HistoryView) OnNoEntrySelected() {}
 
 func (historyView *HistoryView) setChildViewAtPosition(view WindowView, vp viewPosition) {
 	if historyView.views[vp] != view {
