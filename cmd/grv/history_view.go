@@ -32,7 +32,6 @@ type HistoryView struct {
 	refView              WindowView
 	commitView           WindowView
 	diffView             WindowView
-	gitStatusView        WindowView
 	views                []WindowView
 	viewWins             map[WindowView]*Window
 	layout               map[viewPosition]WindowView
@@ -54,30 +53,25 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 	refView := NewRefView(repoData, channels)
 	commitView := NewCommitView(repoData, channels)
 	diffView := NewDiffView(repoData, channels)
-	gitStatusView := NewGitStatusView(repoData, channels)
 
 	refViewWin := NewWindow("refView", config)
 	commitViewWin := NewWindow("commitView", config)
 	diffViewWin := NewWindow("diffView", config)
-	gitStatusViewWin := NewWindow("gitStatusView", config)
 
 	refView.RegisterRefListener(commitView)
 	commitView.RegisterCommitViewListener(diffView)
-	gitStatusView.RegisterGitStatusFileSelectedListener(diffView)
 
 	historyView := &HistoryView{
-		channels:      channels,
-		refView:       refView,
-		commitView:    commitView,
-		diffView:      diffView,
-		gitStatusView: gitStatusView,
-		views:         []WindowView{refView, commitView, diffView},
-		orientation:   voDefault,
+		channels:    channels,
+		refView:     refView,
+		commitView:  commitView,
+		diffView:    diffView,
+		views:       []WindowView{refView, commitView, diffView},
+		orientation: voDefault,
 		viewWins: map[WindowView]*Window{
-			refView:       refViewWin,
-			commitView:    commitViewWin,
-			diffView:      diffViewWin,
-			gitStatusView: gitStatusViewWin,
+			refView:    refViewWin,
+			commitView: commitViewWin,
+			diffView:   diffViewWin,
 		},
 		layout: map[viewPosition]WindowView{
 			vp1: refView,
@@ -86,11 +80,6 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 		},
 		activeViewPos: 1,
 	}
-
-	commitView.RegisterCommitViewListener(historyView)
-	commitView.RegisterStatusSelectedListener(historyView)
-
-	gitStatusView.RegisterGitStatusFileSelectedListener(historyView)
 
 	return historyView
 }
@@ -106,9 +95,6 @@ func (historyView *HistoryView) Initialise() (err error) {
 		return
 	}
 	if err = historyView.diffView.Initialise(); err != nil {
-		return
-	}
-	if err = historyView.gitStatusView.Initialise(); err != nil {
 		return
 	}
 
@@ -274,13 +260,6 @@ func (historyView *HistoryView) OnActiveChange(active bool) {
 			historyView.views[viewPos].OnActiveChange(false)
 		}
 	}
-
-	if active {
-		if historyView.views[historyView.activeViewPos] == historyView.refView {
-			log.Debugf("RefView active: replacing DiffView with CommitView")
-			historyView.setChildViewAtPosition(historyView.commitView, vp2)
-		}
-	}
 }
 
 // ViewID returns the view ID for the history view
@@ -294,64 +273,6 @@ func (historyView *HistoryView) ActiveView() AbstractView {
 	defer historyView.lock.Unlock()
 
 	return historyView.views[historyView.activeViewPos]
-}
-
-// OnCommitSelected ensures the diff view is visible
-func (historyView *HistoryView) OnCommitSelected(commit *Commit) (err error) {
-	historyView.lock.Lock()
-	defer historyView.lock.Unlock()
-
-	log.Debugf("Replacing GitStatusView with DiffView")
-	historyView.setChildViewAtPosition(historyView.diffView, vp3)
-
-	return
-}
-
-// OnStatusSelected ensures the git status view is visible
-func (historyView *HistoryView) OnStatusSelected(status *Status) (err error) {
-	historyView.lock.Lock()
-	defer historyView.lock.Unlock()
-
-	log.Debugf("Replacing DiffView with GitStatusView")
-	historyView.setChildViewAtPosition(historyView.gitStatusView, vp3)
-
-	return
-}
-
-// OnFileSelected ensures the diff view is visible when a file entry is selected in
-// the git status view
-func (historyView *HistoryView) OnFileSelected(statusType StatusType, path string) {
-	historyView.lock.Lock()
-	defer historyView.lock.Unlock()
-
-	log.Debugf("Replacing CommitView with DiffView")
-	historyView.setChildViewAtPosition(historyView.diffView, vp2)
-}
-
-// OnStageGroupSelected ensures the commit view is visible when a file entry is selected in
-// the git status view
-func (historyView *HistoryView) OnStageGroupSelected(statusType StatusType) {
-	historyView.lock.Lock()
-	defer historyView.lock.Unlock()
-
-	log.Debugf("Replacing DiffView with CommitView")
-	historyView.setChildViewAtPosition(historyView.commitView, vp2)
-}
-
-// OnNoEntrySelected does nothing
-func (historyView *HistoryView) OnNoEntrySelected() {}
-
-func (historyView *HistoryView) setChildViewAtPosition(view WindowView, vp viewPosition) {
-	if historyView.views[vp] != view {
-		historyView.views[vp].OnActiveChange(false)
-
-		historyView.views[vp] = view
-		historyView.layout[vp] = view
-
-		view.OnActiveChange(historyView.activeViewPos == uint(vp))
-
-		historyView.channels.UpdateDisplay()
-	}
 }
 
 // Title returns the title for the history view

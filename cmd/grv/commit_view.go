@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -35,26 +34,19 @@ type CommitViewListener interface {
 	OnCommitSelected(*Commit) error
 }
 
-// StatusSelectedListener is notified when the status entry is selected in the commit view
-type StatusSelectedListener interface {
-	OnStatusSelected(status *Status) error
-}
-
 // CommitView is the overall instance representing the commit view
 type CommitView struct {
-	channels                *Channels
-	repoData                RepoData
-	activeRef               Ref
-	active                  bool
-	refViewData             map[string]*referenceViewData
-	handlers                map[ActionType]commitViewHandler
-	refreshTask             *loadingCommitsRefreshTask
-	commitViewListeners     []CommitViewListener
-	statusSelectedListeners []StatusSelectedListener
-	viewDimension           ViewDimension
-	viewSearch              *ViewSearch
-	status                  *Status
-	lock                    sync.Mutex
+	channels            *Channels
+	repoData            RepoData
+	activeRef           Ref
+	active              bool
+	refViewData         map[string]*referenceViewData
+	handlers            map[ActionType]commitViewHandler
+	refreshTask         *loadingCommitsRefreshTask
+	commitViewListeners []CommitViewListener
+	viewDimension       ViewDimension
+	viewSearch          *ViewSearch
+	lock                sync.Mutex
 }
 
 // NewCommitView creates a new instance of the commit view
@@ -79,7 +71,6 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 	}
 
 	commitView.viewSearch = NewViewSearch(commitView, channels)
-	commitView.repoData.RegisterStatusListener(commitView)
 
 	return commitView
 }
@@ -110,23 +101,11 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	commitNum := commitSetState.commitNum
 
 	viewPos := refViewData.viewPos
-	statusVisible := commitView.statusVisible()
-	if statusVisible {
-		commitNum++
-	}
-
 	rows := win.Rows() - 2
 	viewPos.DetermineViewStartRow(rows, commitNum)
 
-	statusLineVisible := statusVisible && viewPos.ViewStartRowIndex() == 0
-
 	commitDisplayNum := rows
 	startCommitIndex := viewPos.ViewStartRowIndex()
-	if statusLineVisible {
-		commitDisplayNum--
-	} else if statusVisible {
-		startCommitIndex--
-	}
 
 	commitCh, err := commitView.repoData.Commits(commitView.activeRef, startCommitIndex, commitDisplayNum)
 	if err != nil {
@@ -138,14 +117,6 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	tableFormatter.Clear()
 
 	rowIndex := uint(0)
-
-	if statusLineVisible {
-		if err = commitView.renderStatus(commitView.status, tableFormatter); err != nil {
-			return
-		}
-
-		rowIndex++
-	}
 
 	for commit := range commitCh {
 		if err = commitView.renderCommit(tableFormatter, rowIndex, commit); err != nil {
@@ -171,40 +142,30 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		return
 	}
 
-	if viewPos.ActiveRowIndex() == 0 && statusVisible {
-		if err = win.SetFooter(CmpCommitviewFooter, "Git Status Selected"); err != nil {
-			return
-		}
+	var selectedCommit uint
+	if commitSetState.commitNum == 0 {
+		selectedCommit = 0
 	} else {
-		var selectedCommit uint
-		if commitSetState.commitNum == 0 {
-			selectedCommit = 0
-		} else {
-			if statusVisible {
-				selectedCommit = viewPos.ActiveRowIndex()
-			} else {
-				selectedCommit = viewPos.ActiveRowIndex() + 1
-			}
+		selectedCommit = viewPos.ActiveRowIndex() + 1
+	}
+
+	var footerText bytes.Buffer
+
+	footerText.WriteString(fmt.Sprintf("Commit %v of %v", selectedCommit, commitSetState.commitNum))
+
+	if commitSetState.filterState != nil {
+		filtersApplied := commitSetState.filterState.filtersApplied
+		filtersTextSuffix := ""
+
+		if filtersApplied > 1 {
+			filtersTextSuffix = "s"
 		}
 
-		var footerText bytes.Buffer
+		footerText.WriteString(fmt.Sprintf(" (%v filter%v applied)", commitSetState.filterState.filtersApplied, filtersTextSuffix))
+	}
 
-		footerText.WriteString(fmt.Sprintf("Commit %v of %v", selectedCommit, commitSetState.commitNum))
-
-		if commitSetState.filterState != nil {
-			filtersApplied := commitSetState.filterState.filtersApplied
-			filtersTextSuffix := ""
-
-			if filtersApplied > 1 {
-				filtersTextSuffix = "s"
-			}
-
-			footerText.WriteString(fmt.Sprintf(" (%v filter%v applied)", commitSetState.filterState.filtersApplied, filtersTextSuffix))
-		}
-
-		if err = win.SetFooter(CmpCommitviewFooter, "%v", footerText.String()); err != nil {
-			return
-		}
+	if err = win.SetFooter(CmpCommitviewFooter, "%v", footerText.String()); err != nil {
+		return
 	}
 
 	if searchActive, searchPattern, lastSearchFoundMatch := commitView.viewSearch.SearchActive(); searchActive && lastSearchFoundMatch {
@@ -267,59 +228,6 @@ func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIn
 	}
 
 	if err = tableFormatter.AppendToCellWithStyle(rowIndex, colIndex, CmpCommitviewSummary, "%v", commit.commit.Summary()); err != nil {
-		return
-	}
-
-	return
-}
-
-func (commitView *CommitView) renderStatus(status *Status, tableFormatter *TableFormatter) (err error) {
-	if status.IsEmpty() {
-		log.Error("Cannot render empty status")
-		return
-	}
-
-	rowIndex := uint(0)
-	colIndex := uint(0)
-
-	if err = tableFormatter.SetCellWithStyle(rowIndex, colIndex, CmpCommitviewShortOid, "None"); err != nil {
-		return
-	}
-
-	colIndex++
-	if err = tableFormatter.SetCellWithStyle(rowIndex, colIndex, CmpCommitviewDate, "%v", time.Now().Format(cvDateFormat)); err != nil {
-		return
-	}
-
-	colIndex++
-	if err = tableFormatter.SetCellWithStyle(rowIndex, colIndex, CmpCommitviewAuthor, "Unknown"); err != nil {
-		return
-	}
-
-	statusTypes := []string{}
-
-	for _, statusType := range status.StatusTypes() {
-		if len(status.Entries(statusType)) > 0 {
-			statusTypes = append(statusTypes, StatusTypeDisplayName(statusType))
-		}
-	}
-
-	var statusMessage string
-	statusTypesLen := len(statusTypes)
-
-	if statusTypesLen < 2 {
-		statusMessage = statusTypes[0]
-	} else if statusTypesLen == 2 {
-		statusMessage = fmt.Sprintf("%v and %v", statusTypes[statusTypesLen-2], statusTypes[statusTypesLen-1])
-	} else {
-		statusMessage = fmt.Sprintf("%v, %v and %v", strings.Join(statusTypes[0:statusTypesLen-2], ", "),
-			statusTypes[statusTypesLen-2], statusTypes[statusTypesLen-1])
-	}
-
-	statusMessage += " Changes"
-
-	colIndex++
-	if err = tableFormatter.SetCellWithStyle(rowIndex, colIndex, CmpCommitviewSummary, "%v", statusMessage); err != nil {
 		return
 	}
 
@@ -413,21 +321,10 @@ func (commitView *CommitView) OnRefSelect(ref Ref) (err error) {
 		commitView.refreshTask.stop()
 	}
 
-	statusVisible := commitView.statusVisible()
-
-	if statusVisible && refViewData.viewPos.ActiveRowIndex() == 0 {
-		commitView.notifyStatusSelectedListeners()
-		return
-	}
-
 	var commit *Commit
 
 	if refViewDataExists {
 		commitIndex := refViewData.viewPos.ActiveRowIndex()
-		if statusVisible {
-			commitIndex--
-		}
-
 		commit, err = commitView.repoData.CommitByIndex(commitView.activeRef, commitIndex)
 	} else {
 		commit, err = commitView.repoData.Commit(commitView.activeRef.Oid())
@@ -483,53 +380,6 @@ func (commitView *CommitView) OnCommitsUpdated(ref Ref, updateStartIndex, newCom
 	}
 }
 
-// OnStatusChanged updates the commit views internal status state
-// The selected row is adjusted based on whether status visibility has changed
-func (commitView *CommitView) OnStatusChanged(newStatus *Status) {
-	commitView.lock.Lock()
-	defer commitView.lock.Unlock()
-
-	oldStatus := commitView.status
-	commitView.status = newStatus
-
-	if oldStatus != nil {
-		viewPos := commitView.ViewPos()
-
-		if oldStatus.IsEmpty() && !newStatus.IsEmpty() {
-			log.Debug("Status now visible: Moving active row index one line up")
-			viewPos.MoveLineDown(commitView.lineNumber())
-		} else if !oldStatus.IsEmpty() && newStatus.IsEmpty() {
-			log.Debug("Status no longer visible: Moving active row index one line down")
-			viewPos.MoveLineUp()
-			commitView.channels.ReportError(commitView.selectCommit(viewPos.ActiveRowIndex()))
-		}
-	}
-
-	commitView.channels.UpdateDisplay()
-}
-
-func (commitView *CommitView) statusVisible() bool {
-	if commitView.status == nil {
-		return false
-	}
-
-	if commitView.status.IsEmpty() {
-		return false
-	}
-
-	head := commitView.repoData.Head()
-
-	activeBranch := commitView.activeRef
-
-	if !head.Oid().Equal(activeBranch.Oid()) {
-		return false
-	}
-
-	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
-
-	return commitSetState.filterState == nil || commitSetState.filterState.filtersApplied == 0
-}
-
 // OnActiveChange updates whether this view is currently active
 func (commitView *CommitView) OnActiveChange(active bool) {
 	log.Debugf("CommitView active: %v", active)
@@ -564,40 +414,8 @@ func (commitView *CommitView) notifyCommitViewListeners(commit *Commit) {
 	}()
 }
 
-// RegisterStatusSelectedListener registers a listener to be notified when the status entry is selected in the commit view
-func (commitView *CommitView) RegisterStatusSelectedListener(statusSelectedListener StatusSelectedListener) {
-	commitView.lock.Lock()
-	defer commitView.lock.Unlock()
-
-	commitView.statusSelectedListeners = append(commitView.statusSelectedListeners, statusSelectedListener)
-}
-
-func (commitView *CommitView) notifyStatusSelectedListeners() {
-	log.Debugf("Notifying status selected listeners that status is selected")
-	status := commitView.status
-
-	go func() {
-		for _, statusSelectedListener := range commitView.statusSelectedListeners {
-			if err := statusSelectedListener.OnStatusSelected(status); err != nil {
-				commitView.channels.ReportError(err)
-			}
-		}
-	}()
-}
-
 func (commitView *CommitView) selectCommit(lineIndex uint) (err error) {
 	commitIndex := lineIndex
-
-	if commitView.statusVisible() {
-		if lineIndex == 0 {
-			commitView.ViewPos().SetActiveRowIndex(lineIndex)
-			commitView.notifyStatusSelectedListeners()
-			return
-		}
-
-		commitIndex--
-	}
-
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 
 	if commitSetState.commitNum == 0 {
@@ -661,32 +479,19 @@ func (commitView *CommitView) Line(lineIndex uint) (line string) {
 	tableFormatter := refViewData.tableFormatter
 	tableFormatter.Clear()
 
-	statusVisible := commitView.statusVisible()
-
-	if lineIndex == 0 && statusVisible {
-		if err := commitView.renderStatus(commitView.status, tableFormatter); err != nil {
-			log.Errorf("Error when rendering status: %v", err)
-			return
-		}
-	} else {
-		commitIndex := lineIndex
-		if statusVisible {
-			commitIndex--
-		}
-
-		commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, commitIndex)
-		if err != nil {
-			log.Errorf("Error when retrieving commit during search: %v", err)
-			return
-		}
-
-		if err = commitView.renderCommit(tableFormatter, 0, commit); err != nil {
-			log.Errorf("Error when rendering commit: %v", err)
-			return
-		}
+	commitIndex := lineIndex
+	commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, commitIndex)
+	if err != nil {
+		log.Errorf("Error when retrieving commit during search: %v", err)
+		return
 	}
 
-	line, err := tableFormatter.RowString(0)
+	if err = commitView.renderCommit(tableFormatter, 0, commit); err != nil {
+		log.Errorf("Error when rendering commit: %v", err)
+		return
+	}
+
+	line, err = tableFormatter.RowString(0)
 	if err != nil {
 		log.Errorf("Error when retrieving row string: %v", err)
 		return
@@ -706,10 +511,6 @@ func (commitView *CommitView) LineNumber() (lineNumber uint) {
 func (commitView *CommitView) lineNumber() (lineNumber uint) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
 	lineNum := commitSetState.commitNum
-
-	if commitView.statusVisible() {
-		lineNum++
-	}
 
 	return lineNum
 }
