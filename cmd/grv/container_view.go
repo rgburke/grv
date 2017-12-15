@@ -138,7 +138,7 @@ func (containerView *ContainerView) ViewID() ViewID {
 func (containerView *ContainerView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	RenderKeyBindingHelp(containerView.ViewID(), lineBuilder, []ActionMessage{
 		{action: ActionNextView, message: "Next View"},
-		{action: ActionPrevView, message: "Previous View"},
+		{action: ActionPrevView, message: "Prev View"},
 	})
 
 	return

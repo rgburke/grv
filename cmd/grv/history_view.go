@@ -184,9 +184,9 @@ func (historyView *HistoryView) renderActiveViewFullScreen(viewDimension ViewDim
 func (historyView *HistoryView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	RenderKeyBindingHelp(historyView.ViewID(), lineBuilder, []ActionMessage{
 		{action: ActionNextView, message: "Next View"},
-		{action: ActionPrevView, message: "Previous View"},
-		{action: ActionFullScreenView, message: "Toggle Full Screen"},
-		{action: ActionToggleViewLayout, message: "Toggle Layout"},
+		{action: ActionPrevView, message: "Prev View"},
+		{action: ActionFullScreenView, message: "Full Screen"},
+		{action: ActionToggleViewLayout, message: "Layout"},
 	})
 
 	return

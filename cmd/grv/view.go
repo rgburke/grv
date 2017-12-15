@@ -273,7 +273,9 @@ func (view *View) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 
 	if !promptActive {
 		RenderKeyBindingHelp(view.ViewID(), lineBuilder, []ActionMessage{
-			{action: ActionPrompt, message: "Command Prompt"},
+			{action: ActionPrompt, message: "Cmd Prompt"},
+			{action: ActionNextTab, message: "Next Tab"},
+			{action: ActionPrevTab, message: "Prev Tab"},
 		})
 	}
 
