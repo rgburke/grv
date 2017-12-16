@@ -244,27 +244,80 @@ func (containerView *ContainerView) ActiveView() AbstractView {
 	return containerView.activeChildView()
 }
 
+// NextView changes the active view to the next child view
+// Return value is true if the active child view wrapped back to the first
+func (containerView *ContainerView) NextView() (wrapped bool) {
+	containerView.lock.Lock()
+	defer containerView.lock.Unlock()
+
+	return containerView.nextView()
+}
+
+func (containerView *ContainerView) nextView() (wrapped bool) {
+	containerView.activeViewIndex++
+	containerView.activeViewIndex %= uint(len(containerView.childViews))
+	wrapped = (containerView.activeViewIndex == 0)
+
+	containerView.onActiveChange(true)
+
+	return
+}
+
+// PrevView changes the active child view to the previous child view
+// Return value is true if the active child view wrapped back to the last
+func (containerView *ContainerView) PrevView() (wrapped bool) {
+	containerView.lock.Lock()
+	defer containerView.lock.Unlock()
+
+	return containerView.PrevView()
+}
+
+func (containerView *ContainerView) prevView() (wrapped bool) {
+	if containerView.activeViewIndex == 0 {
+		containerView.activeViewIndex = uint(len(containerView.childViews)) - 1
+		wrapped = true
+	} else {
+		containerView.activeViewIndex--
+	}
+
+	containerView.onActiveChange(true)
+
+	return
+}
+
 func (containerView *ContainerView) activeChildView() AbstractView {
 	return containerView.childViews[containerView.activeViewIndex]
 }
 
 func nextContainerChildView(containerView *ContainerView, action Action) (err error) {
-	containerView.activeViewIndex++
-	containerView.activeViewIndex %= uint(len(containerView.childViews))
-	containerView.onActiveChange(true)
+	switch childView := containerView.activeChildView().(type) {
+	case WindowView:
+		containerView.nextView()
+	case *ContainerView:
+		if childView.NextView() {
+			containerView.nextView()
+		}
+	}
+
 	containerView.channels.UpdateDisplay()
 
 	return
 }
 
 func prevContainerChildView(containerView *ContainerView, action Action) (err error) {
-	if containerView.activeViewIndex == 0 {
-		containerView.activeViewIndex = uint(len(containerView.childViews)) - 1
-	} else {
-		containerView.activeViewIndex--
+	switch childView := containerView.activeChildView().(type) {
+	case WindowView:
+		containerView.prevView()
+
+		if newChildView, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
+			newChildView.PrevView()
+		}
+	case *ContainerView:
+		if childView.PrevView() {
+			containerView.prevView()
+		}
 	}
 
-	containerView.onActiveChange(true)
 	containerView.channels.UpdateDisplay()
 
 	return
