@@ -9,11 +9,13 @@ import (
 
 type containerViewHandler func(*ContainerView, Action) error
 
-type containerOrientation int
+// ContainerOrientation represents the orientation of the child views
+type ContainerOrientation int
 
+// Supported container orientations
 const (
-	coVertical containerOrientation = iota
-	coHorizontal
+	CoVertical ContainerOrientation = iota
+	CoHorizontal
 )
 
 type childViewPosition struct {
@@ -31,16 +33,17 @@ type ContainerView struct {
 	viewWins        map[WindowView]*Window
 	activeViewIndex uint
 	handlers        map[ActionType]containerViewHandler
-	orientation     containerOrientation
+	orientation     ContainerOrientation
 	lock            sync.Mutex
 }
 
 // NewContainerView creates a new instance
-func NewContainerView(channels *Channels, config Config, childViews []AbstractView) *ContainerView {
+func NewContainerView(channels *Channels, config Config, orientation ContainerOrientation, childViews []AbstractView) *ContainerView {
 	containerView := &ContainerView{
-		config:   config,
-		channels: channels,
-		viewWins: make(map[WindowView]*Window),
+		config:      config,
+		channels:    channels,
+		orientation: orientation,
+		viewWins:    make(map[WindowView]*Window),
 		handlers: map[ActionType]containerViewHandler{
 			ActionNextView: nextContainerChildView,
 			ActionPrevView: prevContainerChildView,
@@ -181,7 +184,7 @@ func (containerView *ContainerView) Render(viewDimension ViewDimension) (wins []
 }
 
 func (containerView *ContainerView) determineChildViewPositions(viewDimension ViewDimension) (childPositions []childViewPosition) {
-	if containerView.orientation == coVertical {
+	if containerView.orientation == CoVertical {
 		width := uint(viewDimension.cols / uint(len(containerView.childViews)))
 		startCol := uint(0)
 
@@ -199,7 +202,7 @@ func (containerView *ContainerView) determineChildViewPositions(viewDimension Vi
 		}
 
 		childPositions[len(childPositions)-1].viewDimension.cols += viewDimension.cols % uint(len(containerView.childViews))
-	} else if containerView.orientation == coHorizontal {
+	} else if containerView.orientation == CoHorizontal {
 		height := uint(viewDimension.rows / uint(len(containerView.childViews)))
 		startRow := uint(0)
 

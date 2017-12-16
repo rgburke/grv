@@ -18,7 +18,7 @@ func NewStatusView(repoData RepoData, channels *Channels, config Config) *Status
 	}
 
 	return &StatusView{
-		ContainerView: NewContainerView(channels, config, childViews),
+		ContainerView: NewContainerView(channels, config, CoVertical, childViews),
 	}
 }
 
