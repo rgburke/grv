@@ -23,9 +23,18 @@ type ChildViewPosition struct {
 	startCol      uint
 }
 
+// ViewLayoutData contains data which can be used to determine the child view layout
+type ViewLayoutData struct {
+	viewDimension   ViewDimension
+	fullScreen      bool
+	orientation     ContainerOrientation
+	activeViewIndex uint
+	childViewNum    uint
+}
+
 // ChildViewPositionCalculator calculates the child layout data for the view
 type ChildViewPositionCalculator interface {
-	CalculateChildViewPositions(ViewDimension) []ChildViewPosition
+	CalculateChildViewPositions(*ViewLayoutData) []*ChildViewPosition
 }
 
 type containerViewHandler func(*ContainerView, Action) error
@@ -53,9 +62,10 @@ func NewContainerView(channels *Channels, config Config, orientation ContainerOr
 		orientation: orientation,
 		viewWins:    make(map[WindowView]*Window),
 		handlers: map[ActionType]containerViewHandler{
-			ActionNextView:       nextContainerChildView,
-			ActionPrevView:       prevContainerChildView,
-			ActionFullScreenView: toggleFullScreenChildView,
+			ActionNextView:         nextContainerChildView,
+			ActionPrevView:         prevContainerChildView,
+			ActionFullScreenView:   toggleFullScreenChildView,
+			ActionToggleViewLayout: toggleViewOrientation,
 		},
 	}
 
@@ -171,7 +181,15 @@ func (containerView *ContainerView) Render(viewDimension ViewDimension) (wins []
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
-	childPositions := containerView.childViewPositionCalculator.CalculateChildViewPositions(viewDimension)
+	viewLayoutData := ViewLayoutData{
+		viewDimension:   viewDimension,
+		fullScreen:      containerView.fullScreen,
+		orientation:     containerView.orientation,
+		activeViewIndex: containerView.activeViewIndex,
+		childViewNum:    uint(len(containerView.childViews)),
+	}
+
+	childPositions := containerView.childViewPositionCalculator.CalculateChildViewPositions(&viewLayoutData)
 
 	for childViewIndex, childView := range containerView.childViews {
 		childPosition := childPositions[childViewIndex]
@@ -210,11 +228,11 @@ func (containerView *ContainerView) Render(viewDimension ViewDimension) (wins []
 }
 
 // CalculateChildViewPositions calculates the child layout data for this view
-func (containerView *ContainerView) CalculateChildViewPositions(viewDimension ViewDimension) (childPositions []ChildViewPosition) {
+func (containerView *ContainerView) CalculateChildViewPositions(viewLayoutData *ViewLayoutData) (childPositions []*ChildViewPosition) {
 	switch {
-	case containerView.fullScreen:
-		for range containerView.childViews {
-			childPositions = append(childPositions, ChildViewPosition{
+	case viewLayoutData.fullScreen:
+		for i := uint(0); i < viewLayoutData.childViewNum; i++ {
+			childPositions = append(childPositions, &ChildViewPosition{
 				viewDimension: ViewDimension{
 					rows: 0,
 					cols: 0,
@@ -224,15 +242,15 @@ func (containerView *ContainerView) CalculateChildViewPositions(viewDimension Vi
 			})
 		}
 
-		childPositions[containerView.activeViewIndex].viewDimension = viewDimension
-	case containerView.orientation == CoVertical:
-		width := uint(viewDimension.cols / uint(len(containerView.childViews)))
+		childPositions[viewLayoutData.activeViewIndex].viewDimension = viewLayoutData.viewDimension
+	case viewLayoutData.orientation == CoVertical:
+		width := uint(viewLayoutData.viewDimension.cols / viewLayoutData.childViewNum)
 		startCol := uint(0)
 
-		for range containerView.childViews {
-			childPositions = append(childPositions, ChildViewPosition{
+		for i := uint(0); i < viewLayoutData.childViewNum; i++ {
+			childPositions = append(childPositions, &ChildViewPosition{
 				viewDimension: ViewDimension{
-					rows: viewDimension.rows,
+					rows: viewLayoutData.viewDimension.rows,
 					cols: width,
 				},
 				startRow: 0,
@@ -242,16 +260,16 @@ func (containerView *ContainerView) CalculateChildViewPositions(viewDimension Vi
 			startCol += width
 		}
 
-		childPositions[len(childPositions)-1].viewDimension.cols += viewDimension.cols % uint(len(containerView.childViews))
-	case containerView.orientation == CoHorizontal:
-		height := uint(viewDimension.rows / uint(len(containerView.childViews)))
+		childPositions[len(childPositions)-1].viewDimension.cols += viewLayoutData.viewDimension.cols % viewLayoutData.childViewNum
+	case viewLayoutData.orientation == CoHorizontal:
+		height := uint(viewLayoutData.viewDimension.rows / viewLayoutData.childViewNum)
 		startRow := uint(0)
 
-		for range containerView.childViews {
-			childPositions = append(childPositions, ChildViewPosition{
+		for i := uint(0); i < viewLayoutData.childViewNum; i++ {
+			childPositions = append(childPositions, &ChildViewPosition{
 				viewDimension: ViewDimension{
 					rows: height,
-					cols: viewDimension.cols,
+					cols: viewLayoutData.viewDimension.cols,
 				},
 				startRow: startRow,
 				startCol: 0,
@@ -260,13 +278,13 @@ func (containerView *ContainerView) CalculateChildViewPositions(viewDimension Vi
 			startRow += height
 		}
 
-		childPositions[len(childPositions)-1].viewDimension.rows += viewDimension.rows % uint(len(containerView.childViews))
+		childPositions[len(childPositions)-1].viewDimension.rows += viewLayoutData.viewDimension.rows % viewLayoutData.childViewNum
 	}
 
 	return
 }
 
-func (containerView *ContainerView) renderWindowView(childView WindowView, childPosition ChildViewPosition) (*Window, error) {
+func (containerView *ContainerView) renderWindowView(childView WindowView, childPosition *ChildViewPosition) (*Window, error) {
 	win := containerView.viewWins[childView]
 
 	win.Resize(childPosition.viewDimension)
@@ -416,6 +434,23 @@ func toggleFullScreenChildView(containerView *ContainerView, action Action) (err
 				break
 			}
 		}
+	}
+
+	containerView.channels.UpdateDisplay()
+
+	return
+}
+
+func toggleViewOrientation(containerView *ContainerView, action Action) (err error) {
+	switch childView := containerView.activeChildView().(type) {
+	case WindowView:
+		if containerView.orientation == CoVertical {
+			containerView.orientation = CoHorizontal
+		} else {
+			containerView.orientation = CoVertical
+		}
+	case WindowViewCollection:
+		err = childView.HandleAction(action)
 	}
 
 	containerView.channels.UpdateDisplay()
