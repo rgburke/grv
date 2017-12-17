@@ -7,8 +7,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-type containerViewHandler func(*ContainerView, Action) error
-
 // ContainerOrientation represents the orientation of the child views
 type ContainerOrientation int
 
@@ -18,23 +16,32 @@ const (
 	CoHorizontal
 )
 
-type childViewPosition struct {
+// ChildViewPosition is the position and dimensions of a child view
+type ChildViewPosition struct {
 	viewDimension ViewDimension
 	startRow      uint
 	startCol      uint
 }
 
+// ChildViewPositionCalculator calculates the child layout data for the view
+type ChildViewPositionCalculator interface {
+	CalculateChildViewPositions(ViewDimension) []ChildViewPosition
+}
+
+type containerViewHandler func(*ContainerView, Action) error
+
 // ContainerView is a container with no visual presence that manages the
 // layout of its child views
 type ContainerView struct {
-	channels        *Channels
-	config          Config
-	childViews      []AbstractView
-	viewWins        map[WindowView]*Window
-	activeViewIndex uint
-	handlers        map[ActionType]containerViewHandler
-	orientation     ContainerOrientation
-	lock            sync.Mutex
+	channels                    *Channels
+	config                      Config
+	childViews                  []AbstractView
+	viewWins                    map[WindowView]*Window
+	activeViewIndex             uint
+	handlers                    map[ActionType]containerViewHandler
+	orientation                 ContainerOrientation
+	childViewPositionCalculator ChildViewPositionCalculator
+	lock                        sync.Mutex
 }
 
 // NewContainerView creates a new instance
@@ -49,6 +56,8 @@ func NewContainerView(channels *Channels, config Config, orientation ContainerOr
 			ActionPrevView: prevContainerChildView,
 		},
 	}
+
+	containerView.childViewPositionCalculator = containerView
 
 	for _, childView := range childViews {
 		containerView.AddChildView(childView)
@@ -70,6 +79,14 @@ func (containerView *ContainerView) AddChildView(childView AbstractView) {
 		win := NewWindow(winID, containerView.config)
 		containerView.viewWins[windowView] = win
 	}
+}
+
+// SetChildViewPositionCalculator sets the child layout calculator for this view
+func (containerView *ContainerView) SetChildViewPositionCalculator(childViewPositionCalculator ChildViewPositionCalculator) {
+	containerView.lock.Lock()
+	defer containerView.lock.Unlock()
+
+	containerView.childViewPositionCalculator = childViewPositionCalculator
 }
 
 // Initialise initialises this containers child views
@@ -152,7 +169,7 @@ func (containerView *ContainerView) Render(viewDimension ViewDimension) (wins []
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
-	childPositions := containerView.determineChildViewPositions(viewDimension)
+	childPositions := containerView.childViewPositionCalculator.CalculateChildViewPositions(viewDimension)
 
 	for childViewIndex, childView := range containerView.childViews {
 		switch view := childView.(type) {
@@ -189,13 +206,14 @@ func (containerView *ContainerView) Render(viewDimension ViewDimension) (wins []
 	return
 }
 
-func (containerView *ContainerView) determineChildViewPositions(viewDimension ViewDimension) (childPositions []childViewPosition) {
+// CalculateChildViewPositions calculates the child layout data for this view
+func (containerView *ContainerView) CalculateChildViewPositions(viewDimension ViewDimension) (childPositions []ChildViewPosition) {
 	if containerView.orientation == CoVertical {
 		width := uint(viewDimension.cols / uint(len(containerView.childViews)))
 		startCol := uint(0)
 
 		for range containerView.childViews {
-			childPositions = append(childPositions, childViewPosition{
+			childPositions = append(childPositions, ChildViewPosition{
 				viewDimension: ViewDimension{
 					rows: viewDimension.rows,
 					cols: width,
@@ -213,7 +231,7 @@ func (containerView *ContainerView) determineChildViewPositions(viewDimension Vi
 		startRow := uint(0)
 
 		for range containerView.childViews {
-			childPositions = append(childPositions, childViewPosition{
+			childPositions = append(childPositions, ChildViewPosition{
 				viewDimension: ViewDimension{
 					rows: height,
 					cols: viewDimension.cols,
@@ -231,7 +249,7 @@ func (containerView *ContainerView) determineChildViewPositions(viewDimension Vi
 	return
 }
 
-func (containerView *ContainerView) renderWindowView(childView WindowView, childPosition childViewPosition) (*Window, error) {
+func (containerView *ContainerView) renderWindowView(childView WindowView, childPosition ChildViewPosition) (*Window, error) {
 	win := containerView.viewWins[childView]
 
 	win.Resize(childPosition.viewDimension)
