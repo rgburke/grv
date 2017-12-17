@@ -171,6 +171,8 @@ func (containerView *ContainerView) RenderHelpBar(lineBuilder *LineBuilder) (err
 	RenderKeyBindingHelp(containerView.ViewID(), lineBuilder, []ActionMessage{
 		{action: ActionNextView, message: "Next View"},
 		{action: ActionPrevView, message: "Prev View"},
+		{action: ActionFullScreenView, message: "Full Screen"},
+		{action: ActionToggleViewLayout, message: "Layout"},
 	})
 
 	return
