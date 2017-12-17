@@ -166,12 +166,18 @@ func (containerView *ContainerView) Render(viewDimension ViewDimension) (wins []
 			}
 
 			wins = append(wins, win)
+			win.SetPosition(childPosition.startRow, childPosition.startCol)
 		case WindowViewCollection:
 			var childWins []*Window
+			childPosition := childPositions[childViewIndex]
 
-			childWins, err = view.Render(viewDimension)
+			childWins, err = view.Render(childPosition.viewDimension)
 			if err != nil {
 				return
+			}
+
+			for _, win := range childWins {
+				win.OffsetPosition(int(childPosition.startRow), int(childPosition.startCol))
 			}
 
 			wins = append(wins, childWins...)
@@ -247,6 +253,15 @@ func (containerView *ContainerView) ActiveView() AbstractView {
 	return containerView.activeChildView()
 }
 
+// Title returns the title of the container view
+func (containerView *ContainerView) Title() string {
+	return "Container View"
+}
+
+func (containerView *ContainerView) activeChildView() AbstractView {
+	return containerView.childViews[containerView.activeViewIndex]
+}
+
 // NextView changes the active view to the next child view
 // Return value is true if the active child view wrapped back to the first
 func (containerView *ContainerView) NextView() (wrapped bool) {
@@ -257,11 +272,24 @@ func (containerView *ContainerView) NextView() (wrapped bool) {
 }
 
 func (containerView *ContainerView) nextView() (wrapped bool) {
-	containerView.activeViewIndex++
-	containerView.activeViewIndex %= uint(len(containerView.childViews))
-	wrapped = (containerView.activeViewIndex == 0)
+	switch childView := containerView.activeChildView().(type) {
+	case WindowView:
+		if len(containerView.childViews) > 1 {
+			if containerView.activeViewIndex == uint(len(containerView.childViews)-1) {
+				wrapped = true
+			} else {
+				containerView.setActiveViewAndActivateFirstChild(containerView.activeViewIndex + 1)
+			}
+		}
+	case *ContainerView:
+		if childView.NextView() {
+			wrapped = containerView.activeViewIndex == uint(len(containerView.childViews)-1)
 
-	containerView.onActiveChange(true)
+			if !wrapped {
+				containerView.setActiveViewAndActivateFirstChild(containerView.activeViewIndex + 1)
+			}
+		}
+	}
 
 	return
 }
@@ -272,55 +300,73 @@ func (containerView *ContainerView) PrevView() (wrapped bool) {
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
-	return containerView.PrevView()
+	return containerView.prevView()
 }
 
 func (containerView *ContainerView) prevView() (wrapped bool) {
-	if containerView.activeViewIndex == 0 {
-		containerView.activeViewIndex = uint(len(containerView.childViews)) - 1
-		wrapped = true
-	} else {
-		containerView.activeViewIndex--
-	}
+	switch childView := containerView.activeChildView().(type) {
+	case WindowView:
+		if len(containerView.childViews) > 1 {
+			if containerView.activeViewIndex == 0 {
+				wrapped = true
+			} else {
+				containerView.setActiveViewAndActivateLastChild(containerView.activeViewIndex - 1)
+			}
+		}
+	case *ContainerView:
+		if childView.PrevView() {
+			wrapped = containerView.activeViewIndex == 0
 
-	containerView.onActiveChange(true)
+			if !wrapped {
+				containerView.setActiveViewAndActivateLastChild(containerView.activeViewIndex - 1)
+			}
+		}
+	}
 
 	return
 }
 
-func (containerView *ContainerView) activeChildView() AbstractView {
-	return containerView.childViews[containerView.activeViewIndex]
+func (containerView *ContainerView) setActiveViewAndActivateFirstChild(activeViewIndex uint) {
+	containerView.activeViewIndex = activeViewIndex
+
+	if newChildView, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
+		newChildView.setActiveViewAndActivateFirstChild(0)
+	}
+}
+
+func (containerView *ContainerView) setActiveViewAndActivateLastChild(activeViewIndex uint) {
+	containerView.activeViewIndex = activeViewIndex
+
+	if newChildView, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
+		newChildView.setActiveViewAndActivateLastChild(uint(len(containerView.childViews) - 1))
+	}
 }
 
 func nextContainerChildView(containerView *ContainerView, action Action) (err error) {
-	switch childView := containerView.activeChildView().(type) {
-	case WindowView:
-		containerView.nextView()
-	case *ContainerView:
-		if childView.NextView() {
-			containerView.nextView()
+	if containerView.nextView() {
+		if containerView.activeViewIndex == uint(len(containerView.childViews)-1) {
+			containerView.setActiveViewAndActivateFirstChild(0)
+		} else {
+			containerView.setActiveViewAndActivateFirstChild(containerView.activeViewIndex + 1)
 		}
 	}
 
+	containerView.onActiveChange(true)
 	containerView.channels.UpdateDisplay()
 
 	return
 }
 
 func prevContainerChildView(containerView *ContainerView, action Action) (err error) {
-	switch childView := containerView.activeChildView().(type) {
-	case WindowView:
-		containerView.prevView()
-
-		if newChildView, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
-			newChildView.PrevView()
-		}
-	case *ContainerView:
-		if childView.PrevView() {
-			containerView.prevView()
+	if containerView.prevView() {
+		if containerView.activeViewIndex == 0 {
+			containerView.setActiveViewAndActivateLastChild(uint(len(containerView.childViews) - 1))
+		} else {
+			containerView.setActiveViewAndActivateLastChild(containerView.activeViewIndex - 1)
 		}
 	}
 
+	containerView.onActiveChange(true)
 	containerView.channels.UpdateDisplay()
 
 	return
