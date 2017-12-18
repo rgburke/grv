@@ -106,10 +106,6 @@ func (containerView *ContainerView) Initialise() (err error) {
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
-	if len(containerView.childViews) == 0 {
-		return fmt.Errorf("Container view must have at least 1 child view")
-	}
-
 	for _, childView := range containerView.childViews {
 		if err = childView.Initialise(); err != nil {
 			break
@@ -124,6 +120,10 @@ func (containerView *ContainerView) HandleKeyPress(keystring string) (err error)
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
+	if containerView.isEmpty() {
+		return
+	}
+
 	return containerView.activeChildView().HandleKeyPress(keystring)
 }
 
@@ -131,6 +131,10 @@ func (containerView *ContainerView) HandleKeyPress(keystring string) (err error)
 func (containerView *ContainerView) HandleAction(action Action) (err error) {
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
+
+	if containerView.isEmpty() {
+		return
+	}
 
 	handler, handlerExists := containerView.handlers[action.ActionType]
 
@@ -182,6 +186,10 @@ func (containerView *ContainerView) RenderHelpBar(lineBuilder *LineBuilder) (err
 func (containerView *ContainerView) Render(viewDimension ViewDimension) (wins []*Window, err error) {
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
+
+	if containerView.isEmpty() {
+		return
+	}
 
 	viewLayoutData := ViewLayoutData{
 		viewDimension:   viewDimension,
@@ -305,12 +313,20 @@ func (containerView *ContainerView) ActiveView() AbstractView {
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
+	if containerView.isEmpty() {
+		return containerView
+	}
+
 	return containerView.activeChildView()
 }
 
 // Title returns the title of the container view
 func (containerView *ContainerView) Title() string {
 	return "Container View"
+}
+
+func (containerView *ContainerView) isEmpty() bool {
+	return len(containerView.childViews) == 0
 }
 
 func (containerView *ContainerView) activeChildView() AbstractView {
@@ -327,6 +343,10 @@ func (containerView *ContainerView) NextView() (wrapped bool) {
 }
 
 func (containerView *ContainerView) nextView() (wrapped bool) {
+	if containerView.isEmpty() {
+		return
+	}
+
 	switch childView := containerView.activeChildView().(type) {
 	case WindowView:
 		if len(containerView.childViews) > 1 {
@@ -359,6 +379,10 @@ func (containerView *ContainerView) PrevView() (wrapped bool) {
 }
 
 func (containerView *ContainerView) prevView() (wrapped bool) {
+	if containerView.isEmpty() {
+		return
+	}
+
 	switch childView := containerView.activeChildView().(type) {
 	case WindowView:
 		if len(containerView.childViews) > 1 {

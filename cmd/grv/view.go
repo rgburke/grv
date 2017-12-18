@@ -346,6 +346,10 @@ func (view *View) ActiveViewHierarchy() []AbstractView {
 
 	for {
 		childView := parentView.ActiveView()
+		if childView == parentView {
+			break
+		}
+
 		viewHierarchy = append(viewHierarchy, childView)
 
 		if parentView, ok = childView.(WindowViewCollection); !ok {
