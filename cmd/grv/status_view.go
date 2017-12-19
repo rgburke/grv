@@ -12,17 +12,10 @@ func NewStatusView(repoData RepoData, channels *Channels, config Config) *Status
 
 	gitStatusView.RegisterGitStatusFileSelectedListener(diffView)
 
-	childViews := []AbstractView{
-		gitStatusView,
-		diffView,
-	}
+	statusView := &StatusView{ContainerView: NewContainerView(channels, config)}
+	statusView.SetTitle("Status View")
+	statusView.SetOrientation(CoVertical)
+	statusView.AddChildViews(gitStatusView, diffView)
 
-	return &StatusView{
-		ContainerView: NewContainerView(channels, config, CoVertical, childViews),
-	}
-}
-
-// Title returns the title of the status view
-func (statusView *StatusView) Title() string {
-	return "Status View"
+	return statusView
 }

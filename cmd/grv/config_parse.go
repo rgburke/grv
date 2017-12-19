@@ -89,6 +89,22 @@ func (quitCommand *QuitCommand) Equal(command ConfigCommand) bool {
 	return ok
 }
 
+// NewTabCommand represents the command to create a new tab
+type NewTabCommand struct {
+	tabName *ConfigToken
+}
+
+// Equal returns true if the provided command is equal
+func (newTabCommand *NewTabCommand) Equal(command ConfigCommand) bool {
+	other, ok := command.(*NewTabCommand)
+	if !ok {
+		return false
+	}
+
+	return ((newTabCommand.tabName != nil && newTabCommand.tabName.Equal(other.tabName)) ||
+		(newTabCommand.tabName == nil && other.tabName == nil))
+}
+
 type commandDescriptor struct {
 	tokenTypes  []ConfigTokenType
 	constructor commandConstructor
@@ -110,6 +126,10 @@ var commandDescriptors = map[string]*commandDescriptor{
 	"q": {
 		tokenTypes:  []ConfigTokenType{},
 		constructor: quitCommandConstructor,
+	},
+	"tab": {
+		tokenTypes:  []ConfigTokenType{CtkWord},
+		constructor: newTabCommandConstructor,
 	},
 }
 
@@ -297,4 +317,10 @@ func mapCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (ConfigC
 
 func quitCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (ConfigCommand, error) {
 	return &QuitCommand{}, nil
+}
+
+func newTabCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (ConfigCommand, error) {
+	return &NewTabCommand{
+		tabName: tokens[0],
+	}, nil
 }

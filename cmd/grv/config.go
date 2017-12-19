@@ -319,6 +319,8 @@ func (config *Configuration) processCommand(command ConfigCommand, inputSource s
 		err = config.processMapCommand(command, inputSource)
 	case *QuitCommand:
 		err = config.processQuitCommand()
+	case *NewTabCommand:
+		err = config.processNewTabCommand(command, inputSource)
 	default:
 		log.Errorf("Unknown command type %T", command)
 	}
@@ -470,6 +472,21 @@ func (config *Configuration) processMapCommand(mapCommand *MapCommand, inputSour
 func (config *Configuration) processQuitCommand() (err error) {
 	log.Info("Processed quit command")
 	config.channels.DoAction(Action{ActionType: ActionExit})
+	return
+}
+
+func (config *Configuration) processNewTabCommand(newTabCommand *NewTabCommand, inputSource string) (err error) {
+	if newTabCommand.tabName.value == "" {
+		return generateConfigError(inputSource, newTabCommand.tabName, "tab name cannot be empty")
+	}
+
+	log.Infof("Processed new tab command with tab name: %v", newTabCommand.tabName.value)
+
+	config.channels.DoAction(Action{
+		ActionType: ActionNewTab,
+		Args:       []interface{}{newTabCommand.tabName.value},
+	})
+
 	return
 }
 

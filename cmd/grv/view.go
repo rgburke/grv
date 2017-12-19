@@ -78,6 +78,7 @@ type View struct {
 	activeViewPos uint
 	grvStatusView WindowViewCollection
 	channels      *Channels
+	config        Config
 	promptActive  bool
 	errorView     *ErrorView
 	errorViewWin  *Window
@@ -315,6 +316,12 @@ func (view *View) HandleAction(action Action) (err error) {
 
 		view.prevTab()
 		return
+	case ActionNewTab:
+		view.lock.Lock()
+		defer view.lock.Unlock()
+
+		err = view.newTab(action)
+		return
 	}
 
 	return view.ActiveView().HandleAction(action)
@@ -436,4 +443,20 @@ func (view *View) prevTab() {
 
 	view.onActiveChange(true)
 	view.channels.UpdateDisplay()
+}
+
+func (view *View) newTab(action Action) (err error) {
+	if len(action.Args) == 0 {
+		err = fmt.Errorf("No tab name provided")
+	} else if tabName, ok := action.Args[0].(string); !ok {
+		err = fmt.Errorf("Expected tab name argument to be of type string, but got %T", action.Args[0])
+	} else {
+		containerView := NewContainerView(view.channels, view.config)
+		containerView.SetTitle(tabName)
+		view.views = append(view.views, containerView)
+		view.activeViewPos = uint(len(view.views) - 1)
+		view.channels.UpdateDisplay()
+	}
+
+	return
 }

@@ -18,20 +18,17 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 	refView.RegisterRefListener(commitView)
 	commitView.RegisterCommitViewListener(diffView)
 
-	subContainer := NewContainerView(channels, config, CoHorizontal, []AbstractView{commitView, diffView})
+	subContainer := NewContainerView(channels, config)
+	subContainer.SetOrientation(CoHorizontal)
+	subContainer.AddChildViews(commitView, diffView)
 
-	historyView := &HistoryView{
-		ContainerView: NewContainerView(channels, config, CoVertical, []AbstractView{refView, subContainer}),
-	}
-
+	historyView := &HistoryView{ContainerView: NewContainerView(channels, config)}
+	historyView.SetTitle("History View")
+	historyView.SetOrientation(CoVertical)
 	historyView.SetChildViewPositionCalculator(historyView)
+	historyView.AddChildViews(refView, subContainer)
 
 	return historyView
-}
-
-// Title returns the title for the history view
-func (historyView *HistoryView) Title() string {
-	return "History View"
 }
 
 // ViewID returns container view id

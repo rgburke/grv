@@ -40,6 +40,7 @@ const (
 	ActionCenterView
 	ActionNextTab
 	ActionPrevTab
+	ActionNewTab
 )
 
 // Action represents a type of actions and its arguments to be executed
@@ -80,6 +81,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-center-view>":           ActionCenterView,
 	"<grv-next-tab>":              ActionNextTab,
 	"<grv-prev-tab>":              ActionPrevTab,
+	"<grv-new-tab>":               ActionNewTab,
 }
 
 var defaultKeyBindings = map[ActionType]map[ViewID][]string{

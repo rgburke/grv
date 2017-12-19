@@ -59,6 +59,27 @@ func (themeCommandValues *ThemeCommandValues) Equal(command ConfigCommand) bool 
 		themeCommandValues.fgcolour == other.fgcolor.value
 }
 
+type NewTabCommandValues struct {
+	tabName string
+}
+
+func (newTabCommandValues *NewTabCommandValues) Equal(command ConfigCommand) bool {
+	if command == nil {
+		return false
+	}
+
+	other, ok := command.(*NewTabCommand)
+	if !ok {
+		return false
+	}
+
+	if other.tabName == nil {
+		return false
+	}
+
+	return newTabCommandValues.tabName == other.tabName.value
+}
+
 func TestParseSingleCommand(t *testing.T) {
 	var singleCommandTests = []struct {
 		input           string
@@ -78,6 +99,12 @@ func TestParseSingleCommand(t *testing.T) {
 				component: "CommitView.CommitDate",
 				bgcolor:   "NONE",
 				fgcolour:  "YELLOW",
+			},
+		},
+		{
+			input: "tab tabname",
+			expectedCommand: &NewTabCommandValues{
+				tabName: "tabname",
 			},
 		},
 	}
@@ -211,6 +238,10 @@ func TestErrorsAreReceivedForInvalidConfigTokenSequences(t *testing.T) {
 		{
 			input:                "theme --name mytheme --component CommitView.CommitDate --bgcolour NONE --fgcolour YELLOW\n",
 			expectedErrorMessage: ConfigFile + ":1:56 Invalid option for theme command: \"--bgcolour\"",
+		},
+		{
+			input:                "tab",
+			expectedErrorMessage: ConfigFile + ":1:3 Unexpected EOF",
 		},
 	}
 

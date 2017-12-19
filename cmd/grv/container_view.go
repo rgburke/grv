@@ -45,6 +45,7 @@ type ContainerView struct {
 	channels                    *Channels
 	config                      Config
 	childViews                  []AbstractView
+	title                       string
 	viewWins                    map[WindowView]*Window
 	activeViewIndex             uint
 	handlers                    map[ActionType]containerViewHandler
@@ -55,11 +56,11 @@ type ContainerView struct {
 }
 
 // NewContainerView creates a new instance
-func NewContainerView(channels *Channels, config Config, orientation ContainerOrientation, childViews []AbstractView) *ContainerView {
+func NewContainerView(channels *Channels, config Config) *ContainerView {
 	containerView := &ContainerView{
 		config:      config,
 		channels:    channels,
-		orientation: orientation,
+		orientation: CoVertical,
 		viewWins:    make(map[WindowView]*Window),
 		handlers: map[ActionType]containerViewHandler{
 			ActionNextView:         nextContainerChildView,
@@ -71,18 +72,20 @@ func NewContainerView(channels *Channels, config Config, orientation ContainerOr
 
 	containerView.childViewPositionCalculator = containerView
 
-	for _, childView := range childViews {
-		containerView.AddChildView(childView)
-	}
-
 	return containerView
 }
 
-// AddChildView adds a new child view to this container
-func (containerView *ContainerView) AddChildView(childView AbstractView) {
+// AddChildViews adds new child views to this container
+func (containerView *ContainerView) AddChildViews(childViews ...AbstractView) {
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
+	for _, childView := range childViews {
+		containerView.addChildView(childView)
+	}
+}
+
+func (containerView *ContainerView) addChildView(childView AbstractView) {
 	containerView.childViews = append(containerView.childViews, childView)
 
 	if windowView, isWindowView := childView.(WindowView); isWindowView {
@@ -99,6 +102,22 @@ func (containerView *ContainerView) SetChildViewPositionCalculator(childViewPosi
 	defer containerView.lock.Unlock()
 
 	containerView.childViewPositionCalculator = childViewPositionCalculator
+}
+
+// SetOrientation sets the orientation of the view
+func (containerView *ContainerView) SetOrientation(orientation ContainerOrientation) {
+	containerView.lock.Lock()
+	defer containerView.lock.Unlock()
+
+	containerView.orientation = orientation
+}
+
+// SetTitle sets the title of the view
+func (containerView *ContainerView) SetTitle(title string) {
+	containerView.lock.Lock()
+	defer containerView.lock.Unlock()
+
+	containerView.title = title
 }
 
 // Initialise initialises this containers child views
@@ -322,7 +341,10 @@ func (containerView *ContainerView) ActiveView() AbstractView {
 
 // Title returns the title of the container view
 func (containerView *ContainerView) Title() string {
-	return "Container View"
+	containerView.lock.Lock()
+	defer containerView.lock.Unlock()
+
+	return containerView.title
 }
 
 func (containerView *ContainerView) isEmpty() bool {
