@@ -546,6 +546,15 @@ func (cache *instanceCache) getCachedCommit(oid *Oid) (commit *Commit, exists bo
 	return
 }
 
+func (cache *instanceCache) getCachedOid(oidStr string) (oid *Oid, exists bool) {
+	cache.commitLock.Lock()
+	defer cache.commitLock.Unlock()
+
+	oid, exists = cache.oids[oidStr]
+
+	return
+}
+
 // NewRepoDataLoader creates a new instance
 func NewRepoDataLoader(channels *Channels) *RepoDataLoader {
 	return &RepoDataLoader{
@@ -838,6 +847,21 @@ func (repoDataLoader *RepoDataLoader) Commit(oid *Oid) (commit *Commit, err erro
 	return
 }
 
+// CommitByOid loads a commit for the provided oid string (if it points to a commit)
+func (repoDataLoader *RepoDataLoader) CommitByOid(oidStr string) (*Commit, error) {
+	oid, exists := repoDataLoader.cache.getCachedOid(oidStr)
+	if !exists {
+		rawOid, err := git.NewOid(oidStr)
+		if err != nil {
+			return nil, err
+		}
+
+		oid = &Oid{oid: rawOid}
+	}
+
+	return repoDataLoader.Commit(oid)
+}
+
 // MergeBase finds the best common ancestor between two commits
 func (repoDataLoader *RepoDataLoader) MergeBase(oid1, oid2 *Oid) (commonAncestor *Oid, err error) {
 	rawOid, err := repoDataLoader.repo.MergeBase(oid1.oid, oid2.oid)
@@ -1046,6 +1070,8 @@ func (repoDataLoader *RepoDataLoader) generateDiff(rawDiff *git.Diff) (diff *Dif
 
 // LoadStatus loads git status and populates a Status instance with the data
 func (repoDataLoader *RepoDataLoader) LoadStatus() (*Status, error) {
+	log.Debug("Loading git status")
+
 	statusOptions := git.StatusOptions{
 		Show:  git.StatusShowIndexAndWorkdir,
 		Flags: git.StatusOptIncludeUntracked,

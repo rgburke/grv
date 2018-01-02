@@ -57,6 +57,7 @@ type RepoData interface {
 	LoadRefs(OnRefsLoaded)
 	LoadCommits(Ref) error
 	Head() Ref
+	Ref(refName string) (Ref, error)
 	Branches() (localBranches, remoteBranches []Branch, loading bool)
 	Tags() (tags []*Tag, loading bool)
 	RefsForCommit(*Commit) *CommitRefs
@@ -64,12 +65,14 @@ type RepoData interface {
 	Commits(ref Ref, startIndex, count uint) (<-chan *Commit, error)
 	CommitByIndex(ref Ref, index uint) (*Commit, error)
 	Commit(oid *Oid) (*Commit, error)
+	CommitByOid(oidStr string) (*Commit, error)
 	AddCommitFilter(Ref, *CommitFilter) error
 	RemoveCommitFilter(Ref) error
 	DiffCommit(commit *Commit) (*Diff, error)
 	DiffFile(statusType StatusType, path string) (*Diff, error)
 	DiffStage(statusType StatusType) (*Diff, error)
 	LoadStatus() (err error)
+	Status() *Status
 	RegisterStatusListener(StatusListener)
 	RegisterRefStateListener(RefStateListener)
 	RegisterCommitSetListener(CommitSetListener)
@@ -429,6 +432,14 @@ func (refSet *refSet) head() Ref {
 	defer refSet.lock.Unlock()
 
 	return refSet.headRef
+}
+
+func (refSet *refSet) ref(refName string) (ref Ref, exists bool) {
+	refSet.lock.Lock()
+	defer refSet.lock.Unlock()
+
+	ref, exists = refSet.refs[refName]
+	return
 }
 
 func (refSet *refSet) startRefUpdate() bool {
@@ -1171,6 +1182,16 @@ func (repoData *RepositoryData) Head() Ref {
 	return repoData.refSet.head()
 }
 
+// Ref returns a ref instance (if one exists) identified by the provided name
+func (repoData *RepositoryData) Ref(refName string) (ref Ref, err error) {
+	ref, exists := repoData.refSet.ref(refName)
+	if !exists {
+		err = fmt.Errorf("No ref exists with name %v", refName)
+	}
+
+	return
+}
+
 // Branches returns all loaded local and remote branches
 func (repoData *RepositoryData) Branches() (localBranches []Branch, remoteBranches []Branch, loading bool) {
 	return repoData.refSet.branches()
@@ -1249,6 +1270,11 @@ func (repoData *RepositoryData) Commit(oid *Oid) (*Commit, error) {
 	return repoData.repoDataLoader.Commit(oid)
 }
 
+// CommitByOid loads the commit from the repository using the provided oid string
+func (repoData *RepositoryData) CommitByOid(oidStr string) (*Commit, error) {
+	return repoData.repoDataLoader.CommitByOid(oidStr)
+}
+
 // AddCommitFilter adds the filter to the specified ref
 func (repoData *RepositoryData) AddCommitFilter(ref Ref, commitFilter *CommitFilter) error {
 	return repoData.refCommitSets.addCommitFilter(ref, commitFilter)
@@ -1279,8 +1305,12 @@ func (repoData *RepositoryData) DiffStage(statusType StatusType) (*Diff, error) 
 
 // LoadStatus loads the current git status
 func (repoData *RepositoryData) LoadStatus() (err error) {
-	log.Debugf("Loading git status")
 	return repoData.statusManager.loadStatus()
+}
+
+// Status returns the current git status
+func (repoData *RepositoryData) Status() *Status {
+	return repoData.statusManager.getStatus()
 }
 
 // RegisterStatusListener registers a listener to be notified when git status changes
