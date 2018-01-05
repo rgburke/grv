@@ -1,6 +1,7 @@
 package main
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -80,6 +81,34 @@ func (newTabCommandValues *NewTabCommandValues) Equal(command ConfigCommand) boo
 	return newTabCommandValues.tabName == other.tabName.value
 }
 
+type AddViewCommandValues struct {
+	view string
+	args []string
+}
+
+func (addViewCommandValues *AddViewCommandValues) Equal(command ConfigCommand) bool {
+	if command == nil {
+		return false
+	}
+
+	other, ok := command.(*AddViewCommand)
+	if !ok {
+		return false
+	}
+
+	if other.view == nil {
+		return false
+	}
+
+	var otherArgs []string
+	for _, arg := range other.args {
+		otherArgs = append(otherArgs, arg.value)
+	}
+
+	return addViewCommandValues.view == other.view.value &&
+		reflect.DeepEqual(addViewCommandValues.args, otherArgs)
+}
+
 func TestParseSingleCommand(t *testing.T) {
 	var singleCommandTests = []struct {
 		input           string
@@ -105,6 +134,19 @@ func TestParseSingleCommand(t *testing.T) {
 			input: "tab tabname",
 			expectedCommand: &NewTabCommandValues{
 				tabName: "tabname",
+			},
+		},
+		{
+			input: "addview RefView",
+			expectedCommand: &AddViewCommandValues{
+				view: "RefView",
+			},
+		},
+		{
+			input: "addview CommitView master",
+			expectedCommand: &AddViewCommandValues{
+				view: "CommitView",
+				args: []string{"master"},
 			},
 		},
 	}

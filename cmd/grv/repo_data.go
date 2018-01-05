@@ -383,6 +383,7 @@ type trackingBranchUpdater interface {
 
 type refSet struct {
 	refs                          map[string]Ref
+	refsShorthand                 map[string]Ref
 	headRef                       Ref
 	localBranchesList             []Branch
 	remoteBranchesList            []Branch
@@ -396,7 +397,8 @@ type refSet struct {
 
 func newRefSet(trackingBranchUpdater trackingBranchUpdater) *refSet {
 	return &refSet{
-		refs: make(map[string]Ref),
+		refs:                          make(map[string]Ref),
+		refsShorthand:                 make(map[string]Ref),
 		remoteToLocalTrackingBranches: make(map[string]map[string]bool),
 		trackingBranchUpdater:         trackingBranchUpdater,
 	}
@@ -438,7 +440,11 @@ func (refSet *refSet) ref(refName string) (ref Ref, exists bool) {
 	refSet.lock.Lock()
 	defer refSet.lock.Unlock()
 
-	ref, exists = refSet.refs[refName]
+	if ref, exists = refSet.refs[refName]; exists {
+		return
+	}
+
+	ref, exists = refSet.refsShorthand[refName]
 	return
 }
 
@@ -476,6 +482,7 @@ func (refSet *refSet) updateRefs(refs []Ref) (err error) {
 	var updatedRefs []*UpdatedRef
 
 	refMap := make(map[string]Ref)
+	refShorthandMap := make(map[string]Ref)
 	remoteToLocalTrackingBranches := make(map[string]map[string]bool)
 	var localBranches, remoteBranches []Branch
 	var tags []*Tag
@@ -495,6 +502,7 @@ func (refSet *refSet) updateRefs(refs []Ref) (err error) {
 		}
 
 		refMap[ref.Name()] = ref
+		refShorthandMap[ref.Shorthand()] = ref
 
 		switch rawRef := ref.(type) {
 		case *RemoteBranch:
@@ -554,6 +562,7 @@ func (refSet *refSet) updateRefs(refs []Ref) (err error) {
 	oldRemoteToLocalTrackingBranches := refSet.remoteToLocalTrackingBranches
 
 	refSet.refs = refMap
+	refSet.refsShorthand = refShorthandMap
 	refSet.localBranchesList = localBranches
 	refSet.remoteBranchesList = remoteBranches
 	refSet.tagsList = tags

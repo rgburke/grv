@@ -74,17 +74,18 @@ func (viewDimension ViewDimension) String() string {
 // View is the top level view in grv
 // All views in grv are children of this view
 type View struct {
-	views         []WindowViewCollection
-	activeViewPos uint
-	grvStatusView WindowViewCollection
-	channels      *Channels
-	config        Config
-	promptActive  bool
-	errorView     *ErrorView
-	errorViewWin  *Window
-	activeViewWin *Window
-	errors        []error
-	lock          sync.Mutex
+	views             []WindowViewCollection
+	activeViewPos     uint
+	grvStatusView     WindowViewCollection
+	channels          *Channels
+	config            Config
+	promptActive      bool
+	errorView         *ErrorView
+	errorViewWin      *Window
+	activeViewWin     *Window
+	errors            []error
+	windowViewFactory *WindowViewFactory
+	lock              sync.Mutex
 }
 
 // NewView creates a new instance
@@ -94,7 +95,9 @@ func NewView(repoData RepoData, channels *Channels, config ConfigSetter) (view *
 			NewHistoryView(repoData, channels, config),
 			NewStatusView(repoData, channels, config),
 		},
-		channels: channels,
+		channels:          channels,
+		config:            config,
+		windowViewFactory: NewWindowViewFactory(repoData, channels, config),
 	}
 
 	view.grvStatusView = NewGRVStatusView(view, repoData, channels, config)
@@ -322,6 +325,12 @@ func (view *View) HandleAction(action Action) (err error) {
 
 		err = view.newTab(action)
 		return
+	case ActionAddView:
+		view.lock.Lock()
+		defer view.lock.Unlock()
+
+		err = view.addView(action)
+		return
 	}
 
 	return view.ActiveView().HandleAction(action)
@@ -457,6 +466,44 @@ func (view *View) newTab(action Action) (err error) {
 		view.activeViewPos = uint(len(view.views) - 1)
 		view.channels.UpdateDisplay()
 	}
+
+	return
+}
+
+func (view *View) addView(action Action) (err error) {
+	log.Debugf("Adding new view")
+	args := action.Args
+
+	if len(args) == 0 {
+		return fmt.Errorf("Expected view ID")
+	}
+
+	viewID, ok := args[0].(ViewID)
+	if !ok {
+		return fmt.Errorf("Expected first argument to be view ID but found %T", args[0])
+	}
+
+	newView, err := view.windowViewFactory.CreateWindowViewWithArgs(viewID, args[1:])
+	if err != nil {
+		err = fmt.Errorf("Failed to create new view: %v", err)
+		return
+	}
+
+	if err = newView.Initialise(); err != nil {
+		err = fmt.Errorf("Failed to initialise new view: %v", err)
+		return
+	}
+
+	activeChildView := view.views[view.activeViewPos]
+	containerView, ok := activeChildView.(*ContainerView)
+	if !ok {
+		return fmt.Errorf("This view can not be modified")
+	}
+
+	log.Infof("Adding view %T to child with index %v", newView, view.activeViewPos)
+
+	containerView.AddChildViews(newView)
+	view.channels.UpdateDisplay()
 
 	return
 }

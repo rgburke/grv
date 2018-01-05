@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"regexp"
 )
 
 // WindowViewFactory provides a generic interface
@@ -11,6 +12,8 @@ type WindowViewFactory struct {
 	channels *Channels
 	config   Config
 }
+
+var hexRegexp = regexp.MustCompile(`^[[:xdigit:]]+$`)
 
 // NewWindowViewFactory creates a new instance
 func NewWindowViewFactory(repoData RepoData, channels *Channels, config Config) *WindowViewFactory {
@@ -107,12 +110,16 @@ func (windowViewFactory *WindowViewFactory) getRef(args []interface{}) (ref Ref,
 		return
 	}
 
-	commit, err := windowViewFactory.repoData.CommitByOid(refName)
-	if err != nil {
-		err = fmt.Errorf("Invalid oid: %v - %v", refName, err)
-	}
+	if hexRegexp.MatchString(refName) {
+		var commit *Commit
+		commit, err = windowViewFactory.repoData.CommitByOid(refName)
+		if err != nil {
+			err = fmt.Errorf("Invalid oid: %v - %v", refName, err)
+			return
+		}
 
-	ref = &HEAD{oid: commit.oid}
+		ref = &HEAD{oid: commit.oid}
+	}
 
 	return
 }

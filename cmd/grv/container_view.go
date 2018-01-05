@@ -47,6 +47,7 @@ type ContainerView struct {
 	childViews                  []AbstractView
 	title                       string
 	viewWins                    map[WindowView]*Window
+	emptyWin                    *Window
 	activeViewIndex             uint
 	handlers                    map[ActionType]containerViewHandler
 	orientation                 ContainerOrientation
@@ -86,6 +87,13 @@ func (containerView *ContainerView) AddChildViews(childViews ...AbstractView) {
 }
 
 func (containerView *ContainerView) addChildView(childView AbstractView) {
+	if !containerView.isEmpty() {
+		if childView, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
+			childView.AddChildViews(childView)
+			return
+		}
+	}
+
 	containerView.childViews = append(containerView.childViews, childView)
 
 	if windowView, isWindowView := childView.(WindowView); isWindowView {
@@ -207,6 +215,7 @@ func (containerView *ContainerView) Render(viewDimension ViewDimension) (wins []
 	defer containerView.lock.Unlock()
 
 	if containerView.isEmpty() {
+		wins = append(wins, containerView.renderEmptyView(viewDimension))
 		return
 	}
 
@@ -325,6 +334,18 @@ func (containerView *ContainerView) renderWindowView(childView WindowView, child
 	}
 
 	return win, nil
+}
+
+func (containerView *ContainerView) renderEmptyView(viewDimension ViewDimension) *Window {
+	if containerView.emptyWin == nil {
+		containerView.emptyWin = NewWindow("empty", containerView.config)
+	}
+
+	win := containerView.emptyWin
+	win.Resize(viewDimension)
+	win.Clear()
+
+	return win
 }
 
 // ActiveView returns the active child view

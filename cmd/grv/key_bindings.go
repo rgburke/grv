@@ -41,6 +41,7 @@ const (
 	ActionNextTab
 	ActionPrevTab
 	ActionNewTab
+	ActionAddView
 )
 
 // Action represents a type of actions and its arguments to be executed

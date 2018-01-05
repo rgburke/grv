@@ -92,6 +92,10 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 
 	commitView.viewDimension = win.ViewDimensions()
 
+	if commitView.activeRef == nil {
+		return commitView.renderEmptyView(win)
+	}
+
 	refViewData, ok := commitView.refViewData[commitView.activeRef.Name()]
 	if !ok {
 		return fmt.Errorf("No RefViewData exists for ref %v", commitView.activeRef.Name())
@@ -175,6 +179,16 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	}
 
 	return err
+}
+
+func (commitView *CommitView) renderEmptyView(win RenderWindow) (err error) {
+	if err = win.SetRow(2, 1, CmpNone, "   No commits to display"); err != nil {
+		return
+	}
+
+	win.DrawBorder()
+
+	return
 }
 
 func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIndex uint, commit *Commit) (err error) {
@@ -526,6 +540,10 @@ func (commitView *CommitView) HandleAction(action Action) (err error) {
 	log.Debugf("CommitView handling action %v", action)
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
+
+	if commitView.activeRef == nil {
+		return
+	}
 
 	if handler, ok := commitView.handlers[action.ActionType]; ok {
 		err = handler(commitView, action)

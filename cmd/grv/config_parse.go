@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-type commandConstructor func(*ConfigParser, []*ConfigToken) (ConfigCommand, error)
+type commandConstructor func(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error)
 
 // ConfigCommand represents a config command
 type ConfigCommand interface {
@@ -105,8 +105,40 @@ func (newTabCommand *NewTabCommand) Equal(command ConfigCommand) bool {
 		(newTabCommand.tabName == nil && other.tabName == nil))
 }
 
+// AddViewCommand represents the command to add a new view
+// to the currently active view
+type AddViewCommand struct {
+	view *ConfigToken
+	args []*ConfigToken
+}
+
+// Equal returns true if the provided command is equal
+func (addViewCommand *AddViewCommand) Equal(command ConfigCommand) bool {
+	other, ok := command.(*AddViewCommand)
+	if !ok {
+		return false
+	}
+
+	if !((addViewCommand.view != nil && addViewCommand.view.Equal(other.view)) ||
+		(addViewCommand.view == nil && other.view == nil)) {
+		return false
+	}
+	if len(addViewCommand.args) != len(other.args) {
+		return false
+	}
+
+	for index, arg := range addViewCommand.args {
+		if !((arg != nil && arg.Equal(other.args[index])) || (arg == nil && other.args[index] == nil)) {
+			return false
+		}
+	}
+
+	return true
+}
+
 type commandDescriptor struct {
 	tokenTypes  []ConfigTokenType
+	varArgs     bool
 	constructor commandConstructor
 }
 
@@ -130,6 +162,10 @@ var commandDescriptors = map[string]*commandDescriptor{
 	"tab": {
 		tokenTypes:  []ConfigTokenType{CtkWord},
 		constructor: newTabCommandConstructor,
+	},
+	"addview": {
+		varArgs:     true,
+		constructor: addViewCommandConstructor,
 	},
 }
 
@@ -238,16 +274,21 @@ func (parser *ConfigParser) discardTokensUntilNextCommand() {
 	}
 }
 
-func (parser *ConfigParser) parseCommand(token *ConfigToken) (command ConfigCommand, eof bool, err error) {
-	commandDescriptor, ok := commandDescriptors[token.value]
+func (parser *ConfigParser) parseCommand(commandToken *ConfigToken) (command ConfigCommand, eof bool, err error) {
+	commandDescriptor, ok := commandDescriptors[commandToken.value]
 	if !ok {
-		err = parser.generateParseError(token, "Invalid command \"%v\"", token.value)
+		err = parser.generateParseError(commandToken, "Invalid command \"%v\"", commandToken.value)
 		return
+	}
+
+	if commandDescriptor.varArgs {
+		return parser.parseVarArgsCommand(commandDescriptor, commandToken)
 	}
 
 	var tokens []*ConfigToken
 
 	for i := 0; i < len(commandDescriptor.tokenTypes); i++ {
+		var token *ConfigToken
 		token, err = parser.scan()
 		expectedConfigTokenType := commandDescriptor.tokenTypes[i]
 
@@ -270,19 +311,46 @@ func (parser *ConfigParser) parseCommand(token *ConfigToken) (command ConfigComm
 		tokens = append(tokens, token)
 	}
 
-	command, err = commandDescriptor.constructor(parser, tokens)
+	command, err = commandDescriptor.constructor(parser, commandToken, tokens)
 
 	return
 }
 
-func setCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (ConfigCommand, error) {
+func (parser *ConfigParser) parseVarArgsCommand(commandDescriptor *commandDescriptor, commandToken *ConfigToken) (command ConfigCommand, eof bool, err error) {
+	var tokens []*ConfigToken
+
+OuterLoop:
+	for {
+		var token *ConfigToken
+		token, err = parser.scan()
+
+		switch {
+		case err != nil:
+			return
+		case token.err != nil:
+			err = parser.generateParseError(token, "Syntax Error")
+			return
+		case token.tokenType == CtkEOF:
+			break OuterLoop
+		case token.tokenType == CtkTerminator:
+			break OuterLoop
+		}
+
+		tokens = append(tokens, token)
+	}
+
+	command, err = commandDescriptor.constructor(parser, commandToken, tokens)
+	return
+}
+
+func setCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
 	return &SetCommand{
 		variable: tokens[0],
 		value:    tokens[1],
 	}, nil
 }
 
-func themeCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (ConfigCommand, error) {
+func themeCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
 	themeCommand := &ThemeCommand{}
 
 	optionSetters := map[string]func(*ConfigToken){
@@ -307,7 +375,7 @@ func themeCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (Confi
 	return themeCommand, nil
 }
 
-func mapCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (ConfigCommand, error) {
+func mapCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
 	return &MapCommand{
 		view: tokens[0],
 		from: tokens[1],
@@ -315,12 +383,24 @@ func mapCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (ConfigC
 	}, nil
 }
 
-func quitCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (ConfigCommand, error) {
+func quitCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
 	return &QuitCommand{}, nil
 }
 
-func newTabCommandConstructor(parser *ConfigParser, tokens []*ConfigToken) (ConfigCommand, error) {
+func newTabCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
 	return &NewTabCommand{
 		tabName: tokens[0],
+	}, nil
+}
+
+func addViewCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
+	if len(tokens) < 1 {
+		addViewCommand := commandToken.value
+		return nil, parser.generateParseError(commandToken, "Invalid %[1]v command. Usage: %[1]v [VIEW] [ARGS...]", addViewCommand)
+	}
+
+	return &AddViewCommand{
+		view: tokens[0],
+		args: tokens[1:],
 	}, nil
 }

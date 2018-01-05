@@ -321,6 +321,8 @@ func (config *Configuration) processCommand(command ConfigCommand, inputSource s
 		err = config.processQuitCommand()
 	case *NewTabCommand:
 		err = config.processNewTabCommand(command, inputSource)
+	case *AddViewCommand:
+		err = config.processAddViewCommand(command, inputSource)
 	default:
 		log.Errorf("Unknown command type %T", command)
 	}
@@ -485,6 +487,27 @@ func (config *Configuration) processNewTabCommand(newTabCommand *NewTabCommand, 
 	config.channels.DoAction(Action{
 		ActionType: ActionNewTab,
 		Args:       []interface{}{newTabCommand.tabName.value},
+	})
+
+	return
+}
+
+func (config *Configuration) processAddViewCommand(addViewCommand *AddViewCommand, inputSource string) (err error) {
+	viewID, ok := viewIDNames[addViewCommand.view.value]
+	if !ok {
+		return generateConfigError(inputSource, addViewCommand.view, "Invalid view: %v", addViewCommand.view.value)
+	}
+
+	args := []interface{}{viewID}
+	for _, token := range addViewCommand.args {
+		args = append(args, token.value)
+	}
+
+	log.Infof("Processing addview command: %v %v", addViewCommand.view.value, args[1:])
+
+	config.channels.DoAction(Action{
+		ActionType: ActionAddView,
+		Args:       args,
 	})
 
 	return
