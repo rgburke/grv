@@ -135,7 +135,7 @@ func TestParseSingleCommand(t *testing.T) {
 			},
 		},
 		{
-			input: "tab tabname",
+			input: "addtab tabname",
 			expectedCommand: &NewTabCommandValues{
 				tabName: "tabname",
 			},
@@ -286,8 +286,8 @@ func TestErrorsAreReceivedForInvalidConfigTokenSequences(t *testing.T) {
 			expectedErrorMessage: ConfigFile + ":1:56 Invalid option for theme command: \"--bgcolour\"",
 		},
 		{
-			input:                "tab",
-			expectedErrorMessage: ConfigFile + ":1:3 Unexpected EOF",
+			input:                "addtab",
+			expectedErrorMessage: ConfigFile + ":1:6 Unexpected EOF",
 		},
 	}
 

@@ -85,7 +85,7 @@ var commandDescriptors = map[string]*commandDescriptor{
 		tokenTypes:  []ConfigTokenType{},
 		constructor: quitCommandConstructor,
 	},
-	"tab": {
+	"addtab": {
 		tokenTypes:  []ConfigTokenType{CtkWord},
 		constructor: newTabCommandConstructor,
 	},
