@@ -10,6 +10,10 @@ const (
 	ConfigFile = "~/.config/grv/grvrc"
 )
 
+type CommandValues interface {
+	Equal(ConfigCommand) bool
+}
+
 type SetCommandValues struct {
 	variable string
 	value    string
@@ -112,7 +116,7 @@ func (addViewCommandValues *AddViewCommandValues) Equal(command ConfigCommand) b
 func TestParseSingleCommand(t *testing.T) {
 	var singleCommandTests = []struct {
 		input           string
-		expectedCommand ConfigCommand
+		expectedCommand CommandValues
 	}{
 		{
 			input: "set theme mytheme",
@@ -201,11 +205,11 @@ func TestEOFIsSetByConfigParser(t *testing.T) {
 func TestParseMultipleCommands(t *testing.T) {
 	var multipleCommandsTests = []struct {
 		input            string
-		expectedCommands []ConfigCommand
+		expectedCommands []CommandValues
 	}{
 		{
 			input: " set mouse\ttrue # Enable mouse\n# Set theme\n\tset theme \"my theme 2\" #Custom theme",
-			expectedCommands: []ConfigCommand{
+			expectedCommands: []CommandValues{
 				&SetCommandValues{
 					variable: "mouse",
 					value:    "true",
@@ -218,7 +222,7 @@ func TestParseMultipleCommands(t *testing.T) {
 		},
 		{
 			input: "theme\t--name mytheme\t--component RefView.LocalBranch \\\n\t--bgcolor BLUE\t--fgcolor YELLOW\nset mouse false\n",
-			expectedCommands: []ConfigCommand{
+			expectedCommands: []CommandValues{
 				&ThemeCommandValues{
 					name:      "mytheme",
 					component: "RefView.LocalBranch",
@@ -302,11 +306,11 @@ func TestErrorsAreReceivedForInvalidConfigTokenSequences(t *testing.T) {
 func TestInvalidCommandsAreDiscardedAndParsingContinuesOnNextLine(t *testing.T) {
 	var invalidCommandTests = []struct {
 		input            string
-		expectedCommands []ConfigCommand
+		expectedCommands []CommandValues
 	}{
 		{
 			input: "set theme mytheme\nset theme --name theme\nset mouse false",
-			expectedCommands: []ConfigCommand{
+			expectedCommands: []CommandValues{
 				&SetCommandValues{
 					variable: "theme",
 					value:    "mytheme",
@@ -319,7 +323,7 @@ func TestInvalidCommandsAreDiscardedAndParsingContinuesOnNextLine(t *testing.T) 
 		},
 		{
 			input: "set theme\nmytheme\nset theme --name theme\nset mouse false",
-			expectedCommands: []ConfigCommand{
+			expectedCommands: []CommandValues{
 				&SetCommandValues{
 					variable: "mouse",
 					value:    "false",

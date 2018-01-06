@@ -11,7 +11,7 @@ type commandConstructor func(parser *ConfigParser, commandToken *ConfigToken, to
 
 // ConfigCommand represents a config command
 type ConfigCommand interface {
-	Equal(ConfigCommand) bool
+	configCommand()
 }
 
 // SetCommand contains state for setting a config variable to a value
@@ -20,18 +20,7 @@ type SetCommand struct {
 	value    *ConfigToken
 }
 
-// Equal returns true if the provided command is equal
-func (setCommand *SetCommand) Equal(command ConfigCommand) bool {
-	other, ok := command.(*SetCommand)
-	if !ok {
-		return false
-	}
-
-	return ((setCommand.variable != nil && setCommand.variable.Equal(other.variable)) ||
-		(setCommand.variable == nil && other.variable == nil)) &&
-		((setCommand.value != nil && setCommand.value.Equal(other.value)) ||
-			(setCommand.value == nil && other.value == nil))
-}
+func (setCommand *SetCommand) configCommand() {}
 
 // ThemeCommand contains state for setting a components values for on a theme
 type ThemeCommand struct {
@@ -41,22 +30,7 @@ type ThemeCommand struct {
 	fgcolor   *ConfigToken
 }
 
-// Equal returns true if the provided command is equal
-func (themeCommand *ThemeCommand) Equal(command ConfigCommand) bool {
-	other, ok := command.(*ThemeCommand)
-	if !ok {
-		return false
-	}
-
-	return ((themeCommand.name != nil && themeCommand.name.Equal(other.name)) ||
-		(themeCommand.name == nil && other.name == nil)) &&
-		((themeCommand.component != nil && themeCommand.component.Equal(other.component)) ||
-			(themeCommand.component == nil && other.component == nil)) &&
-		((themeCommand.bgcolor != nil && themeCommand.bgcolor.Equal(other.bgcolor)) ||
-			(themeCommand.bgcolor == nil && other.bgcolor == nil)) &&
-		((themeCommand.fgcolor != nil && themeCommand.fgcolor.Equal(other.fgcolor)) ||
-			(themeCommand.fgcolor == nil && other.fgcolor == nil))
-}
+func (themeCommand *ThemeCommand) configCommand() {}
 
 // MapCommand contains state for mapping a key sequence to another
 type MapCommand struct {
@@ -65,45 +39,19 @@ type MapCommand struct {
 	to   *ConfigToken
 }
 
-// Equal returns true if the provided command is equal
-func (mapCommand *MapCommand) Equal(command ConfigCommand) bool {
-	other, ok := command.(*MapCommand)
-	if !ok {
-		return false
-	}
-
-	return ((mapCommand.from != nil && mapCommand.from.Equal(other.from)) ||
-		(mapCommand.from == nil && other.from == nil)) &&
-		((mapCommand.to != nil && mapCommand.to.Equal(other.to)) ||
-			(mapCommand.to == nil && other.to == nil)) &&
-		((mapCommand.view != nil && mapCommand.view.Equal(other.view)) ||
-			(mapCommand.view == nil && other.view == nil))
-}
+func (mapCommand *MapCommand) configCommand() {}
 
 // QuitCommand represents the command to quit grv
 type QuitCommand struct{}
 
-// Equal returns true if the provided command is equal
-func (quitCommand *QuitCommand) Equal(command ConfigCommand) bool {
-	_, ok := command.(*QuitCommand)
-	return ok
-}
+func (quitCommand *QuitCommand) configCommand() {}
 
 // NewTabCommand represents the command to create a new tab
 type NewTabCommand struct {
 	tabName *ConfigToken
 }
 
-// Equal returns true if the provided command is equal
-func (newTabCommand *NewTabCommand) Equal(command ConfigCommand) bool {
-	other, ok := command.(*NewTabCommand)
-	if !ok {
-		return false
-	}
-
-	return ((newTabCommand.tabName != nil && newTabCommand.tabName.Equal(other.tabName)) ||
-		(newTabCommand.tabName == nil && other.tabName == nil))
-}
+func (newTabCommand *NewTabCommand) configCommand() {}
 
 // AddViewCommand represents the command to add a new view
 // to the currently active view
@@ -112,29 +60,7 @@ type AddViewCommand struct {
 	args []*ConfigToken
 }
 
-// Equal returns true if the provided command is equal
-func (addViewCommand *AddViewCommand) Equal(command ConfigCommand) bool {
-	other, ok := command.(*AddViewCommand)
-	if !ok {
-		return false
-	}
-
-	if !((addViewCommand.view != nil && addViewCommand.view.Equal(other.view)) ||
-		(addViewCommand.view == nil && other.view == nil)) {
-		return false
-	}
-	if len(addViewCommand.args) != len(other.args) {
-		return false
-	}
-
-	for index, arg := range addViewCommand.args {
-		if !((arg != nil && arg.Equal(other.args[index])) || (arg == nil && other.args[index] == nil)) {
-			return false
-		}
-	}
-
-	return true
-}
+func (addViewCommand *AddViewCommand) configCommand() {}
 
 type commandDescriptor struct {
 	tokenTypes  []ConfigTokenType
