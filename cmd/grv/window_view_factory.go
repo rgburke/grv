@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"regexp"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // WindowViewFactory provides a generic interface
@@ -48,6 +50,7 @@ func (windowViewFactory *WindowViewFactory) CreateWindowViewWithArgs(viewID View
 }
 
 func (windowViewFactory *WindowViewFactory) createRefView() *RefView {
+	log.Info("Created RefView instance")
 	return NewRefView(windowViewFactory.repoData, windowViewFactory.channels)
 }
 
@@ -59,7 +62,10 @@ func (windowViewFactory *WindowViewFactory) createCommitView(args []interface{})
 
 	commitView = NewCommitView(windowViewFactory.repoData, windowViewFactory.channels)
 
+	log.Info("Created CommitView instance")
+
 	if ref != nil {
+		log.Debugf("Providing Ref to CommitView instance %v:%v", ref.Name(), ref.Oid())
 		err = commitView.OnRefSelect(ref)
 	}
 
@@ -74,11 +80,14 @@ func (windowViewFactory *WindowViewFactory) createDiffView(args []interface{}) (
 
 	diffView = NewDiffView(windowViewFactory.repoData, windowViewFactory.channels)
 
+	log.Info("Created DiffView instance")
+
 	if ref != nil {
 		var commit *Commit
 		commit, err = windowViewFactory.repoData.Commit(ref.Oid())
 
 		if err == nil {
+			log.Debugf("Providing Commit to DiffView instance %v", commit.oid)
 			err = diffView.OnCommitSelected(commit)
 		}
 	}
@@ -91,6 +100,8 @@ func (windowViewFactory *WindowViewFactory) createGitStatusView() *GitStatusView
 
 	status := windowViewFactory.repoData.Status()
 	gitStatusView.OnStatusChanged(status)
+
+	log.Info("Created GitStatusView instance")
 
 	return gitStatusView
 }
@@ -107,6 +118,7 @@ func (windowViewFactory *WindowViewFactory) getRef(args []interface{}) (ref Ref,
 	}
 
 	if ref, err = windowViewFactory.repoData.Ref(refName); err == nil {
+		log.Debugf("Found ref %v for input %v", ref.Name(), refName)
 		return
 	}
 
@@ -118,7 +130,10 @@ func (windowViewFactory *WindowViewFactory) getRef(args []interface{}) (ref Ref,
 			return
 		}
 
+		log.Debugf("Found commit %v for input %v", commit.oid, refName)
 		ref = &HEAD{oid: commit.oid}
+	} else {
+		log.Debug("Input is not oid")
 	}
 
 	return
