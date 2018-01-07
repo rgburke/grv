@@ -17,10 +17,10 @@ type GRVStatusView struct {
 }
 
 // NewGRVStatusView creates a new instance
-func NewGRVStatusView(rootView RootView, repoData RepoData, channels *Channels, config ConfigSetter) *GRVStatusView {
+func NewGRVStatusView(helpRenderer HelpRenderer, repoData RepoData, channels *Channels, config ConfigSetter) *GRVStatusView {
 	return &GRVStatusView{
-		statusBarView: NewStatusBarView(rootView, repoData, channels, config),
-		helpBarView:   NewHelpBarView(rootView),
+		statusBarView: NewStatusBarView(repoData, channels, config),
+		helpBarView:   NewHelpBarView(helpRenderer),
 		statusBarWin:  NewWindow("statusBarView", config),
 		helpBarWin:    NewWindow("helpBarView", config),
 	}
@@ -95,7 +95,7 @@ func (grvStatusView *GRVStatusView) Render(viewDimension ViewDimension) (wins []
 
 // RenderHelpBar does nothing
 func (grvStatusView *GRVStatusView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
-	return
+	return grvStatusView.statusBarView.RenderHelpBar(lineBuilder)
 }
 
 // ActiveView returns the status bar view

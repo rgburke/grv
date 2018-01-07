@@ -27,7 +27,6 @@ const (
 
 // StatusBarView manages the display of the status bar
 type StatusBarView struct {
-	rootView      RootView
 	repoData      RepoData
 	channels      *Channels
 	config        ConfigSetter
@@ -38,9 +37,8 @@ type StatusBarView struct {
 }
 
 // NewStatusBarView creates a new instance
-func NewStatusBarView(rootView RootView, repoData RepoData, channels *Channels, config ConfigSetter) *StatusBarView {
+func NewStatusBarView(repoData RepoData, channels *Channels, config ConfigSetter) *StatusBarView {
 	return &StatusBarView{
-		rootView: rootView,
 		repoData: repoData,
 		channels: channels,
 		config:   config,

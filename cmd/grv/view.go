@@ -30,14 +30,19 @@ const (
 	ViewGitStatus
 )
 
+// HelpRenderer renders help information
+type HelpRenderer interface {
+	RenderHelpBar(*LineBuilder) error
+}
+
 // AbstractView exposes common functionality amongst all views
 type AbstractView interface {
+	HelpRenderer
 	Initialise() error
 	HandleKeyPress(keystring string) error
 	HandleAction(Action) error
 	OnActiveChange(bool)
 	ViewID() ViewID
-	RenderHelpBar(*LineBuilder) error
 }
 
 // WindowView is a single window view
@@ -52,12 +57,6 @@ type WindowViewCollection interface {
 	Render(ViewDimension) ([]*Window, error)
 	ActiveView() AbstractView
 	Title() string
-}
-
-// RootView exposes functionality of the view at the top of the hierarchy
-type RootView interface {
-	ActiveViewHierarchy() []AbstractView
-	ActiveViewIDHierarchy() []ViewID
 }
 
 // ViewDimension describes the size of a view
@@ -283,6 +282,8 @@ func (view *View) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 		})
 	}
 
+	err = view.ActiveView().RenderHelpBar(lineBuilder)
+
 	return
 }
 
@@ -331,6 +332,10 @@ func (view *View) HandleAction(action Action) (err error) {
 
 		err = view.addView(action)
 		return
+	case ActionSplitView:
+		if action, err = view.splitView(action); err != nil {
+			return
+		}
 	}
 
 	return view.ActiveView().HandleAction(action)
@@ -470,27 +475,36 @@ func (view *View) newTab(action Action) (err error) {
 	return
 }
 
-func (view *View) addView(action Action) (err error) {
-	log.Debugf("Adding new view")
-	args := action.Args
-
+func (view *View) createView(args []interface{}) (windowView WindowView, err error) {
 	if len(args) == 0 {
-		return fmt.Errorf("Expected view ID")
+		err = fmt.Errorf("Expected view ID")
+		return
 	}
 
 	viewID, ok := args[0].(ViewID)
 	if !ok {
-		return fmt.Errorf("Expected first argument to be view ID but found %T", args[0])
+		err = fmt.Errorf("Expected first argument to be view ID but found %T", args[0])
+		return
 	}
 
-	newView, err := view.windowViewFactory.CreateWindowViewWithArgs(viewID, args[1:])
-	if err != nil {
+	if windowView, err = view.windowViewFactory.CreateWindowViewWithArgs(viewID, args[1:]); err != nil {
 		err = fmt.Errorf("Failed to create new view: %v", err)
 		return
 	}
 
-	if err = newView.Initialise(); err != nil {
+	if err = windowView.Initialise(); err != nil {
 		err = fmt.Errorf("Failed to initialise new view: %v", err)
+		return
+	}
+
+	return
+}
+
+func (view *View) addView(action Action) (err error) {
+	log.Debugf("Adding new view")
+
+	newView, err := view.createView(action.Args)
+	if err != nil {
 		return
 	}
 
@@ -503,7 +517,34 @@ func (view *View) addView(action Action) (err error) {
 	log.Infof("Adding view %T to child with index %v", newView, view.activeViewPos)
 
 	containerView.AddChildViews(newView)
+	view.onActiveChange(true)
 	view.channels.UpdateDisplay()
+
+	return
+}
+
+func (view *View) splitView(action Action) (newAction Action, err error) {
+	args := action.Args
+
+	if len(args) < 2 {
+		err = fmt.Errorf("Expected first argument to be orientation but found %T", args[0])
+		return
+	}
+
+	if _, ok := args[0].(ContainerOrientation); !ok {
+		err = fmt.Errorf("Expected orientation and view ID arguments")
+		return
+	}
+
+	newView, err := view.createView(args[1:])
+	if err != nil {
+		return
+	}
+
+	newAction = Action{
+		ActionType: ActionSplitView,
+		Args:       []interface{}{args[0], newView},
+	}
 
 	return
 }

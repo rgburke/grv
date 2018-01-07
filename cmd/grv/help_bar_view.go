@@ -6,7 +6,7 @@ import (
 
 // HelpBarView manages displaying help information in the help bar
 type HelpBarView struct {
-	rootView RootView
+	helpRenderer HelpRenderer
 }
 
 // ActionMessage groups a description to an action
@@ -16,9 +16,9 @@ type ActionMessage struct {
 }
 
 // NewHelpBarView creates a new instance of the help bar view
-func NewHelpBarView(rootView RootView) *HelpBarView {
+func NewHelpBarView(helpRenderer HelpRenderer) *HelpBarView {
 	return &HelpBarView{
-		rootView: rootView,
+		helpRenderer: helpRenderer,
 	}
 }
 
@@ -58,15 +58,7 @@ func (helpBarView *HelpBarView) Render(win RenderWindow) (err error) {
 
 	lineBuilder.Append(" ")
 
-	viewHierarchy := helpBarView.rootView.ActiveViewHierarchy()
-
-	for _, view := range viewHierarchy {
-		if err = view.RenderHelpBar(lineBuilder); err != nil {
-			return
-		}
-	}
-
-	return
+	return helpBarView.helpRenderer.RenderHelpBar(lineBuilder)
 }
 
 // RenderHelpBar does nothing

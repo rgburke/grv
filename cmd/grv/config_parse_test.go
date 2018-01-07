@@ -113,6 +113,36 @@ func (addViewCommandValues *AddViewCommandValues) Equal(command ConfigCommand) b
 		reflect.DeepEqual(addViewCommandValues.args, otherArgs)
 }
 
+type SplitViewCommandValues struct {
+	orientation ContainerOrientation
+	view        string
+	args        []string
+}
+
+func (splitViewCommandValues *SplitViewCommandValues) Equal(command ConfigCommand) bool {
+	if command == nil {
+		return false
+	}
+
+	other, ok := command.(*SplitViewCommand)
+	if !ok {
+		return false
+	}
+
+	if other.view == nil {
+		return false
+	}
+
+	var otherArgs []string
+	for _, arg := range other.args {
+		otherArgs = append(otherArgs, arg.value)
+	}
+
+	return splitViewCommandValues.orientation == other.orientation &&
+		splitViewCommandValues.view == other.view.value &&
+		reflect.DeepEqual(splitViewCommandValues.args, otherArgs)
+}
+
 func TestParseSingleCommand(t *testing.T) {
 	var singleCommandTests = []struct {
 		input           string
@@ -151,6 +181,21 @@ func TestParseSingleCommand(t *testing.T) {
 			expectedCommand: &AddViewCommandValues{
 				view: "CommitView",
 				args: []string{"master"},
+			},
+		},
+		{
+			input: "vsplit RefView",
+			expectedCommand: &SplitViewCommandValues{
+				orientation: CoVertical,
+				view:        "RefView",
+			},
+		},
+		{
+			input: "hsplit CommitView master",
+			expectedCommand: &SplitViewCommandValues{
+				orientation: CoHorizontal,
+				view:        "CommitView",
+				args:        []string{"master"},
 			},
 		},
 	}

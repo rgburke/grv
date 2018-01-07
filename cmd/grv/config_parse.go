@@ -7,6 +7,17 @@ import (
 	"io"
 )
 
+const (
+	setCommand     = "set"
+	themeCommand   = "theme"
+	mapCommand     = "map"
+	quitCommand    = "q"
+	addtabCommand  = "addtab"
+	addviewCommand = "addview"
+	vsplitCommand  = "vsplit"
+	hsplitCommand  = "hsplit"
+)
+
 type commandConstructor func(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error)
 
 // ConfigCommand represents a config command
@@ -62,6 +73,16 @@ type AddViewCommand struct {
 
 func (addViewCommand *AddViewCommand) configCommand() {}
 
+// SplitViewCommand represents the command split the currently
+// active view with a new view
+type SplitViewCommand struct {
+	orientation ContainerOrientation
+	view        *ConfigToken
+	args        []*ConfigToken
+}
+
+func (splitViewCommand *SplitViewCommand) configCommand() {}
+
 type commandDescriptor struct {
 	tokenTypes  []ConfigTokenType
 	varArgs     bool
@@ -69,29 +90,37 @@ type commandDescriptor struct {
 }
 
 var commandDescriptors = map[string]*commandDescriptor{
-	"set": {
+	setCommand: {
 		tokenTypes:  []ConfigTokenType{CtkWord, CtkWord},
 		constructor: setCommandConstructor,
 	},
-	"theme": {
+	themeCommand: {
 		tokenTypes:  []ConfigTokenType{CtkOption, CtkWord, CtkOption, CtkWord, CtkOption, CtkWord, CtkOption, CtkWord},
 		constructor: themeCommandConstructor,
 	},
-	"map": {
+	mapCommand: {
 		tokenTypes:  []ConfigTokenType{CtkWord, CtkWord, CtkWord},
 		constructor: mapCommandConstructor,
 	},
-	"q": {
+	quitCommand: {
 		tokenTypes:  []ConfigTokenType{},
 		constructor: quitCommandConstructor,
 	},
-	"addtab": {
+	addtabCommand: {
 		tokenTypes:  []ConfigTokenType{CtkWord},
 		constructor: newTabCommandConstructor,
 	},
-	"addview": {
+	addviewCommand: {
 		varArgs:     true,
 		constructor: addViewCommandConstructor,
+	},
+	vsplitCommand: {
+		varArgs:     true,
+		constructor: splitViewCommandConstructor,
+	},
+	hsplitCommand: {
+		varArgs:     true,
+		constructor: splitViewCommandConstructor,
 	},
 }
 
@@ -328,5 +357,27 @@ func addViewCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, 
 	return &AddViewCommand{
 		view: tokens[0],
 		args: tokens[1:],
+	}, nil
+}
+
+func splitViewCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
+	splitViewCommand := commandToken.value
+
+	if len(tokens) < 1 {
+		return nil, parser.generateParseError(commandToken, "Invalid %[1]v command. Usage: %[1]v [VIEW] [ARGS...]", splitViewCommand)
+	}
+
+	var orientation ContainerOrientation
+
+	if splitViewCommand == vsplitCommand {
+		orientation = CoVertical
+	} else if splitViewCommand == hsplitCommand {
+		orientation = CoHorizontal
+	}
+
+	return &SplitViewCommand{
+		orientation: orientation,
+		view:        tokens[0],
+		args:        tokens[1:],
 	}, nil
 }

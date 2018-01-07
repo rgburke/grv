@@ -68,6 +68,7 @@ func NewContainerView(channels *Channels, config Config) *ContainerView {
 			ActionPrevView:         prevContainerChildView,
 			ActionFullScreenView:   toggleFullScreenChildView,
 			ActionToggleViewLayout: toggleViewOrientation,
+			ActionSplitView:        splitView,
 		},
 	}
 
@@ -77,26 +78,29 @@ func NewContainerView(channels *Channels, config Config) *ContainerView {
 }
 
 // AddChildViews adds new child views to this container
-func (containerView *ContainerView) AddChildViews(childViews ...AbstractView) {
+func (containerView *ContainerView) AddChildViews(newViews ...AbstractView) {
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
-	for _, childView := range childViews {
-		containerView.addChildView(childView)
+	for _, newView := range newViews {
+		containerView.addChildView(newView)
 	}
 }
 
-func (containerView *ContainerView) addChildView(childView AbstractView) {
+func (containerView *ContainerView) addChildView(newView AbstractView) {
 	if !containerView.isEmpty() {
 		if childView, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
-			childView.AddChildViews(childView)
+			childView.AddChildViews(newView)
 			return
 		}
 	}
 
-	containerView.childViews = append(containerView.childViews, childView)
+	log.Debugf("Adding new view %T", newView)
 
-	if windowView, isWindowView := childView.(WindowView); isWindowView {
+	containerView.childViews = append(containerView.childViews, newView)
+
+	if windowView, isWindowView := newView.(WindowView); isWindowView {
+		log.Debugf("Creating window for new view %T", newView)
 		viewIndex := len(containerView.childViews) - 1
 		winID := fmt.Sprintf("%v-%T", viewIndex, windowView)
 		win := NewWindow(winID, containerView.config)
@@ -159,10 +163,6 @@ func (containerView *ContainerView) HandleAction(action Action) (err error) {
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
-	if containerView.isEmpty() {
-		return
-	}
-
 	handler, handlerExists := containerView.handlers[action.ActionType]
 
 	if handlerExists {
@@ -199,12 +199,26 @@ func (containerView *ContainerView) ViewID() ViewID {
 
 // RenderHelpBar is proxied to the active child view
 func (containerView *ContainerView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
-	RenderKeyBindingHelp(containerView.ViewID(), lineBuilder, []ActionMessage{
-		{action: ActionNextView, message: "Next View"},
-		{action: ActionPrevView, message: "Prev View"},
-		{action: ActionFullScreenView, message: "Full Screen"},
-		{action: ActionToggleViewLayout, message: "Layout"},
-	})
+	renderHelp := true
+
+	if !containerView.isEmpty() {
+		if _, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
+			renderHelp = false
+		}
+	}
+
+	if renderHelp {
+		RenderKeyBindingHelp(containerView.ViewID(), lineBuilder, []ActionMessage{
+			{action: ActionNextView, message: "Next View"},
+			{action: ActionPrevView, message: "Prev View"},
+			{action: ActionFullScreenView, message: "Full Screen"},
+			{action: ActionToggleViewLayout, message: "Layout"},
+		})
+	}
+
+	if !containerView.isEmpty() {
+		err = containerView.activeChildView().RenderHelpBar(lineBuilder)
+	}
 
 	return
 }
@@ -460,7 +474,7 @@ func (containerView *ContainerView) setActiveViewAndActivateLastChild(activeView
 	containerView.activeViewIndex = activeViewIndex
 
 	if newChildView, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
-		newChildView.setActiveViewAndActivateLastChild(uint(len(containerView.childViews) - 1))
+		newChildView.setActiveViewAndActivateLastChild(uint(len(newChildView.childViews) - 1))
 	}
 }
 
@@ -511,6 +525,10 @@ func toggleFullScreenChildView(containerView *ContainerView, action Action) (err
 }
 
 func toggleViewOrientation(containerView *ContainerView, action Action) (err error) {
+	if containerView.isEmpty() {
+		return
+	}
+
 	switch childView := containerView.activeChildView().(type) {
 	case WindowView:
 		if containerView.orientation == CoVertical {
@@ -523,6 +541,45 @@ func toggleViewOrientation(containerView *ContainerView, action Action) (err err
 	}
 
 	containerView.channels.UpdateDisplay()
+
+	return
+}
+
+func splitView(containerView *ContainerView, action Action) (err error) {
+	args := action.Args
+
+	if len(args) < 2 {
+		return fmt.Errorf("Execpted orientation and view but received: %v", args)
+	}
+
+	orientation, ok := args[0].(ContainerOrientation)
+	if !ok {
+		return fmt.Errorf("Execpted first argument to be orientation but got %T", args[0])
+	}
+
+	newView, ok := args[1].(WindowView)
+	if !ok {
+		return fmt.Errorf("Execpted second argument to be WindowView but got %T", args[1])
+	}
+
+	if containerView.isEmpty() {
+		containerView.addChildView(newView)
+		return
+	}
+
+	switch childView := containerView.activeChildView().(type) {
+	case WindowView:
+		newContainer := NewContainerView(containerView.channels, containerView.config)
+		newContainer.SetOrientation(orientation)
+		newContainer.AddChildViews(childView, newView)
+		newContainer.OnActiveChange(true)
+		containerView.childViews[containerView.activeViewIndex] = newContainer
+		containerView.channels.UpdateDisplay()
+
+		log.Infof("Created orientation %v split between views %T and %T", orientation, childView, newView)
+	case WindowViewCollection:
+		err = childView.HandleAction(action)
+	}
 
 	return
 }
