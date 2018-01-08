@@ -167,7 +167,7 @@ func (containerView *ContainerView) HandleAction(action Action) (err error) {
 
 	if handlerExists {
 		err = handler(containerView, action)
-	} else {
+	} else if !containerView.isEmpty() {
 		err = containerView.activeChildView().HandleAction(action)
 	}
 
