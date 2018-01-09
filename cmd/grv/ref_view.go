@@ -235,19 +235,13 @@ func (refView *RefView) Initialise() (err error) {
 
 		refView.generateRenderedRefs()
 
-		head := refView.repoData.Head()
-		activeRowIndex := uint(1)
+		renderedRefs := refView.renderedRefs.RenderedRefs()
+		var activeRowIndex uint
 
-		if _, headIsBranch := head.(Branch); headIsBranch {
-			for _, ref := range refs {
-				if branch, isBranch := ref.(Branch); isBranch {
-					if !branch.IsRemote() && branch.Name() == head.Name() {
-						log.Debugf("Setting branch %v as selected branch", branch.Name())
-						break
-					}
-				}
-
-				activeRowIndex++
+		for renderedRefIndex, renderedRef := range renderedRefs {
+			if renderedRef.renderedRefType == RvHead {
+				activeRowIndex = uint(renderedRefIndex)
+				break
 			}
 		}
 
