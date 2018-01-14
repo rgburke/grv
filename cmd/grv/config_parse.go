@@ -16,6 +16,7 @@ const (
 	addviewCommand = "addview"
 	vsplitCommand  = "vsplit"
 	hsplitCommand  = "hsplit"
+	splitCommand   = "split"
 )
 
 type commandConstructor func(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error)
@@ -119,6 +120,10 @@ var commandDescriptors = map[string]*commandDescriptor{
 		constructor: splitViewCommandConstructor,
 	},
 	hsplitCommand: {
+		varArgs:     true,
+		constructor: splitViewCommandConstructor,
+	},
+	splitCommand: {
 		varArgs:     true,
 		constructor: splitViewCommandConstructor,
 	},
@@ -369,10 +374,15 @@ func splitViewCommandConstructor(parser *ConfigParser, commandToken *ConfigToken
 
 	var orientation ContainerOrientation
 
-	if splitViewCommand == vsplitCommand {
-		orientation = CoVertical
-	} else if splitViewCommand == hsplitCommand {
+	switch splitViewCommand {
+	case splitCommand:
+		orientation = CoDynamic
+	case hsplitCommand:
 		orientation = CoHorizontal
+	case vsplitCommand:
+		orientation = CoVertical
+	default:
+		return nil, parser.generateParseError(commandToken, "Unrecognised command: %v", splitViewCommand)
 	}
 
 	return &SplitViewCommand{

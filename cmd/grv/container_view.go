@@ -7,6 +7,10 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+const (
+	terminalAspectRatio = 80.0 / 24.0
+)
+
 // ContainerOrientation represents the orientation of the child views
 type ContainerOrientation int
 
@@ -14,6 +18,7 @@ type ContainerOrientation int
 const (
 	CoVertical ContainerOrientation = iota
 	CoHorizontal
+	CoDynamic
 )
 
 // ChildViewPosition is the position and dimensions of a child view
@@ -233,6 +238,10 @@ func (containerView *ContainerView) Render(viewDimension ViewDimension) (wins []
 		return
 	}
 
+	if containerView.orientation == CoDynamic {
+		containerView.determineOrientation(viewDimension)
+	}
+
 	viewLayoutData := ViewLayoutData{
 		viewDimension:   viewDimension,
 		fullScreen:      containerView.fullScreen,
@@ -277,6 +286,21 @@ func (containerView *ContainerView) Render(viewDimension ViewDimension) (wins []
 	}
 
 	return
+}
+
+func (containerView *ContainerView) determineOrientation(viewDimension ViewDimension) {
+	viewAspectRation := float64(viewDimension.cols) / float64(viewDimension.rows)
+	log.Debugf("View aspect ration: %v", viewAspectRation)
+
+	var orientation ContainerOrientation
+
+	if viewAspectRation < terminalAspectRatio {
+		orientation = CoHorizontal
+	} else {
+		orientation = CoVertical
+	}
+
+	containerView.orientation = orientation
 }
 
 // CalculateChildViewPositions calculates the child layout data for this view

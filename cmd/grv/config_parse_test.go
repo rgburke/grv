@@ -198,6 +198,13 @@ func TestParseSingleCommand(t *testing.T) {
 				args:        []string{"master"},
 			},
 		},
+		{
+			input: "split GitStatusView",
+			expectedCommand: &SplitViewCommandValues{
+				orientation: CoDynamic,
+				view:        "GitStatusView",
+			},
+		},
 	}
 
 	for _, singleCommandTest := range singleCommandTests {
