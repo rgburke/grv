@@ -587,6 +587,36 @@ func generateTags(refView *RefView, refList *refList, renderedRefs renderedRefSe
 	}
 }
 
+func (refView *RefView) createRefListenerView(ref Ref) {
+	createViewArgs := CreateViewArgs{
+		viewID:   ViewCommit,
+		viewArgs: []interface{}{ref.Name()},
+		registerViewListener: func(observer interface{}) (err error) {
+			if observer == nil {
+				return fmt.Errorf("Invalid RefListener: %v", observer)
+			}
+
+			if refListener, ok := observer.(RefListener); ok {
+				refView.RegisterRefListener(refListener)
+			} else {
+				err = fmt.Errorf("Observer is not a RefListener but has type %T", observer)
+			}
+
+			return
+		},
+	}
+
+	refView.channels.DoAction(Action{
+		ActionType: ActionSplitView,
+		Args: []interface{}{
+			ActionSplitViewArgs{
+				CreateViewArgs: createViewArgs,
+				orientation:    CoDynamic,
+			},
+		},
+	})
+}
+
 // OnActiveChange updates whether the ref view is active or not
 func (refView *RefView) OnActiveChange(active bool) {
 	log.Debugf("RefView active: %v", active)
@@ -828,8 +858,13 @@ func selectRef(refView *RefView, action Action) (err error) {
 		refView.channels.UpdateDisplay()
 	case RvLocalBranch, RvHead, RvRemoteBranch, RvTag:
 		log.Debugf("Selecting ref %v:%v", renderedRef.ref.Name(), renderedRef.ref.Oid())
-		if err = refView.notifyRefListeners(renderedRef.ref); err != nil {
-			return
+
+		if len(refView.refListeners) == 0 {
+			refView.createRefListenerView(renderedRef.ref)
+		} else {
+			if err = refView.notifyRefListeners(renderedRef.ref); err != nil {
+				return
+			}
 		}
 		refView.channels.UpdateDisplay()
 	default:

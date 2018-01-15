@@ -87,6 +87,7 @@ func NewGitStatusView(repoData RepoData, channels *Channels) *GitStatusView {
 			ActionFirstLine:   moveToFirstGitStatusEntry,
 			ActionLastLine:    moveToLastGitStatusEntry,
 			ActionCenterView:  centerGitStatusView,
+			ActionSelect:      selectDiffEntry,
 		},
 	}
 
@@ -389,6 +390,38 @@ func (gitStatusView *GitStatusView) lineNumber() uint {
 	return uint(len(gitStatusView.renderedStatus))
 }
 
+func (gitStatusView *GitStatusView) createGitStatusViewListener() {
+	createViewArgs := CreateViewArgs{
+		viewID: ViewDiff,
+		registerViewListener: func(observer interface{}) (err error) {
+			if observer == nil {
+				return fmt.Errorf("Invalid GitStatusEntrySelectedListener: %v", observer)
+			}
+
+			if listener, ok := observer.(GitStatusEntrySelectedListener); ok {
+				gitStatusView.RegisterGitStatusFileSelectedListener(listener)
+				gitStatusView.HandleAction(Action{
+					ActionType: ActionSelect,
+				})
+			} else {
+				err = fmt.Errorf("Observer is not a GitStatusEntrySelectedListener but has type %T", observer)
+			}
+
+			return
+		},
+	}
+
+	gitStatusView.channels.DoAction(Action{
+		ActionType: ActionSplitView,
+		Args: []interface{}{
+			ActionSplitViewArgs{
+				CreateViewArgs: createViewArgs,
+				orientation:    CoDynamic,
+			},
+		},
+	})
+}
+
 // HandleAction checks if git status view supports this action and if it does executes it
 func (gitStatusView *GitStatusView) HandleAction(action Action) (err error) {
 	gitStatusView.lock.Lock()
@@ -557,6 +590,17 @@ func centerGitStatusView(gitStatusView *GitStatusView, action Action) (err error
 	if viewPos.CenterActiveRow(gitStatusView.viewDimension.rows - 2) {
 		log.Debug("Centering GitStatusView")
 		gitStatusView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func selectDiffEntry(gitStatusView *GitStatusView, action Action) (err error) {
+	if len(gitStatusView.entrySelectedListeners) == 0 {
+		gitStatusView.createGitStatusViewListener()
+	} else {
+		viewPos := gitStatusView.ViewPos()
+		gitStatusView.selectEntry(viewPos.ActiveRowIndex())
 	}
 
 	return

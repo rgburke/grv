@@ -494,49 +494,61 @@ func (config *Configuration) processNewTabCommand(newTabCommand *NewTabCommand, 
 	return
 }
 
-func (config *Configuration) generateViewArgs(view *ConfigToken, args []*ConfigToken, inputSource string) (viewArgs []interface{}, err error) {
+func (config *Configuration) generateViewArgs(view *ConfigToken, args []*ConfigToken, inputSource string) (createViewArgs CreateViewArgs, err error) {
 	viewID, ok := viewIDNames[view.value]
 	if !ok {
-		return nil, generateConfigError(inputSource, view, "Invalid view: %v", view.value)
+		err = generateConfigError(inputSource, view, "Invalid view: %v", view.value)
+		return
 	}
 
-	viewArgs = append(viewArgs, viewID)
+	var viewArgs []interface{}
 	for _, token := range args {
 		viewArgs = append(viewArgs, token.value)
 	}
+
+	createViewArgs.viewID = viewID
+	createViewArgs.viewArgs = viewArgs
 
 	return
 }
 
 func (config *Configuration) processAddViewCommand(addViewCommand *AddViewCommand, inputSource string) (err error) {
-	args, err := config.generateViewArgs(addViewCommand.view, addViewCommand.args, inputSource)
+	createViewArgs, err := config.generateViewArgs(addViewCommand.view, addViewCommand.args, inputSource)
 	if err != nil {
 		return
 	}
 
-	log.Infof("Processing addview command: %v %v", addViewCommand.view.value, args[1:])
+	log.Infof("Processing addview command: %v %v", addViewCommand.view.value, createViewArgs.viewArgs)
 
 	config.channels.DoAction(Action{
 		ActionType: ActionAddView,
-		Args:       args,
+		Args: []interface{}{
+			ActionAddViewArgs{
+				CreateViewArgs: createViewArgs,
+			},
+		},
 	})
 
 	return
 }
 
 func (config *Configuration) processSplitViewCommand(splitViewCommand *SplitViewCommand, inputSource string) (err error) {
-	args, err := config.generateViewArgs(splitViewCommand.view, splitViewCommand.args, inputSource)
+	createViewArgs, err := config.generateViewArgs(splitViewCommand.view, splitViewCommand.args, inputSource)
 	if err != nil {
 		return
 	}
 
-	log.Infof("Processing split view command: %v %v %v", splitViewCommand.orientation, splitViewCommand.view.value, args[1:])
-
-	args = append([]interface{}{splitViewCommand.orientation}, args...)
+	log.Infof("Processing split view command: %v %v %v",
+		splitViewCommand.orientation, splitViewCommand.view.value, createViewArgs.viewArgs)
 
 	config.channels.DoAction(Action{
 		ActionType: ActionSplitView,
-		Args:       args,
+		Args: []interface{}{
+			ActionSplitViewArgs{
+				CreateViewArgs: createViewArgs,
+				orientation:    splitViewCommand.orientation,
+			},
+		},
 	})
 
 	return

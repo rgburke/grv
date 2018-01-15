@@ -70,6 +70,9 @@ func (viewDimension ViewDimension) String() string {
 	return fmt.Sprintf("rows:%v,cols:%v", viewDimension.rows, viewDimension.cols)
 }
 
+// RegisterViewListener is a function which registers an observer on a view
+type RegisterViewListener func(observer interface{}) error
+
 // View is the top level view in grv
 // All views in grv are children of this view
 type View struct {
@@ -475,19 +478,8 @@ func (view *View) newTab(action Action) (err error) {
 	return
 }
 
-func (view *View) createView(args []interface{}) (windowView WindowView, err error) {
-	if len(args) == 0 {
-		err = fmt.Errorf("Expected view ID")
-		return
-	}
-
-	viewID, ok := args[0].(ViewID)
-	if !ok {
-		err = fmt.Errorf("Expected first argument to be view ID but found %T", args[0])
-		return
-	}
-
-	if windowView, err = view.windowViewFactory.CreateWindowViewWithArgs(viewID, args[1:]); err != nil {
+func (view *View) createView(createViewArgs CreateViewArgs) (windowView WindowView, err error) {
+	if windowView, err = view.windowViewFactory.CreateWindowViewWithArgs(createViewArgs.viewID, createViewArgs.viewArgs); err != nil {
 		err = fmt.Errorf("Failed to create new view: %v", err)
 		return
 	}
@@ -497,13 +489,27 @@ func (view *View) createView(args []interface{}) (windowView WindowView, err err
 		return
 	}
 
+	if createViewArgs.registerViewListener != nil {
+		err = createViewArgs.registerViewListener(windowView)
+	}
+
 	return
 }
 
 func (view *View) addView(action Action) (err error) {
 	log.Debugf("Adding new view")
+	args := action.Args
 
-	newView, err := view.createView(action.Args)
+	if len(args) < 1 {
+		return fmt.Errorf("Expected ActionAddViewArgs argument")
+	}
+
+	actionAddViewArgs, ok := args[0].(ActionAddViewArgs)
+	if !ok {
+		return fmt.Errorf("Expected first argument to have type ActionAddViewArgs but found %T", args[0])
+	}
+
+	newView, err := view.createView(actionAddViewArgs.CreateViewArgs)
 	if err != nil {
 		return
 	}
@@ -524,26 +530,28 @@ func (view *View) addView(action Action) (err error) {
 }
 
 func (view *View) splitView(action Action) (newAction Action, err error) {
+	log.Debug("Splitting view")
 	args := action.Args
 
-	if len(args) < 2 {
-		err = fmt.Errorf("Expected first argument to be orientation but found %T", args[0])
+	if len(args) < 1 {
+		err = fmt.Errorf("Expected ActionSplitViewArgs argument")
 		return
 	}
 
-	if _, ok := args[0].(ContainerOrientation); !ok {
-		err = fmt.Errorf("Expected orientation and view ID arguments")
+	actionSplitViewArgs, ok := args[0].(ActionSplitViewArgs)
+	if !ok {
+		err = fmt.Errorf("Expected first argument to have type ActionSplitViewArgs but found %T", args[0])
 		return
 	}
 
-	newView, err := view.createView(args[1:])
+	newView, err := view.createView(actionSplitViewArgs.CreateViewArgs)
 	if err != nil {
 		return
 	}
 
 	newAction = Action{
 		ActionType: ActionSplitView,
-		Args:       []interface{}{args[0], newView},
+		Args:       []interface{}{actionSplitViewArgs.orientation, newView},
 	}
 
 	return

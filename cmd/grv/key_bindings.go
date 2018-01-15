@@ -51,6 +51,24 @@ type Action struct {
 	Args       []interface{}
 }
 
+// CreateViewArgs contains the fields required to create and configure a view
+type CreateViewArgs struct {
+	viewID                 ViewID
+	viewArgs               []interface{}
+	registerViewListener RegisterViewListener
+}
+
+// ActionAddViewArgs contains arguments the ActionAddView action requires
+type ActionAddViewArgs struct {
+	CreateViewArgs
+}
+
+// ActionSplitViewArgs contains arguments the ActionSplitView action requires
+type ActionSplitViewArgs struct {
+	CreateViewArgs
+	orientation ContainerOrientation
+}
+
 var actionKeys = map[string]ActionType{
 	"<grv-nop>":                   ActionNone,
 	"<grv-exit>":                  ActionExit,

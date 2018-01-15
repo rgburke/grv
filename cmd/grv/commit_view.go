@@ -67,6 +67,7 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 			ActionAddFilter:    addCommitFilter,
 			ActionRemoveFilter: removeCommitFilter,
 			ActionCenterView:   centerCommitView,
+			ActionSelect:       selectCommit,
 		},
 	}
 
@@ -451,6 +452,36 @@ func (commitView *CommitView) selectCommit(lineIndex uint) (err error) {
 	return
 }
 
+func (commitView *CommitView) createCommitViewListenerView(commit *Commit) {
+	createViewArgs := CreateViewArgs{
+		viewID:   ViewDiff,
+		viewArgs: []interface{}{commit.oid.String()},
+		registerViewListener: func(observer interface{}) (err error) {
+			if observer == nil {
+				return fmt.Errorf("Invalid CommitViewListener: %v", observer)
+			}
+
+			if commitViewListener, ok := observer.(CommitViewListener); ok {
+				commitView.RegisterCommitViewListener(commitViewListener)
+			} else {
+				err = fmt.Errorf("Observer is not a CommitViewListener but has type %T", observer)
+			}
+
+			return
+		},
+	}
+
+	commitView.channels.DoAction(Action{
+		ActionType: ActionSplitView,
+		Args: []interface{}{
+			ActionSplitViewArgs{
+				CreateViewArgs: createViewArgs,
+				orientation:    CoDynamic,
+			},
+		},
+	})
+}
+
 // ViewPos returns the current view position
 func (commitView *CommitView) ViewPos() ViewPos {
 	refViewData := commitView.refViewData[commitView.activeRef.Name()]
@@ -724,4 +755,19 @@ func centerCommitView(commitView *CommitView, action Action) (err error) {
 	}
 
 	return
+}
+
+func selectCommit(commitView *CommitView, action Action) (err error) {
+	viewPos := commitView.ViewPos()
+
+	if len(commitView.commitViewListeners) == 0 {
+		var commit *Commit
+		if commit, err = commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.ActiveRowIndex()); err != nil {
+			return
+		}
+
+		commitView.createCommitViewListenerView(commit)
+	}
+
+	return commitView.selectCommit(viewPos.ActiveRowIndex())
 }
