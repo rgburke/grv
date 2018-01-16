@@ -19,7 +19,7 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 	commitView.RegisterCommitViewListener(diffView)
 
 	subContainer := NewContainerView(channels, config)
-	subContainer.SetOrientation(CoHorizontal)
+	subContainer.SetOrientation(CoDynamic)
 	subContainer.AddChildViews(commitView, diffView)
 
 	historyView := &HistoryView{ContainerView: NewContainerView(channels, config)}

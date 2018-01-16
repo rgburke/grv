@@ -14,7 +14,7 @@ func NewStatusView(repoData RepoData, channels *Channels, config Config) *Status
 
 	statusView := &StatusView{ContainerView: NewContainerView(channels, config)}
 	statusView.SetTitle("Status View")
-	statusView.SetOrientation(CoVertical)
+	statusView.SetOrientation(CoDynamic)
 	statusView.AddChildViews(gitStatusView, diffView)
 
 	return statusView
