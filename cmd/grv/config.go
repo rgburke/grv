@@ -26,6 +26,7 @@ const (
 	cfMainView      = "MainView"
 	cfHistoryView   = "HistoryView"
 	cfStatusView    = "StatusView"
+	cfGRVStatusView = "GRVStatusView"
 	cfRefView       = "RefView"
 	cfCommitView    = "CommitView"
 	cfDiffView      = "DiffView"
@@ -62,6 +63,7 @@ var viewIDNames = map[string]ViewID{
 	cfMainView:      ViewMain,
 	cfHistoryView:   ViewHistory,
 	cfStatusView:    ViewStatus,
+	cfGRVStatusView: ViewGRVStatus,
 	cfRefView:       ViewRef,
 	cfCommitView:    ViewCommit,
 	cfDiffView:      ViewDiff,

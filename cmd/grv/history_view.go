@@ -4,13 +4,8 @@ const (
 	hvMaxRefViewWidth = uint(35)
 )
 
-// HistoryView manages the history view and it's child views
-type HistoryView struct {
-	*ContainerView
-}
-
 // NewHistoryView creates a new instance of the history view
-func NewHistoryView(repoData RepoData, channels *Channels, config Config) *HistoryView {
+func NewHistoryView(repoData RepoData, channels *Channels, config Config) *ContainerView {
 	refView := NewRefView(repoData, channels)
 	commitView := NewCommitView(repoData, channels)
 	diffView := NewDiffView(repoData, channels)
@@ -22,23 +17,23 @@ func NewHistoryView(repoData RepoData, channels *Channels, config Config) *Histo
 	subContainer.SetOrientation(CoDynamic)
 	subContainer.AddChildViews(commitView, diffView)
 
-	historyView := &HistoryView{ContainerView: NewContainerView(channels, config)}
+	historyView := NewContainerView(channels, config)
 	historyView.SetTitle("History View")
 	historyView.SetOrientation(CoVertical)
-	historyView.SetChildViewPositionCalculator(historyView)
+	historyView.SetViewID(ViewHistory)
+	historyView.SetChildViewPositionCalculator(&historyViewPositionCalculator{historyView: historyView})
 	historyView.AddChildViews(refView, subContainer)
 
 	return historyView
 }
 
-// ViewID returns container view id
-func (historyView *HistoryView) ViewID() ViewID {
-	return ViewHistory
+type historyViewPositionCalculator struct {
+	historyView *ContainerView
 }
 
 // CalculateChildViewPositions calculates the child layout data for the history view
-func (historyView *HistoryView) CalculateChildViewPositions(viewLayoutData *ViewLayoutData) (childPositions []*ChildViewPosition) {
-	childPositions = historyView.ContainerView.CalculateChildViewPositions(viewLayoutData)
+func (calculator *historyViewPositionCalculator) CalculateChildViewPositions(viewLayoutData *ViewLayoutData) (childPositions []*ChildViewPosition) {
+	childPositions = calculator.historyView.CalculateChildViewPositions(viewLayoutData)
 
 	if !viewLayoutData.fullScreen && viewLayoutData.orientation == CoVertical && len(childPositions) > 0 {
 		refViewPosition := childPositions[0]

@@ -57,6 +57,7 @@ type ContainerView struct {
 	handlers                    map[ActionType]containerViewHandler
 	orientation                 ContainerOrientation
 	childViewPositionCalculator ChildViewPositionCalculator
+	viewID                      ViewID
 	fullScreen                  bool
 	lock                        sync.Mutex
 }
@@ -67,6 +68,7 @@ func NewContainerView(channels *Channels, config Config) *ContainerView {
 		config:      config,
 		channels:    channels,
 		orientation: CoVertical,
+		viewID:      ViewContainer,
 		viewWins:    make(map[WindowView]*Window),
 		handlers: map[ActionType]containerViewHandler{
 			ActionNextView:         nextContainerChildView,
@@ -137,6 +139,14 @@ func (containerView *ContainerView) SetTitle(title string) {
 	containerView.title = title
 }
 
+// SetViewID sets the ViewID of the view
+func (containerView *ContainerView) SetViewID(viewID ViewID) {
+	containerView.lock.Lock()
+	defer containerView.lock.Unlock()
+
+	containerView.viewID = viewID
+}
+
 // Initialise initialises this containers child views
 func (containerView *ContainerView) Initialise() (err error) {
 	containerView.lock.Lock()
@@ -199,7 +209,10 @@ func (containerView *ContainerView) onActiveChange(active bool) {
 
 // ViewID returns container view id
 func (containerView *ContainerView) ViewID() ViewID {
-	return ViewContainer
+	containerView.lock.Lock()
+	defer containerView.lock.Unlock()
+
+	return containerView.viewID
 }
 
 // RenderHelpBar is proxied to the active child view

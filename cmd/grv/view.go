@@ -21,6 +21,7 @@ const (
 	ViewContainer
 	ViewHistory
 	ViewStatus
+	ViewGRVStatus
 	ViewRef
 	ViewCommit
 	ViewDiff

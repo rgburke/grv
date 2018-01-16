@@ -61,7 +61,7 @@ func (grvStatusView *GRVStatusView) OnActiveChange(active bool) {
 
 // ViewID returns the view ID of the status view
 func (grvStatusView *GRVStatusView) ViewID() ViewID {
-	return ViewStatus
+	return ViewGRVStatus
 }
 
 // Render generates its child views and returns the windows that constitute the status view as a whole
