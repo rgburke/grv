@@ -31,8 +31,14 @@ func (grvStatusView *GRVStatusView) Initialise() (err error) {
 	return
 }
 
-// HandleKeyPress does nothing
-func (grvStatusView *GRVStatusView) HandleKeyPress(keystring string) (err error) {
+// HandleEvent does nothing
+func (grvStatusView *GRVStatusView) HandleEvent(event Event) (err error) {
+	if err = grvStatusView.statusBarView.HandleEvent(event); err != nil {
+		return
+	}
+
+	err = grvStatusView.helpBarView.HandleEvent(event)
+
 	return
 }
 

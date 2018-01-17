@@ -680,9 +680,8 @@ func (refView *RefView) LineNumber() (lineNumber uint) {
 	return renderedRefNum
 }
 
-// HandleKeyPress does nothing
-func (refView *RefView) HandleKeyPress(keystring string) (err error) {
-	log.Debugf("RefView handling key %v - NOP", keystring)
+// HandleEvent does nothing
+func (refView *RefView) HandleEvent(event Event) (err error) {
 	return
 }
 

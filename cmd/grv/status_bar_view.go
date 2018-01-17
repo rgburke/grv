@@ -50,8 +50,8 @@ func (statusBarView *StatusBarView) Initialise() (err error) {
 	return
 }
 
-// HandleKeyPress does nothing
-func (statusBarView *StatusBarView) HandleKeyPress(keystring string) (err error) {
+// HandleEvent does nothing
+func (statusBarView *StatusBarView) HandleEvent(event Event) (err error) {
 	return
 }
 

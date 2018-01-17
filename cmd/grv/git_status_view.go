@@ -156,8 +156,8 @@ func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 	return
 }
 
-// HandleKeyPress does nothing
-func (gitStatusView *GitStatusView) HandleKeyPress(keystring string) (err error) {
+// HandleEvent does nothing
+func (gitStatusView *GitStatusView) HandleEvent(event Event) (err error) {
 	return
 }
 

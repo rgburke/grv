@@ -17,6 +17,7 @@ import (
 const (
 	grvInputBufferSize       = 100
 	grvActionBufferSize      = 100
+	grvEventBufferSize       = 100
 	grvErrorBufferSize       = 100
 	grvDisplayBufferSize     = 50
 	grvMaxDrawFrequency      = time.Millisecond * 50
@@ -28,6 +29,7 @@ type gRVChannels struct {
 	exitCh     chan bool
 	inputKeyCh chan string
 	actionCh   chan Action
+	eventCh    chan Event
 	displayCh  chan bool
 	errorCh    chan error
 }
@@ -38,6 +40,7 @@ func (grvChannels gRVChannels) Channels() *Channels {
 		exitCh:    grvChannels.exitCh,
 		errorCh:   grvChannels.errorCh,
 		actionCh:  grvChannels.actionCh,
+		eventCh:   grvChannels.eventCh,
 	}
 }
 
@@ -47,17 +50,38 @@ type Channels struct {
 	exitCh    <-chan bool
 	errorCh   chan<- error
 	actionCh  chan<- Action
+	eventCh   chan<- Event
+}
+
+// EventType identifies a type of event
+type EventType int
+
+// The event types available
+const (
+	NoEvent EventType = iota
+)
+
+// Event contains data that describes the reported event
+type Event struct {
+	EventType EventType
+	Args      []interface{}
+}
+
+// EventListener is an entity capable of receiving events
+type EventListener interface {
+	HandleEvent(event Event) error
 }
 
 // GRV is the top level structure containing all state in the program
 type GRV struct {
-	repoData    *RepositoryData
-	view        *View
-	ui          UI
-	channels    gRVChannels
-	config      *Configuration
-	inputBuffer *InputBuffer
-	input       *InputKeyMapper
+	repoData       *RepositoryData
+	view           *View
+	ui             UI
+	channels       gRVChannels
+	config         *Configuration
+	inputBuffer    *InputBuffer
+	input          *InputKeyMapper
+	eventListeners []EventListener
 }
 
 // UpdateDisplay sends a request to update the display
@@ -103,6 +127,13 @@ func (channels *Channels) DoAction(action Action) {
 	}
 }
 
+// ReportEvent sends the event to all listeners
+func (channels *Channels) ReportEvent(event Event) {
+	if event.EventType != NoEvent {
+		channels.eventCh <- event
+	}
+}
+
 // ReportStatus updates the status bar with the provided status
 func (channels *Channels) ReportStatus(format string, args ...interface{}) {
 	status := fmt.Sprintf(format, args...)
@@ -121,6 +152,7 @@ func NewGRV() *GRV {
 		exitCh:     make(chan bool),
 		inputKeyCh: make(chan string, grvInputBufferSize),
 		actionCh:   make(chan Action, grvActionBufferSize),
+		eventCh:    make(chan Event, grvEventBufferSize),
 		displayCh:  make(chan bool, grvDisplayBufferSize),
 		errorCh:    make(chan error, grvErrorBufferSize),
 	}
@@ -132,15 +164,17 @@ func NewGRV() *GRV {
 	keyBindings := NewKeyBindingManager()
 	config := NewConfiguration(keyBindings, channels)
 	ui := NewNCursesDisplay(config)
+	view := NewView(repoData, channels, config)
 
 	return &GRV{
-		repoData:    repoData,
-		view:        NewView(repoData, channels, config),
-		ui:          ui,
-		channels:    grvChannels,
-		config:      config,
-		inputBuffer: NewInputBuffer(keyBindings),
-		input:       NewInputKeyMapper(ui),
+		repoData:       repoData,
+		view:           view,
+		ui:             ui,
+		channels:       grvChannels,
+		config:         config,
+		inputBuffer:    NewInputBuffer(keyBindings),
+		input:          NewInputKeyMapper(ui),
+		eventListeners: []EventListener{view, repoData},
 	}
 }
 
@@ -225,7 +259,7 @@ func (grv *GRV) Run() {
 	waitGroup.Add(1)
 	go grv.runDisplayLoop(&waitGroup, channels.exitCh, channels.displayCh, channels.errorCh)
 	waitGroup.Add(1)
-	go grv.runHandlerLoop(&waitGroup, channels.exitCh, channels.inputKeyCh, channels.actionCh, channels.errorCh)
+	go grv.runHandlerLoop(&waitGroup, channels.exitCh, channels.inputKeyCh, channels.actionCh, channels.errorCh, channels.eventCh)
 	waitGroup.Add(1)
 	go grv.runSignalHandlerLoop(&waitGroup, channels.exitCh)
 	waitGroup.Add(1)
@@ -341,7 +375,7 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 	}
 }
 
-func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, inputKeyCh <-chan string, actionCh chan Action, errorCh chan<- error) {
+func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, inputKeyCh <-chan string, actionCh chan Action, errorCh chan<- error, eventCh <-chan Event) {
 	defer waitGroup.Done()
 	defer log.Info("Handler loop stopping")
 	log.Info("Starting handler loop")
@@ -358,9 +392,7 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, in
 				if action.ActionType != ActionNone {
 					actionCh <- action
 				} else if keystring != "" {
-					if err := grv.view.HandleKeyPress(keystring); err != nil {
-						errorCh <- err
-					}
+					log.Debugf("Dropping keystring: %v", keystring)
 				} else {
 					break
 				}
@@ -373,6 +405,12 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, in
 				grv.Suspend()
 			default:
 				if err := grv.view.HandleAction(action); err != nil {
+					errorCh <- err
+				}
+			}
+		case event := <-eventCh:
+			for _, eventListener := range grv.eventListeners {
+				if err := eventListener.HandleEvent(event); err != nil {
 					errorCh <- err
 				}
 			}

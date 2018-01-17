@@ -27,8 +27,8 @@ func (helpBarView *HelpBarView) Initialise() (err error) {
 	return
 }
 
-// HandleKeyPress does nothing
-func (helpBarView *HelpBarView) HandleKeyPress(keystring string) (err error) {
+// HandleEvent does nothing
+func (helpBarView *HelpBarView) HandleEvent(event Event) (err error) {
 	return
 }
 

@@ -488,9 +488,8 @@ func (diffView *DiffView) generateDiffLinesForDiff(diff *Diff) (lines []*diffLin
 	return
 }
 
-// HandleKeyPress does nothing
-func (diffView *DiffView) HandleKeyPress(keystring string) (err error) {
-	log.Debugf("DiffView handling key %v - NOP", keystring)
+// HandleEvent does nothing
+func (diffView *DiffView) HandleEvent(event Event) (err error) {
 	return
 }
 

@@ -52,6 +52,7 @@ type RefStateListener interface {
 
 // RepoData houses all data loaded from the repository
 type RepoData interface {
+	EventListener
 	Path() string
 	LoadHead() error
 	LoadRefs(OnRefsLoaded)
@@ -1436,5 +1437,10 @@ func (repoData *RepositoryData) updateTrackingBranches(trackingBranchStates []*t
 			localBranch.Name(), ahead, behind, remoteBranch.Name())
 	}
 
+	return
+}
+
+// HandleEvent does nothing
+func (repoData *RepositoryData) HandleEvent(event Event) (err error) {
 	return
 }

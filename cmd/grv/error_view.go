@@ -60,8 +60,8 @@ func (errorView *ErrorView) Render(win RenderWindow) (err error) {
 	return
 }
 
-// HandleKeyPress does nothing
-func (errorView *ErrorView) HandleKeyPress(keystring string) (err error) {
+// HandleEvent does nothing
+func (errorView *ErrorView) HandleEvent(event Event) (err error) {
 	return
 }
 

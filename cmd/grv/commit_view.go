@@ -560,9 +560,8 @@ func (commitView *CommitView) lineNumber() (lineNumber uint) {
 	return lineNum
 }
 
-// HandleKeyPress does nothing
-func (commitView *CommitView) HandleKeyPress(keystring string) (err error) {
-	log.Debugf("CommitView handling key %v - NOP", keystring)
+// HandleEvent does nothing
+func (commitView *CommitView) HandleEvent(event Event) (err error) {
 	return
 }
 

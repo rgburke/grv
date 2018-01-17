@@ -39,8 +39,8 @@ type HelpRenderer interface {
 // AbstractView exposes common functionality amongst all views
 type AbstractView interface {
 	HelpRenderer
+	EventListener
 	Initialise() error
-	HandleKeyPress(keystring string) error
 	HandleAction(Action) error
 	OnActiveChange(bool)
 	ViewID() ViewID
@@ -291,10 +291,18 @@ func (view *View) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
-// HandleKeyPress passes the key press on to child view to handle
-func (view *View) HandleKeyPress(keystring string) error {
-	log.Debugf("View handling keys %v", keystring)
-	return view.ActiveView().HandleKeyPress(keystring)
+// HandleEvent passes the event on to all child views
+func (view *View) HandleEvent(event Event) (err error) {
+	view.lock.Lock()
+	defer view.lock.Unlock()
+
+	for _, childView := range view.views {
+		if err = childView.HandleEvent(event); err != nil {
+			return
+		}
+	}
+
+	return
 }
 
 // HandleAction checks if this view can handle the action

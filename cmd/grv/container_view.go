@@ -161,16 +161,18 @@ func (containerView *ContainerView) Initialise() (err error) {
 	return
 }
 
-// HandleKeyPress passes the keystring to the active child view to process
-func (containerView *ContainerView) HandleKeyPress(keystring string) (err error) {
+// HandleEvent passes the event on to all child views
+func (containerView *ContainerView) HandleEvent(event Event) (err error) {
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
-	if containerView.isEmpty() {
-		return
+	for _, childView := range containerView.childViews {
+		if err = childView.HandleEvent(event); err != nil {
+			return
+		}
 	}
 
-	return containerView.activeChildView().HandleKeyPress(keystring)
+	return
 }
 
 // HandleAction processes the action if supported or passes it on to the active child view
