@@ -53,8 +53,8 @@ type Action struct {
 
 // CreateViewArgs contains the fields required to create and configure a view
 type CreateViewArgs struct {
-	viewID                 ViewID
-	viewArgs               []interface{}
+	viewID               ViewID
+	viewArgs             []interface{}
 	registerViewListener RegisterViewListener
 }
 
