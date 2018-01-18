@@ -418,6 +418,24 @@ func (refSet *refSet) registerRefStateListener(refStateListener RefStateListener
 	refSet.refStateListeners = append(refSet.refStateListeners, refStateListener)
 }
 
+func (refSet *refSet) unregisterRefStateListener(refStateListener RefStateListener) {
+	if refStateListener == nil {
+		return
+	}
+
+	log.Debugf("Unregistering ref state listener %T", refStateListener)
+
+	refSet.lock.Lock()
+	defer refSet.lock.Unlock()
+
+	for index, listener := range refSet.refStateListeners {
+		if refStateListener == listener {
+			refSet.refStateListeners = append(refSet.refStateListeners[:index], refSet.refStateListeners[index+1:]...)
+			break
+		}
+	}
+}
+
 func (refSet *refSet) updateHead(head Ref) {
 	refSet.lock.Lock()
 	defer refSet.lock.Unlock()
@@ -882,10 +900,34 @@ func (refCommitSets *refCommitSets) removeCommitFilter(ref Ref) (err error) {
 }
 
 func (refCommitSets *refCommitSets) registerCommitSetListener(commitSetListener CommitSetListener) {
+	if commitSetListener == nil {
+		return
+	}
+
+	log.Debugf("Registering CommitSetListener %T", commitSetListener)
+
 	refCommitSets.lock.Lock()
 	defer refCommitSets.lock.Unlock()
 
 	refCommitSets.commitSetListeners = append(refCommitSets.commitSetListeners, commitSetListener)
+}
+
+func (refCommitSets *refCommitSets) unregisterCommitSetListener(commitSetListener CommitSetListener) {
+	if commitSetListener == nil {
+		return
+	}
+
+	log.Debugf("Unregistering CommitSetListener %T", commitSetListener)
+
+	refCommitSets.lock.Lock()
+	defer refCommitSets.lock.Unlock()
+
+	for index, listener := range refCommitSets.commitSetListeners {
+		if commitSetListener == listener {
+			refCommitSets.commitSetListeners = append(refCommitSets.commitSetListeners[:index], refCommitSets.commitSetListeners[index+1:]...)
+			break
+		}
+	}
 }
 
 func (refCommitSets *refCommitSets) notifyCommitSetListenersCommitSetLoaded(ref Ref) {
@@ -971,6 +1013,24 @@ func (statusManager *statusManager) registerStatusListener(statusListener Status
 	defer statusManager.lock.Unlock()
 
 	statusManager.statusListeners = append(statusManager.statusListeners, statusListener)
+}
+
+func (statusManager *statusManager) unregisterStatusListener(statusListener StatusListener) {
+	if statusListener == nil {
+		return
+	}
+
+	log.Debugf("Unregistering status listener %T", statusListener)
+
+	statusManager.lock.Lock()
+	defer statusManager.lock.Unlock()
+
+	for index, listener := range statusManager.statusListeners {
+		if statusListener == listener {
+			statusManager.statusListeners = append(statusManager.statusListeners[:index], statusManager.statusListeners[index+1:]...)
+			break
+		}
+	}
 }
 
 // RepositoryData implements RepoData and stores all loaded repository data
@@ -1440,7 +1500,28 @@ func (repoData *RepositoryData) updateTrackingBranches(trackingBranchStates []*t
 	return
 }
 
-// HandleEvent does nothing
+// HandleEvent reacts to an event
 func (repoData *RepositoryData) HandleEvent(event Event) (err error) {
+	switch event.EventType {
+	case ViewRemovedEvent:
+		repoData.handleViewRemovedEvent(event)
+	}
+
 	return
+}
+
+func (repoData *RepositoryData) handleViewRemovedEvent(event Event) {
+	for _, view := range event.Args {
+		if statusListener, ok := view.(StatusListener); ok {
+			repoData.statusManager.unregisterStatusListener(statusListener)
+		}
+
+		if refStateListener, ok := view.(RefStateListener); ok {
+			repoData.refSet.unregisterRefStateListener(refStateListener)
+		}
+
+		if commitSetListener, ok := view.(CommitSetListener); ok {
+			repoData.refCommitSets.unregisterCommitSetListener(commitSetListener)
+		}
+	}
 }

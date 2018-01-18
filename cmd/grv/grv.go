@@ -59,6 +59,7 @@ type EventType int
 // The event types available
 const (
 	NoEvent EventType = iota
+	ViewRemovedEvent
 )
 
 // Event contains data that describes the reported event

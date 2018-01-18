@@ -411,6 +411,12 @@ func (commitView *CommitView) ViewID() ViewID {
 
 // RegisterCommitViewListener accepts a listener to be notified when a commit is selected
 func (commitView *CommitView) RegisterCommitViewListener(commitViewListener CommitViewListener) {
+	if commitViewListener == nil {
+		return
+	}
+
+	log.Debugf("Registering CommitViewListener %T", commitViewListener)
+
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
@@ -560,9 +566,35 @@ func (commitView *CommitView) lineNumber() (lineNumber uint) {
 	return lineNum
 }
 
-// HandleEvent does nothing
+// HandleEvent reacts to an event
 func (commitView *CommitView) HandleEvent(event Event) (err error) {
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
+	switch event.EventType {
+	case ViewRemovedEvent:
+		commitView.removeCommitViewListeners(event.Args)
+	}
+
 	return
+}
+
+func (commitView *CommitView) removeCommitViewListeners(views []interface{}) {
+	for _, view := range views {
+		if commitViewListener, ok := view.(CommitViewListener); ok {
+			commitView.removeCommitViewListener(commitViewListener)
+		}
+	}
+}
+
+func (commitView *CommitView) removeCommitViewListener(commitViewListener CommitViewListener) {
+	for index, listener := range commitView.commitViewListeners {
+		if commitViewListener == listener {
+			log.Debugf("Removing CommitViewListener %T", commitViewListener)
+			commitView.commitViewListeners = append(commitView.commitViewListeners[:index], commitView.commitViewListeners[index+1:]...)
+			break
+		}
+	}
 }
 
 // HandleAction checks if commit view supports this action and if it does executes it

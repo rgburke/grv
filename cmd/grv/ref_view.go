@@ -271,14 +271,25 @@ func isSelectableRenderedRef(renderedRefType RenderedRefType) bool {
 
 // RegisterRefListener adds a ref listener to be notified when a reference is selected
 func (refView *RefView) RegisterRefListener(refListener RefListener) {
+	if refListener == nil {
+		return
+	}
+
+	log.Debugf("Registering RefListener %T", refListener)
+
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
+
 	refView.refListeners = append(refView.refListeners, refListener)
 }
 
 func (refView *RefView) notifyRefListeners(ref Ref) (err error) {
-	log.Debugf("Notifying RefListeners of selected ref %v", ref.Name())
+	refListeners := append([]RefListener(nil), refView.refListeners...)
 
 	go func() {
-		for _, refListener := range refView.refListeners {
+		log.Debugf("Notifying RefListeners of selected ref %v", ref.Name())
+
+		for _, refListener := range refListeners {
 			if err = refListener.OnRefSelect(ref); err != nil {
 				break
 			}
@@ -680,9 +691,35 @@ func (refView *RefView) LineNumber() (lineNumber uint) {
 	return renderedRefNum
 }
 
-// HandleEvent does nothing
+// HandleEvent reacts to an event
 func (refView *RefView) HandleEvent(event Event) (err error) {
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
+
+	switch event.EventType {
+	case ViewRemovedEvent:
+		refView.removeRefListeners(event.Args)
+	}
+
 	return
+}
+
+func (refView *RefView) removeRefListeners(views []interface{}) {
+	for _, view := range views {
+		if refListener, ok := view.(RefListener); ok {
+			refView.removeRefListener(refListener)
+		}
+	}
+}
+
+func (refView *RefView) removeRefListener(refListener RefListener) {
+	for index, listener := range refView.refListeners {
+		if refListener == listener {
+			log.Debugf("Removing RefListener %T", refListener)
+			refView.refListeners = append(refView.refListeners[:index], refView.refListeners[index+1:]...)
+			break
+		}
+	}
 }
 
 // HandleAction checks if the rev view supports an action and executes it if so

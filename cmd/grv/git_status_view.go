@@ -48,9 +48,9 @@ type renderedStatusEntry struct {
 	StatusEntry      *StatusEntry
 }
 
-// GitStatusEntrySelectedListener is notified when either a file
+// GitStatusViewListener is notified when either a file
 // or a non-file entry is selected in the GitStatusView
-type GitStatusEntrySelectedListener interface {
+type GitStatusViewListener interface {
 	OnFileSelected(statusType StatusType, path string)
 	OnStageGroupSelected(statusType StatusType)
 	OnNoEntrySelected()
@@ -65,7 +65,7 @@ type GitStatusView struct {
 	viewPos                ViewPos
 	handlers               map[ActionType]gitStatusViewHandler
 	active                 bool
-	entrySelectedListeners []GitStatusEntrySelectedListener
+	gitStatusViewListeners []GitStatusViewListener
 	viewDimension          ViewDimension
 	viewSearch             *ViewSearch
 	lock                   sync.Mutex
@@ -156,9 +156,35 @@ func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 	return
 }
 
-// HandleEvent does nothing
+// HandleEvent reacts to an event
 func (gitStatusView *GitStatusView) HandleEvent(event Event) (err error) {
+	gitStatusView.lock.Lock()
+	defer gitStatusView.lock.Unlock()
+
+	switch event.EventType {
+	case ViewRemovedEvent:
+		gitStatusView.removeGitStatusViewListeners(event.Args)
+	}
+
 	return
+}
+
+func (gitStatusView *GitStatusView) removeGitStatusViewListeners(views []interface{}) {
+	for _, view := range views {
+		if gitStatusViewListener, ok := view.(GitStatusViewListener); ok {
+			gitStatusView.removeGitStatusViewListener(gitStatusViewListener)
+		}
+	}
+}
+
+func (gitStatusView *GitStatusView) removeGitStatusViewListener(gitStatusViewListener GitStatusViewListener) {
+	for index, listener := range gitStatusView.gitStatusViewListeners {
+		if gitStatusViewListener == listener {
+			log.Debugf("Removing GitStatusViewListener %T", gitStatusViewListener)
+			gitStatusView.gitStatusViewListeners = append(gitStatusView.gitStatusViewListeners[:index], gitStatusView.gitStatusViewListeners[index+1:]...)
+			break
+		}
+	}
 }
 
 // OnActiveChange updates whether this view is currently active
@@ -187,20 +213,25 @@ func (gitStatusView *GitStatusView) RenderHelpBar(*LineBuilder) (err error) {
 }
 
 // RegisterGitStatusFileSelectedListener registers a listener to be notified when the selected entry changes
-func (gitStatusView *GitStatusView) RegisterGitStatusFileSelectedListener(entrySelectedListener GitStatusEntrySelectedListener) {
+func (gitStatusView *GitStatusView) RegisterGitStatusFileSelectedListener(gitStatusViewListener GitStatusViewListener) {
+	if gitStatusViewListener == nil {
+		return
+	}
+
+	log.Debugf("Registering GitStatusViewListener %T", gitStatusViewListener)
+
 	gitStatusView.lock.Lock()
 	defer gitStatusView.lock.Unlock()
 
-	log.Debugf("Registering %T as a GitStatusFileSelectedListener", entrySelectedListener)
-	gitStatusView.entrySelectedListeners = append(gitStatusView.entrySelectedListeners, entrySelectedListener)
+	gitStatusView.gitStatusViewListeners = append(gitStatusView.gitStatusViewListeners, gitStatusViewListener)
 }
 
 func (gitStatusView *GitStatusView) notifyFileEntrySelected(renderedStatus *renderedStatusEntry) {
 	log.Debugf("Notifying git status file selected listeners that file is selected")
 
 	go func() {
-		for _, entrySelectedListener := range gitStatusView.entrySelectedListeners {
-			entrySelectedListener.OnFileSelected(renderedStatus.statusType, renderedStatus.StatusEntry.diffDelta.NewFile.Path)
+		for _, gitStatusViewListener := range gitStatusView.gitStatusViewListeners {
+			gitStatusViewListener.OnFileSelected(renderedStatus.statusType, renderedStatus.StatusEntry.diffDelta.NewFile.Path)
 		}
 	}()
 
@@ -211,8 +242,8 @@ func (gitStatusView *GitStatusView) notifyStageGroupSelected(statusType StatusTy
 	log.Debugf("Notifying git status file selected listeners that a stage group is selected")
 
 	go func() {
-		for _, entrySelectedListener := range gitStatusView.entrySelectedListeners {
-			entrySelectedListener.OnStageGroupSelected(statusType)
+		for _, gitStatusViewListener := range gitStatusView.gitStatusViewListeners {
+			gitStatusViewListener.OnStageGroupSelected(statusType)
 		}
 	}()
 
@@ -223,8 +254,8 @@ func (gitStatusView *GitStatusView) notifyNoEntrySelected() {
 	log.Debugf("Notifying git status file selected listeners that no entry is selected")
 
 	go func() {
-		for _, entrySelectedListener := range gitStatusView.entrySelectedListeners {
-			entrySelectedListener.OnNoEntrySelected()
+		for _, gitStatusViewListener := range gitStatusView.gitStatusViewListeners {
+			gitStatusViewListener.OnNoEntrySelected()
 		}
 	}()
 
@@ -395,16 +426,16 @@ func (gitStatusView *GitStatusView) createGitStatusViewListener() {
 		viewID: ViewDiff,
 		registerViewListener: func(observer interface{}) (err error) {
 			if observer == nil {
-				return fmt.Errorf("Invalid GitStatusEntrySelectedListener: %v", observer)
+				return fmt.Errorf("Invalid GitStatusViewListener: %v", observer)
 			}
 
-			if listener, ok := observer.(GitStatusEntrySelectedListener); ok {
+			if listener, ok := observer.(GitStatusViewListener); ok {
 				gitStatusView.RegisterGitStatusFileSelectedListener(listener)
 				gitStatusView.HandleAction(Action{
 					ActionType: ActionSelect,
 				})
 			} else {
-				err = fmt.Errorf("Observer is not a GitStatusEntrySelectedListener but has type %T", observer)
+				err = fmt.Errorf("Observer is not a GitStatusViewListener but has type %T", observer)
 			}
 
 			return
@@ -596,7 +627,7 @@ func centerGitStatusView(gitStatusView *GitStatusView, action Action) (err error
 }
 
 func selectDiffEntry(gitStatusView *GitStatusView, action Action) (err error) {
-	if len(gitStatusView.entrySelectedListeners) == 0 {
+	if len(gitStatusView.gitStatusViewListeners) == 0 {
 		gitStatusView.createGitStatusViewListener()
 	} else {
 		viewPos := gitStatusView.ViewPos()
