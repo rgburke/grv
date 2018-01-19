@@ -34,24 +34,28 @@ type historyViewPositionCalculator struct {
 // CalculateChildViewPositions calculates the child layout data for the history view
 func (calculator *historyViewPositionCalculator) CalculateChildViewPositions(viewLayoutData *ViewLayoutData) (childPositions []*ChildViewPosition) {
 	childPositions = calculator.historyView.CalculateChildViewPositions(viewLayoutData)
+	childPositionNum := uint(len(childPositions))
 
-	if !viewLayoutData.fullScreen && viewLayoutData.orientation == CoVertical && len(childPositions) > 0 {
+	if !viewLayoutData.fullScreen && viewLayoutData.orientation == CoVertical && childPositionNum > 0 {
 		refViewPosition := childPositions[0]
 
 		if refViewPosition.viewDimension.cols > hvMaxRefViewWidth {
-			cols := refViewPosition.viewDimension.cols - hvMaxRefViewWidth
-			extraColsPerView := cols / uint(len(childPositions)-1)
-			startCol := hvMaxRefViewWidth
+			if childPositionNum > 1 {
+				cols := refViewPosition.viewDimension.cols - hvMaxRefViewWidth
+				extraColsPerView := cols / (childPositionNum - 1)
+				startCol := hvMaxRefViewWidth
 
-			for i := 1; i < len(childPositions); i++ {
-				childPosition := childPositions[i]
-				childPosition.startCol = startCol
-				childPosition.viewDimension.cols += extraColsPerView
+				for i := 1; i < len(childPositions); i++ {
+					childPosition := childPositions[i]
+					childPosition.startCol = startCol
+					childPosition.viewDimension.cols += extraColsPerView
 
-				startCol += childPosition.viewDimension.cols
+					startCol += childPosition.viewDimension.cols
+				}
+
+				childPositions[childPositionNum-1].viewDimension.cols += cols % (childPositionNum - 1)
 			}
 
-			childPositions[len(childPositions)-1].viewDimension.cols += cols % uint(len(childPositions)-1)
 			refViewPosition.viewDimension.cols = hvMaxRefViewWidth
 		}
 	}

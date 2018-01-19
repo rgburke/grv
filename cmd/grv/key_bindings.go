@@ -43,6 +43,7 @@ const (
 	ActionNewTab
 	ActionAddView
 	ActionSplitView
+	ActionRemoveView
 )
 
 // Action represents a type of actions and its arguments to be executed
@@ -104,6 +105,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-add-tab>":               ActionNewTab,
 	"<grv-add-view>":              ActionAddView,
 	"<grv-split-view>":            ActionSplitView,
+	"<grv-remove-view>":           ActionRemoveView,
 }
 
 var defaultKeyBindings = map[ActionType]map[ViewID][]string{
@@ -180,6 +182,9 @@ var defaultKeyBindings = map[ActionType]map[ViewID][]string{
 	},
 	ActionPrevTab: {
 		ViewAll: {"gT"},
+	},
+	ActionRemoveView: {
+		ViewAll: {"q"},
 	},
 }
 

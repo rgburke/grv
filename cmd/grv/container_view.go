@@ -76,6 +76,7 @@ func NewContainerView(channels *Channels, config Config) *ContainerView {
 			ActionFullScreenView:   toggleFullScreenChildView,
 			ActionToggleViewLayout: toggleViewOrientation,
 			ActionSplitView:        splitView,
+			ActionRemoveView:       removeView,
 		},
 	}
 
@@ -429,6 +430,26 @@ func (containerView *ContainerView) activeChildView() AbstractView {
 	return containerView.childViews[containerView.activeViewIndex]
 }
 
+func (containerView *ContainerView) removeActiveChildView() {
+	if containerView.isEmpty() {
+		return
+	}
+
+	index := containerView.activeViewIndex
+	log.Debugf("Removing child view %T at index %v", containerView.activeChildView(), index)
+
+	containerView.childViews = append(containerView.childViews[:index], containerView.childViews[index+1:]...)
+	childViewNum := uint(len(containerView.childViews))
+
+	if index > 0 && index >= childViewNum {
+		if childViewNum > 0 {
+			containerView.activeViewIndex = childViewNum - 1
+		} else {
+			containerView.activeViewIndex = 0
+		}
+	}
+}
+
 // NextView changes the active view to the next child view
 // Return value is true if the active child view wrapped back to the first
 func (containerView *ContainerView) NextView() (wrapped bool) {
@@ -619,6 +640,32 @@ func splitView(containerView *ContainerView, action Action) (err error) {
 	case WindowViewCollection:
 		err = childView.HandleAction(action)
 	}
+
+	return
+}
+
+func removeView(containerView *ContainerView, action Action) (err error) {
+	if containerView.isEmpty() {
+		return
+	}
+
+	if childView, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
+		err = childView.HandleAction(action)
+
+		if childView.isEmpty() {
+			containerView.removeActiveChildView()
+		}
+	} else {
+		childView := containerView.activeChildView()
+		containerView.removeActiveChildView()
+		containerView.channels.ReportEvent(Event{
+			EventType: ViewRemovedEvent,
+			Args:      []interface{}{childView},
+		})
+	}
+
+	containerView.onActiveChange(true)
+	containerView.channels.UpdateDisplay()
 
 	return
 }

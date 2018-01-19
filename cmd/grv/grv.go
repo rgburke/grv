@@ -410,6 +410,7 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, in
 				}
 			}
 		case event := <-eventCh:
+			log.Infof("Received event: %v", event)
 			for _, eventListener := range grv.eventListeners {
 				if err := eventListener.HandleEvent(event); err != nil {
 					errorCh <- err
