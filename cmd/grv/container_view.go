@@ -629,13 +629,18 @@ func splitView(containerView *ContainerView, action Action) (err error) {
 
 	switch childView := containerView.activeChildView().(type) {
 	case WindowView:
-		newContainer := NewContainerView(containerView.channels, containerView.config)
-		newContainer.SetOrientation(orientation)
-		newContainer.AddChildViews(childView, newView)
-		newContainer.OnActiveChange(true)
-		containerView.childViews[containerView.activeViewIndex] = newContainer
-		containerView.channels.UpdateDisplay()
+		if len(containerView.childViews) < 2 {
+			containerView.addChildView(newView)
+			containerView.orientation = orientation
+		} else {
+			newContainer := NewContainerView(containerView.channels, containerView.config)
+			newContainer.SetOrientation(orientation)
+			newContainer.AddChildViews(childView, newView)
+			containerView.childViews[containerView.activeViewIndex] = newContainer
+			newContainer.OnActiveChange(true)
+		}
 
+		containerView.channels.UpdateDisplay()
 		log.Infof("Created orientation %v split between views %T and %T", orientation, childView, newView)
 	case WindowViewCollection:
 		err = childView.HandleAction(action)
