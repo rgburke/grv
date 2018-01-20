@@ -472,6 +472,8 @@ func (containerView *ContainerView) nextView() (wrapped bool) {
 			} else {
 				containerView.setActiveViewAndActivateFirstChild(containerView.activeViewIndex + 1)
 			}
+		} else {
+			wrapped = true
 		}
 	case *ContainerView:
 		if childView.NextView() {
@@ -508,6 +510,8 @@ func (containerView *ContainerView) prevView() (wrapped bool) {
 			} else {
 				containerView.setActiveViewAndActivateLastChild(containerView.activeViewIndex - 1)
 			}
+		} else {
+			wrapped = true
 		}
 	case *ContainerView:
 		if childView.PrevView() {
