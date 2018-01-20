@@ -41,6 +41,7 @@ const (
 	ActionNextTab
 	ActionPrevTab
 	ActionNewTab
+	ActionRemoveTab
 	ActionAddView
 	ActionSplitView
 	ActionRemoveView
@@ -103,6 +104,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-next-tab>":              ActionNextTab,
 	"<grv-prev-tab>":              ActionPrevTab,
 	"<grv-add-tab>":               ActionNewTab,
+	"<grv-remove-tab>":            ActionRemoveTab,
 	"<grv-add-view>":              ActionAddView,
 	"<grv-split-view>":            ActionSplitView,
 	"<grv-remove-view>":           ActionRemoveView,

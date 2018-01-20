@@ -323,6 +323,8 @@ func (config *Configuration) processCommand(command ConfigCommand, inputSource s
 		err = config.processQuitCommand()
 	case *NewTabCommand:
 		err = config.processNewTabCommand(command, inputSource)
+	case *RemoveTabCommand:
+		err = config.processRemoveTabCommand()
 	case *AddViewCommand:
 		err = config.processAddViewCommand(command, inputSource)
 	case *SplitViewCommand:
@@ -493,6 +495,12 @@ func (config *Configuration) processNewTabCommand(newTabCommand *NewTabCommand, 
 		Args:       []interface{}{newTabCommand.tabName.value},
 	})
 
+	return
+}
+
+func (config *Configuration) processRemoveTabCommand() (err error) {
+	log.Info("Processed remove tab command")
+	config.channels.DoAction(Action{ActionType: ActionRemoveTab})
 	return
 }
 

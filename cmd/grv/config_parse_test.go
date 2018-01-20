@@ -85,6 +85,17 @@ func (newTabCommandValues *NewTabCommandValues) Equal(command ConfigCommand) boo
 	return newTabCommandValues.tabName == other.tabName.value
 }
 
+type RemoveTabCommandValues struct{}
+
+func (removeTabCommandValues *RemoveTabCommandValues) Equal(command ConfigCommand) bool {
+	if command == nil {
+		return false
+	}
+
+	_, ok := command.(*RemoveTabCommand)
+	return ok
+}
+
 type AddViewCommandValues struct {
 	view string
 	args []string
@@ -169,6 +180,10 @@ func TestParseSingleCommand(t *testing.T) {
 			expectedCommand: &NewTabCommandValues{
 				tabName: "tabname",
 			},
+		},
+		{
+			input:           "rmtab",
+			expectedCommand: &RemoveTabCommandValues{},
 		},
 		{
 			input: "addview RefView",

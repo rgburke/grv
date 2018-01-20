@@ -8,15 +8,16 @@ import (
 )
 
 const (
-	setCommand     = "set"
-	themeCommand   = "theme"
-	mapCommand     = "map"
-	quitCommand    = "q"
-	addtabCommand  = "addtab"
-	addviewCommand = "addview"
-	vsplitCommand  = "vsplit"
-	hsplitCommand  = "hsplit"
-	splitCommand   = "split"
+	setCommand       = "set"
+	themeCommand     = "theme"
+	mapCommand       = "map"
+	quitCommand      = "q"
+	addtabCommand    = "addtab"
+	removetabCommand = "rmtab"
+	addviewCommand   = "addview"
+	vsplitCommand    = "vsplit"
+	hsplitCommand    = "hsplit"
+	splitCommand     = "split"
 )
 
 type commandConstructor func(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error)
@@ -65,6 +66,11 @@ type NewTabCommand struct {
 
 func (newTabCommand *NewTabCommand) configCommand() {}
 
+// RemoveTabCommand represents the command to remove the currently active tab
+type RemoveTabCommand struct{}
+
+func (removeTabCommand *RemoveTabCommand) configCommand() {}
+
 // AddViewCommand represents the command to add a new view
 // to the currently active view
 type AddViewCommand struct {
@@ -104,12 +110,14 @@ var commandDescriptors = map[string]*commandDescriptor{
 		constructor: mapCommandConstructor,
 	},
 	quitCommand: {
-		tokenTypes:  []ConfigTokenType{},
 		constructor: quitCommandConstructor,
 	},
 	addtabCommand: {
 		tokenTypes:  []ConfigTokenType{CtkWord},
 		constructor: newTabCommandConstructor,
+	},
+	removetabCommand: {
+		constructor: newRemoveTabCommandConstructor,
 	},
 	addviewCommand: {
 		varArgs:     true,
@@ -351,6 +359,10 @@ func newTabCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, t
 	return &NewTabCommand{
 		tabName: tokens[0],
 	}, nil
+}
+
+func newRemoveTabCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
+	return &RemoveTabCommand{}, nil
 }
 
 func addViewCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {

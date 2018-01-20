@@ -338,6 +338,12 @@ func (view *View) HandleAction(action Action) (err error) {
 
 		err = view.newTab(action)
 		return
+	case ActionRemoveTab:
+		view.lock.Lock()
+		defer view.lock.Unlock()
+
+		err = view.removeTab()
+		return
 	case ActionAddView:
 		view.lock.Lock()
 		defer view.lock.Unlock()
@@ -482,6 +488,23 @@ func (view *View) newTab(action Action) (err error) {
 		view.views = append(view.views, containerView)
 		view.activeViewPos = uint(len(view.views) - 1)
 		view.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func (view *View) removeTab() (err error) {
+	if len(view.views) <= 1 {
+		log.Info("No more tabs left. Exiting GRV")
+		view.channels.DoAction(Action{ActionType: ActionExit})
+		return
+	}
+
+	index := view.activeViewPos
+	view.views = append(view.views[:index], view.views[index+1:]...)
+
+	if index >= uint(len(view.views)) {
+		view.activeViewPos = uint(len(view.views) - 1)
 	}
 
 	return
