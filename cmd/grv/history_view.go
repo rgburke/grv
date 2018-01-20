@@ -37,26 +37,28 @@ func (calculator *historyViewPositionCalculator) CalculateChildViewPositions(vie
 	childPositionNum := uint(len(childPositions))
 
 	if !viewLayoutData.fullScreen && viewLayoutData.orientation == CoVertical && childPositionNum > 0 {
-		refViewPosition := childPositions[0]
+		if _, isRefView := calculator.historyView.childViews[0].(*RefView); isRefView {
+			refViewPosition := childPositions[0]
 
-		if refViewPosition.viewDimension.cols > hvMaxRefViewWidth {
-			if childPositionNum > 1 {
-				cols := refViewPosition.viewDimension.cols - hvMaxRefViewWidth
-				extraColsPerView := cols / (childPositionNum - 1)
-				startCol := hvMaxRefViewWidth
+			if refViewPosition.viewDimension.cols > hvMaxRefViewWidth {
+				if childPositionNum > 1 {
+					cols := refViewPosition.viewDimension.cols - hvMaxRefViewWidth
+					extraColsPerView := cols / (childPositionNum - 1)
+					startCol := hvMaxRefViewWidth
 
-				for i := 1; i < len(childPositions); i++ {
-					childPosition := childPositions[i]
-					childPosition.startCol = startCol
-					childPosition.viewDimension.cols += extraColsPerView
+					for i := 1; i < len(childPositions); i++ {
+						childPosition := childPositions[i]
+						childPosition.startCol = startCol
+						childPosition.viewDimension.cols += extraColsPerView
 
-					startCol += childPosition.viewDimension.cols
+						startCol += childPosition.viewDimension.cols
+					}
+
+					childPositions[childPositionNum-1].viewDimension.cols += cols % (childPositionNum - 1)
 				}
 
-				childPositions[childPositionNum-1].viewDimension.cols += cols % (childPositionNum - 1)
+				refViewPosition.viewDimension.cols = hvMaxRefViewWidth
 			}
-
-			refViewPosition.viewDimension.cols = hvMaxRefViewWidth
 		}
 	}
 
