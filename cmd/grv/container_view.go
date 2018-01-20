@@ -422,6 +422,14 @@ func (containerView *ContainerView) Title() string {
 	return containerView.title
 }
 
+// IsEmpty returns true if this container view has no child views
+func (containerView *ContainerView) IsEmpty() bool {
+	containerView.lock.Lock()
+	defer containerView.lock.Unlock()
+
+	return containerView.isEmpty()
+}
+
 func (containerView *ContainerView) isEmpty() bool {
 	return len(containerView.childViews) == 0
 }

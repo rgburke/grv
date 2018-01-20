@@ -342,7 +342,7 @@ func (view *View) HandleAction(action Action) (err error) {
 		view.lock.Lock()
 		defer view.lock.Unlock()
 
-		err = view.removeTab()
+		view.removeTab()
 		return
 	case ActionAddView:
 		view.lock.Lock()
@@ -352,6 +352,14 @@ func (view *View) HandleAction(action Action) (err error) {
 		return
 	case ActionSplitView:
 		if action, err = view.splitView(action); err != nil {
+			return
+		}
+	case ActionRemoveView:
+		view.lock.Lock()
+		tabRemoved := view.removeTabIfEmpty()
+		view.lock.Unlock()
+
+		if tabRemoved {
 			return
 		}
 	}
@@ -493,7 +501,7 @@ func (view *View) newTab(action Action) (err error) {
 	return
 }
 
-func (view *View) removeTab() (err error) {
+func (view *View) removeTab() {
 	if len(view.views) <= 1 {
 		log.Info("No more tabs left. Exiting GRV")
 		view.channels.DoAction(Action{ActionType: ActionExit})
@@ -507,7 +515,19 @@ func (view *View) removeTab() (err error) {
 		view.activeViewPos = uint(len(view.views) - 1)
 	}
 
+	view.onActiveChange(true)
+	view.channels.UpdateDisplay()
+
 	return
+}
+
+func (view *View) removeTabIfEmpty() bool {
+	if containerView, isContainerView := view.activeView().(*ContainerView); isContainerView && containerView.IsEmpty() {
+		view.removeTab()
+		return true
+	}
+
+	return false
 }
 
 func (view *View) createView(createViewArgs CreateViewArgs) (windowView WindowView, err error) {
