@@ -4,11 +4,13 @@ GOLINT=golint
 BINARY?=grv
 SOURCE_DIR=./cmd/grv
 BUILD_FLAGS=--tags static
+STATIC_BUILD_FLAGS=$(BUILD_FLAGS) -ldflags "-extldflags '-lncurses -lgpm -static'"
 
 GRV_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 GOPATH_DIR:=$(GRV_DIR)../../../..
 GOBIN_DIR:=$(GOPATH_DIR)/bin
 GIT2GO_DIR:=$(GOPATH_DIR)/src/gopkg.in/libgit2/git2go.v25
+GIT2GO_PATCH=git2go.v25.patch
 
 all: $(BINARY)
 
@@ -31,8 +33,17 @@ update-test:
 
 .PHONY: build-libgit2
 build-libgit2: update
+	if patch --dry-run -N -d $(GIT2GO_DIR) -p1 < $(GIT2GO_PATCH) >/dev/null; then \
+		patch -d $(GIT2GO_DIR) -p1 < $(GIT2GO_PATCH); \
+	fi
 	cd $(GIT2GO_DIR) && git submodule update --init;
 	make -C $(GIT2GO_DIR) install-static
+
+# Only tested on Ubuntu.
+# Requires dependencies static library versions to be present alongside dynamic ones
+.PHONY: static
+static: build-libgit2
+	$(GOCMD) build $(STATIC_BUILD_FLAGS) -o $(BINARY) $(SOURCE_DIR)
 
 .PHONY: test
 test: $(BINARY) update-test
