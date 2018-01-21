@@ -25,7 +25,9 @@ import "C"
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -78,6 +80,12 @@ var color256GreyComponents = []byte{
 	0x08, 0x12, 0x1c, 0x26, 0x30, 0x3a, 0x44, 0x4e,
 	0x58, 0x62, 0x6c, 0x76, 0x80, 0x8a, 0x94, 0x9e,
 	0xa8, 0xb2, 0xbc, 0xc6, 0xd0, 0xda, 0xe4, 0xee,
+}
+
+var selectSyscallID uintptr
+
+func init() {
+	selectSyscallID = determineSyscallID()
 }
 
 // Key is a raw code received from ncurses
@@ -186,7 +194,7 @@ func (ui *NCursesUI) Initialise() (err error) {
 
 	read, write, err := os.Pipe()
 	if err != nil {
-		return
+		return fmt.Errorf("OS Pipe failed: %v", err)
 	}
 
 	ui.pipe = signalPipe{
@@ -200,18 +208,18 @@ func (ui *NCursesUI) Initialise() (err error) {
 func (ui *NCursesUI) initialiseNCurses() (err error) {
 	stdscr, err := gc.Init()
 	if err != nil {
-		return
+		return fmt.Errorf("NCurses Init failed: %v", err)
 	}
 
 	ui.stdscr = &nCursesWindow{Window: stdscr}
 
 	if gc.HasColors() {
 		if e := gc.StartColor(); e != nil {
-			log.Errorf("Error calling StartColor: %v", e)
+			log.Errorf("NCurses StartColor failed: %v", e)
 		}
 
 		if e := gc.UseDefaultColors(); e != nil {
-			log.Errorf("Error calling UseDefaultColors: %v", e)
+			log.Errorf("NCurses UseDefaultColors failed: %v", e)
 		}
 
 		ui.maxColors = gc.Colors()
@@ -227,11 +235,11 @@ func (ui *NCursesUI) initialiseNCurses() (err error) {
 	gc.Raw(true)
 
 	if err = gc.Cursor(0); err != nil {
-		return
+		return fmt.Errorf("NCurses Cursor failed: %v", err)
 	}
 
 	if err = ui.stdscr.Keypad(true); err != nil {
-		return
+		return fmt.Errorf("NCurses Keypad failed: %v", err)
 	}
 
 	return
@@ -275,11 +283,12 @@ func (ui *NCursesUI) resize() (err error) {
 
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, os.Stdin.Fd(), C.TIOCGWINSZ, uintptr(unsafe.Pointer(&winSize)))
 	if errno != 0 {
-		return errno
+		err = errno
+		return fmt.Errorf("Ioctl system call failed: %v", err)
 	}
 
 	if err = gc.ResizeTerm(int(winSize.ws_row), int(winSize.ws_col)); err != nil {
-		return
+		return fmt.Errorf("NCurses ResizeTerm failed: %v", err)
 	}
 
 	return ui.initialiseNCurses()
@@ -313,7 +322,9 @@ func (ui *NCursesUI) Update(wins []*Window) (err error) {
 		return
 	}
 
-	err = gc.Update()
+	if err = gc.Update(); err != nil {
+		return fmt.Errorf("Ncurses Update failed: %v", err)
+	}
 
 	return
 }
@@ -358,13 +369,13 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 			log.Debugf("Creating new NCurses window %v with position row:%v,col:%v and dimensions rows:%v,cols:%v",
 				win.ID(), win.startRow, win.startCol, win.rows, win.cols)
 			if nwinRaw, err = gc.NewWindow(int(win.rows), int(win.cols), int(win.startRow), int(win.startCol)); err != nil {
-				return
+				return fmt.Errorf("Ncurses NewWindow failed: %v", err)
 			}
 
 			nwin = &nCursesWindow{Window: nwinRaw}
 
 			if err = nwin.Keypad(true); err != nil {
-				return
+				return fmt.Errorf("Ncurses Keypad failed: %v", err)
 			}
 
 			ui.windows[win] = nwin
@@ -385,8 +396,7 @@ func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
 				cursorWin = win
 			}
 		} else {
-			err = errors.New("Algorithm error")
-			return
+			return errors.New("Algorithm error")
 		}
 	}
 
@@ -400,6 +410,10 @@ func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
 		nwin := ui.windows[cursorWin]
 		nwin.Move(int(cursorWin.cursor.row), int(cursorWin.cursor.col))
 		nwin.NoutRefresh()
+	}
+
+	if err != nil {
+		return fmt.Errorf("NCurses Cursor failed: %v", err)
 	}
 
 	return
@@ -461,13 +475,14 @@ func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 			fdSet(pipeFd, rfds)
 			nullPointer := uintptr(unsafe.Pointer(nil))
 
-			if _, _, errno := syscall.Syscall6(syscall.SYS_SELECT, uintptr(pipeFd+1), uintptr(unsafe.Pointer(rfds)),
+			if _, _, errno := syscall.Syscall6(selectSyscallID, uintptr(pipeFd+1), uintptr(unsafe.Pointer(rfds)),
 				nullPointer, nullPointer, nullPointer, 0); errno != 0 {
 				err = errno
 			}
 
 			switch {
 			case err != nil:
+				err = fmt.Errorf("Select system call failed: %v", err)
 				return
 			case fdIsset(pipeFd, rfds):
 				if _, err := ui.pipe.read.Read(make([]byte, 8)); err != nil {
@@ -558,7 +573,7 @@ func (ui *NCursesUI) initialiseColorPairsFromTheme(theme Theme) {
 		log.Debugf("Initialising color pair for ThemeComponentID %v - %v:%v", themeComponentID, fgcolor, bgcolor)
 
 		if err := gc.InitPair(int16(themeComponentID), fgcolor, bgcolor); err != nil {
-			log.Errorf("Error when seting color pair %v:%v - %v", fgcolor, bgcolor, err)
+			log.Errorf("Ncurses InitPair failed. Error when seting color pair %v:%v - %v", fgcolor, bgcolor, err)
 		}
 	}
 }
@@ -653,4 +668,12 @@ func fdSet(fd int, set *syscall.FdSet) {
 
 func fdIsset(fd int, set *syscall.FdSet) bool {
 	return C.grv_FD_ISSET(C.int(fd), unsafe.Pointer(set)) != 0
+}
+
+func determineSyscallID() uintptr {
+	if runtime.GOOS == "linux" {
+		return syscall.SYS_PSELECT6
+	}
+
+	return syscall.SYS_SELECT
 }

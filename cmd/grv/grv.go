@@ -223,7 +223,7 @@ func (grv *GRV) Suspend() {
 
 	grv.ui.Suspend()
 	if err := syscall.Kill(0, syscall.SIGTSTP); err != nil {
-		log.Errorf("Error when attempting to suspend GRV: %v", err)
+		log.Errorf("Kill syscall failed. Error when attempting to suspend GRV: %v", err)
 	}
 }
 

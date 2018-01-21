@@ -4,7 +4,7 @@ GOLINT=golint
 BINARY?=grv
 SOURCE_DIR=./cmd/grv
 BUILD_FLAGS=--tags static
-STATIC_BUILD_FLAGS=$(BUILD_FLAGS) -ldflags "-extldflags '-lncurses -lgpm -static'"
+STATIC_BUILD_FLAGS=$(BUILD_FLAGS) -ldflags "-extldflags '-lncurses -ltinfo -lgpm -static'"
 
 GRV_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 GOPATH_DIR:=$(GRV_DIR)../../../..
