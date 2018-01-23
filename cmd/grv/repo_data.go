@@ -23,7 +23,7 @@ type OnRefsLoaded func([]Ref) error
 // CommitSetListener is notified of load and update events for commit sets
 type CommitSetListener interface {
 	OnCommitsLoaded(Ref)
-	OnCommitsUpdated(ref Ref, updateStartIndex, newCommitNum int)
+	OnCommitsUpdated(ref Ref)
 }
 
 // StatusListener is notified when git status has changed
@@ -85,7 +85,7 @@ type commitSet interface {
 	CommitStream() <-chan *Commit
 	SetLoading(loading bool)
 	CommitSetState() CommitSetState
-	Update(commonAncestor *Commit, update []*Commit) (updateStartIndex int)
+	Update([]*Commit)
 	Clone() commitSet
 }
 
@@ -248,98 +248,17 @@ func (filteredCommitSet *filteredCommitSet) CommitSetState() CommitSetState {
 	}
 }
 
-func (filteredCommitSet *filteredCommitSet) Update(commonAncestor *Commit, update []*Commit) (ancestorIndex int) {
+func (filteredCommitSet *filteredCommitSet) Update(commits []*Commit) {
 	filteredCommitSet.lock.Lock()
 	defer filteredCommitSet.lock.Unlock()
 
 	if filteredCommitSet.hasChild() {
-		return filteredCommitSet.child.Update(commonAncestor, update)
+		filteredCommitSet.child.Update(commits)
+		return
 	}
 
-	ancestorIndex = filteredCommitSet.commitIndex(commonAncestor)
-	log.Debugf("Common ancestor index: %v", ancestorIndex)
-
-	if ancestorIndex < 0 {
-		ancestorIndex = -(ancestorIndex + 1)
-	}
-
-	filteredCommitSet.commits = append(update, filteredCommitSet.commits[ancestorIndex:]...)
-
-	return ancestorIndex
-}
-
-func (filteredCommitSet *filteredCommitSet) commitIndex(commit *Commit) int {
-	commits := filteredCommitSet.commits
-
-	// Heuristic check
-	// The majority of the time branches are updated simply
-	// by fast forwarding to the latest commit. The common ancestor
-	// will be the first commit in the array in this case.
-	// Therefore do a quick check to see if the common ancestor
-	// appears within the first 5 commits
-	for i := 0; i < len(commits) && i < 5; i++ {
-		if commits[i].oid.Equal(commit.oid) {
-			return i
-		}
-	}
-
-	var low, high, mid int
-	targetDate := commit.commit.Author().When
-	high = len(commits) - 1
-	low = 0
-
-	for low <= high {
-		mid = (low + high) / 2
-		date := commits[mid].commit.Author().When
-
-		// commits are sorted by date descending
-		if targetDate.Before(date) {
-			low = mid + 1
-		} else if targetDate.After(date) {
-			high = mid - 1
-		} else {
-			break
-		}
-	}
-
-	if low > high {
-		return -(low + 1)
-	}
-
-	if commits[mid].oid.Equal(commit.oid) {
-		return mid
-	}
-
-	for i := 1; ; i++ {
-		lowIndex := mid - i
-		highIndex := mid + i
-
-		if lowIndex > -1 {
-			if commits[lowIndex].commit.Author().When.Equal(targetDate) {
-				if commits[lowIndex].oid.Equal(commit.oid) {
-					return lowIndex
-				}
-			} else {
-				lowIndex = -1
-			}
-		}
-
-		if highIndex < len(commits) {
-			if commits[highIndex].commit.Author().When.Equal(targetDate) {
-				if commits[highIndex].oid.Equal(commit.oid) {
-					return highIndex
-				}
-			} else {
-				highIndex = len(commits)
-			}
-		}
-
-		if lowIndex < 0 && highIndex >= len(commits) {
-			break
-		}
-	}
-
-	return -(mid + 1)
+	filteredCommitSet.commits = commits
+	filteredCommitSet.loading = false
 }
 
 func (filteredCommitSet *filteredCommitSet) Clone() commitSet {
@@ -945,18 +864,17 @@ func (refCommitSets *refCommitSets) notifyCommitSetListenersCommitSetLoaded(ref 
 	}()
 }
 
-func (refCommitSets *refCommitSets) notifyCommitSetListenersCommitSetUpdated(ref Ref, updateStartIndex, newCommitNum int) {
+func (refCommitSets *refCommitSets) notifyCommitSetListenersCommitSetUpdated(ref Ref) {
 	refCommitSets.lock.Lock()
 	defer refCommitSets.lock.Unlock()
 
 	commitSetListeners := append([]CommitSetListener(nil), refCommitSets.commitSetListeners...)
 
 	go func() {
-		log.Debugf("Notifying CommitSetListeners commits for ref %v have updated at index %v with %v commits",
-			ref.Name(), updateStartIndex, newCommitNum)
+		log.Debugf("Notifying CommitSetListeners commits for ref %v have updated", ref.Name())
 
 		for _, listener := range commitSetListeners {
-			listener.OnCommitsUpdated(ref, updateStartIndex, newCommitNum)
+			listener.OnCommitsUpdated(ref)
 		}
 	}()
 }
@@ -1438,42 +1356,26 @@ func (repoData *RepositoryData) processUpdatedRefs() {
 			continue
 		}
 
-		commonAncestor, err := repoData.repoDataLoader.MergeBase(newRef.Oid(), oldRef.Oid())
-		if err != nil {
-			log.Errorf("Unable to update commits for ref %v: %v", newRef.Name(), err)
-			continue
-		}
-		log.Debugf("Common ancestor is %v", commonAncestor)
-
-		commonAncestorCommit, err := repoData.repoDataLoader.Commit(commonAncestor)
-		if err != nil {
-			log.Errorf("Unable to load common ancestor commit with id %v: %v", commonAncestor, err)
-			continue
-		}
-
-		commitRange := fmt.Sprintf("%v..%v", oldRef.Oid(), newRef.Oid())
-		commitCh, err := repoData.repoDataLoader.CommitRange(commitRange)
+		commitCh, err := repoData.repoDataLoader.Commits(newRef.Oid())
 		if err != nil {
 			log.Errorf("Unable to load commits for range %v: %v", newRef.Name(), err)
 			continue
 		}
-		log.Debugf("Reading commits for range %v", commitRange)
+		log.Debugf("Reading commits for oid %v", newRef.Oid())
 
 		var commits []*Commit
 		for commit := range commitCh {
 			commits = append(commits, commit)
+
+			if repoData.channels.Exit() {
+				return
+			}
 		}
 
-		if repoData.channels.Exit() {
-			return
-		}
-
-		log.Debugf("Update ref %v with %v commits", newRef.Name(), len(commits))
-		updateStartIndex := commitSet.Update(commonAncestorCommit, commits)
-
+		log.Debugf("Updating ref %v with %v commits", newRef.Name(), len(commits))
+		commitSet.Update(commits)
 		repoData.refCommitSets.setCommitSet(newRef, commitSet)
-		repoData.refCommitSets.notifyCommitSetListenersCommitSetUpdated(newRef, updateStartIndex, len(commits))
-
+		repoData.refCommitSets.notifyCommitSetListenersCommitSetUpdated(newRef)
 		repoData.channels.UpdateDisplay()
 	}
 }

@@ -743,7 +743,6 @@ func (repoDataLoader *RepoDataLoader) Commits(oid *Oid) (<-chan *Commit, error) 
 		return nil, err
 	}
 
-	revWalk.Sorting(git.SortTime)
 	if err := revWalk.Push(oid.oid); err != nil {
 		return nil, err
 	}
@@ -760,7 +759,6 @@ func (repoDataLoader *RepoDataLoader) CommitRange(commitRange string) (<-chan *C
 		return nil, err
 	}
 
-	revWalk.Sorting(git.SortTime)
 	if err := revWalk.PushRange(commitRange); err != nil {
 		return nil, err
 	}

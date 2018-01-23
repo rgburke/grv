@@ -369,7 +369,7 @@ func (commitView *CommitView) OnCommitsLoaded(ref Ref) {
 }
 
 // OnCommitsUpdated adjusts the active row index to take account of the newly loaded commits
-func (commitView *CommitView) OnCommitsUpdated(ref Ref, updateStartIndex, newCommitNum int) {
+func (commitView *CommitView) OnCommitsUpdated(ref Ref) {
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
@@ -381,13 +381,11 @@ func (commitView *CommitView) OnCommitsUpdated(ref Ref, updateStartIndex, newCom
 		}
 
 		viewPos := commitView.ViewPos()
-		rowOffset := newCommitNum - updateStartIndex
-		activeRowIndex := MaxInt(int(viewPos.ActiveRowIndex())+rowOffset, 0)
+		if viewPos.ActiveRowIndex() > commitSetState.commitNum {
+			viewPos.SetActiveRowIndex(uint(MaxInt(0, int(commitSetState.commitNum)-1)))
+		}
 
-		log.Debugf("Adjusting active row index from %v -> %v for ref %v",
-			viewPos.ActiveRowIndex(), activeRowIndex, ref.Name())
-
-		if err := commitView.selectCommit(uint(activeRowIndex)); err != nil {
+		if err := commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
 			commitView.channels.ReportError(err)
 		}
 
