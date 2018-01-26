@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -80,12 +79,6 @@ var color256GreyComponents = []byte{
 	0x08, 0x12, 0x1c, 0x26, 0x30, 0x3a, 0x44, 0x4e,
 	0x58, 0x62, 0x6c, 0x76, 0x80, 0x8a, 0x94, 0x9e,
 	0xa8, 0xb2, 0xbc, 0xc6, 0xd0, 0xda, 0xe4, 0xee,
-}
-
-var selectSyscallID uintptr
-
-func init() {
-	selectSyscallID = determineSyscallID()
 }
 
 // Key is a raw code received from ncurses
@@ -475,7 +468,7 @@ func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 			fdSet(pipeFd, rfds)
 			nullPointer := uintptr(unsafe.Pointer(nil))
 
-			if _, _, errno := syscall.Syscall6(selectSyscallID, uintptr(pipeFd+1), uintptr(unsafe.Pointer(rfds)),
+			if _, _, errno := syscall.Syscall6(SelectSyscallID(), uintptr(pipeFd+1), uintptr(unsafe.Pointer(rfds)),
 				nullPointer, nullPointer, nullPointer, 0); errno != 0 {
 				err = errno
 			}
@@ -668,12 +661,4 @@ func fdSet(fd int, set *syscall.FdSet) {
 
 func fdIsset(fd int, set *syscall.FdSet) bool {
 	return C.grv_FD_ISSET(C.int(fd), unsafe.Pointer(set)) != 0
-}
-
-func determineSyscallID() uintptr {
-	if runtime.GOOS == "linux" {
-		return syscall.SYS_PSELECT6
-	}
-
-	return syscall.SYS_SELECT
 }
