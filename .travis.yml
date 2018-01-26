@@ -1,5 +1,16 @@
 language: go
 
+os:
+  - linux
+  - osx
+
+before_install:
+ - if [ "$TRAVIS_OS_NAME" = 'osx' ]; then
+     brew update;
+     brew install readline;
+     brew install cmake;
+   fi;
+
 addons:
   apt:
     packages:
