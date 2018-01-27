@@ -6,11 +6,16 @@ GRV - Git Repository Viewer - is a TUI capable of displaying Git Repository
 data. It provides a way to view refs, branches and diffs using vi like key
 bindings.
 
-GRV is comprised of three views:
+GRV is comprised of two main tabs
 
- - **Ref View** - Lists branches and tags.
- - **Commit View** - Lists commits for the selected ref.
- - **Diff View** - Displays the diff for the selected commit.
+ - **History View** - This tab is composed of:
+     - **Ref View** - Lists branches and tags.
+     - **Commit View** - Lists commits for the selected ref.
+     - **Diff View** - Displays the diff for the selected commit.
+
+ - **Status View** - This tab is composed of:
+     - **Git Status View** - Displays the status of the repository
+     - **Diff View** - Displays the diff of any selected modified files
 
 ## Command Line Arguments
 
@@ -29,6 +34,8 @@ GRV accepts the following command line arguments:
 
 The key bindings below are common to all views in GRV:
 
+### Movement
+
 ```
 k       or <Up>         Move up one line
 j       or <Down>       Move down one line
@@ -39,17 +46,38 @@ h       or <Left>       Scroll left
 gg                      Move to first line
 G                       Move to last line
 zz                      Center view
+```
+
+### Search
+
+```
 /                       Search forwards
 ?                       Search backwards
 n                       Move to next search match
 N                       Move to last search match
-:                       GRV Command prompt
+```
+
+### View Navigation
+
+```
 <Tab>   or <C-w>w       Move to next view
 <S-Tab> or <C-w>W       Move to previous view
 f       or <C-w>o       Toggle current view full screen
 <C-w>t                  Toggle views layout
+gt                      Move to next tab
+gT                      Move to previous tab
+q                       Close view (or close tab if empty)
+```
+
+### General
+
+```
+<Enter>                 Select item (opens listener view if none exists)
+:                       GRV Command prompt
 <C-z>                   Suspend GRV
 ```
+
+### View specific bindings
 
 Ref View specific key bindings:
 
@@ -77,6 +105,17 @@ on start up:
 
 GRV will attempt to process the first file which exists. Commands can also be
 specified within GRV using the command prompt `:`
+
+GRV supports configuration commands, some of which operate on views. When a
+view argument is required it will be one of the following values:
+
+```
+CommitView
+DiffView
+GitStatusView
+HistoryView
+RefView
+```
 
 Below are the set of configuration commands supported:
 
@@ -164,48 +203,63 @@ All.SearchMatch
 All.ActiveViewSelectedRow
 All.InactiveViewSelectedRow
 
-CommitView.Author
-CommitView.Date
+MainView.ActiveView
+MainView.NormalView
+
+RefView.Title
+RefView.Footer
+RefView.LocalBranchesHeader
+RefView.RemoteBranchesHeader
+RefView.LocalBranch
+RefView.Head
+RefView.RemoteBranch
+RefView.TagsHeader
+RefView.Tag
+
+CommitView.Title
 CommitView.Footer
-CommitView.LocalBranch
-CommitView.RemoteBranch
 CommitView.ShortOid
+CommitView.Date
+CommitView.Author
 CommitView.Summary
 CommitView.Tag
-CommitView.Title
+CommitView.LocalBranch
+CommitView.RemoteBranch
 
-DiffView.AddedLine
+DiffView.Title
+DiffView.Footer
+DiffView.Normal
 DiffView.CommitAuthor
 DiffView.CommitAuthorDate
 DiffView.CommitCommitter
 DiffView.CommitCommitterDate
 DiffView.CommitSummary
-DiffView.GitDiffExtendedHeader
-DiffView.GitDiffHeader
-DiffView.HunkHeader
-DiffView.HunkStart
-DiffView.Normal
-DiffView.RemovedLine
 DiffView.StatsFile
+DiffView.GitDiffHeader
+DiffView.GitDiffExtendedHeader
 DiffView.UnifiedDiffHeader
+DiffView.HunkStart
+DiffView.HunkHeader
+DiffView.AddedLine
+DiffView.RemovedLine
 
-ErrorView.Errors
-ErrorView.Footer
-ErrorView.Title
-
-HelpBarView.Normal
-HelpBarView.Special
-
-RefView.Footer
-RefView.LocalBranch
-RefView.LocalBranchesHeader
-RefView.RemoteBranch
-RefView.RemoteBranchesHeader
-RefView.Tag
-RefView.TagsHeader
-RefView.Title
+GitStatusView.StagedTitle
+GitStatusView.UnstagedTitle
+GitStatusView.UntrackedTitle
+GitStatusView.ConflictedTitle
+GitStatusView.StagedFile
+GitStatusView.UnstagedFile
+GitStatusView.UntrackedFile
+GitStatusView.ConflictedFile
 
 StatusBarView.Normal
+
+HelpBarView.Special
+HelpBarView.Normal
+
+ErrorView.Title
+ErrorView.Footer
+ErrorView.Errors
 ```
 
 ### map
@@ -226,19 +280,7 @@ map RefView a gg
 When pressing 'a' in the Ref View, the first line would then become the
 selected line, as 'gg' moves the cursor to the first line.
 
-The set of views that can be customised is:
-
-```
-All
-CommitView
-DiffView
-ErrorView
-HelpBarView
-HistoryView
-RefView
-StatusBarView
-StatusView
-```
+All is a valid view argument when a binding should apply to all views.
 
 GRV also has a text representation of actions that are independent of key
 bindings. For example, the following commands can be used to make the `<Up>`
@@ -252,30 +294,36 @@ map All <Down> <grv-prev-line>
 The set of actions available is:
 
 ```
-<grv-clear-search>
+<grv-nop>
 <grv-exit>
 <grv-suspend>
-<grv-filter-prompt>
-<grv-first-line>
-<grv-full-screen-view>
-<grv-last-line>
-<grv-next-line>
-<grv-next-page>
-<grv-next-view>
-<grv-nop>
-<grv-prev-line>
-<grv-prev-page>
-<grv-prev-view>
 <grv-prompt>
+<grv-search-prompt>
 <grv-reverse-search-prompt>
-<grv-scroll-left>
-<grv-scroll-right>
+<grv-filter-prompt>
+<grv-search>
+<grv-reverse-search>
 <grv-search-find-next>
 <grv-search-find-prev>
-<grv-search-prompt>
+<grv-clear-search>
+<grv-next-line>
+<grv-prev-line>
+<grv-next-page>
+<grv-prev-page>
+<grv-scroll-right>
+<grv-scroll-left>
+<grv-first-line>
+<grv-last-line>
 <grv-select>
-<grv-show-status>
+<grv-next-view>
+<grv-prev-view>
+<grv-full-screen-view>
 <grv-toggle-view-layout>
+<grv-center-view>
+<grv-next-tab>
+<grv-prev-tab>
+<grv-remove-tab>
+<grv-remove-view>
 ```
 
 ### q
@@ -285,6 +333,99 @@ keys:
 
 ```
 :q<Enter>
+```
+
+### addtab
+
+The addtab command creates a new named empty tab and switches to this new tab.
+The format of the command is:
+
+```
+addtab tabname
+```
+
+For example, to add a new tab titled "mycustomtab" the following command can
+be used:
+
+```
+addtab mycustomtab
+```
+
+### rmtab
+
+The rmtab removes the currently active tab. If the tab removed is the last tab
+then GRV will exit.
+
+### addview
+
+The addview command allows a view to be added to the currently active tab.
+The form of the command is:
+
+```
+addview view viewargs...
+```
+
+Each view accepts a different set of arguments. This is described in the
+table below:
+
+```
+ View          | Args
+ --------------+-----------
+ CommitView    | ref or oid
+ DiffView      | oid
+ GitStatusView | none
+ RefView       | none
+```
+
+Examples usages for each view are given below:
+
+```
+addview CommitView origin/master
+addview DiffView 4882ca9044661b49a26ae03ceb1be3a70d00c6a2
+addview GitStatusView
+addview RefView
+```
+
+### vsplit
+
+The vsplit command creates a vertical split between the currently selected
+view and the view specified in the command. The form of the command is:
+
+```
+vsplit view viewargs...
+```
+
+For example, to create a vertical split between the currently selected view
+and a CommitView displaying commits for master:
+
+```
+vsplit CommitView master
+```
+
+### hsplit
+
+The hsplit command creates a horizontal split between the currently selected
+view and the view specified in the command. The form of the command is:
+
+```
+hsplit view viewargs...
+```
+
+For example, to create a horizontal split between the currently selected view
+and a RefView:
+
+```
+hsplit RefView
+```
+
+### split
+
+The split command is similar to the vsplit and hsplit commands. It creates
+either a new vsplit or hsplit determined by the current dimensions of the
+active view. The form of the command is:
+
+```
+split view viewargs...
 ```
 
 ## Filter Query Language
