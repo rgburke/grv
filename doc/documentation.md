@@ -1,5 +1,28 @@
 # GRV Documentation
 
+## Table Of Contents
+
+ - [Introduction](#introduction)
+ - [Command Line Arguments](#command-line-arguments)
+ - [Key Bindings](#key-bindings)
+     * [Movement](#movement)
+     * [Search](#search)
+     * [View Navigation](#view-navigation)
+     * [General](#general)
+     * [View Specific Bindings](#view-specific-bindings)
+ - [Configuration](#configuration)
+     * [set](#set)
+     * [theme](#theme)
+     * [map](#map)
+     * [q](#q)
+     * [addtab](#addtab)
+     * [rmtab](#rmtab)
+     * [addview](#addview)
+     * [vsplit](#vsplit)
+     * [hsplit](#hsplit)
+     * [split](#split)
+ - [Filter Query Language](#filter-query-language)
+
 ## Introduction
 
 GRV - Git Repository Viewer - is a TUI capable of displaying Git Repository
@@ -77,7 +100,7 @@ q                       Close view (or close tab if empty)
 <C-z>                   Suspend GRV
 ```
 
-### View specific bindings
+### View Specific Bindings
 
 Ref View specific key bindings:
 
