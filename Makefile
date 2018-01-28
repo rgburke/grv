@@ -1,10 +1,16 @@
+VERSION=$(shell git describe --long --tags --dirty --always 2>/dev/null || echo 'Unknown')
+HEAD_OID=$(shell git rev-parse --short HEAD 2>/dev/null || echo 'Unknown')
+BUILD_DATETIME=$(shell date '+%Y-%m-%d %H:%M:%S %Z')
+
 GOCMD=go
 GOLINT=golint
 
 BINARY?=grv
 SOURCE_DIR=./cmd/grv
-BUILD_FLAGS=--tags static
-STATIC_BUILD_FLAGS=$(BUILD_FLAGS) -ldflags "-extldflags '-lncurses -ltinfo -lgpm -static'"
+LDFLAGS=-X 'main.version=$(VERSION)' -X 'main.headOid=$(HEAD_OID)' -X 'main.buildDateTime=$(BUILD_DATETIME)'
+STATIC_LDFLAGS=-extldflags '-lncurses -ltinfo -lgpm -static'
+BUILD_FLAGS=--tags static -ldflags "$(LDFLAGS)"
+STATIC_BUILD_FLAGS=--tags static -ldflags "$(LDFLAGS) $(STATIC_LDFLAGS)"
 
 GRV_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 GOPATH_DIR:=$(GRV_DIR)../../../..
