@@ -6,11 +6,17 @@ and style can be customised through configuration. A query language can
 be used to filter refs and commits, see the [Documentation](#documentation)
 section for more information.
 
-GRV is currently under development and not feature complete.
+![Screenshot](./doc/grv-history-view.png)
 
-## Demo
+More screenshots can be seen [here](doc/screenshots.md)
 
-![Demo](doc/grv.gif)
+## Features
+
+ - Commits and refs can be filtered using a query language.
+ - Changes to the repository are captured by monitoring the filesystem allowing the UI to be updated automatically.
+ - Organised as tabs and splits. Custom tabs and splits can be created using any combination of views.
+ - Vi like keybindings by default, key bindings can be customised.
+ - Custom themes can be created.
 
 ## Documentation
 

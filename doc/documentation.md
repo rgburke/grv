@@ -51,6 +51,8 @@ GRV accepts the following command line arguments:
         Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG] (default "NONE")
 -repoFilePath string
         Repository file path (default ".")
+-version
+        Print version
 ```
 
 ## Key Bindings
