@@ -22,6 +22,17 @@ More screenshots can be seen [here](doc/screenshots.md)
 
 Documentation for GRV is available [here](doc/documentation.md)
 
+## Download
+
+Static binaries are available for Linux (amd64 and arm32). For example, to use
+the amd64 binary run the following steps:
+
+```
+wget -O grv https://github.com/rgburke/grv/releases/download/v0.1.0/grv_v0.1.0_linux64
+chmod +x ./grv
+./grv -repoFilePath /path/to/repo
+```
+
 ## Build instructions
 
 GRV depends on the following libraries:
