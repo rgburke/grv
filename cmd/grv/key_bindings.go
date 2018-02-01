@@ -26,6 +26,8 @@ const (
 	ActionPrevLine
 	ActionNextPage
 	ActionPrevPage
+	ActionNextHalfPage
+	ActionPrevHalfPage
 	ActionScrollRight
 	ActionScrollLeft
 	ActionFirstLine
@@ -89,6 +91,8 @@ var actionKeys = map[string]ActionType{
 	"<grv-prev-line>":             ActionPrevLine,
 	"<grv-next-page>":             ActionNextPage,
 	"<grv-prev-page>":             ActionPrevPage,
+	"<grv-next-half-page>":        ActionNextHalfPage,
+	"<grv-prev-half-page>":        ActionPrevHalfPage,
 	"<grv-scroll-right>":          ActionScrollRight,
 	"<grv-scroll-left>":           ActionScrollLeft,
 	"<grv-first-line>":            ActionFirstLine,
@@ -140,6 +144,12 @@ var defaultKeyBindings = map[ActionType]map[ViewID][]string{
 	},
 	ActionPrevPage: {
 		ViewAll: {"<PageUp>", "<C-b>"},
+	},
+	ActionNextHalfPage: {
+		ViewAll: {"<C-d>"},
+	},
+	ActionPrevHalfPage: {
+		ViewAll: {"<C-u>"},
 	},
 	ActionScrollRight: {
 		ViewAll: {"<Right>", "l"},

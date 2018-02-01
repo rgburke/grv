@@ -118,16 +118,18 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 		viewPos:  NewViewPosition(),
 		diffs:    make(map[diffID]*diffLines),
 		handlers: map[ActionType]diffViewHandler{
-			ActionPrevLine:    moveUpDiffLine,
-			ActionNextLine:    moveDownDiffLine,
-			ActionPrevPage:    moveUpDiffPage,
-			ActionNextPage:    moveDownDiffPage,
-			ActionScrollRight: scrollDiffViewRight,
-			ActionScrollLeft:  scrollDiffViewLeft,
-			ActionFirstLine:   moveToFirstDiffLine,
-			ActionLastLine:    moveToLastDiffLine,
-			ActionCenterView:  centerDiffView,
-			ActionSelect:      selectDiffLine,
+			ActionPrevLine:     moveUpDiffLine,
+			ActionNextLine:     moveDownDiffLine,
+			ActionPrevPage:     moveUpDiffPage,
+			ActionNextPage:     moveDownDiffPage,
+			ActionPrevHalfPage: moveUpDiffHalfPage,
+			ActionNextHalfPage: moveDownDiffHalfPage,
+			ActionScrollRight:  scrollDiffViewRight,
+			ActionScrollLeft:   scrollDiffViewLeft,
+			ActionFirstLine:    moveToFirstDiffLine,
+			ActionLastLine:     moveToLastDiffLine,
+			ActionCenterView:   centerDiffView,
+			ActionSelect:       selectDiffLine,
 		},
 	}
 
@@ -615,6 +617,34 @@ func moveUpDiffPage(diffView *DiffView, action Action) (err error) {
 	viewPos := diffView.viewPos
 
 	if viewPos.MovePageUp(diffView.viewDimension.rows - 2) {
+		log.Debugf("Moving up one page in diff view")
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveDownDiffHalfPage(diffView *DiffView, action Action) (err error) {
+	diffLines, ok := diffView.diffs[diffView.activeDiff]
+	if !ok {
+		return
+	}
+
+	lineNum := uint(len(diffLines.lines))
+	viewPos := diffView.viewPos
+
+	if viewPos.MovePageDown(diffView.viewDimension.rows/2-2, lineNum) {
+		log.Debugf("Moving down one page in diff view")
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveUpDiffHalfPage(diffView *DiffView, action Action) (err error) {
+	viewPos := diffView.viewPos
+
+	if viewPos.MovePageUp(diffView.viewDimension.rows/2 - 2) {
 		log.Debugf("Moving up one page in diff view")
 		diffView.channels.UpdateDisplay()
 	}

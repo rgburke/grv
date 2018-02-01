@@ -60,6 +60,8 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 			ActionNextLine:     moveDownCommit,
 			ActionPrevPage:     moveUpCommitPage,
 			ActionNextPage:     moveDownCommitPage,
+			ActionPrevHalfPage: moveUpCommitHalfPage,
+			ActionNextHalfPage: moveDownCommitHalfPage,
 			ActionScrollRight:  scrollCommitViewRight,
 			ActionScrollLeft:   scrollCommitViewLeft,
 			ActionFirstLine:    moveToFirstCommit,
@@ -663,6 +665,35 @@ func moveDownCommitPage(commitView *CommitView, action Action) (err error) {
 
 	if viewPos.MovePageDown(commitView.viewDimension.rows-2, lineNumber) {
 		log.Debug("Moving down one page")
+		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
+			return
+		}
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveUpCommitHalfPage(commitView *CommitView, action Action) (err error) {
+	viewPos := commitView.ViewPos()
+
+	if viewPos.MovePageUp(commitView.viewDimension.rows/2 - 2) {
+		log.Debug("Moving up one half page")
+		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
+			return
+		}
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveDownCommitHalfPage(commitView *CommitView, action Action) (err error) {
+	lineNumber := commitView.lineNumber()
+	viewPos := commitView.ViewPos()
+
+	if viewPos.MovePageDown(commitView.viewDimension.rows/2-2, lineNumber) {
+		log.Debug("Moving down one half page")
 		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
 			return
 		}

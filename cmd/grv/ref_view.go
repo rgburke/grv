@@ -204,6 +204,8 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 			ActionNextLine:     moveDownRef,
 			ActionPrevPage:     moveUpRefPage,
 			ActionNextPage:     moveDownRefPage,
+			ActionPrevHalfPage: moveUpRefHalfPage,
+			ActionNextHalfPage: moveDownRefHalfPage,
 			ActionScrollRight:  scrollRefViewRight,
 			ActionScrollLeft:   scrollRefViewLeft,
 			ActionFirstLine:    moveToFirstRef,
@@ -832,6 +834,38 @@ func moveDownRefPage(refView *RefView, action Action) (err error) {
 			break
 		} else {
 			pageSize--
+		}
+	}
+
+	return
+}
+
+func moveUpRefHalfPage(refView *RefView, action Action) (err error) {
+	halfPageSize := refView.viewDimension.rows/2 - 2
+	viewPos := refView.viewPos
+
+	for viewPos.ActiveRowIndex() > 0 && halfPageSize > 0 {
+		if err = moveUpRef(refView, action); err != nil {
+			break
+		} else {
+			halfPageSize--
+		}
+	}
+
+	return
+}
+
+func moveDownRefHalfPage(refView *RefView, action Action) (err error) {
+	renderedRefs := refView.renderedRefs.RenderedRefs()
+	renderedRefNum := uint(len(renderedRefs))
+	halfPageSize := refView.viewDimension.rows/2 - 2
+	viewPos := refView.viewPos
+
+	for viewPos.ActiveRowIndex()+1 < renderedRefNum && halfPageSize > 0 {
+		if err = moveDownRef(refView, action); err != nil {
+			break
+		} else {
+			halfPageSize--
 		}
 	}
 

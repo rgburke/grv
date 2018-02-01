@@ -68,6 +68,8 @@ l       or <Right>      Scroll right
 h       or <Left>       Scroll left
 <C-b>   or <PageUp>     Move one page up
 <C-f>   or <PageDown>   Move one page down
+<C-u>                   Move half page up
+<C-d>                   Move half page down
 gg                      Move to first line
 G                       Move to last line
 zz                      Center view
