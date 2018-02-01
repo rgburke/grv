@@ -1,7 +1,9 @@
 package main
 
 // #cgo darwin CFLAGS: -I/usr/local/opt/readline/include
+// #cgo freebsd CFLAGS: -I/usr/local/include
 // #cgo darwin LDFLAGS: -L/usr/local/opt/readline/lib
+// #cgo freebsd LDFLAGS: -L/usr/local/lib
 // #cgo LDFLAGS: -lreadline -lhistory
 //
 // #include <stdio.h>

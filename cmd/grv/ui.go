@@ -2,8 +2,8 @@ package main
 
 // Link against ncurses with wide character support in case goncurses doesn't
 
-// #cgo !darwin pkg-config: ncursesw
-// #cgo darwin openbsd LDFLAGS: -lncurses
+// #cgo !darwin,!freebsd,!openbsd pkg-config: ncursesw
+// #cgo darwin freebsd openbsd LDFLAGS: -lncurses
 // #include <stdlib.h>
 // #include <locale.h>
 // #include <sys/select.h>

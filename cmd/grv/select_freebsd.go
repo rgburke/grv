@@ -1,5 +1,3 @@
-// +build !darwin,!freebsd
-
 package main
 
 import (
@@ -8,5 +6,5 @@ import (
 
 // SelectSyscallID returns the ID of the select system call
 func SelectSyscallID() uintptr {
-	return syscall.SYS_PSELECT6
+	return syscall.SYS_SELECT
 }
