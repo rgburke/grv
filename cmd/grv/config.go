@@ -41,7 +41,7 @@ type ConfigVariable string
 
 const (
 	// CfTabWidth stores the tab width variable name
-	CfTabWidth ConfigVariable = "tabWidth"
+	CfTabWidth ConfigVariable = "tabwidth"
 	// CfTheme stores the theme variable name
 	CfTheme ConfigVariable = "theme"
 )
