@@ -21,7 +21,7 @@ const (
 	dltDiffCommitAuthorDate
 	dltDiffCommitCommitter
 	dltDiffCommitCommitterDate
-	dltDiffCommitSummary
+	dltDiffCommitMessage
 	dltDiffStatsFile
 	dltGitDiffHeader
 	dltGitDiffExtendedHeader
@@ -41,7 +41,7 @@ var diffLineThemeComponentID = map[diffLineType]ThemeComponentID{
 	dltDiffCommitAuthorDate:    CmpDiffviewDifflineDiffCommitAuthorDate,
 	dltDiffCommitCommitter:     CmpDiffviewDifflineDiffCommitCommitter,
 	dltDiffCommitCommitterDate: CmpDiffviewDifflineDiffCommitCommitterDate,
-	dltDiffCommitSummary:       CmpDiffviewDifflineDiffCommitSummary,
+	dltDiffCommitMessage:       CmpDiffviewDifflineDiffCommitMessage,
 	dltDiffStatsFile:           CmpDiffviewDifflineDiffStatsFile,
 	dltGitDiffHeader:           CmpDiffviewDifflineGitDiffHeader,
 	dltGitDiffExtendedHeader:   CmpDiffviewDifflineGitDiffExtendedHeader,
@@ -433,14 +433,20 @@ func (diffView *DiffView) generateDiffLinesForCommit(commit *Commit) (lines []*d
 		&diffLineData{
 			lineType: dltNormal,
 		},
-		&diffLineData{
-			line:     commit.commit.Summary(),
-			lineType: dltDiffCommitSummary,
-		},
-		&diffLineData{
-			lineType: dltNormal,
-		},
 	)
+
+	commitMessageScanner := bufio.NewScanner(strings.NewReader(commit.commit.Message()))
+
+	for commitMessageScanner.Scan() {
+		lines = append(lines, &diffLineData{
+			line:     commitMessageScanner.Text(),
+			lineType: dltDiffCommitMessage,
+		})
+	}
+
+	lines = append(lines, &diffLineData{
+		lineType: dltNormal,
+	})
 
 	diff, err := diffView.repoData.DiffCommit(commit)
 	if err != nil {

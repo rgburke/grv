@@ -260,7 +260,7 @@ DiffView.CommitAuthor
 DiffView.CommitAuthorDate
 DiffView.CommitCommitter
 DiffView.CommitCommitterDate
-DiffView.CommitSummary
+DiffView.CommitMessage
 DiffView.StatsFile
 DiffView.GitDiffHeader
 DiffView.GitDiffExtendedHeader

@@ -43,7 +43,7 @@ const (
 	CmpDiffviewDifflineDiffCommitAuthorDate
 	CmpDiffviewDifflineDiffCommitCommitter
 	CmpDiffviewDifflineDiffCommitCommitterDate
-	CmpDiffviewDifflineDiffCommitSummary
+	CmpDiffviewDifflineDiffCommitMessage
 	CmpDiffviewDifflineDiffStatsFile
 	CmpDiffviewDifflineGitDiffHeader
 	CmpDiffviewDifflineGitDiffExtendedHeader

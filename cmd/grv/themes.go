@@ -92,7 +92,7 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorYellow),
 			},
-			CmpDiffviewDifflineDiffCommitSummary: {
+			CmpDiffviewDifflineDiffCommitMessage: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},
@@ -316,7 +316,7 @@ func NewColdTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
 			},
-			CmpDiffviewDifflineDiffCommitSummary: {
+			CmpDiffviewDifflineDiffCommitMessage: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorMagenta),
 			},
@@ -541,7 +541,7 @@ func NewSolarizedTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(136),
 			},
-			CmpDiffviewDifflineDiffCommitSummary: {
+			CmpDiffviewDifflineDiffCommitMessage: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},

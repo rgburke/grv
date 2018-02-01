@@ -109,7 +109,7 @@ var themeComponents = map[string]ThemeComponentID{
 	cfDiffView + ".CommitAuthorDate":      CmpDiffviewDifflineDiffCommitAuthorDate,
 	cfDiffView + ".CommitCommitter":       CmpDiffviewDifflineDiffCommitCommitter,
 	cfDiffView + ".CommitCommitterDate":   CmpDiffviewDifflineDiffCommitCommitterDate,
-	cfDiffView + ".CommitSummary":         CmpDiffviewDifflineDiffCommitSummary,
+	cfDiffView + ".CommitMessage":         CmpDiffviewDifflineDiffCommitMessage,
 	cfDiffView + ".StatsFile":             CmpDiffviewDifflineDiffStatsFile,
 	cfDiffView + ".GitDiffHeader":         CmpDiffviewDifflineGitDiffHeader,
 	cfDiffView + ".GitDiffExtendedHeader": CmpDiffviewDifflineGitDiffExtendedHeader,
