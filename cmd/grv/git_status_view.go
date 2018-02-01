@@ -78,16 +78,18 @@ func NewGitStatusView(repoData RepoData, channels *Channels) *GitStatusView {
 		channels: channels,
 		viewPos:  NewViewPosition(),
 		handlers: map[ActionType]gitStatusViewHandler{
-			ActionPrevLine:    moveUpGitStatusEntry,
-			ActionNextLine:    moveDownGitStatusEntry,
-			ActionPrevPage:    moveUpGitStatusPage,
-			ActionNextPage:    moveDownGitStatusPage,
-			ActionScrollRight: scrollGitStatusViewRight,
-			ActionScrollLeft:  scrollGitStatusViewLeft,
-			ActionFirstLine:   moveToFirstGitStatusEntry,
-			ActionLastLine:    moveToLastGitStatusEntry,
-			ActionCenterView:  centerGitStatusView,
-			ActionSelect:      selectDiffEntry,
+			ActionPrevLine:     moveUpGitStatusEntry,
+			ActionNextLine:     moveDownGitStatusEntry,
+			ActionPrevPage:     moveUpGitStatusPage,
+			ActionNextPage:     moveDownGitStatusPage,
+			ActionPrevHalfPage: moveUpGitStatusHalfPage,
+			ActionNextHalfPage: moveDownGitStatusHalfPage,
+			ActionScrollRight:  scrollGitStatusViewRight,
+			ActionScrollLeft:   scrollGitStatusViewLeft,
+			ActionFirstLine:    moveToFirstGitStatusEntry,
+			ActionLastLine:     moveToLastGitStatusEntry,
+			ActionCenterView:   centerGitStatusView,
+			ActionSelect:       selectDiffEntry,
 		},
 	}
 
@@ -552,6 +554,51 @@ func moveDownGitStatusPage(gitStatusView *GitStatusView, action Action) (err err
 		}
 
 		pageSize--
+	}
+
+	if err = gitStatusView.selectEntry(viewPos.ActiveRowIndex()); err != nil {
+		return
+	}
+
+	log.Debug("Moved down one page")
+	gitStatusView.channels.UpdateDisplay()
+
+	return
+}
+
+func moveUpGitStatusHalfPage(gitStatusView *GitStatusView, action Action) (err error) {
+	halfPageSize := gitStatusView.viewDimension.rows/2 - 2
+	viewPos := gitStatusView.ViewPos()
+
+	for viewPos.ActiveRowIndex() > 0 && halfPageSize > 0 {
+		if err = moveUpGitStatusEntry(gitStatusView, action); err != nil {
+			return
+		}
+
+		halfPageSize--
+	}
+
+	if err = gitStatusView.selectEntry(viewPos.ActiveRowIndex()); err != nil {
+		return
+	}
+
+	log.Debug("Moved up one half page")
+	gitStatusView.channels.UpdateDisplay()
+
+	return
+}
+
+func moveDownGitStatusHalfPage(gitStatusView *GitStatusView, action Action) (err error) {
+	halfPageSize := gitStatusView.viewDimension.rows/2 - 2
+	viewPos := gitStatusView.ViewPos()
+	renderedStatusNum := gitStatusView.lineNumber()
+
+	for viewPos.ActiveRowIndex()+1 < renderedStatusNum && halfPageSize > 0 {
+		if err = moveDownGitStatusEntry(gitStatusView, action); err != nil {
+			return
+		}
+
+		halfPageSize--
 	}
 
 	if err = gitStatusView.selectEntry(viewPos.ActiveRowIndex()); err != nil {
