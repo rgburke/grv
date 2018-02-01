@@ -42,7 +42,11 @@ GRV depends on the following libraries:
  - libcurl
  - cmake (to build libgit2)
 
-Building GRV on OSX requires homebrew, and for readline to be installed using homebrew.
+Building GRV on OSX requires homebrew, and for `readline` and `pkg-config` to be installed using homebrew:
+
+```
+brew install readline pkg-config
+```
 
 To install GRV run:
 
