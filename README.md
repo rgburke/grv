@@ -35,7 +35,7 @@ chmod +x ./grv
 
 ## Build instructions
 
-GRV depends on the following libraries:
+Go version 1.5 or later is required. GRV depends on the following libraries:
 
  - libncursesw
  - libreadline
