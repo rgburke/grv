@@ -259,7 +259,7 @@ func (diffView *DiffView) renderEmptyView(win RenderWindow) (err error) {
 	return
 }
 
-// RenderHelpBar does nothing
+// RenderHelpBar renders help information for the diff view
 func (diffView *DiffView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
@@ -274,12 +274,15 @@ func (diffView *DiffView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	}
 
 	lineIndex := diffView.viewPos.ActiveRowIndex()
-	line := diffLines.lines[lineIndex]
 
-	if line.lineType == dltDiffStatsFile {
-		RenderKeyBindingHelp(diffView.ViewID(), lineBuilder, []ActionMessage{
-			{action: ActionSelect, message: "Jump to file diff"},
-		})
+	if lineIndex < uint(len(diffLines.lines)) {
+		line := diffLines.lines[lineIndex]
+
+		if line.lineType == dltDiffStatsFile {
+			RenderKeyBindingHelp(diffView.ViewID(), lineBuilder, []ActionMessage{
+				{action: ActionSelect, message: "Jump to file diff"},
+			})
+		}
 	}
 
 	return
