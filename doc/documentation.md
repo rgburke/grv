@@ -171,6 +171,16 @@ set tabwidth 4
 set theme mytheme
 ```
 
+GRV currently has 3 built in themes available:
+ - solarized
+ - classic
+ - cold
+
+The solarized theme is the default theme for GRV and uses the colours
+specified [here](http://ethanschoonover.com/solarized). This theme does not 
+respect the terminals colour palette. The classic and cold themes do
+respect the terminals colour palette.
+
 ### theme
 
 The theme command allows a custom theme to be defined. This theme can then be
