@@ -1008,25 +1008,27 @@ func (repoData *RepositoryData) processPath(repoPath string) (processedPath stri
 		return
 	}
 
-	for {
-		gitDirPath := filepath.Join(path, GitRepositoryDirectoryName)
-		log.Debugf("gitDirPath: %v", gitDirPath)
+	if processedPath = os.Getenv("GIT_DIR"); processedPath == "" {
+		for {
+			gitDirPath := filepath.Join(path, GitRepositoryDirectoryName)
+			log.Debugf("gitDirPath: %v", gitDirPath)
 
-		if _, err = os.Stat(gitDirPath); err != nil {
-			if !os.IsNotExist(err) {
+			if _, err = os.Stat(gitDirPath); err != nil {
+				if !os.IsNotExist(err) {
+					break
+				}
+			} else {
+				processedPath = gitDirPath
 				break
 			}
-		} else {
-			processedPath = gitDirPath
-			break
-		}
 
-		if path == "/" {
-			err = fmt.Errorf("Unable to find a git repository in %v or any of its parent directories", repoPath)
-			break
-		}
+			if path == "/" {
+				err = fmt.Errorf("Unable to find a git repository in %v or any of its parent directories", repoPath)
+				break
+			}
 
-		path = filepath.Dir(path)
+			path = filepath.Dir(path)
+		}
 	}
 
 	return
