@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	mnRepoFilePathDefault = "."
-	mnLogFilePathDefault  = "grv.log"
+	mnRepoFilePathDefault     = "."
+	mnWorkTreeFilePathDefault = ""
+	mnLogFilePathDefault      = "grv.log"
 	// MnLogLevelDefault is the default log level for grv
 	MnLogLevelDefault = "NONE"
 )
@@ -22,10 +23,11 @@ var (
 )
 
 type grvArgs struct {
-	repoFilePath string
-	logLevel     string
-	logFilePath  string
-	version      bool
+	repoFilePath     string
+	workTreeFilePath string
+	logLevel         string
+	logFilePath      string
+	version          bool
 }
 
 func main() {
@@ -40,7 +42,7 @@ func main() {
 	log.Debugf("Creating GRV instance")
 	grv := NewGRV()
 
-	if err := grv.Initialise(args.repoFilePath); err != nil {
+	if err := grv.Initialise(args.repoFilePath, args.workTreeFilePath); err != nil {
 		fmt.Fprintf(os.Stderr, "FATAL: Unable to initialise grv: %v\n", err)
 		grv.Free()
 		log.Fatal(err)
@@ -55,6 +57,7 @@ func main() {
 
 func parseArgs() *grvArgs {
 	repoFilePathPtr := flag.String("repoFilePath", mnRepoFilePathDefault, "Repository file path")
+	workTreeFilePathPtr := flag.String("workTreeFilePath", mnWorkTreeFilePathDefault, "Work tree file path")
 	logLevelPtr := flag.String("logLevel", MnLogLevelDefault, "Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG]")
 	logFilePathPtr := flag.String("logFile", mnLogFilePathDefault, "Log file path")
 	versionPtr := flag.Bool("version", false, "Print version")
@@ -62,10 +65,11 @@ func parseArgs() *grvArgs {
 	flag.Parse()
 
 	return &grvArgs{
-		repoFilePath: *repoFilePathPtr,
-		logLevel:     *logLevelPtr,
-		logFilePath:  *logFilePathPtr,
-		version:      *versionPtr,
+		repoFilePath:     *repoFilePathPtr,
+		workTreeFilePath: *workTreeFilePathPtr,
+		logLevel:         *logLevelPtr,
+		logFilePath:      *logFilePathPtr,
+		version:          *versionPtr,
 	}
 }
 

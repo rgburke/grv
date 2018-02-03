@@ -180,10 +180,10 @@ func NewGRV() *GRV {
 }
 
 // Initialise sets up all the components of GRV
-func (grv *GRV) Initialise(repoPath string) (err error) {
+func (grv *GRV) Initialise(repoPath, workTreePath string) (err error) {
 	log.Info("Initialising GRV")
 
-	if err = grv.repoData.Initialise(repoPath); err != nil {
+	if err = grv.repoData.Initialise(repoPath, workTreePath); err != nil {
 		return
 	}
 
