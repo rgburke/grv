@@ -13,7 +13,7 @@ BUILD_FLAGS=--tags static -ldflags "$(LDFLAGS)"
 STATIC_BUILD_FLAGS=--tags static -ldflags "$(LDFLAGS) $(STATIC_LDFLAGS)"
 
 GRV_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-GOPATH_DIR:=$(GRV_DIR)../../../..
+GOPATH_DIR:=$(shell go env GOPATH)
 GOBIN_DIR:=$(GOPATH_DIR)/bin
 GIT2GO_DIR:=$(GOPATH_DIR)/src/gopkg.in/libgit2/git2go.v25
 GIT2GO_PATCH=git2go.v25.patch
