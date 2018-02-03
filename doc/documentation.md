@@ -53,6 +53,8 @@ GRV accepts the following command line arguments:
         Repository file path (default ".")
 -version
         Print version
+-workTreeFilePath string
+        Work tree file path
 ```
 
 ## Key Bindings
