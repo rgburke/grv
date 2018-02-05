@@ -1,0 +1,46 @@
+[submodule "cmd/grv/vendor/github.com/Sirupsen/logrus"]
+	path = cmd/grv/vendor/github.com/Sirupsen/logrus
+	url = https://github.com/Sirupsen/logrus
+[submodule "cmd/grv/vendor/github.com/bradfitz/slice"]
+	path = cmd/grv/vendor/github.com/bradfitz/slice
+	url = https://github.com/bradfitz/slice
+[submodule "cmd/grv/vendor/github.com/gobwas/glob"]
+	path = cmd/grv/vendor/github.com/gobwas/glob
+	url = https://github.com/gobwas/glob
+[submodule "cmd/grv/vendor/github.com/davecgh/go-spew"]
+	path = cmd/grv/vendor/github.com/davecgh/go-spew
+	url = https://github.com/davecgh/go-spew
+[submodule "cmd/grv/vendor/github.com/mattn/go-runewidth"]
+	path = cmd/grv/vendor/github.com/mattn/go-runewidth
+	url = https://github.com/mattn/go-runewidth
+[submodule "cmd/grv/vendor/github.com/pmezard/go-difflib"]
+	path = cmd/grv/vendor/github.com/pmezard/go-difflib
+	url = https://github.com/pmezard/go-difflib
+[submodule "cmd/grv/vendor/github.com/rgburke/goncurses"]
+	path = cmd/grv/vendor/github.com/rgburke/goncurses
+	url = https://github.com/rgburke/goncurses
+[submodule "cmd/grv/vendor/github.com/rjeczalik/notify"]
+	path = cmd/grv/vendor/github.com/rjeczalik/notify
+	url = https://github.com/rjeczalik/notify
+[submodule "cmd/grv/vendor/github.com/stretchr/objx"]
+	path = cmd/grv/vendor/github.com/stretchr/objx
+	url = https://github.com/stretchr/objx
+[submodule "cmd/grv/vendor/github.com/stretchr/testify"]
+	path = cmd/grv/vendor/github.com/stretchr/testify
+	url = https://github.com/stretchr/testify
+[submodule "cmd/grv/vendor/github.com/tchap/go-patricia"]
+	path = cmd/grv/vendor/github.com/tchap/go-patricia
+	url = https://github.com/tchap/go-patricia
+[submodule "cmd/grv/vendor/go4.org"]
+	path = cmd/grv/vendor/go4.org
+	url = https://github.com/camlistore/go4
+[submodule "cmd/grv/vendor/golang.org/x/crypto"]
+	path = cmd/grv/vendor/golang.org/x/crypto
+	url = https://go.googlesource.com/crypto
+[submodule "cmd/grv/vendor/golang.org/x/sys"]
+	path = cmd/grv/vendor/golang.org/x/sys
+	url = https://go.googlesource.com/sys
+[submodule "cmd/grv/vendor/gopkg.in/libgit2/git2go.v25"]
+	path = cmd/grv/vendor/gopkg.in/libgit2/git2go.v25
+	url = https://gopkg.in/libgit2/git2go.v25
+	ignore = dirty
