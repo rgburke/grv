@@ -1,27 +1,27 @@
-VERSION=$(shell git describe --long --tags --dirty --always 2>/dev/null || echo 'Unknown')
-HEAD_OID=$(shell git rev-parse --short HEAD 2>/dev/null || echo 'Unknown')
-BUILD_DATETIME=$(shell date '+%Y-%m-%d %H:%M:%S %Z')
+GRV_VERSION=$(shell git describe --long --tags --dirty --always 2>/dev/null || echo 'Unknown')
+GRV_HEAD_OID=$(shell git rev-parse --short HEAD 2>/dev/null || echo 'Unknown')
+GRV_BUILD_DATETIME=$(shell date '+%Y-%m-%d %H:%M:%S %Z')
 
 GOCMD=go
 GOLINT=golint
 
 BINARY?=grv
-SOURCE_DIR=./cmd/grv
-LDFLAGS=-X 'main.version=$(VERSION)' -X 'main.headOid=$(HEAD_OID)' -X 'main.buildDateTime=$(BUILD_DATETIME)'
-STATIC_LDFLAGS=-extldflags '-lncurses -ltinfo -lgpm -static'
-BUILD_FLAGS=--tags static -ldflags "$(LDFLAGS)"
-STATIC_BUILD_FLAGS=--tags static -ldflags "$(LDFLAGS) $(STATIC_LDFLAGS)"
+GRV_SOURCE_DIR=./cmd/grv
+GRV_LDFLAGS=-X 'main.version=$(GRV_VERSION)' -X 'main.headOid=$(GRV_HEAD_OID)' -X 'main.buildDateTime=$(GRV_BUILD_DATETIME)'
+GRV_STATIC_LDFLAGS=-extldflags '-lncurses -ltinfo -lgpm -static'
+GRV_BUILD_FLAGS=--tags static -ldflags "$(GRV_LDFLAGS)"
+GRV_STATIC_BUILD_FLAGS=--tags static -ldflags "$(GRV_LDFLAGS) $(GRV_STATIC_LDFLAGS)"
 
 GRV_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 GOPATH_DIR:=$(shell go env GOPATH)
 GOBIN_DIR:=$(GOPATH_DIR)/bin
-GIT2GO_DIR:=$(SOURCE_DIR)/vendor/gopkg.in/libgit2/git2go.v25
+GIT2GO_DIR:=$(GRV_SOURCE_DIR)/vendor/gopkg.in/libgit2/git2go.v25
 GIT2GO_PATCH=git2go.v25.patch
 
 all: $(BINARY)
 
 $(BINARY): build-libgit2
-	$(GOCMD) build $(BUILD_FLAGS) -o $(BINARY) $(SOURCE_DIR)
+	$(GOCMD) build $(GRV_BUILD_FLAGS) -o $(BINARY) $(GRV_SOURCE_DIR)
 
 .PHONY: install
 install: $(BINARY)
@@ -49,13 +49,13 @@ build-libgit2: update
 # Requires dependencies static library versions to be present alongside dynamic ones
 .PHONY: static
 static: build-libgit2
-	$(GOCMD) build $(STATIC_BUILD_FLAGS) -o $(BINARY) $(SOURCE_DIR)
+	$(GOCMD) build $(GRV_STATIC_BUILD_FLAGS) -o $(BINARY) $(GRV_SOURCE_DIR)
 
 .PHONY: test
 test: $(BINARY) update-test
-	$(GOCMD) test $(BUILD_FLAGS) $(SOURCE_DIR)
-	$(GOCMD) vet $(SOURCE_DIR)
-	$(GOLINT) -set_exit_status $(SOURCE_DIR)
+	$(GOCMD) test $(GRV_BUILD_FLAGS) $(GRV_SOURCE_DIR)
+	$(GOCMD) vet $(GRV_SOURCE_DIR)
+	$(GOLINT) -set_exit_status $(GRV_SOURCE_DIR)
 
 .PHONY: clean
 clean:
