@@ -7,7 +7,7 @@ import (
 // CreateCommitFilter constructs a commit filter from the provided query
 func CreateCommitFilter(query string) (commitFilter *CommitFilter, errors []error) {
 	filter, errors := CreateFilter(query, &CommitFieldDescriptor{})
-	if len(errors) > 0 {
+	if len(errors) > 0 || filter == nil {
 		return
 	}
 

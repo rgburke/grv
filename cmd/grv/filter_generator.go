@@ -23,10 +23,12 @@ type FieldDescriptor interface {
 func CreateFilter(query string, fieldDescriptor FieldDescriptor) (filter Filter, errors []error) {
 	queryParser := NewQueryParser(strings.NewReader(query))
 
-	expression, _, err := queryParser.Parse()
+	expression, eof, err := queryParser.Parse()
 	if err != nil {
 		log.Debugf("Errors encountered when parsing query")
 		errors = append(errors, err)
+		return
+	} else if eof {
 		return
 	}
 

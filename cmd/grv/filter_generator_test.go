@@ -466,3 +466,14 @@ func TestFieldValuesAreRetrievedFromInput(t *testing.T) {
 		}
 	}
 }
+
+func TestNilFilterIsReturnedIfQueryDoesNotDefineFilter(t *testing.T) {
+	query := " "
+	filter, errors := CreateFilter(query, &TestRecordFieldDescriptor{})
+
+	if len(errors) > 0 {
+		t.Errorf("CreateFilter failed with errors %v", errors)
+	} else if filter != nil {
+		t.Errorf("Expected returned filter to be nil but found: %[1]v of type %[1]T", filter)
+	}
+}

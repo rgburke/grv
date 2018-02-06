@@ -766,6 +766,9 @@ func addCommitFilter(commitView *CommitView, action Action) (err error) {
 	if len(errors) > 0 {
 		commitView.channels.ReportErrors(errors)
 		return
+	} else if commitFilter == nil {
+		log.Debugf("Query string does not define commit filter: \"%v\"", query)
+		return
 	}
 
 	if err = commitView.repoData.AddCommitFilter(commitView.activeRef, commitFilter); err != nil {

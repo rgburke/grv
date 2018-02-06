@@ -208,3 +208,14 @@ func TestCommitFieldValuesAreExtracted(t *testing.T) {
 		}
 	}
 }
+
+func TestNilCommitFilterIsReturnedIfQueryDoesNotDefineFilter(t *testing.T) {
+	query := " \t\v\r\n"
+	commitFilter, errors := CreateCommitFilter(query)
+
+	if len(errors) > 0 {
+		t.Errorf("CreateCommitFilter failed with errors %v", errors)
+	} else if commitFilter != nil {
+		t.Errorf("Expected returned filter to be nil but found: %[1]v of type %[1]T", commitFilter)
+	}
+}

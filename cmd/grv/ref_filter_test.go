@@ -168,3 +168,14 @@ func TestCertainRenderedRefTypesAlwaysMatchFilter(t *testing.T) {
 		}
 	}
 }
+
+func TestNilRefFilterIsReturnedIfQueryDoesNotDefineFilter(t *testing.T) {
+	query := "         "
+	refFilter, errors := CreateRefFilter(query)
+
+	if len(errors) > 0 {
+		t.Errorf("CreateRefFilter failed with errors %v", errors)
+	} else if refFilter != nil {
+		t.Errorf("Expected returned filter to be nil but found: %[1]v of type %[1]T", refFilter)
+	}
+}

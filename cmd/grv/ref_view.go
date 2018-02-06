@@ -958,6 +958,9 @@ func addRefFilter(refView *RefView, action Action) (err error) {
 	if len(errors) > 0 {
 		refView.channels.ReportErrors(errors)
 		return
+	} else if refFilter == nil {
+		log.Debugf("Query string does not define ref filter: \"%v\"", query)
+		return
 	}
 
 	beforeRenderedRefNum := len(refView.renderedRefs.RenderedRefs())

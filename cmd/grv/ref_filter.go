@@ -7,7 +7,7 @@ import (
 // CreateRefFilter creates a ref filter from the provided query
 func CreateRefFilter(query string) (refFilter *RefFilter, errors []error) {
 	filter, errors := CreateFilter(query, &refFieldDescriptor{})
-	if len(errors) > 0 {
+	if len(errors) > 0 || filter == nil {
 		return
 	}
 
