@@ -33,6 +33,15 @@ chmod +x ./grv
 ./grv -repoFilePath /path/to/repo
 ```
 
+## macOS
+
+```
+brew install libgit2 ncurses readline
+go get gopkg.in/rgburke/grv.git2go-v26/cmd/grv
+```
+
+
+
 ## Build instructions
 
 Go version 1.5 or later is required. GRV depends on the following libraries:
