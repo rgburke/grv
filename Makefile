@@ -23,6 +23,15 @@ all: $(BINARY)
 $(BINARY): build-libgit2
 	$(GOCMD) build $(GRV_BUILD_FLAGS) -o $(BINARY) $(GRV_SOURCE_DIR)
 
+.PHONY: build-only
+build-only:
+	make -C $(GIT2GO_DIR) install-static
+	$(GOCMD) build $(GRV_BUILD_FLAGS) -o $(BINARY) $(GRV_SOURCE_DIR)
+
+.PHONY: build-libgit2
+build-libgit2: apply-git2go-patch
+	make -C $(GIT2GO_DIR) install-static
+
 .PHONY: install
 install: $(BINARY)
 	install -m755 -d $(GOBIN_DIR)
@@ -37,13 +46,11 @@ update-test:
 	$(GOCMD) get github.com/golang/lint/golint
 	$(GOCMD) get github.com/stretchr/testify/mock
 
-.PHONY: build-libgit2
-build-libgit2: update
+.PHONY: apply-git2go-patch
+apply-git2go-patch: update
 	if patch --dry-run -N -d $(GIT2GO_DIR) -p1 < $(GIT2GO_PATCH) >/dev/null; then \
 		patch -d $(GIT2GO_DIR) -p1 < $(GIT2GO_PATCH); \
 	fi
-	cd $(GIT2GO_DIR) && git submodule update --init;
-	make -C $(GIT2GO_DIR) install-static
 
 # Only tested on Ubuntu.
 # Requires dependencies static library versions to be present alongside dynamic ones
