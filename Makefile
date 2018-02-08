@@ -18,6 +18,8 @@ GOBIN_DIR:=$(GOPATH_DIR)/bin
 GIT2GO_DIR:=$(GRV_SOURCE_DIR)/vendor/gopkg.in/libgit2/git2go.v25
 GIT2GO_PATCH=git2go.v25.patch
 
+export PKG_CONFIG=$(GRV_DIR)/pkg-config-wrapper.sh
+
 all: $(BINARY)
 
 $(BINARY): build-libgit2

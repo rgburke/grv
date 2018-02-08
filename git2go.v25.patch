@@ -1,3 +1,15 @@
+diff --git a/git_static.go b/git_static.go
+index 062dd95..00982d0 100644
+--- a/git_static.go
++++ b/git_static.go
+@@ -6,6 +6,6 @@ package git
+ #cgo CFLAGS: -I${SRCDIR}/vendor/libgit2/include
+ #cgo LDFLAGS: -L${SRCDIR}/vendor/libgit2/build/ -lgit2
+ #cgo windows LDFLAGS: -lwinhttp
+-#cgo !windows pkg-config: --static ${SRCDIR}/vendor/libgit2/build/libgit2.pc
++#cgo !windows pkg-config: ${SRCDIR}/vendor/libgit2/build/libgit2.pc
+ */
+ import "C"
 diff --git a/script/build-libgit2-static.sh b/script/build-libgit2-static.sh
 index 5723721..f21c14f 100755
 --- a/script/build-libgit2-static.sh
