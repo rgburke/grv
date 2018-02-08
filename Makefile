@@ -41,6 +41,7 @@ install: $(BINARY)
 
 .PHONY: update
 update:
+	-@ git submodule foreach --recursive git reset --hard >/dev/null 2>&1
 	git submodule update --init --recursive
 
 .PHONY: update-test
