@@ -175,7 +175,7 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 			return
 		}
 
-		view.errorViewWin.OffsetPosition(int(startRow), 0)
+		view.errorViewWin.SetPosition(startRow, 0)
 		startRow += errorViewDim.rows
 	}
 
