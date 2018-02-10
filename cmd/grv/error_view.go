@@ -1,5 +1,9 @@
 package main
 
+const (
+	evMaxErrorDisplayNum = uint(5)
+)
+
 // ErrorView contains state for the error view
 type ErrorView struct {
 	errors []error
@@ -22,26 +26,48 @@ func (errorView *ErrorView) SetErrors(errors []error) {
 
 // DisplayRowsRequired calculates the number of rows on the display required to display the errors the error view currently has set
 func (errorView *ErrorView) DisplayRowsRequired() uint {
-	errorNum := len(errorView.errors)
-	if errorNum == 0 {
+	errorNum := uint(len(errorView.errors))
+
+	var rowsRequired uint
+	switch {
+	case errorNum == 0:
 		return 0
+	case errorNum > evMaxErrorDisplayNum:
+		rowsRequired = evMaxErrorDisplayNum + 1
+	default:
+		rowsRequired = errorNum
 	}
 
-	return uint(errorNum + 2)
+	return rowsRequired + 2
 }
 
 // Render generates and writes the error view to the provided window
 func (errorView *ErrorView) Render(win RenderWindow) (err error) {
 	errorNum := uint(len(errorView.errors))
+	errorDisplayNum := MinUint(errorNum, evMaxErrorDisplayNum)
 
-	for i := uint(1); i < win.Rows()-1 && i-1 < errorNum; i++ {
-		var lineBuilder *LineBuilder
+	var lineBuilder *LineBuilder
+	for i := uint(1); i < win.Rows()-1 && i-1 < errorDisplayNum; i++ {
 		if lineBuilder, err = win.LineBuilder(i, 1); err != nil {
 			return err
 		}
 
 		err = errorView.errors[i-1]
 		lineBuilder.AppendWithStyle(CmpErrorViewErrors, " %v", err)
+	}
+
+	if errorDisplayNum < errorNum && win.Rows() >= evMaxErrorDisplayNum+3 {
+		if lineBuilder, err = win.LineBuilder(win.Rows()-2, 1); err != nil {
+			return
+		}
+
+		errorsNotDisplayed := errorNum - errorDisplayNum
+		suffix := ""
+		if errorsNotDisplayed > 1 {
+			suffix += "s"
+		}
+
+		lineBuilder.AppendWithStyle(CmpNone, " + %v more error%v", errorsNotDisplayed, suffix)
 	}
 
 	win.DrawBorder()
