@@ -543,6 +543,7 @@ The list of (case-insensitive) fields that can be used in the Commit View is:
  id             | string
  parentcount    | number
  summary        | string
+ message        | string
 ```
 
 The list of (case-insensitive) fields that can be used in the Ref View is:
