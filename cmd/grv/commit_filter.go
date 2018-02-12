@@ -112,6 +112,12 @@ var commitFields = map[string]CommitField{
 			return commit.commit.Summary()
 		},
 	},
+	"message": {
+		fieldType: FtString,
+		value: func(commit *Commit) interface{} {
+			return commit.commit.Message()
+		},
+	},
 	"parentcount": {
 		fieldType: FtNumber,
 		value: func(commit *Commit) interface{} {
