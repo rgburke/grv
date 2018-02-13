@@ -40,7 +40,7 @@
 [submodule "cmd/grv/vendor/golang.org/x/sys"]
 	path = cmd/grv/vendor/golang.org/x/sys
 	url = https://go.googlesource.com/sys
-[submodule "cmd/grv/vendor/gopkg.in/libgit2/git2go.v25"]
-	path = cmd/grv/vendor/gopkg.in/libgit2/git2go.v25
-	url = https://gopkg.in/libgit2/git2go.v25
+[submodule "cmd/grv/vendor/gopkg.in/libgit2/git2go.v26"]
+	path = cmd/grv/vendor/gopkg.in/libgit2/git2go.v26
+	url = https://gopkg.in/libgit2/git2go.v26
 	ignore = dirty

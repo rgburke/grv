@@ -15,8 +15,12 @@ GRV_STATIC_BUILD_FLAGS=--tags static -ldflags "$(GRV_LDFLAGS) $(GRV_STATIC_LDFLA
 GRV_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 GOPATH_DIR:=$(shell go env GOPATH)
 GOBIN_DIR:=$(GOPATH_DIR)/bin
-GIT2GO_DIR:=$(GRV_SOURCE_DIR)/vendor/gopkg.in/libgit2/git2go.v25
-GIT2GO_PATCH=git2go.v25.patch
+
+GIT2GO_VERSION=26
+GIT2GO_DIR:=$(GRV_SOURCE_DIR)/vendor/gopkg.in/libgit2/git2go.v$(GIT2GO_VERSION)
+LIBGIT2_DIR=$(GIT2GO_DIR)/vendor/libgit2
+GIT2GO_PATCH=git2go.v$(GIT2GO_VERSION).patch
+LIBGIT2_PATCH=libgit2.v$(GIT2GO_VERSION).patch
 
 export PKG_CONFIG=$(GRV_DIR)/pkg-config-wrapper.sh
 
@@ -31,7 +35,7 @@ build-only:
 	$(GOCMD) build $(GRV_BUILD_FLAGS) -o $(BINARY) $(GRV_SOURCE_DIR)
 
 .PHONY: build-libgit2
-build-libgit2: apply-git2go-patch
+build-libgit2: apply-patches
 	make -C $(GIT2GO_DIR) install-static
 
 .PHONY: install
@@ -42,17 +46,23 @@ install: $(BINARY)
 .PHONY: update
 update:
 	-@ git submodule foreach --recursive git reset --hard >/dev/null 2>&1
-	git submodule update --init --recursive
+	# We can't use the --recurisve option here due to https://github.com/libgit2/git2go/issues/407
+	# So we have to do exclude it and init the libgit2 submodule separately
+	git submodule update --init
+	cd $(GIT2GO_DIR) && git submodule update --init
 
 .PHONY: update-test
 update-test:
 	$(GOCMD) get github.com/golang/lint/golint
 	$(GOCMD) get github.com/stretchr/testify/mock
 
-.PHONY: apply-git2go-patch
-apply-git2go-patch: update
+.PHONY: apply-patches
+apply-patches: update
 	if patch --dry-run -N -d $(GIT2GO_DIR) -p1 < $(GIT2GO_PATCH) >/dev/null; then \
 		patch -d $(GIT2GO_DIR) -p1 < $(GIT2GO_PATCH); \
+	fi
+	if patch --dry-run -N -d $(LIBGIT2_DIR) -p1 < $(LIBGIT2_PATCH) >/dev/null; then \
+		patch -d $(LIBGIT2_DIR) -p1 < $(LIBGIT2_PATCH); \
 	fi
 
 # Only tested on Ubuntu.

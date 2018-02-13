@@ -1,20 +1,21 @@
 diff --git a/git_static.go b/git_static.go
-index 062dd95..00982d0 100644
+index b42d49f..972cdfc 100644
 --- a/git_static.go
 +++ b/git_static.go
-@@ -6,6 +6,6 @@ package git
+@@ -6,7 +6,7 @@ package git
  #cgo CFLAGS: -I${SRCDIR}/vendor/libgit2/include
  #cgo LDFLAGS: -L${SRCDIR}/vendor/libgit2/build/ -lgit2
  #cgo windows LDFLAGS: -lwinhttp
 -#cgo !windows pkg-config: --static ${SRCDIR}/vendor/libgit2/build/libgit2.pc
 +#cgo !windows pkg-config: ${SRCDIR}/vendor/libgit2/build/libgit2.pc
- */
- import "C"
+ #include <git2.h>
+ 
+ #if LIBGIT2_VER_MAJOR != 0 || LIBGIT2_VER_MINOR != 26
 diff --git a/script/build-libgit2-static.sh b/script/build-libgit2-static.sh
-index 5723721..f21c14f 100755
+index 5723721..e2924ba 100755
 --- a/script/build-libgit2-static.sh
 +++ b/script/build-libgit2-static.sh
-@@ -14,6 +14,11 @@ cmake -DTHREADSAFE=ON \
+@@ -14,6 +14,13 @@ cmake -DTHREADSAFE=ON \
        -DCMAKE_C_FLAGS=-fPIC \
        -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
        -DCMAKE_INSTALL_PREFIX=../install \
@@ -23,6 +24,8 @@ index 5723721..f21c14f 100755
 +      -DUSE_NSEC=OFF \
 +      -DUSE_SSH=OFF \
 +      -DCURL=OFF \
++      -DUSE_GSSAPI=OFF \
++      -DUSE_OPENSSL=OFF \
        .. &&
  
  cmake --build .
