@@ -22,7 +22,11 @@ More screenshots can be seen [here](doc/screenshots.md)
 
 Documentation for GRV is available [here](doc/documentation.md)
 
-## Download
+## Install
+
+**Note:** `grv` is currently an alias used by oh-my-zsh. Add `unalias grv` to the end of your `.zshrc` to invoke GRV.
+
+### Linux
 
 Static binaries are available for Linux (amd64 and arm32). For example, to use
 the amd64 binary run the following steps:
@@ -31,6 +35,14 @@ the amd64 binary run the following steps:
 wget -O grv https://github.com/rgburke/grv/releases/download/v0.1.2/grv_v0.1.2_linux64
 chmod +x ./grv
 ./grv -repoFilePath /path/to/repo
+```
+
+### Mac
+
+GRV is available in homebrew and can be installed with:
+
+```
+brew install grv
 ```
 
 ## Build instructions
@@ -56,17 +68,13 @@ cd $GOPATH/src/github.com/rgburke/grv
 make install
 ```
 
-`grv` is currently an alias used by oh-my-zsh. To install grv with an alternative
-binary name that doesn't conflict with this alias, change the last
-step to:
+To install grv with an alternative binary name change the last step to:
 
 ```
 make install BINARY=NewBinaryName
 ```
 
 where `NewBinaryName` is the alternative name to use instead.
-Alternatively `unalias grv` can be added to the end of your `.zshrc` if you do
-not use the `grv` alias.
 
 The steps above will install GRV to `$GOPATH/bin`. A static libgit2 will be built and
 included in GRV when built this way. Alternatively if libgit2 0.25 is
