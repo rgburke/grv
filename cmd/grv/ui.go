@@ -227,8 +227,8 @@ func (ui *NCursesUI) initialiseNCurses() (err error) {
 	gc.Echo(false)
 	gc.Raw(true)
 
-	if err = gc.Cursor(0); err != nil {
-		return fmt.Errorf("NCurses Cursor failed: %v", err)
+	if gc.Cursor(0) != nil {
+		log.Debugf("Unable to hide cursor")
 	}
 
 	if err = ui.stdscr.Keypad(true); err != nil {
@@ -394,19 +394,13 @@ func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
 	}
 
 	if cursorWin == nil {
-		err = gc.Cursor(0)
+		gc.Cursor(0)
 	} else {
-		if err = gc.Cursor(1); err != nil {
-			return
-		}
+		gc.Cursor(1)
 
 		nwin := ui.windows[cursorWin]
 		nwin.Move(int(cursorWin.cursor.row), int(cursorWin.cursor.col))
 		nwin.NoutRefresh()
-	}
-
-	if err != nil {
-		return fmt.Errorf("NCurses Cursor failed: %v", err)
 	}
 
 	return
