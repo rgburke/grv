@@ -109,3 +109,22 @@ func TestDefaultKeyBindingsReturnsBindings(t *testing.T) {
 		}
 	}
 }
+
+func TestIsPromptActionCorrectlyIdentifiesPromptActions(t *testing.T) {
+	tests := map[ActionType]bool{
+		ActionPrompt:              true,
+		ActionSearchPrompt:        true,
+		ActionReverseSearchPrompt: true,
+		ActionFilterPrompt:        true,
+		ActionSearch:              false,
+		ActionLastLine:            false,
+		ActionRemoveTab:           false,
+		ActionPrevPage:            false,
+	}
+
+	for actionType, expectedValue := range tests {
+		if IsPromptAction(actionType) != expectedValue {
+			t.Errorf("IsPromptAction did not returns expected value %v for action %v", expectedValue, actionType)
+		}
+	}
+}

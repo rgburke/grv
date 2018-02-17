@@ -120,6 +120,16 @@ var keyMap = map[gc.Key]string{
 	gc.KEY_MAX:       "<Max>",
 }
 
+var ncursesSpecialKeys map[string]bool
+
+func init() {
+	ncursesSpecialKeys = make(map[string]bool, len(keyMap))
+
+	for _, keyStr := range keyMap {
+		ncursesSpecialKeys[keyStr] = true
+	}
+}
+
 // InputKeyMapper maps ncurses characters to key string representations and groups byte sequences into UTF-8 characters
 type InputKeyMapper struct {
 	ui               InputUI
@@ -275,10 +285,15 @@ func specialKeyString(potentialKeyString string) (key string, isSpecialKey bool)
 		return
 	}
 
-	if matched || isValidAction(keyString) {
+	if matched || isValidAction(keyString) || isNCursesSpecialKey(keyString) {
 		key = keyString
 		isSpecialKey = true
 	}
 
 	return
+}
+
+func isNCursesSpecialKey(key string) bool {
+	_, ok := ncursesSpecialKeys[key]
+	return ok
 }

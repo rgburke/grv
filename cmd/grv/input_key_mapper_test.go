@@ -139,9 +139,9 @@ func TestEmptyStringIsReturnedIfErrorReturnedFromInputUI(t *testing.T) {
 }
 
 func TestTokeniseKeysBreaksDownKeys(t *testing.T) {
-	keysString := "abc123<C-a>!<C-c><<C-b>>世<M-a>"
+	keysString := "abc<grv-select>123<C-a>!<grv-nop><C-c><<C-b>><Enter>世<M-a><Tab>"
 	expected := []string{
-		"a", "b", "c", "1", "2", "3", "<C-a>", "!", "<C-c>", "<", "<C-b>", ">", "世", "<M-a>",
+		"a", "b", "c", "<grv-select>", "1", "2", "3", "<C-a>", "!", "<grv-nop>", "<C-c>", "<", "<C-b>", ">", "<Enter>", "世", "<M-a>", "<Tab>",
 	}
 
 	actual := TokeniseKeys(keysString)

@@ -12,9 +12,11 @@ package main
 // #include <readline/history.h>
 //
 // extern void grvReadlineUpdateDisplay(void);
+// extern int grvReadlineStartUpHook(void);
 //
 // static void grv_init_readline(void) {
 // 	rl_redisplay_function = grvReadlineUpdateDisplay;
+//	rl_startup_hook = grvReadlineStartUpHook;
 //	rl_catch_signals = 0;
 //	rl_catch_sigwinch = 0;
 //#if RL_READLINE_VERSION >= 0x0603
@@ -53,15 +55,16 @@ var readLine ReadLine
 
 // ReadLine is a wrapper around the readline library
 type ReadLine struct {
-	channels       *Channels
-	ui             InputUI
-	config         Config
-	promptText     string
-	promptInput    string
-	promptPoint    int
-	active         bool
-	lastPromptText string
-	lock           sync.Mutex
+	channels          *Channels
+	ui                InputUI
+	config            Config
+	promptText        string
+	promptInput       string
+	promptPoint       int
+	active            bool
+	lastPromptText    string
+	initialBufferText string
+	lock              sync.Mutex
 }
 
 // InitReadLine initialises the readline library
@@ -122,10 +125,20 @@ func writeHistoryFile(file string) {
 // Prompt shows a readline prompt using prompt text provided
 // User input is returned
 func Prompt(prompt string) string {
-	cPrompt := C.CString(prompt)
+	return PromptWithText(prompt, "")
+}
+
+// PromptWithText is the same as Prompt except the readline buffer
+// is pre-populated with the initialBufferText
+func PromptWithText(prompt, initialBufferText string) string {
+	if initialBufferText != "" {
+		readLineSetInitialBufferText(initialBufferText)
+		defer readLineSetInitialBufferText("")
+	}
 
 	readLineSetupPromptHistory(prompt)
 	readLineSetActive(true)
+	cPrompt := C.CString(prompt)
 	cInput := C.readline(cPrompt)
 	readLineSetActive(false)
 
@@ -158,6 +171,13 @@ func readLineSetActive(active bool) {
 	defer readLine.lock.Unlock()
 
 	readLine.active = active
+}
+
+func readLineSetInitialBufferText(initialBufferText string) {
+	readLine.lock.Lock()
+	defer readLine.lock.Unlock()
+
+	readLine.initialBufferText = initialBufferText
 }
 
 func readLineSetupPromptHistory(prompt string) {
@@ -215,4 +235,18 @@ func grvReadlineUpdateDisplay() {
 		readLine.promptText, readLine.promptInput, readLine.promptPoint)
 
 	readLine.channels.UpdateDisplay()
+}
+
+//export grvReadlineStartUpHook
+func grvReadlineStartUpHook() C.int {
+	readLine.lock.Lock()
+	defer readLine.lock.Unlock()
+
+	if readLine.initialBufferText != "" {
+		cInitialBufferText := C.CString(readLine.initialBufferText)
+		C.rl_insert_text(cInitialBufferText)
+		C.free(unsafe.Pointer(cInitialBufferText))
+	}
+
+	return 0
 }

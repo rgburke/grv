@@ -391,7 +391,23 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, in
 				action, keystring := grv.inputBuffer.Process(viewHierarchy)
 
 				if action.ActionType != ActionNone {
-					actionCh <- action
+					if IsPromptAction(action.ActionType) {
+						keys, enterFound := grv.inputBuffer.DiscardTo("<Enter>")
+						if enterFound {
+							keys = strings.TrimSuffix(keys, "<Enter>")
+						}
+
+						action.Args = append(action.Args, ActionPromptArgs{
+							keys:       keys,
+							terminated: enterFound,
+						})
+
+						if err := grv.view.HandleAction(action); err != nil {
+							errorCh <- err
+						}
+					} else {
+						actionCh <- action
+					}
 				} else if keystring != "" {
 					log.Debugf("Dropping keystring: %v", keystring)
 				} else {

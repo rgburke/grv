@@ -73,6 +73,12 @@ type ActionSplitViewArgs struct {
 	orientation ContainerOrientation
 }
 
+// ActionPromptArgs contains arguments to an action that displays a prompt
+type ActionPromptArgs struct {
+	keys       string
+	terminated bool
+}
+
 var actionKeys = map[string]ActionType{
 	"<grv-nop>":                   ActionNone,
 	"<grv-exit>":                  ActionExit,
@@ -112,6 +118,13 @@ var actionKeys = map[string]ActionType{
 	"<grv-add-view>":              ActionAddView,
 	"<grv-split-view>":            ActionSplitView,
 	"<grv-remove-view>":           ActionRemoveView,
+}
+
+var promptActions = map[ActionType]bool{
+	ActionPrompt:              true,
+	ActionSearchPrompt:        true,
+	ActionReverseSearchPrompt: true,
+	ActionFilterPrompt:        true,
 }
 
 var defaultKeyBindings = map[ActionType]map[ViewID][]string{
@@ -317,6 +330,12 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 func isValidAction(action string) bool {
 	_, valid := actionKeys[action]
 	return valid
+}
+
+// IsPromptAction returns true if the action presents a prompt
+func IsPromptAction(actionType ActionType) bool {
+	_, isPrompt := promptActions[actionType]
+	return isPrompt
 }
 
 // DefaultKeyBindings returns the default key sequences that are bound to an action for the provided view

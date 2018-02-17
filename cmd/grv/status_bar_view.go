@@ -59,13 +59,13 @@ func (statusBarView *StatusBarView) HandleEvent(event Event) (err error) {
 func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
 	switch action.ActionType {
 	case ActionPrompt:
-		statusBarView.showCommandPrompt()
+		statusBarView.showCommandPrompt(action)
 	case ActionSearchPrompt:
-		statusBarView.showSearchPrompt(SearchPromptText, ActionSearch)
+		statusBarView.showSearchPrompt(action, SearchPromptText, ActionSearch)
 	case ActionReverseSearchPrompt:
-		statusBarView.showSearchPrompt(ReverseSearchPromptText, ActionReverseSearch)
+		statusBarView.showSearchPrompt(action, ReverseSearchPromptText, ActionReverseSearch)
 	case ActionFilterPrompt:
-		statusBarView.showFilterPrompt()
+		statusBarView.showFilterPrompt(action)
 	case ActionShowStatus:
 		statusBarView.lock.Lock()
 		defer statusBarView.lock.Unlock()
@@ -86,17 +86,17 @@ func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
 	return
 }
 
-func (statusBarView *StatusBarView) showCommandPrompt() {
+func (statusBarView *StatusBarView) showCommandPrompt(action Action) {
 	statusBarView.promptType = ptCommand
-	input := Prompt(PromptText)
+	input := statusBarView.showPrompt(PromptText, action)
 	errors := statusBarView.config.Evaluate(input)
 	statusBarView.channels.ReportErrors(errors)
 	statusBarView.promptType = ptNone
 }
 
-func (statusBarView *StatusBarView) showSearchPrompt(prompt string, actionType ActionType) {
+func (statusBarView *StatusBarView) showSearchPrompt(action Action, prompt string, actionType ActionType) {
 	statusBarView.promptType = ptSearch
-	input := Prompt(prompt)
+	input := statusBarView.showPrompt(prompt, action)
 
 	if input == "" {
 		statusBarView.channels.DoAction(Action{
@@ -112,9 +112,9 @@ func (statusBarView *StatusBarView) showSearchPrompt(prompt string, actionType A
 	statusBarView.promptType = ptNone
 }
 
-func (statusBarView *StatusBarView) showFilterPrompt() {
+func (statusBarView *StatusBarView) showFilterPrompt(action Action) {
 	statusBarView.promptType = ptFilter
-	input := Prompt(FilterPromptText)
+	input := statusBarView.showPrompt(FilterPromptText, action)
 
 	if input != "" {
 		statusBarView.channels.DoAction(Action{
@@ -124,6 +124,20 @@ func (statusBarView *StatusBarView) showFilterPrompt() {
 	}
 
 	statusBarView.promptType = ptNone
+}
+
+func (statusBarView *StatusBarView) showPrompt(prompt string, action Action) string {
+	if len(action.Args) > 0 {
+		if promptArgs, ok := action.Args[0].(ActionPromptArgs); ok {
+			if promptArgs.terminated {
+				return promptArgs.keys
+			}
+
+			return PromptWithText(prompt, promptArgs.keys)
+		}
+	}
+
+	return Prompt(prompt)
 }
 
 // OnActiveChange updates the active state of this view

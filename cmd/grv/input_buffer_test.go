@@ -115,3 +115,66 @@ func TestPotentialPrefixMatchIsReturnedAsSeparateKeysWhenFullInputDoesNotMatchBi
 	action, keyString = inputBuffer.Process(viewHierarchy)
 	checkProcessResult(Action{ActionType: ActionNone}, "b", action, keyString, t)
 }
+
+func TestDiscardToOnlyDiscardsInputUntilProvidedKey(t *testing.T) {
+	keyBindings := &MockKeyBindings{}
+	inputBuffer := NewInputBuffer(keyBindings)
+
+	inputBuffer.Append(`<grv-filter-prompt>committername="John Smith"<Enter><Tab>`)
+
+	discarded, enterFound := inputBuffer.DiscardTo("<Enter>")
+	hasInput := inputBuffer.hasInput()
+
+	expectedDiscarded := `<grv-filter-prompt>committername="John Smith"<Enter>`
+
+	if discarded != expectedDiscarded {
+		t.Errorf(`Discarded text "%v" does not match expected "%v"`, discarded, expectedDiscarded)
+	}
+
+	if !enterFound {
+		t.Errorf("Expected enterFound to be true")
+	}
+
+	if !hasInput {
+		t.Errorf("InputBuffer is empty")
+	}
+}
+
+func TestDiscardToDiscardsAllInputWhenTargetKeyIsNotPresent(t *testing.T) {
+	keyBindings := &MockKeyBindings{}
+	inputBuffer := NewInputBuffer(keyBindings)
+
+	inputBuffer.Append(`<grv-filter-prompt>committername="John Smith"`)
+
+	discarded, enterFound := inputBuffer.DiscardTo("<Enter>")
+	hasInput := inputBuffer.hasInput()
+
+	expectedDiscarded := `<grv-filter-prompt>committername="John Smith"`
+
+	if discarded != expectedDiscarded {
+		t.Errorf(`Discarded text "%v" does not match expected "%v"`, discarded, expectedDiscarded)
+	}
+
+	if enterFound {
+		t.Errorf("Expected enterFound to be false")
+	}
+
+	if hasInput {
+		t.Errorf("InputBuffer is not empty")
+	}
+}
+
+func TestDiscardToReturnsEmptyStringWhenInputBufferIsEmpty(t *testing.T) {
+	keyBindings := &MockKeyBindings{}
+	inputBuffer := NewInputBuffer(keyBindings)
+
+	discarded, enterFound := inputBuffer.DiscardTo("<Enter>")
+
+	if discarded != "" {
+		t.Errorf(`Discarded text "%v" does not match expected "%v"`, discarded, "")
+	}
+
+	if enterFound {
+		t.Errorf("Expected enterFound to be false")
+	}
+}

@@ -83,3 +83,26 @@ OuterLoop:
 
 	return
 }
+
+// DiscardTo discards and returns all pending input up to and including the provided targetKey
+// If the targetKey is not present then all pending input is discarded
+func (inputBuffer *InputBuffer) DiscardTo(targetKey string) (discarded string, targetKeyFound bool) {
+	if !inputBuffer.hasInput() {
+		return
+	}
+
+	var keyIndex int
+	var key string
+
+	for keyIndex, key = range inputBuffer.buffer {
+		if key == targetKey {
+			targetKeyFound = true
+			break
+		}
+	}
+
+	discarded = strings.Join(inputBuffer.buffer[:keyIndex+1], "")
+	inputBuffer.buffer = inputBuffer.buffer[keyIndex+1:]
+
+	return
+}
