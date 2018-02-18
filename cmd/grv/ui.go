@@ -135,13 +135,15 @@ type NCursesUI struct {
 	maxColors     int
 	maxColorPairs int
 	suspended     bool
+	mouseMask     gc.MouseButton
 }
 
 // NewNCursesDisplay creates a new NCursesUI instance
 func NewNCursesDisplay(config Config) *NCursesUI {
 	return &NCursesUI{
-		windows: make(map[*Window]*nCursesWindow),
-		config:  config,
+		windows:   make(map[*Window]*nCursesWindow),
+		config:    config,
+		mouseMask: gc.M_B1_RELEASED,
 	}
 }
 
@@ -184,6 +186,7 @@ func (ui *NCursesUI) Initialise() (err error) {
 	}
 
 	ui.config.AddOnChangeListener(CfTheme, ui)
+	ui.config.AddOnChangeListener(CfMouse, ui)
 
 	read, write, err := os.Pipe()
 	if err != nil {
@@ -394,9 +397,9 @@ func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
 	}
 
 	if cursorWin == nil {
-		gc.Cursor(0)
+		ui.setCursorVisible(false)
 	} else {
-		gc.Cursor(1)
+		ui.setCursorVisible(true)
 
 		nwin := ui.windows[cursorWin]
 		nwin.Move(int(cursorWin.cursor.row), int(cursorWin.cursor.col))
@@ -526,13 +529,37 @@ func (ui *NCursesUI) cancelGetInput() error {
 	return err
 }
 
-func (ui *NCursesUI) onConfigVariableChange(configVariable ConfigVariable) {
-	theme := ui.config.GetTheme()
+func (ui *NCursesUI) setCursorVisible(visible bool) {
+	var cursorVisible byte
+	if visible {
+		cursorVisible = 1
+	} else {
+		cursorVisible = 1
+	}
 
+	gc.Cursor(cursorVisible)
+}
+
+func (ui *NCursesUI) onConfigVariableChange(configVariable ConfigVariable) {
 	ui.lock.Lock()
 	defer ui.lock.Unlock()
 
-	ui.initialiseColorPairsFromTheme(theme)
+	switch configVariable {
+	case CfTheme:
+		theme := ui.config.GetTheme()
+		ui.initialiseColorPairsFromTheme(theme)
+	case CfMouse:
+		mouseEnabled := ui.config.GetBool(CfMouse)
+		ui.toggleMouseEnabled(mouseEnabled)
+	default:
+		log.Warn("Received notification for variable I didn't register for: %v", configVariable)
+	}
+}
+
+func (ui *NCursesUI) toggleMouseEnabled(mouseEnabled bool) {
+	log.Infof("Toggling mouse enabled")
+	ui.setCursorVisible(mouseEnabled)
+	gc.MouseMask(ui.mouseMask, &ui.mouseMask)
 }
 
 func (ui *NCursesUI) initialiseColorPairsFromTheme(theme Theme) {

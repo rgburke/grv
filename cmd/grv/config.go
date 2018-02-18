@@ -21,6 +21,7 @@ const (
 	cfClassicThemeName     = "classic"
 	cfColdThemeName        = "cold"
 	cfSolarizedThemeName   = "solarized"
+	cfMouseDefaultValue    = false
 
 	cfAllView       = "All"
 	cfMainView      = "MainView"
@@ -44,6 +45,8 @@ const (
 	CfTabWidth ConfigVariable = "tabwidth"
 	// CfTheme stores the theme variable name
 	CfTheme ConfigVariable = "theme"
+	// CfMouse stores whether mouse support is enabled
+	CfMouse ConfigVariable = "mouse"
 )
 
 var systemColorValues = map[string]SystemColorValue{
@@ -208,6 +211,12 @@ func NewConfiguration(keyBindings KeyBindings, channels *Channels) *Configuratio
 				config: config,
 			},
 		},
+		CfMouse: {
+			value: cfMouseDefaultValue,
+			validator: booleanValueValidator{
+				variableName: string(CfMouse),
+			},
+		},
 	}
 
 	return config
@@ -362,14 +371,24 @@ func (config *Configuration) processSetCommand(setCommand *SetCommand, inputSour
 			expectedType, actualType)
 	}
 
+	oldValue := variable.value
+
 	log.Infof("Setting %v = %v", configVariable, value)
 	variable.value = value
 
-	if len(variable.onChangeListeners) > 0 {
-		log.Debugf("Firing on change listeners for config variable %v", configVariable)
-		for _, listener := range variable.onChangeListeners {
-			listener.onConfigVariableChange(configVariable)
+	if oldValue != value {
+		log.Infof("Value of config variable %v has changed from %v to %v", configVariable, oldValue, value)
+
+		if len(variable.onChangeListeners) > 0 {
+			log.Debugf("Firing on change listeners for config variable %v", configVariable)
+			for _, listener := range variable.onChangeListeners {
+				listener.onConfigVariableChange(configVariable)
+			}
+		} else {
+			log.Debugf("Config variable %v has no change listeners registered", configVariable)
 		}
+	} else {
+		log.Infof("Value of config variable %v has not changed, therefore no listeners will be notified", configVariable)
 	}
 
 	return nil
@@ -647,6 +666,23 @@ func (themeValidator themeValidator) validate(value string) (processedValue inte
 		err = fmt.Errorf("No theme exists with name %v", value)
 	} else {
 		processedValue = value
+	}
+
+	return
+}
+
+type booleanValueValidator struct {
+	variableName string
+}
+
+func (booleanValueValidator booleanValueValidator) validate(value string) (processedValue interface{}, err error) {
+	switch value {
+	case "true":
+		processedValue = true
+	case "false":
+		processedValue = false
+	default:
+		err = fmt.Errorf("%v must be set to either true or false but found: %v", booleanValueValidator.variableName, value)
 	}
 
 	return
