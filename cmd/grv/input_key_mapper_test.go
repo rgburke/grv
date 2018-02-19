@@ -29,6 +29,10 @@ func (inputUI *MockInputUI) CancelGetInput() error {
 	return args.Error(0)
 }
 
+func (inputUI *MockInputUI) GetMouseEvent() (mouseEvent MouseEvent, err error) {
+	return
+}
+
 func checkOutput(actualKey string, actualError error, expectedKey string, expectedError error, t *testing.T) {
 	if actualError != expectedError {
 		t.Errorf("Error did not match expected value. Expected: %v. Actual: %v", expectedError, actualError)

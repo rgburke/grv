@@ -282,6 +282,18 @@ func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan bool, inputK
 		key, err := grv.input.GetKeyInput()
 		if err != nil {
 			errorCh <- err
+		} else if key == "<Mouse>" {
+			mouseEvent, err := grv.ui.GetMouseEvent()
+			if err != nil {
+				errorCh <- err
+			} else {
+				mouseEventAction, err := MouseEventAction(mouseEvent)
+				if err != nil {
+					errorCh <- err
+				} else {
+					grv.channels.actionCh <- mouseEventAction
+				}
+			}
 		} else if key != "" {
 			log.Debugf("Received keypress from UI %v", key)
 

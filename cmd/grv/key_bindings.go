@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	pt "github.com/tchap/go-patricia/patricia"
 )
 
@@ -47,6 +49,7 @@ const (
 	ActionAddView
 	ActionSplitView
 	ActionRemoveView
+	ActionMouseSelect
 )
 
 // Action represents a type of actions and its arguments to be executed
@@ -118,6 +121,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-add-view>":              ActionAddView,
 	"<grv-split-view>":            ActionSplitView,
 	"<grv-remove-view>":           ActionRemoveView,
+	"<grv-mouse-select>":          ActionMouseSelect,
 }
 
 var promptActions = map[ActionType]bool{
@@ -355,4 +359,19 @@ func DefaultKeyBindings(actionType ActionType, viewID ViewID) (keyBindings []str
 	}
 
 	return keys
+}
+
+// MouseEventAction maps a mouse event to an action
+func MouseEventAction(mouseEvent MouseEvent) (action Action, err error) {
+	switch mouseEvent.mouseEventType {
+	case MetLeftClick:
+		action = Action{
+			ActionType: ActionMouseSelect,
+			Args:       []interface{}{mouseEvent},
+		}
+	default:
+		err = fmt.Errorf("Unknown MouseEventType %v", mouseEvent.mouseEventType)
+	}
+
+	return
 }

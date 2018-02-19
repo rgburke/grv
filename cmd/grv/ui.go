@@ -42,6 +42,21 @@ const (
 	inputNoWinSleep = 50 * time.Millisecond
 )
 
+// MouseEventType differentiates mouse events
+type MouseEventType int
+
+const (
+	// MetLeftClick represents a mouse left click event
+	MetLeftClick MouseEventType = iota
+)
+
+// MouseEvent contains data for a mouse event
+type MouseEvent struct {
+	mouseEventType MouseEventType
+	row            int
+	col            int
+}
+
 var systemColors = map[SystemColorValue]int16{
 	ColorNone:    -1,
 	ColorBlack:   gc.C_BLACK,
@@ -88,6 +103,7 @@ type Key int
 type InputUI interface {
 	GetInput(force bool) (Key, error)
 	CancelGetInput() error
+	GetMouseEvent() (MouseEvent, error)
 }
 
 // UI exposes methods for updaing the display
@@ -229,6 +245,7 @@ func (ui *NCursesUI) initialiseNCurses() (err error) {
 
 	gc.Echo(false)
 	gc.Raw(true)
+	gc.MouseInterval(50)
 
 	if gc.Cursor(0) != nil {
 		log.Debugf("Unable to hide cursor")
@@ -527,6 +544,39 @@ func (ui *NCursesUI) CancelGetInput() error {
 func (ui *NCursesUI) cancelGetInput() error {
 	_, err := ui.pipe.write.Write([]byte{0})
 	return err
+}
+
+// GetMouseEvent returns the most recent mouse event or an error if none exists
+func (ui *NCursesUI) GetMouseEvent() (event MouseEvent, err error) {
+	mouseEvent := gc.GetMouse()
+
+	if mouseEvent == nil {
+		err = fmt.Errorf("Unable to retrieve mouse event")
+		return
+	}
+
+	mouseEventType, err := ui.getMouseEventType(mouseEvent.State)
+
+	if err == nil {
+		event = MouseEvent{
+			mouseEventType: mouseEventType,
+			row:            mouseEvent.Y,
+			col:            mouseEvent.X,
+		}
+	}
+
+	return
+}
+
+func (ui *NCursesUI) getMouseEventType(button gc.MouseButton) (mouseEventType MouseEventType, err error) {
+	switch {
+	case (button & gc.M_B1_RELEASED) == gc.M_B1_RELEASED:
+		mouseEventType = MetLeftClick
+	default:
+		err = fmt.Errorf("Unsupported MouseButton")
+	}
+
+	return
 }
 
 func (ui *NCursesUI) setCursorVisible(visible bool) {
