@@ -375,3 +375,18 @@ func MouseEventAction(mouseEvent MouseEvent) (action Action, err error) {
 
 	return
 }
+
+// GetMouseEventFromAction converts a MouseEvent into an Action that can be processed by a view
+func GetMouseEventFromAction(action Action) (mouseEvent MouseEvent, err error) {
+	if len(action.Args) == 0 {
+		err = fmt.Errorf("Expected MouseEvent arg")
+		return
+	}
+
+	mouseEvent, ok := action.Args[0].(MouseEvent)
+	if !ok {
+		err = fmt.Errorf("Expected first argument to have type MouseEvent but has type: %T", action.Args[0])
+	}
+
+	return
+}

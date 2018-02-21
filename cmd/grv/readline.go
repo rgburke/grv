@@ -56,7 +56,6 @@ var readLine ReadLine
 // ReadLine is a wrapper around the readline library
 type ReadLine struct {
 	channels          *Channels
-	ui                InputUI
 	config            Config
 	promptText        string
 	promptInput       string
@@ -68,11 +67,10 @@ type ReadLine struct {
 }
 
 // InitReadLine initialises the readline library
-func InitReadLine(channels *Channels, ui InputUI, config Config) {
+func InitReadLine(channels *Channels, config Config) {
 	readLine = ReadLine{
 		channels: channels,
 		config:   config,
-		ui:       ui,
 	}
 
 	C.grv_init_readline()

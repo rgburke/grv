@@ -202,7 +202,7 @@ func (grv *GRV) Initialise(repoPath, workTreePath string) (err error) {
 	}
 
 	channels := grv.channels.Channels()
-	InitReadLine(channels, grv.ui, grv.config)
+	InitReadLine(channels, grv.config)
 
 	return
 }
@@ -283,10 +283,10 @@ func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan bool, inputK
 		if err != nil {
 			errorCh <- err
 		} else if key == "<Mouse>" {
-			mouseEvent, err := grv.ui.GetMouseEvent()
+			mouseEvent, exists, err := grv.ui.GetMouseEvent()
 			if err != nil {
 				errorCh <- err
-			} else {
+			} else if exists {
 				mouseEventAction, err := MouseEventAction(mouseEvent)
 				if err != nil {
 					errorCh <- err

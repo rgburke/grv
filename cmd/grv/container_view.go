@@ -59,6 +59,7 @@ type ContainerView struct {
 	childViewPositionCalculator ChildViewPositionCalculator
 	viewID                      ViewID
 	fullScreen                  bool
+	childPositions              []*ChildViewPosition
 	lock                        sync.Mutex
 }
 
@@ -77,6 +78,7 @@ func NewContainerView(channels *Channels, config Config) *ContainerView {
 			ActionToggleViewLayout: toggleViewOrientation,
 			ActionSplitView:        splitView,
 			ActionRemoveView:       removeView,
+			ActionMouseSelect:      childMouseClick,
 		},
 	}
 
@@ -266,10 +268,10 @@ func (containerView *ContainerView) Render(viewDimension ViewDimension) (wins []
 		childViewNum:    uint(len(containerView.childViews)),
 	}
 
-	childPositions := containerView.childViewPositionCalculator.CalculateChildViewPositions(&viewLayoutData)
+	containerView.childPositions = containerView.childViewPositionCalculator.CalculateChildViewPositions(&viewLayoutData)
 
 	for childViewIndex, childView := range containerView.childViews {
-		childPosition := childPositions[childViewIndex]
+		childPosition := containerView.childPositions[childViewIndex]
 		if childPosition.viewDimension.cols == 0 || childPosition.viewDimension.rows == 0 {
 			continue
 		}
@@ -679,6 +681,34 @@ func removeView(containerView *ContainerView, action Action) (err error) {
 			EventType: ViewRemovedEvent,
 			Args:      []interface{}{childView},
 		})
+	}
+
+	containerView.onActiveChange(true)
+	containerView.channels.UpdateDisplay()
+
+	return
+}
+
+func childMouseClick(containerView *ContainerView, action Action) (err error) {
+	if containerView.isEmpty() {
+		return
+	}
+
+	mouseEvent, err := GetMouseEventFromAction(action)
+	if err != nil {
+		return
+	}
+
+	for childIndex, childPosition := range containerView.childPositions {
+		if mouseEvent.row >= childPosition.startRow && mouseEvent.row < childPosition.startRow+childPosition.viewDimension.rows &&
+			mouseEvent.col >= childPosition.startCol && mouseEvent.col < childPosition.startCol+childPosition.viewDimension.cols {
+			containerView.activeViewIndex = uint(childIndex)
+			mouseEvent.col -= childPosition.startCol
+			mouseEvent.row -= childPosition.startRow
+			action.Args[0] = mouseEvent
+			err = containerView.activeChildView().HandleAction(action)
+			break
+		}
 	}
 
 	containerView.onActiveChange(true)

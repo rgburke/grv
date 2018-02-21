@@ -39,6 +39,15 @@ func IsNonPrintableCharacter(codePoint rune) bool {
 	return (codePoint >= 0 && codePoint < 32) || codePoint == 127
 }
 
+// StringWidth sums the RuneWidth for each rune in the provided string
+func StringWidth(str string) (width int) {
+	for _, char := range str {
+		width += RuneWidth(char)
+	}
+
+	return
+}
+
 // RuneWidth is a wrapper around go-runewidth.RuneWidth and
 // only differs from the original for ASCII non-printable characters
 func RuneWidth(codePoint rune) int {

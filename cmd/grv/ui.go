@@ -53,8 +53,8 @@ const (
 // MouseEvent contains data for a mouse event
 type MouseEvent struct {
 	mouseEventType MouseEventType
-	row            int
-	col            int
+	row            uint
+	col            uint
 }
 
 var systemColors = map[SystemColorValue]int16{
@@ -103,7 +103,7 @@ type Key int
 type InputUI interface {
 	GetInput(force bool) (Key, error)
 	CancelGetInput() error
-	GetMouseEvent() (MouseEvent, error)
+	GetMouseEvent() (MouseEvent, bool, error)
 }
 
 // UI exposes methods for updaing the display
@@ -159,7 +159,7 @@ func NewNCursesDisplay(config Config) *NCursesUI {
 	return &NCursesUI{
 		windows:   make(map[*Window]*nCursesWindow),
 		config:    config,
-		mouseMask: gc.M_B1_RELEASED,
+		mouseMask: gc.M_ALL,
 	}
 }
 
@@ -245,7 +245,7 @@ func (ui *NCursesUI) initialiseNCurses() (err error) {
 
 	gc.Echo(false)
 	gc.Raw(true)
-	gc.MouseInterval(50)
+	gc.MouseInterval(0)
 
 	if gc.Cursor(0) != nil {
 		log.Debugf("Unable to hide cursor")
@@ -547,7 +547,7 @@ func (ui *NCursesUI) cancelGetInput() error {
 }
 
 // GetMouseEvent returns the most recent mouse event or an error if none exists
-func (ui *NCursesUI) GetMouseEvent() (event MouseEvent, err error) {
+func (ui *NCursesUI) GetMouseEvent() (event MouseEvent, exists bool, err error) {
 	mouseEvent := gc.GetMouse()
 
 	if mouseEvent == nil {
@@ -555,25 +555,26 @@ func (ui *NCursesUI) GetMouseEvent() (event MouseEvent, err error) {
 		return
 	}
 
-	mouseEventType, err := ui.getMouseEventType(mouseEvent.State)
+	mouseEventType, exists := ui.getMouseEventType(mouseEvent.State)
 
 	if err == nil {
 		event = MouseEvent{
 			mouseEventType: mouseEventType,
-			row:            mouseEvent.Y,
-			col:            mouseEvent.X,
+			row:            uint(mouseEvent.Y),
+			col:            uint(mouseEvent.X),
 		}
+
+		log.Debugf("Mouse event: %v", event)
 	}
 
 	return
 }
 
-func (ui *NCursesUI) getMouseEventType(button gc.MouseButton) (mouseEventType MouseEventType, err error) {
+func (ui *NCursesUI) getMouseEventType(button gc.MouseButton) (mouseEventType MouseEventType, exists bool) {
 	switch {
-	case (button & gc.M_B1_RELEASED) == gc.M_B1_RELEASED:
+	case (button & gc.M_B1_PRESSED) == gc.M_B1_PRESSED:
 		mouseEventType = MetLeftClick
-	default:
-		err = fmt.Errorf("Unsupported MouseButton")
+		exists = true
 	}
 
 	return
@@ -584,7 +585,7 @@ func (ui *NCursesUI) setCursorVisible(visible bool) {
 	if visible {
 		cursorVisible = 1
 	} else {
-		cursorVisible = 1
+		cursorVisible = 0
 	}
 
 	gc.Cursor(cursorVisible)
@@ -599,17 +600,11 @@ func (ui *NCursesUI) onConfigVariableChange(configVariable ConfigVariable) {
 		theme := ui.config.GetTheme()
 		ui.initialiseColorPairsFromTheme(theme)
 	case CfMouse:
-		mouseEnabled := ui.config.GetBool(CfMouse)
-		ui.toggleMouseEnabled(mouseEnabled)
+		log.Infof("Toggling mouse enabled")
+		gc.MouseMask(ui.mouseMask, &ui.mouseMask)
 	default:
 		log.Warn("Received notification for variable I didn't register for: %v", configVariable)
 	}
-}
-
-func (ui *NCursesUI) toggleMouseEnabled(mouseEnabled bool) {
-	log.Infof("Toggling mouse enabled")
-	ui.setCursorVisible(mouseEnabled)
-	gc.MouseMask(ui.mouseMask, &ui.mouseMask)
 }
 
 func (ui *NCursesUI) initialiseColorPairsFromTheme(theme Theme) {

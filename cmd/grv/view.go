@@ -88,6 +88,8 @@ type View struct {
 	activeViewWin     *Window
 	errors            []error
 	windowViewFactory *WindowViewFactory
+	tabTitles         []string
+	activeViewDim     ViewDimension
 	lock              sync.Mutex
 }
 
@@ -148,6 +150,7 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 
 	view.lock.Lock()
 	childView := view.views[view.activeViewPos]
+	view.activeViewDim = activeViewDim
 	view.lock.Unlock()
 
 	startRow := uint(0)
@@ -228,23 +231,27 @@ func (view *View) renderErrorView(wins []*Window, errorViewDim, activeViewDim Vi
 }
 
 func (view *View) renderActiveView(availableCols uint) (err error) {
-	viewTitles := make([]string, len(view.views))
+	tabTitles := make([]string, len(view.views))
 	cols := uint(0)
 
 	for index, childView := range view.views {
-		viewTitles[index] = fmt.Sprintf(" %v ", childView.Title())
-		cols += uint(len(viewTitles)) + 1
+		tabTitles[index] = fmt.Sprintf(" %v ", childView.Title())
+		cols += uint(len(tabTitles)) + 1
 	}
 
 	if cols > availableCols {
-		maxColsPerView := availableCols / uint(len(viewTitles))
+		maxColsPerView := availableCols / uint(len(tabTitles))
 
-		for index, viewTitle := range viewTitles {
+		for index, viewTitle := range tabTitles {
 			if uint(len(viewTitle)) > maxColsPerView {
-				viewTitles[index] = fmt.Sprintf("%*s ", maxColsPerView-1, viewTitles[index])
+				tabTitles[index] = fmt.Sprintf("%*s ", maxColsPerView-1, tabTitles[index])
 			}
 		}
 	}
+
+	view.lock.Lock()
+	view.tabTitles = tabTitles
+	view.lock.Unlock()
 
 	win := view.activeViewWin
 	win.Resize(ViewDimension{rows: 1, cols: availableCols})
@@ -257,7 +264,7 @@ func (view *View) renderActiveView(availableCols uint) (err error) {
 		return
 	}
 
-	for index, viewTitle := range viewTitles {
+	for index, viewTitle := range tabTitles {
 		var themeComponentID ThemeComponentID
 
 		if uint(index) == view.activeViewPos {
@@ -360,6 +367,15 @@ func (view *View) HandleAction(action Action) (err error) {
 		view.lock.Unlock()
 
 		if tabRemoved {
+			return
+		}
+	case ActionMouseSelect:
+		view.lock.Lock()
+		var handled bool
+		action, handled, err = view.handleMouseClick(action)
+		view.lock.Unlock()
+
+		if handled || err != nil {
 			return
 		}
 	}
@@ -607,4 +623,42 @@ func (view *View) splitView(action Action) (newAction Action, err error) {
 	}
 
 	return
+}
+
+func (view *View) handleMouseClick(action Action) (processedAction Action, handled bool, err error) {
+	mouseEvent, err := GetMouseEventFromAction(action)
+	if err != nil {
+		return
+	}
+
+	if mouseEvent.row == 0 {
+		view.handleTabClick(mouseEvent.col)
+		handled = true
+	} else if uint(mouseEvent.row) <= view.activeViewDim.rows {
+		mouseEvent.row--
+		processedAction = action
+		processedAction.Args[0] = mouseEvent
+	} else {
+		handled = true
+	}
+
+	return
+}
+
+func (view *View) handleTabClick(col uint) {
+	cols := uint(0)
+
+	for tabIndex, tabTitle := range view.tabTitles {
+		width := uint(StringWidth(tabTitle))
+
+		if col >= cols && col < cols+width {
+			log.Debugf("Tab at index %v selected", tabIndex)
+			view.activeViewPos = uint(tabIndex)
+			view.onActiveChange(true)
+			view.channels.UpdateDisplay()
+			return
+		}
+
+		cols += width
+	}
 }
