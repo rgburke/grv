@@ -89,7 +89,8 @@ func NewGitStatusView(repoData RepoData, channels *Channels) *GitStatusView {
 			ActionFirstLine:    moveToFirstGitStatusEntry,
 			ActionLastLine:     moveToLastGitStatusEntry,
 			ActionCenterView:   centerGitStatusView,
-			ActionSelect:       selectDiffEntry,
+			ActionSelect:       selectGitStatusEntry,
+			ActionMouseSelect:  mouseSelectGitStatusEntry,
 		},
 	}
 
@@ -673,7 +674,7 @@ func centerGitStatusView(gitStatusView *GitStatusView, action Action) (err error
 	return
 }
 
-func selectDiffEntry(gitStatusView *GitStatusView, action Action) (err error) {
+func selectGitStatusEntry(gitStatusView *GitStatusView, action Action) (err error) {
 	if len(gitStatusView.gitStatusViewListeners) == 0 {
 		gitStatusView.createGitStatusViewListener()
 	} else {
@@ -682,4 +683,29 @@ func selectDiffEntry(gitStatusView *GitStatusView, action Action) (err error) {
 	}
 
 	return
+}
+
+func mouseSelectGitStatusEntry(gitStatusView *GitStatusView, action Action) (err error) {
+	mouseEvent, err := GetMouseEventFromAction(action)
+	if err != nil {
+		return
+	}
+
+	if mouseEvent.row == 0 || mouseEvent.row == gitStatusView.viewDimension.rows-1 {
+		return
+	}
+
+	viewPos := gitStatusView.ViewPos()
+	selectedIndex := viewPos.ViewStartRowIndex() + mouseEvent.row - 1
+
+	renderedStatus := gitStatusView.renderedStatus
+	if selectedIndex >= uint(len(renderedStatus)) {
+		return
+	}
+
+	if renderedStatus[selectedIndex].text == "" {
+		return
+	}
+
+	return gitStatusView.selectEntry(selectedIndex)
 }

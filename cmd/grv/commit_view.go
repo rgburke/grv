@@ -70,6 +70,7 @@ func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
 			ActionRemoveFilter: removeCommitFilter,
 			ActionCenterView:   centerCommitView,
 			ActionSelect:       selectCommit,
+			ActionMouseSelect:  mouseSelectCommit,
 		},
 	}
 
@@ -833,4 +834,25 @@ func selectCommit(commitView *CommitView, action Action) (err error) {
 	}
 
 	return commitView.selectCommit(viewPos.ActiveRowIndex())
+}
+
+func mouseSelectCommit(commitView *CommitView, action Action) (err error) {
+	mouseEvent, err := GetMouseEventFromAction(action)
+	if err != nil {
+		return
+	}
+
+	if mouseEvent.row == 0 || mouseEvent.row == commitView.viewDimension.rows-1 {
+		return
+	}
+
+	viewPos := commitView.ViewPos()
+	selectedIndex := viewPos.ViewStartRowIndex() + mouseEvent.row - 1
+
+	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
+	if selectedIndex >= commitSetState.commitNum {
+		return
+	}
+
+	return commitView.selectCommit(selectedIndex)
 }

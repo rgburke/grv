@@ -214,6 +214,7 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 			ActionAddFilter:    addRefFilter,
 			ActionRemoveFilter: removeRefFilter,
 			ActionCenterView:   centerRefView,
+			ActionMouseSelect:  mouseSelectRef,
 		},
 	}
 
@@ -993,6 +994,38 @@ func centerRefView(refView *RefView, action Action) (err error) {
 		log.Debug("Centering RefView")
 		refView.channels.UpdateDisplay()
 	}
+
+	return
+}
+
+func mouseSelectRef(refView *RefView, action Action) (err error) {
+	mouseEvent, err := GetMouseEventFromAction(action)
+	if err != nil {
+		return
+	}
+
+	if mouseEvent.row == 0 || mouseEvent.row == refView.viewDimension.rows-1 {
+		return
+	}
+
+	viewPos := refView.viewPos
+	selectedIndex := viewPos.ViewStartRowIndex() + mouseEvent.row - 1
+
+	renderedRefs := refView.renderedRefs.RenderedRefs()
+	renderedRefNum := uint(len(renderedRefs))
+
+	if selectedIndex >= renderedRefNum {
+		return
+	}
+
+	renderedRef := renderedRefs[selectedIndex]
+
+	if !isSelectableRenderedRef(renderedRef.renderedRefType) {
+		return
+	}
+
+	viewPos.SetActiveRowIndex(selectedIndex)
+	refView.channels.UpdateDisplay()
 
 	return
 }

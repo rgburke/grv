@@ -130,6 +130,7 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 			ActionLastLine:     moveToLastDiffLine,
 			ActionCenterView:   centerDiffView,
 			ActionSelect:       selectDiffLine,
+			ActionMouseSelect:  mouseSelectDiffLine,
 		},
 	}
 
@@ -758,4 +759,32 @@ func selectDiffLine(diffView *DiffView, action Action) (err error) {
 	defer diffView.channels.UpdateDisplay()
 
 	return centerDiffView(diffView, action)
+}
+
+func mouseSelectDiffLine(diffView *DiffView, action Action) (err error) {
+	mouseEvent, err := GetMouseEventFromAction(action)
+	if err != nil {
+		return
+	}
+
+	if mouseEvent.row == 0 || mouseEvent.row == diffView.viewDimension.rows-1 {
+		return
+	}
+
+	viewPos := diffView.viewPos
+	selectedIndex := viewPos.ViewStartRowIndex() + mouseEvent.row - 1
+
+	diffLines, ok := diffView.diffs[diffView.activeDiff]
+	if !ok {
+		return
+	}
+
+	if selectedIndex >= uint(len(diffLines.lines)) {
+		return
+	}
+
+	diffView.viewPos.SetActiveRowIndex(selectedIndex)
+	diffView.channels.UpdateDisplay()
+
+	return
 }
