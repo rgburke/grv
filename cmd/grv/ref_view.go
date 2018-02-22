@@ -1024,8 +1024,12 @@ func mouseSelectRef(refView *RefView, action Action) (err error) {
 		return
 	}
 
-	viewPos.SetActiveRowIndex(selectedIndex)
-	refView.channels.UpdateDisplay()
+	if viewPos.ActiveRowIndex() == selectedIndex {
+		err = selectRef(refView, action)
+	} else {
+		viewPos.SetActiveRowIndex(selectedIndex)
+		refView.channels.UpdateDisplay()
+	}
 
 	return
 }
