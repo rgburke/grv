@@ -8,6 +8,7 @@ package main
 // #include <locale.h>
 // #include <sys/select.h>
 // #include <sys/ioctl.h>
+// #include <curses.h>
 //
 // static void grv_FD_ZERO(void *set) {
 // 	FD_ZERO((fd_set *)set);
@@ -19,6 +20,14 @@ package main
 //
 // static int grv_FD_ISSET(int fd, void *set) {
 // 	return FD_ISSET(fd, (fd_set *)set);
+// }
+//
+// static long grv_is_scroll_up(long button) {
+//#if defined(NCURSES_MOUSE_VERSION) && NCURSES_MOUSE_VERSION > 1
+// 	return button & BUTTON_ALT;
+//#else
+//	return 0;
+//#endif
 // }
 //
 import "C"
@@ -45,9 +54,11 @@ const (
 // MouseEventType differentiates mouse events
 type MouseEventType int
 
+// The set of supported mouse events
 const (
-	// MetLeftClick represents a mouse left click event
 	MetLeftClick MouseEventType = iota
+	MetScrollDown
+	MetScrollUp
 )
 
 // MouseEvent contains data for a mouse event
@@ -571,11 +582,21 @@ func (ui *NCursesUI) GetMouseEvent() (event MouseEvent, exists bool, err error) 
 }
 
 func (ui *NCursesUI) getMouseEventType(button gc.MouseButton) (mouseEventType MouseEventType, exists bool) {
+	log.Debugf("BUTTON: %v", button)
+
 	switch {
-	case (button & gc.M_B1_PRESSED) == gc.M_B1_PRESSED:
+	case (button & gc.M_B1_PRESSED) != 0:
 		mouseEventType = MetLeftClick
 		exists = true
+	case (button & (gc.M_B4_PRESSED | gc.M_B4_TPL_CLICKED)) != 0:
+		mouseEventType = MetScrollUp
+		exists = true
+	case C.grv_is_scroll_up(C.long(button)) != 0:
+		mouseEventType = MetScrollDown
+		exists = true
 	}
+
+	log.Debugf("MouseEventType: %v", mouseEventType)
 
 	return
 }

@@ -369,6 +369,10 @@ func MouseEventAction(mouseEvent MouseEvent) (action Action, err error) {
 			ActionType: ActionMouseSelect,
 			Args:       []interface{}{mouseEvent},
 		}
+	case MetScrollDown:
+		action = Action{ActionType: ActionNextLine}
+	case MetScrollUp:
+		action = Action{ActionType: ActionPrevLine}
 	default:
 		err = fmt.Errorf("Unknown MouseEventType %v", mouseEvent.mouseEventType)
 	}
