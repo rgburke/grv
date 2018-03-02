@@ -7,7 +7,7 @@ const (
 // NewHistoryView creates a new instance of the history view
 func NewHistoryView(repoData RepoData, channels *Channels, config Config) *ContainerView {
 	refView := NewRefView(repoData, channels)
-	commitView := NewCommitView(repoData, channels)
+	commitView := NewCommitView(repoData, channels, config)
 	diffView := NewDiffView(repoData, channels)
 
 	refView.RegisterRefListener(commitView)

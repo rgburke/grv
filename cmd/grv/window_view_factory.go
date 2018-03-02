@@ -60,7 +60,7 @@ func (windowViewFactory *WindowViewFactory) createCommitView(args []interface{})
 		return
 	}
 
-	commitView = NewCommitView(windowViewFactory.repoData, windowViewFactory.channels)
+	commitView = NewCommitView(windowViewFactory.repoData, windowViewFactory.channels, windowViewFactory.config)
 
 	log.Info("Created CommitView instance")
 

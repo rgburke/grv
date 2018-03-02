@@ -27,9 +27,10 @@ type TableFormatter struct {
 }
 
 // NewTableFormatter creates a new instance of the table formatter supporting the specified number of columns
-func NewTableFormatter(cols uint) *TableFormatter {
+func NewTableFormatter(cols uint, config Config) *TableFormatter {
 	return &TableFormatter{
 		maxColWidths: make([]uint, cols),
+		config:       config,
 	}
 }
 

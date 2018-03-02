@@ -38,6 +38,7 @@ type CommitViewListener interface {
 type CommitView struct {
 	channels            *Channels
 	repoData            RepoData
+	config              Config
 	activeRef           Ref
 	active              bool
 	refViewData         map[string]*referenceViewData
@@ -50,10 +51,11 @@ type CommitView struct {
 }
 
 // NewCommitView creates a new instance of the commit view
-func NewCommitView(repoData RepoData, channels *Channels) *CommitView {
+func NewCommitView(repoData RepoData, channels *Channels, config Config) *CommitView {
 	commitView := &CommitView{
 		channels:    channels,
 		repoData:    repoData,
+		config:      config,
 		refViewData: make(map[string]*referenceViewData),
 		handlers: map[ActionType]commitViewHandler{
 			ActionPrevLine:     moveUpCommit,
@@ -324,7 +326,7 @@ func (commitView *CommitView) OnRefSelect(ref Ref) (err error) {
 	if !refViewDataExists {
 		refViewData = &referenceViewData{
 			viewPos:        NewViewPosition(),
-			tableFormatter: NewTableFormatter(cvColumnNum),
+			tableFormatter: NewTableFormatter(cvColumnNum, commitView.config),
 		}
 
 		commitView.refViewData[ref.Name()] = refViewData
