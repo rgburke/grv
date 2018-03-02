@@ -226,6 +226,8 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 // Initialise loads the HEAD reference along with branches and tags
 func (refView *RefView) Initialise() (err error) {
 	log.Info("Initialising RefView")
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
 
 	if err = refView.repoData.LoadHead(); err != nil {
 		return
