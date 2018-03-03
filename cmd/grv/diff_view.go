@@ -118,19 +118,24 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 		viewPos:  NewViewPosition(),
 		diffs:    make(map[diffID]*diffLines),
 		handlers: map[ActionType]diffViewHandler{
-			ActionPrevLine:     moveUpDiffLine,
-			ActionNextLine:     moveDownDiffLine,
-			ActionPrevPage:     moveUpDiffPage,
-			ActionNextPage:     moveDownDiffPage,
-			ActionPrevHalfPage: moveUpDiffHalfPage,
-			ActionNextHalfPage: moveDownDiffHalfPage,
-			ActionScrollRight:  scrollDiffViewRight,
-			ActionScrollLeft:   scrollDiffViewLeft,
-			ActionFirstLine:    moveToFirstDiffLine,
-			ActionLastLine:     moveToLastDiffLine,
-			ActionCenterView:   centerDiffView,
-			ActionSelect:       selectDiffLine,
-			ActionMouseSelect:  mouseSelectDiffLine,
+			ActionPrevLine:           moveUpDiffLine,
+			ActionNextLine:           moveDownDiffLine,
+			ActionPrevPage:           moveUpDiffPage,
+			ActionNextPage:           moveDownDiffPage,
+			ActionPrevHalfPage:       moveUpDiffHalfPage,
+			ActionNextHalfPage:       moveDownDiffHalfPage,
+			ActionScrollRight:        scrollDiffViewRight,
+			ActionScrollLeft:         scrollDiffViewLeft,
+			ActionFirstLine:          moveToFirstDiffLine,
+			ActionLastLine:           moveToLastDiffLine,
+			ActionCenterView:         centerDiffView,
+			ActionScrollCursorTop:    scrollDiffViewTop,
+			ActionScrollCursorBottom: scrollDiffViewBottom,
+			ActionCursorTopView:      moveCursorTopDiffView,
+			ActionCursorMiddleView:   moveCursorMiddleDiffView,
+			ActionCursorBottomView:   moveCursorBottomDiffView,
+			ActionSelect:             selectDiffLine,
+			ActionMouseSelect:        mouseSelectDiffLine,
 		},
 	}
 
@@ -715,6 +720,73 @@ func centerDiffView(diffView *DiffView, action Action) (err error) {
 
 	if viewPos.CenterActiveRow(diffView.viewDimension.rows - 2) {
 		log.Debug("Centering DiffView")
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func scrollDiffViewTop(diffView *DiffView, action Action) (err error) {
+	viewPos := diffView.ViewPos()
+
+	if viewPos.ScrollActiveRowTop() {
+		log.Debug("Scrolling DiffView to make curor on top")
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func scrollDiffViewBottom(diffView *DiffView, action Action) (err error) {
+	viewPos := diffView.ViewPos()
+
+	if viewPos.ScrollActiveRowBottom(diffView.viewDimension.rows - 2) {
+		log.Debug("Scrolling DiffView to make curor on bottom")
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveCursorTopDiffView(diffView *DiffView, action Action) (err error) {
+	viewPos := diffView.ViewPos()
+
+	if viewPos.MoveCursorTopPage() {
+		log.Debug("Moving Cursor to top of diff view")
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveCursorMiddleDiffView(diffView *DiffView, action Action) (err error) {
+	diffLines, ok := diffView.diffs[diffView.activeDiff]
+	if !ok {
+		return
+	}
+	lineNumber := uint(len(diffLines.lines))
+
+	viewPos := diffView.ViewPos()
+
+	if viewPos.MoveCursorMiddlePage(diffView.viewDimension.rows-2, lineNumber) {
+		log.Debug("Moving Cursor to middle of diff view")
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveCursorBottomDiffView(diffView *DiffView, action Action) (err error) {
+	diffLines, ok := diffView.diffs[diffView.activeDiff]
+	if !ok {
+		return
+	}
+	lineNumber := uint(len(diffLines.lines))
+
+	viewPos := diffView.ViewPos()
+
+	if viewPos.MoveCursorBottomPage(diffView.viewDimension.rows-2, lineNumber) {
+		log.Debug("Moving Cursor to bottom of diff view")
 		diffView.channels.UpdateDisplay()
 	}
 

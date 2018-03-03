@@ -17,6 +17,11 @@ type ViewPos interface {
 	MoveToFirstLine() (changed bool)
 	MoveToLastLine(rows uint) (changed bool)
 	CenterActiveRow(pageRows uint) (changed bool)
+	ScrollActiveRowTop() (changed bool)
+	ScrollActiveRowBottom(pageRows uint) (changed bool)
+	MoveCursorTopPage() (changed bool)
+	MoveCursorMiddlePage(pageRows, rows uint) (changed bool)
+	MoveCursorBottomPage(pageRows, rows uint) (changed bool)
 }
 
 // ViewPosition implements the ViewPos interface
@@ -170,6 +175,66 @@ func (viewPos *ViewPosition) CenterActiveRow(pageRows uint) (changed bool) {
 		changed = true
 	} else if centerRow > selectedRow {
 		viewPos.viewStartRowIndex -= MinUint(centerRow-selectedRow, viewPos.viewStartRowIndex)
+		changed = true
+	}
+
+	return
+}
+
+// ScrollActiveRowTop updates the view start position to the cursor
+func (viewPos *ViewPosition) ScrollActiveRowTop() (changed bool) {
+	selectedRow := viewPos.SelectedRowIndex()
+
+	if selectedRow != 0 {
+		viewPos.viewStartRowIndex = viewPos.activeRowIndex
+		changed = true
+	}
+
+	return
+}
+
+// ScrollActiveRowBottom updates the view bottom position to the cursor
+func (viewPos *ViewPosition) ScrollActiveRowBottom(pageRows uint) (changed bool) {
+	selectedRow := viewPos.SelectedRowIndex()
+
+	if selectedRow != pageRows-1 {
+		viewPos.viewStartRowIndex = uint(MaxInt(int(viewPos.activeRowIndex-(pageRows-1)), 0))
+		changed = true
+	}
+
+	return
+}
+
+// MoveCursorTopPage moves the cursor to top of the page
+func (viewPos *ViewPosition) MoveCursorTopPage() (changed bool) {
+	firstRowInPage := viewPos.viewStartRowIndex
+
+	if viewPos.activeRowIndex != firstRowInPage {
+		viewPos.activeRowIndex = firstRowInPage
+		changed = true
+	}
+
+	return
+}
+
+// MoveCursorMiddlePage moves the cursor to middle of the page
+func (viewPos *ViewPosition) MoveCursorMiddlePage(pageRows, rows uint) (changed bool) {
+	middleRowInPage := viewPos.viewStartRowIndex + MinUint(pageRows, rows-viewPos.viewStartRowIndex)/2
+
+	if viewPos.activeRowIndex != middleRowInPage {
+		viewPos.activeRowIndex = middleRowInPage
+		changed = true
+	}
+
+	return
+}
+
+// MoveCursorBottomPage moves the cursor to bottom of the page
+func (viewPos *ViewPosition) MoveCursorBottomPage(pageRows, rows uint) (changed bool) {
+	lastRowInPage := MinUint(viewPos.viewStartRowIndex+pageRows-1, rows-1)
+
+	if viewPos.activeRowIndex != lastRowInPage {
+		viewPos.activeRowIndex = lastRowInPage
 		changed = true
 	}
 

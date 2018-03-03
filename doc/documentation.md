@@ -75,6 +75,11 @@ h       or <Left>       Scroll left
 gg                      Move to first line
 G                       Move to last line
 zz                      Center view
+zt                      Scroll the screen so cursor is at the top
+zb                      Scroll the screen so cursor is at the bottom
+H                       Move to the first line of the page
+M                       Move to the middle line of the page
+L                       Move to the last line of the page
 ```
 
 ### Search
