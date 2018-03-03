@@ -60,21 +60,27 @@ func NewCommitView(repoData RepoData, channels *Channels, config Config) *Commit
 		config:      config,
 		refViewData: make(map[string]*referenceViewData),
 		handlers: map[ActionType]commitViewHandler{
-			ActionPrevLine:     moveUpCommit,
-			ActionNextLine:     moveDownCommit,
-			ActionPrevPage:     moveUpCommitPage,
-			ActionNextPage:     moveDownCommitPage,
-			ActionPrevHalfPage: moveUpCommitHalfPage,
-			ActionNextHalfPage: moveDownCommitHalfPage,
-			ActionScrollRight:  scrollCommitViewRight,
-			ActionScrollLeft:   scrollCommitViewLeft,
-			ActionFirstLine:    moveToFirstCommit,
-			ActionLastLine:     moveToLastCommit,
-			ActionAddFilter:    addCommitFilter,
-			ActionRemoveFilter: removeCommitFilter,
-			ActionCenterView:   centerCommitView,
-			ActionSelect:       selectCommit,
-			ActionMouseSelect:  mouseSelectCommit,
+
+			ActionPrevLine:           moveUpCommit,
+			ActionNextLine:           moveDownCommit,
+			ActionPrevPage:           moveUpCommitPage,
+			ActionNextPage:           moveDownCommitPage,
+			ActionPrevHalfPage:       moveUpCommitHalfPage,
+			ActionNextHalfPage:       moveDownCommitHalfPage,
+			ActionScrollRight:        scrollCommitViewRight,
+			ActionScrollLeft:         scrollCommitViewLeft,
+			ActionFirstLine:          moveToFirstCommit,
+			ActionLastLine:           moveToLastCommit,
+			ActionAddFilter:          addCommitFilter,
+			ActionRemoveFilter:       removeCommitFilter,
+			ActionCenterView:         centerCommitView,
+			ActionScrollCursorTop:    scrollCommitViewTop,
+			ActionScrollCursorBottom: scrollCommitViewBottom,
+			ActionCursorTopView:      moveCursorTopCommitView,
+			ActionCursorMiddleView:   moveCursorMiddleCommitView,
+			ActionCursorBottomView:   moveCursorBottomCommitView,
+			ActionSelect:             selectCommit,
+			ActionMouseSelect:        mouseSelectCommit,
 		},
 	}
 
@@ -831,6 +837,72 @@ func centerCommitView(commitView *CommitView, action Action) (err error) {
 
 	if viewPos.CenterActiveRow(commitView.viewDimension.rows - 2) {
 		log.Debug("Centering CommitView")
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func scrollCommitViewTop(commitView *CommitView, action Action) (err error) {
+	viewPos := commitView.ViewPos()
+
+	if viewPos.ScrollActiveRowTop() {
+		log.Debug("Scrolling CommitView to make curor on top")
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func scrollCommitViewBottom(commitView *CommitView, action Action) (err error) {
+	viewPos := commitView.ViewPos()
+
+	if viewPos.ScrollActiveRowBottom(commitView.viewDimension.rows - 2) {
+		log.Debug("Scrolling CommitView to make curor on bottom")
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveCursorTopCommitView(commitView *CommitView, action Action) (err error) {
+	viewPos := commitView.ViewPos()
+
+	if viewPos.MoveCursorTopPage() {
+		log.Debug("Moving Cursor to top of commit view")
+		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
+			return
+		}
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveCursorMiddleCommitView(commitView *CommitView, action Action) (err error) {
+	lineNumber := commitView.lineNumber()
+	viewPos := commitView.ViewPos()
+
+	if viewPos.MoveCursorMiddlePage(commitView.viewDimension.rows-2, lineNumber) {
+		log.Debug("Moving Cursor to middle of commit view")
+		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
+			return
+		}
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveCursorBottomCommitView(commitView *CommitView, action Action) (err error) {
+	lineNumber := commitView.lineNumber()
+	viewPos := commitView.ViewPos()
+
+	if viewPos.MoveCursorBottomPage(commitView.viewDimension.rows-2, lineNumber) {
+		log.Debug("Moving Cursor to bottom of commit view")
+		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
+			return
+		}
 		commitView.channels.UpdateDisplay()
 	}
 

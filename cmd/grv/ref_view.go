@@ -200,21 +200,26 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 			},
 		},
 		handlers: map[ActionType]refViewHandler{
-			ActionPrevLine:     moveUpRef,
-			ActionNextLine:     moveDownRef,
-			ActionPrevPage:     moveUpRefPage,
-			ActionNextPage:     moveDownRefPage,
-			ActionPrevHalfPage: moveUpRefHalfPage,
-			ActionNextHalfPage: moveDownRefHalfPage,
-			ActionScrollRight:  scrollRefViewRight,
-			ActionScrollLeft:   scrollRefViewLeft,
-			ActionFirstLine:    moveToFirstRef,
-			ActionLastLine:     moveToLastRef,
-			ActionSelect:       selectRef,
-			ActionAddFilter:    addRefFilter,
-			ActionRemoveFilter: removeRefFilter,
-			ActionCenterView:   centerRefView,
-			ActionMouseSelect:  mouseSelectRef,
+			ActionPrevLine:           moveUpRef,
+			ActionNextLine:           moveDownRef,
+			ActionPrevPage:           moveUpRefPage,
+			ActionNextPage:           moveDownRefPage,
+			ActionPrevHalfPage:       moveUpRefHalfPage,
+			ActionNextHalfPage:       moveDownRefHalfPage,
+			ActionScrollRight:        scrollRefViewRight,
+			ActionScrollLeft:         scrollRefViewLeft,
+			ActionFirstLine:          moveToFirstRef,
+			ActionLastLine:           moveToLastRef,
+			ActionSelect:             selectRef,
+			ActionAddFilter:          addRefFilter,
+			ActionRemoveFilter:       removeRefFilter,
+			ActionCenterView:         centerRefView,
+			ActionScrollCursorTop:    scrollRefViewTop,
+			ActionScrollCursorBottom: scrollRefViewBottom,
+			ActionCursorTopView:      moveCursorTopRefView,
+			ActionCursorMiddleView:   moveCursorMiddleRefView,
+			ActionCursorBottomView:   moveCursorBottomRefView,
+			ActionMouseSelect:        mouseSelectRef,
 		},
 	}
 
@@ -994,6 +999,67 @@ func centerRefView(refView *RefView, action Action) (err error) {
 
 	if viewPos.CenterActiveRow(refView.viewDimension.rows - 2) {
 		log.Debug("Centering RefView")
+		refView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func scrollRefViewTop(refView *RefView, action Action) (err error) {
+	viewPos := refView.ViewPos()
+
+	if viewPos.ScrollActiveRowTop() {
+		log.Debug("Scrolling RefView to make curor on top")
+		refView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func scrollRefViewBottom(refView *RefView, action Action) (err error) {
+	viewPos := refView.ViewPos()
+
+	if viewPos.ScrollActiveRowBottom(refView.viewDimension.rows - 2) {
+		log.Debug("Scrolling RefView to make curor on bottom")
+		refView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveCursorTopRefView(refView *RefView, action Action) (err error) {
+	viewPos := refView.ViewPos()
+
+	if viewPos.MoveCursorTopPage() {
+		log.Debug("Moving Cursor to top of ref view")
+		refView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveCursorMiddleRefView(refView *RefView, action Action) (err error) {
+	renderedRefs := refView.renderedRefs.RenderedRefs()
+	lineNumber := uint(len(renderedRefs))
+
+	viewPos := refView.ViewPos()
+
+	if viewPos.MoveCursorMiddlePage(refView.viewDimension.rows-2, lineNumber) {
+		log.Debug("Moving Cursor to middle of ref view")
+		refView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveCursorBottomRefView(refView *RefView, action Action) (err error) {
+	renderedRefs := refView.renderedRefs.RenderedRefs()
+	lineNumber := uint(len(renderedRefs))
+
+	viewPos := refView.ViewPos()
+
+	if viewPos.MoveCursorBottomPage(refView.viewDimension.rows-2, lineNumber) {
+		log.Debug("Moving Cursor to bottom of ref view")
 		refView.channels.UpdateDisplay()
 	}
 

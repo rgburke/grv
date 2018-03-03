@@ -42,6 +42,11 @@ const (
 	ActionAddFilter
 	ActionRemoveFilter
 	ActionCenterView
+	ActionScrollCursorTop
+	ActionScrollCursorBottom
+	ActionCursorTopView
+	ActionCursorMiddleView
+	ActionCursorBottomView
 	ActionNextTab
 	ActionPrevTab
 	ActionNewTab
@@ -114,6 +119,11 @@ var actionKeys = map[string]ActionType{
 	"<grv-add-filter>":            ActionAddFilter,
 	"<grv-remove-filter>":         ActionRemoveFilter,
 	"<grv-center-view>":           ActionCenterView,
+	"<grv-scroll-cursor-top>":     ActionScrollCursorTop,
+	"<grv-scroll-cursor-bottom>":  ActionScrollCursorBottom,
+	"<grv-cursor-top-view>":       ActionCursorTopView,
+	"<grv-cursor-middle-view>":    ActionCursorMiddleView,
+	"<grv-cursor-bottom-view>":    ActionCursorBottomView,
 	"<grv-next-tab>":              ActionNextTab,
 	"<grv-prev-tab>":              ActionPrevTab,
 	"<grv-add-tab>":               ActionNewTab,
@@ -204,7 +214,22 @@ var defaultKeyBindings = map[ActionType]map[ViewID][]string{
 		ViewRef:    {"<C-r>"},
 	},
 	ActionCenterView: {
-		ViewAll: {"zz"},
+		ViewAll: {"zz", "z."},
+	},
+	ActionScrollCursorTop: {
+		ViewAll: {"zt"},
+	},
+	ActionScrollCursorBottom: {
+		ViewAll: {"zb"},
+	},
+	ActionCursorTopView: {
+		ViewAll: {"H"},
+	},
+	ActionCursorMiddleView: {
+		ViewAll: {"M"},
+	},
+	ActionCursorBottomView: {
+		ViewAll: {"L"},
 	},
 	ActionNextTab: {
 		ViewAll: {"gt"},

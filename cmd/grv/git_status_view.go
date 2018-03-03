@@ -78,19 +78,24 @@ func NewGitStatusView(repoData RepoData, channels *Channels) *GitStatusView {
 		channels: channels,
 		viewPos:  NewViewPosition(),
 		handlers: map[ActionType]gitStatusViewHandler{
-			ActionPrevLine:     moveUpGitStatusEntry,
-			ActionNextLine:     moveDownGitStatusEntry,
-			ActionPrevPage:     moveUpGitStatusPage,
-			ActionNextPage:     moveDownGitStatusPage,
-			ActionPrevHalfPage: moveUpGitStatusHalfPage,
-			ActionNextHalfPage: moveDownGitStatusHalfPage,
-			ActionScrollRight:  scrollGitStatusViewRight,
-			ActionScrollLeft:   scrollGitStatusViewLeft,
-			ActionFirstLine:    moveToFirstGitStatusEntry,
-			ActionLastLine:     moveToLastGitStatusEntry,
-			ActionCenterView:   centerGitStatusView,
-			ActionSelect:       selectGitStatusEntry,
-			ActionMouseSelect:  mouseSelectGitStatusEntry,
+			ActionPrevLine:           moveUpGitStatusEntry,
+			ActionNextLine:           moveDownGitStatusEntry,
+			ActionPrevPage:           moveUpGitStatusPage,
+			ActionNextPage:           moveDownGitStatusPage,
+			ActionPrevHalfPage:       moveUpGitStatusHalfPage,
+			ActionNextHalfPage:       moveDownGitStatusHalfPage,
+			ActionScrollRight:        scrollGitStatusViewRight,
+			ActionScrollLeft:         scrollGitStatusViewLeft,
+			ActionFirstLine:          moveToFirstGitStatusEntry,
+			ActionLastLine:           moveToLastGitStatusEntry,
+			ActionCenterView:         centerGitStatusView,
+			ActionScrollCursorTop:    scrollGitStatusViewTop,
+			ActionScrollCursorBottom: scrollGitStatusViewBottom,
+			ActionCursorTopView:      moveCursorTopGitStatusView,
+			ActionCursorMiddleView:   moveCursorMiddleGitStatusView,
+			ActionCursorBottomView:   moveCursorBottomGitStatusView,
+			ActionSelect:             selectGitStatusEntry,
+			ActionMouseSelect:        mouseSelectGitStatusEntry,
 		},
 	}
 
@@ -668,6 +673,63 @@ func centerGitStatusView(gitStatusView *GitStatusView, action Action) (err error
 
 	if viewPos.CenterActiveRow(gitStatusView.viewDimension.rows - 2) {
 		log.Debug("Centering GitStatusView")
+		gitStatusView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func scrollGitStatusViewTop(gitStatusView *GitStatusView, action Action) (err error) {
+	viewPos := gitStatusView.ViewPos()
+
+	if viewPos.ScrollActiveRowTop() {
+		log.Debug("Scrolling GitStatusView to make curor on top")
+		gitStatusView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func scrollGitStatusViewBottom(gitStatusView *GitStatusView, action Action) (err error) {
+	viewPos := gitStatusView.ViewPos()
+
+	if viewPos.ScrollActiveRowBottom(gitStatusView.viewDimension.rows - 2) {
+		log.Debug("Scrolling GitStatusView to make curor on bottom")
+		gitStatusView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveCursorTopGitStatusView(gitStatusView *GitStatusView, action Action) (err error) {
+	viewPos := gitStatusView.ViewPos()
+
+	if viewPos.MoveCursorTopPage() {
+		log.Debug("Moving Cursor to top of git status view")
+		gitStatusView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveCursorMiddleGitStatusView(gitStatusView *GitStatusView, action Action) (err error) {
+	lineNumber := gitStatusView.lineNumber()
+	viewPos := gitStatusView.ViewPos()
+
+	if viewPos.MoveCursorMiddlePage(gitStatusView.viewDimension.rows-2, lineNumber) {
+		log.Debug("Moving Cursor to middle of git status view")
+		gitStatusView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func moveCursorBottomGitStatusView(gitStatusView *GitStatusView, action Action) (err error) {
+	lineNumber := gitStatusView.lineNumber()
+	viewPos := gitStatusView.ViewPos()
+
+	if viewPos.MoveCursorBottomPage(gitStatusView.viewDimension.rows-2, lineNumber) {
+		log.Debug("Moving Cursor to bottom of git status view")
 		gitStatusView.channels.UpdateDisplay()
 	}
 
