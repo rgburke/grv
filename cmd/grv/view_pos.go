@@ -193,7 +193,7 @@ func (viewPos *ViewPosition) ScrollActiveRowTop() (changed bool) {
 	return
 }
 
-// ScrollActiveRowTop updates the view bottom position to the cursor
+// ScrollActiveRowBottom updates the view bottom position to the cursor
 func (viewPos *ViewPosition) ScrollActiveRowBottom(pageRows uint) (changed bool) {
 	selectedRow := viewPos.SelectedRowIndex()
 
@@ -205,6 +205,7 @@ func (viewPos *ViewPosition) ScrollActiveRowBottom(pageRows uint) (changed bool)
 	return
 }
 
+// MoveCursorTopPage moves the cursor to top of the page
 func (viewPos *ViewPosition) MoveCursorTopPage() (changed bool) {
 	firstRowInPage := viewPos.viewStartRowIndex
 
@@ -216,6 +217,7 @@ func (viewPos *ViewPosition) MoveCursorTopPage() (changed bool) {
 	return
 }
 
+// MoveCursorMiddlePage moves the cursor to middle of the page
 func (viewPos *ViewPosition) MoveCursorMiddlePage(pageRows, rows uint) (changed bool) {
 	middleRowInPage := viewPos.viewStartRowIndex + MinUint(pageRows, rows-viewPos.viewStartRowIndex)/2
 
@@ -227,6 +229,7 @@ func (viewPos *ViewPosition) MoveCursorMiddlePage(pageRows, rows uint) (changed 
 	return
 }
 
+// MoveCursorBottomPage moves the cursor to bottom of the page
 func (viewPos *ViewPosition) MoveCursorBottomPage(pageRows, rows uint) (changed bool) {
 	lastRowInPage := MinUint(viewPos.viewStartRowIndex+pageRows-1, rows-1)
 
