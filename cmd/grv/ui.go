@@ -22,11 +22,11 @@ package main
 // 	return FD_ISSET(fd, (fd_set *)set);
 // }
 //
-// static long grv_is_scroll_up(long button) {
+// static long grv_is_scroll_down(long button) {
 //#if defined(NCURSES_MOUSE_VERSION) && NCURSES_MOUSE_VERSION > 1
 // 	return button & BUTTON_ALT;
 //#else
-//	return 0;
+//	return button & BUTTON2_PRESSED;
 //#endif
 // }
 //
@@ -114,7 +114,7 @@ type Key int
 type InputUI interface {
 	GetInput(force bool) (Key, error)
 	CancelGetInput() error
-	GetMouseEvent() (MouseEvent, bool, error)
+	GetMouseEvent() (event MouseEvent, exists bool)
 }
 
 // UI exposes methods for updaing the display
@@ -558,17 +558,16 @@ func (ui *NCursesUI) cancelGetInput() error {
 }
 
 // GetMouseEvent returns the most recent mouse event or an error if none exists
-func (ui *NCursesUI) GetMouseEvent() (event MouseEvent, exists bool, err error) {
+func (ui *NCursesUI) GetMouseEvent() (event MouseEvent, exists bool) {
 	mouseEvent := gc.GetMouse()
 
 	if mouseEvent == nil {
-		err = fmt.Errorf("Unable to retrieve mouse event")
 		return
 	}
 
 	mouseEventType, exists := ui.getMouseEventType(mouseEvent.State)
 
-	if err == nil {
+	if exists {
 		event = MouseEvent{
 			mouseEventType: mouseEventType,
 			row:            uint(mouseEvent.Y),
@@ -582,7 +581,7 @@ func (ui *NCursesUI) GetMouseEvent() (event MouseEvent, exists bool, err error) 
 }
 
 func (ui *NCursesUI) getMouseEventType(button gc.MouseButton) (mouseEventType MouseEventType, exists bool) {
-	log.Debugf("BUTTON: %v", button)
+	log.Debugf("Ncurses button: %v", button)
 
 	switch {
 	case (button & gc.M_B1_PRESSED) != 0:
@@ -591,7 +590,7 @@ func (ui *NCursesUI) getMouseEventType(button gc.MouseButton) (mouseEventType Mo
 	case (button & (gc.M_B4_PRESSED | gc.M_B4_TPL_CLICKED)) != 0:
 		mouseEventType = MetScrollUp
 		exists = true
-	case C.grv_is_scroll_up(C.long(button)) != 0:
+	case C.grv_is_scroll_down(C.long(button)) != 0:
 		mouseEventType = MetScrollDown
 		exists = true
 	}

@@ -100,6 +100,7 @@ type diffID string
 type DiffView struct {
 	channels      *Channels
 	repoData      RepoData
+	config        Config
 	activeDiff    diffID
 	diffs         map[diffID]*diffLines
 	viewPos       ViewPos
@@ -111,10 +112,11 @@ type DiffView struct {
 }
 
 // NewDiffView creates a new diff view instance
-func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
+func NewDiffView(repoData RepoData, channels *Channels, config Config) *DiffView {
 	diffView := &DiffView{
 		repoData: repoData,
 		channels: channels,
+		config:   config,
 		viewPos:  NewViewPosition(),
 		diffs:    make(map[diffID]*diffLines),
 		handlers: map[ActionType]diffViewHandler{
@@ -136,6 +138,8 @@ func NewDiffView(repoData RepoData, channels *Channels) *DiffView {
 			ActionCursorBottomView:   moveCursorBottomDiffView,
 			ActionSelect:             selectDiffLine,
 			ActionMouseSelect:        mouseSelectDiffLine,
+			ActionMouseScrollDown:    mouseScrollDownDiffView,
+			ActionMouseScrollUp:      mouseScrollUpDiffView,
 		},
 	}
 
@@ -573,6 +577,10 @@ func (diffView *DiffView) LineNumber() (lineNumber uint) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
+	return diffView.lineNumber()
+}
+
+func (diffView *DiffView) lineNumber() (lineNumber uint) {
 	diffLines, ok := diffView.diffs[diffView.activeDiff]
 	if !ok {
 		return
@@ -857,6 +865,31 @@ func mouseSelectDiffLine(diffView *DiffView, action Action) (err error) {
 
 	diffView.viewPos.SetActiveRowIndex(selectedIndex)
 	diffView.channels.UpdateDisplay()
+
+	return
+}
+
+func mouseScrollDownDiffView(diffView *DiffView, action Action) (err error) {
+	viewPos := diffView.viewPos
+	lineNumber := diffView.lineNumber()
+	pageRows := diffView.viewDimension.rows - 2
+	scrollRows := uint(diffView.config.GetInt(CfMouseScrollRows))
+
+	if viewPos.ScrollDown(lineNumber, pageRows, scrollRows) {
+		diffView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func mouseScrollUpDiffView(diffView *DiffView, action Action) (err error) {
+	viewPos := diffView.viewPos
+	pageRows := diffView.viewDimension.rows - 2
+	scrollRows := uint(diffView.config.GetInt(CfMouseScrollRows))
+
+	if viewPos.ScrollUp(pageRows, scrollRows) {
+		diffView.channels.UpdateDisplay()
+	}
 
 	return
 }

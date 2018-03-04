@@ -283,10 +283,7 @@ func (grv *GRV) runInputLoop(waitGroup *sync.WaitGroup, exitCh chan bool, inputK
 		if err != nil {
 			errorCh <- err
 		} else if key == "<Mouse>" {
-			mouseEvent, exists, err := grv.ui.GetMouseEvent()
-			if err != nil {
-				errorCh <- err
-			} else if exists {
+			if mouseEvent, exists := grv.ui.GetMouseEvent(); exists {
 				mouseEventAction, err := MouseEventAction(mouseEvent)
 				if err != nil {
 					errorCh <- err

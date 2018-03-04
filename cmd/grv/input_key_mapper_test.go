@@ -29,7 +29,7 @@ func (inputUI *MockInputUI) CancelGetInput() error {
 	return args.Error(0)
 }
 
-func (inputUI *MockInputUI) GetMouseEvent() (mouseEvent MouseEvent, exists bool, err error) {
+func (inputUI *MockInputUI) GetMouseEvent() (mouseEvent MouseEvent, exists bool) {
 	return
 }
 

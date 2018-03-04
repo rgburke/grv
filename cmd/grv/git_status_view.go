@@ -60,6 +60,7 @@ type GitStatusViewListener interface {
 type GitStatusView struct {
 	repoData               RepoData
 	channels               *Channels
+	config                 Config
 	status                 *Status
 	renderedStatus         []*renderedStatusEntry
 	viewPos                ViewPos
@@ -72,10 +73,11 @@ type GitStatusView struct {
 }
 
 // NewGitStatusView created a new GitStatusView
-func NewGitStatusView(repoData RepoData, channels *Channels) *GitStatusView {
+func NewGitStatusView(repoData RepoData, channels *Channels, config Config) *GitStatusView {
 	gitStatusView := &GitStatusView{
 		repoData: repoData,
 		channels: channels,
+		config:   config,
 		viewPos:  NewViewPosition(),
 		handlers: map[ActionType]gitStatusViewHandler{
 			ActionPrevLine:           moveUpGitStatusEntry,
@@ -96,6 +98,8 @@ func NewGitStatusView(repoData RepoData, channels *Channels) *GitStatusView {
 			ActionCursorBottomView:   moveCursorBottomGitStatusView,
 			ActionSelect:             selectGitStatusEntry,
 			ActionMouseSelect:        mouseSelectGitStatusEntry,
+			ActionMouseScrollDown:    mouseScrollDownGitStatusView,
+			ActionMouseScrollUp:      mouseScrollUpGitStatusView,
 		},
 	}
 
@@ -476,6 +480,10 @@ func (gitStatusView *GitStatusView) HandleAction(action Action) (err error) {
 	return
 }
 
+func isSelectableRenderedGitStatusEntry(renderedStatusEntry *renderedStatusEntry) bool {
+	return renderedStatusEntry.text != ""
+}
+
 func moveUpGitStatusEntry(gitStatusView *GitStatusView, action Action) (err error) {
 	viewPos := gitStatusView.ViewPos()
 	renderedStatus := gitStatusView.renderedStatus
@@ -485,7 +493,7 @@ func moveUpGitStatusEntry(gitStatusView *GitStatusView, action Action) (err erro
 			return
 		}
 
-		if renderedStatus[viewPos.ActiveRowIndex()].text != "" {
+		if isSelectableRenderedGitStatusEntry(renderedStatus[viewPos.ActiveRowIndex()]) {
 			break
 		}
 	}
@@ -513,7 +521,7 @@ func moveDownGitStatusEntry(gitStatusView *GitStatusView, action Action) (err er
 			return
 		}
 
-		if renderedStatus[viewPos.ActiveRowIndex()].text != "" {
+		if isSelectableRenderedGitStatusEntry(renderedStatus[viewPos.ActiveRowIndex()]) {
 			break
 		}
 	}
@@ -765,9 +773,48 @@ func mouseSelectGitStatusEntry(gitStatusView *GitStatusView, action Action) (err
 		return
 	}
 
-	if renderedStatus[selectedIndex].text == "" {
+	if !isSelectableRenderedGitStatusEntry(renderedStatus[selectedIndex]) {
 		return
 	}
 
 	return gitStatusView.selectEntry(selectedIndex)
+}
+
+func mouseScrollDownGitStatusView(gitStatusView *GitStatusView, action Action) (err error) {
+	viewPos := gitStatusView.ViewPos()
+	lineNumber := gitStatusView.lineNumber()
+	pageRows := gitStatusView.viewDimension.rows - 2
+	scrollRows := uint(gitStatusView.config.GetInt(CfMouseScrollRows))
+
+	if viewPos.ScrollDown(lineNumber, pageRows, scrollRows) {
+		renderedStatus := gitStatusView.renderedStatus
+
+		if !isSelectableRenderedGitStatusEntry(renderedStatus[viewPos.ActiveRowIndex()]) {
+			err = moveDownGitStatusEntry(gitStatusView, action)
+		}
+
+		err = gitStatusView.selectEntry(viewPos.ActiveRowIndex())
+		gitStatusView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func mouseScrollUpGitStatusView(gitStatusView *GitStatusView, action Action) (err error) {
+	viewPos := gitStatusView.ViewPos()
+	pageRows := gitStatusView.viewDimension.rows - 2
+	scrollRows := uint(gitStatusView.config.GetInt(CfMouseScrollRows))
+
+	if viewPos.ScrollUp(pageRows, scrollRows) {
+		renderedStatus := gitStatusView.renderedStatus
+
+		if !isSelectableRenderedGitStatusEntry(renderedStatus[viewPos.ActiveRowIndex()]) {
+			err = moveUpGitStatusEntry(gitStatusView, action)
+		}
+
+		err = gitStatusView.selectEntry(viewPos.ActiveRowIndex())
+		gitStatusView.channels.UpdateDisplay()
+	}
+
+	return
 }

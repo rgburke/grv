@@ -22,6 +22,8 @@ type ViewPos interface {
 	MoveCursorTopPage() (changed bool)
 	MoveCursorMiddlePage(pageRows, rows uint) (changed bool)
 	MoveCursorBottomPage(pageRows, rows uint) (changed bool)
+	ScrollDown(rows, pageRows, scrollRows uint) (changed bool)
+	ScrollUp(pageRows, scrollRows uint) (changed bool)
 }
 
 // ViewPosition implements the ViewPos interface
@@ -236,6 +238,47 @@ func (viewPos *ViewPosition) MoveCursorBottomPage(pageRows, rows uint) (changed 
 	if viewPos.activeRowIndex != lastRowInPage {
 		viewPos.activeRowIndex = lastRowInPage
 		changed = true
+	}
+
+	return
+}
+
+// ScrollDown scrolls the view down by scrollRows
+func (viewPos *ViewPosition) ScrollDown(rows, pageRows, scrollRows uint) (changed bool) {
+	if viewPos.viewStartRowIndex+scrollRows < rows {
+		viewPos.viewStartRowIndex += scrollRows
+		changed = true
+	}
+
+	if changed {
+		if viewPos.activeRowIndex < viewPos.viewStartRowIndex {
+			viewPos.activeRowIndex = viewPos.viewStartRowIndex
+
+			viewPos.DetermineViewStartRow(pageRows, rows)
+
+			if viewPos.activeRowIndex > viewPos.viewStartRowIndex {
+				viewPos.activeRowIndex = viewPos.viewStartRowIndex
+			}
+		}
+	}
+
+	return
+}
+
+// ScrollUp scrolls the view up by scrollRows
+func (viewPos *ViewPosition) ScrollUp(pageRows, scrollRows uint) (changed bool) {
+	if viewPos.viewStartRowIndex >= scrollRows {
+		viewPos.viewStartRowIndex -= scrollRows
+		changed = true
+	} else if viewPos.viewStartRowIndex != 0 {
+		viewPos.viewStartRowIndex = 0
+		changed = true
+	}
+
+	if changed {
+		if viewPos.activeRowIndex >= viewPos.viewStartRowIndex+pageRows {
+			viewPos.activeRowIndex = (viewPos.viewStartRowIndex + pageRows) - 1
+		}
 	}
 
 	return

@@ -51,7 +51,7 @@ func (windowViewFactory *WindowViewFactory) CreateWindowViewWithArgs(viewID View
 
 func (windowViewFactory *WindowViewFactory) createRefView() *RefView {
 	log.Info("Created RefView instance")
-	return NewRefView(windowViewFactory.repoData, windowViewFactory.channels)
+	return NewRefView(windowViewFactory.repoData, windowViewFactory.channels, windowViewFactory.config)
 }
 
 func (windowViewFactory *WindowViewFactory) createCommitView(args []interface{}) (commitView *CommitView, err error) {
@@ -78,7 +78,7 @@ func (windowViewFactory *WindowViewFactory) createDiffView(args []interface{}) (
 		return
 	}
 
-	diffView = NewDiffView(windowViewFactory.repoData, windowViewFactory.channels)
+	diffView = NewDiffView(windowViewFactory.repoData, windowViewFactory.channels, windowViewFactory.config)
 
 	log.Info("Created DiffView instance")
 
@@ -96,7 +96,7 @@ func (windowViewFactory *WindowViewFactory) createDiffView(args []interface{}) (
 }
 
 func (windowViewFactory *WindowViewFactory) createGitStatusView() *GitStatusView {
-	gitStatusView := NewGitStatusView(windowViewFactory.repoData, windowViewFactory.channels)
+	gitStatusView := NewGitStatusView(windowViewFactory.repoData, windowViewFactory.channels, windowViewFactory.config)
 
 	status := windowViewFactory.repoData.Status()
 	gitStatusView.OnStatusChanged(status)

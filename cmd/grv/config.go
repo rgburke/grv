@@ -13,15 +13,16 @@ import (
 )
 
 const (
-	cfDefaultConfigHomeDir = "/.config"
-	cfGrvConfigDir         = "/grv"
-	cfGrvrcFile            = "/grvrc"
-	cfTabWidthMinValue     = 1
-	cfTabWidthDefaultValue = 8
-	cfClassicThemeName     = "classic"
-	cfColdThemeName        = "cold"
-	cfSolarizedThemeName   = "solarized"
-	cfMouseDefaultValue    = false
+	cfDefaultConfigHomeDir        = "/.config"
+	cfGrvConfigDir                = "/grv"
+	cfGrvrcFile                   = "/grvrc"
+	cfTabWidthMinValue            = 1
+	cfTabWidthDefaultValue        = 8
+	cfClassicThemeName            = "classic"
+	cfColdThemeName               = "cold"
+	cfSolarizedThemeName          = "solarized"
+	cfMouseDefaultValue           = false
+	cfMouseScrollRowsDefaultValue = 3
 
 	cfAllView       = "All"
 	cfMainView      = "MainView"
@@ -47,6 +48,8 @@ const (
 	CfTheme ConfigVariable = "theme"
 	// CfMouse stores whether mouse support is enabled
 	CfMouse ConfigVariable = "mouse"
+	// CfMouseScrollRows stores the number of rows a view will scroll when a scroll mouse event is received
+	CfMouseScrollRows ConfigVariable = "mouse-scroll-rows"
 )
 
 var systemColorValues = map[string]SystemColorValue{
@@ -216,6 +219,10 @@ func NewConfiguration(keyBindings KeyBindings, channels *Channels) *Configuratio
 			validator: booleanValueValidator{
 				variableName: string(CfMouse),
 			},
+		},
+		CfMouseScrollRows: {
+			value:     cfMouseScrollRowsDefaultValue,
+			validator: mouseScrollRowsValidator{},
 		},
 	}
 
@@ -683,6 +690,22 @@ func (booleanValueValidator booleanValueValidator) validate(value string) (proce
 		processedValue = false
 	default:
 		err = fmt.Errorf("%v must be set to either true or false but found: %v", booleanValueValidator.variableName, value)
+	}
+
+	return
+}
+
+type mouseScrollRowsValidator struct{}
+
+func (mouseScrollRowsValidator mouseScrollRowsValidator) validate(value string) (processedValue interface{}, err error) {
+	var mouseScrollRows int
+
+	if mouseScrollRows, err = strconv.Atoi(value); err != nil {
+		err = fmt.Errorf("%v must be an integer value greater than 0", CfMouseScrollRows)
+	} else if mouseScrollRows <= 0 {
+		err = fmt.Errorf("%v must be greater than 0", CfMouseScrollRows)
+	} else {
+		processedValue = mouseScrollRows
 	}
 
 	return

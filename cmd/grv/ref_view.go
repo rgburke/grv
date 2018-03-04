@@ -158,6 +158,7 @@ func (renderedRefList *renderedRefList) Children() (children uint) {
 type RefView struct {
 	channels      *Channels
 	repoData      RepoData
+	config        Config
 	refLists      []*refList
 	refListeners  []RefListener
 	active        bool
@@ -175,10 +176,11 @@ type RefListener interface {
 }
 
 // NewRefView creates a new instance
-func NewRefView(repoData RepoData, channels *Channels) *RefView {
+func NewRefView(repoData RepoData, channels *Channels, config Config) *RefView {
 	refView := &RefView{
 		channels:     channels,
 		repoData:     repoData,
+		config:       config,
 		viewPos:      NewViewPosition(),
 		renderedRefs: newRenderedRefList(),
 		refLists: []*refList{
@@ -220,6 +222,8 @@ func NewRefView(repoData RepoData, channels *Channels) *RefView {
 			ActionCursorMiddleView:   moveCursorMiddleRefView,
 			ActionCursorBottomView:   moveCursorBottomRefView,
 			ActionMouseSelect:        mouseSelectRef,
+			ActionMouseScrollDown:    mouseScrollDownRefView,
+			ActionMouseScrollUp:      mouseScrollUpRefView,
 		},
 	}
 
@@ -696,6 +700,10 @@ func (refView *RefView) LineNumber() (lineNumber uint) {
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
 
+	return refView.lineNumber()
+}
+
+func (refView *RefView) lineNumber() (lineNumber uint) {
 	renderedRefs := refView.renderedRefs.RenderedRefs()
 	renderedRefNum := uint(len(renderedRefs))
 	return renderedRefNum
@@ -1096,6 +1104,45 @@ func mouseSelectRef(refView *RefView, action Action) (err error) {
 		err = selectRef(refView, action)
 	} else {
 		viewPos.SetActiveRowIndex(selectedIndex)
+		refView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func mouseScrollDownRefView(refView *RefView, action Action) (err error) {
+	viewPos := refView.viewPos
+	lineNumber := refView.lineNumber()
+	pageRows := refView.viewDimension.rows - 2
+	scrollRows := uint(refView.config.GetInt(CfMouseScrollRows))
+
+	if viewPos.ScrollDown(lineNumber, pageRows, scrollRows) {
+		renderedRefs := refView.renderedRefs.RenderedRefs()
+		renderedRef := renderedRefs[viewPos.ActiveRowIndex()]
+
+		if !isSelectableRenderedRef(renderedRef.renderedRefType) {
+			err = moveDownRef(refView, action)
+		}
+
+		refView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func mouseScrollUpRefView(refView *RefView, action Action) (err error) {
+	viewPos := refView.viewPos
+	pageRows := refView.viewDimension.rows - 2
+	scrollRows := uint(refView.config.GetInt(CfMouseScrollRows))
+
+	if viewPos.ScrollUp(pageRows, scrollRows) {
+		renderedRefs := refView.renderedRefs.RenderedRefs()
+		renderedRef := renderedRefs[viewPos.ActiveRowIndex()]
+
+		if !isSelectableRenderedRef(renderedRef.renderedRefType) {
+			err = moveUpRef(refView, action)
+		}
+
 		refView.channels.UpdateDisplay()
 	}
 

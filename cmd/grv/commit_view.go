@@ -60,7 +60,6 @@ func NewCommitView(repoData RepoData, channels *Channels, config Config) *Commit
 		config:      config,
 		refViewData: make(map[string]*referenceViewData),
 		handlers: map[ActionType]commitViewHandler{
-
 			ActionPrevLine:           moveUpCommit,
 			ActionNextLine:           moveDownCommit,
 			ActionPrevPage:           moveUpCommitPage,
@@ -81,6 +80,8 @@ func NewCommitView(repoData RepoData, channels *Channels, config Config) *Commit
 			ActionCursorBottomView:   moveCursorBottomCommitView,
 			ActionSelect:             selectCommit,
 			ActionMouseSelect:        mouseSelectCommit,
+			ActionMouseScrollDown:    mouseScrollDownCommitView,
+			ActionMouseScrollUp:      mouseScrollUpCommitView,
 		},
 	}
 
@@ -943,4 +944,31 @@ func mouseSelectCommit(commitView *CommitView, action Action) (err error) {
 	}
 
 	return commitView.selectCommit(selectedIndex)
+}
+
+func mouseScrollDownCommitView(commitView *CommitView, action Action) (err error) {
+	viewPos := commitView.ViewPos()
+	lineNumber := commitView.lineNumber()
+	pageRows := commitView.viewDimension.rows - 2
+	scrollRows := uint(commitView.config.GetInt(CfMouseScrollRows))
+
+	if viewPos.ScrollDown(lineNumber, pageRows, scrollRows) {
+		err = commitView.selectCommit(viewPos.ActiveRowIndex())
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
+}
+
+func mouseScrollUpCommitView(commitView *CommitView, action Action) (err error) {
+	viewPos := commitView.ViewPos()
+	pageRows := commitView.viewDimension.rows - 2
+	scrollRows := uint(commitView.config.GetInt(CfMouseScrollRows))
+
+	if viewPos.ScrollUp(pageRows, scrollRows) {
+		err = commitView.selectCommit(viewPos.ActiveRowIndex())
+		commitView.channels.UpdateDisplay()
+	}
+
+	return
 }

@@ -55,6 +55,8 @@ const (
 	ActionSplitView
 	ActionRemoveView
 	ActionMouseSelect
+	ActionMouseScrollDown
+	ActionMouseScrollUp
 )
 
 // Action represents a type of actions and its arguments to be executed
@@ -395,9 +397,9 @@ func MouseEventAction(mouseEvent MouseEvent) (action Action, err error) {
 			Args:       []interface{}{mouseEvent},
 		}
 	case MetScrollDown:
-		action = Action{ActionType: ActionNextLine}
+		action = Action{ActionType: ActionMouseScrollDown}
 	case MetScrollUp:
-		action = Action{ActionType: ActionPrevLine}
+		action = Action{ActionType: ActionMouseScrollUp}
 	default:
 		err = fmt.Errorf("Unknown MouseEventType %v", mouseEvent.mouseEventType)
 	}
