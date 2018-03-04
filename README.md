@@ -17,6 +17,7 @@ More screenshots can be seen [here](doc/screenshots.md)
  - Organised as tabs and splits. Custom tabs and splits can be created using any combination of views.
  - Vi like keybindings by default, key bindings can be customised.
  - Custom themes can be created.
+ - Mouse support.
 
 ## Documentation
 

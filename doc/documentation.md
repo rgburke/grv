@@ -164,18 +164,21 @@ set variable value
 Configuration variables available in GRV are:
 
 ```
- Variable | Type   | Description
- ---------+--------+----------------------------------------------
- tabwidth | int    | Tab character screen width (minimum value: 1)
- theme    | string | The currently active theme
+ Variable          | Type   | Default Value | Description
+ ------------------+--------+---------------+----------------------------------------------
+ tabwidth          | int    | 8             | Tab character screen width (minimum value: 1)
+ theme             | string | solarized     | The currently active theme
+ mouse             | bool   | false         | Mouse support enabled
+ mouse-scroll-rows | int    | 3             | Number of rows scrolled for each mouse event
 ```
 
-For example, to set the tab width to tab width to 4 and the currently active
-theme to "mytheme":
+For example, to set the tab width to tab width to 4, the currently active
+theme to "mytheme" and enable mouse support:
 
 ```
 set tabwidth 4
 set theme mytheme
+set mouse true
 ```
 
 GRV currently has 3 built in themes available:
