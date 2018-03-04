@@ -281,3 +281,203 @@ func TestDetermineViewStartRowDecreasesActiveRowIndexIfItIsGreaterThanTheTotalNu
 
 	checkViewPos(expected, actual, t)
 }
+
+func TestScrollActiveRowTopSetsViewStartRowIndexToActiveRowIndex(t *testing.T) {
+	expected := newViewPos(20, 20, 1)
+
+	actual := newViewPos(20, 10, 1)
+	result := actual.ScrollActiveRowTop()
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestScrollActiveRowTopDoesntChangeViewStartRowIndexWhenItIsEqualToActiveRowIndex(t *testing.T) {
+	expected := newViewPos(10, 10, 1)
+
+	actual := newViewPos(10, 10, 1)
+	result := actual.ScrollActiveRowTop()
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(false, result, t)
+}
+
+func TestScrollActiveRowBottomSetsViewStartRowIndexToBottomOfView(t *testing.T) {
+	expected := newViewPos(10, 1, 1)
+
+	actual := newViewPos(10, 5, 1)
+	result := actual.ScrollActiveRowBottom(10)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestScrollActiveRowBottomDoesntChangeViewStartRowIndexWhenActiveRowIndexIsAtBottomOfView(t *testing.T) {
+	expected := newViewPos(10, 1, 1)
+
+	actual := newViewPos(10, 1, 1)
+	result := actual.ScrollActiveRowBottom(10)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(false, result, t)
+}
+
+func TestMoveCursorTopPageSetsActiveRowIndexToViewStartRowIndexWhenNotEqual(t *testing.T) {
+	expected := newViewPos(10, 10, 1)
+
+	actual := newViewPos(15, 10, 1)
+	result := actual.MoveCursorTopPage()
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestMoveCursorTopPageDoesntChangeActiveRowIndexToViewStartRowIndexWhenEqual(t *testing.T) {
+	expected := newViewPos(10, 10, 1)
+
+	actual := newViewPos(10, 10, 1)
+	result := actual.MoveCursorTopPage()
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(false, result, t)
+}
+
+func TestMoveCursorMiddlePageSetsActiveRowIndexToMiddleOfPageRows(t *testing.T) {
+	expected := newViewPos(15, 10, 1)
+
+	actual := newViewPos(10, 10, 1)
+	result := actual.MoveCursorMiddlePage(10, 100)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestMoveCursorMiddlePageSetsActiveRowIndexToMiddleOfAvailableRows(t *testing.T) {
+	expected := newViewPos(12, 10, 1)
+
+	actual := newViewPos(10, 10, 1)
+	result := actual.MoveCursorMiddlePage(10, 14)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestMoveCursorMiddlePageDoesntChangeActiveRowIndexWhenAlreadyInMiddleOfView(t *testing.T) {
+	expected := newViewPos(15, 10, 1)
+
+	actual := newViewPos(15, 10, 1)
+	result := actual.MoveCursorMiddlePage(10, 100)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(false, result, t)
+}
+
+func TestMoveCursorBottomPageSetsActiveRowIndexToLastRowInView(t *testing.T) {
+	expected := newViewPos(19, 10, 1)
+
+	actual := newViewPos(10, 10, 1)
+	result := actual.MoveCursorBottomPage(10, 100)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestMoveCursorBottomPageSetsActiveRowIndexToLastAvailableRowInView(t *testing.T) {
+	expected := newViewPos(14, 10, 1)
+
+	actual := newViewPos(10, 10, 1)
+	result := actual.MoveCursorBottomPage(10, 15)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestMoveCursorBottomPageDoesntChangeActiveRowIndexWhenActiveRowIndexIsEqualToLastRowInView(t *testing.T) {
+	expected := newViewPos(14, 10, 1)
+
+	actual := newViewPos(14, 10, 1)
+	result := actual.MoveCursorBottomPage(10, 15)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(false, result, t)
+}
+
+func TestScrollDownIncrementsViewStartRowIndexByScrollRows(t *testing.T) {
+	expected := newViewPos(15, 12, 1)
+
+	actual := newViewPos(15, 10, 1)
+	result := actual.ScrollDown(100, 10, 2)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestScrollDownIncrementsViewStartRowIndexByScrollRowsAndUpdatesActiveRowIndexWhenOutOfView(t *testing.T) {
+	expected := newViewPos(20, 20, 1)
+
+	actual := newViewPos(15, 10, 1)
+	result := actual.ScrollDown(100, 10, 10)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestScrollDownKeepsActiveRowIndexOnFirstRowOfViewWhenOnLastPage(t *testing.T) {
+	expected := newViewPos(10, 10, 1)
+
+	actual := newViewPos(10, 10, 1)
+	result := actual.ScrollDown(20, 10, 5)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestScrollDownDoesntChangeViewStartRowIndexWhenThereAreNoRowsLeftToScrollDownTo(t *testing.T) {
+	expected := newViewPos(9, 9, 1)
+
+	actual := newViewPos(9, 9, 1)
+	result := actual.ScrollDown(10, 10, 5)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(false, result, t)
+}
+
+func TestScrollUpDecrementsViewStartRowIndexByScrollRows(t *testing.T) {
+	expected := newViewPos(10, 8, 1)
+
+	actual := newViewPos(10, 10, 1)
+	result := actual.ScrollUp(10, 2)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestScrollUpDecrementsViewStartRowIndexByScrollRowsAndUpdatesActiveRowIndexWhenOutOfView(t *testing.T) {
+	expected := newViewPos(19, 10, 1)
+
+	actual := newViewPos(20, 20, 1)
+	result := actual.ScrollUp(10, 10)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestScrollUpDecrementsViewStartRowIndexByAvailableRowsWhenScrollRowsIsGreater(t *testing.T) {
+	expected := newViewPos(5, 0, 1)
+
+	actual := newViewPos(5, 5, 1)
+	result := actual.ScrollUp(10, 10)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(true, result, t)
+}
+
+func TestScrollUpDoesntChangeViewStartRowIndexWhenAlreadyOnFirstRow(t *testing.T) {
+	expected := newViewPos(0, 0, 1)
+
+	actual := newViewPos(0, 0, 1)
+	result := actual.ScrollUp(10, 10)
+
+	checkViewPos(expected, actual, t)
+	checkViewPosResult(false, result, t)
+}

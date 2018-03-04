@@ -128,3 +128,68 @@ func TestIsPromptActionCorrectlyIdentifiesPromptActions(t *testing.T) {
 		}
 	}
 }
+
+func TestMouseEventActionReturnsExpectedActions(t *testing.T) {
+	mouseEventLeftClick := MouseEvent{
+		mouseEventType: MetLeftClick,
+		row:            10,
+		col:            20,
+	}
+
+	tests := map[MouseEvent]Action{
+		mouseEventLeftClick: Action{
+			ActionType: ActionMouseSelect,
+			Args:       []interface{}{mouseEventLeftClick},
+		},
+		MouseEvent{mouseEventType: MetScrollDown}: Action{ActionType: ActionMouseScrollDown},
+		MouseEvent{mouseEventType: MetScrollUp}:   Action{ActionType: ActionMouseScrollUp},
+	}
+
+	for mouseEvent, expectedAction := range tests {
+		actualAction, err := MouseEventAction(mouseEvent)
+
+		if err != nil {
+			t.Errorf("MouseEventAction failed with error: %v", err)
+		} else if !reflect.DeepEqual(actualAction, expectedAction) {
+			t.Errorf("Returned action did not match expected action. Actual: %v. Expected: %v", actualAction, expectedAction)
+		}
+	}
+}
+
+func TestMouseEventActionReturnsAnErrorForAnInvalidMouseEventType(t *testing.T) {
+	_, err := MouseEventAction(MouseEvent{mouseEventType: MouseEventType(-5)})
+
+	if err == nil {
+		t.Errorf("Expected MouseEventAction to return error for invalid MouseEventType")
+	}
+}
+
+func TestGetMouseEventFromActionExtractsMouseEventFromAction(t *testing.T) {
+	mouseEventLeftClick := MouseEvent{
+		mouseEventType: MetLeftClick,
+		row:            10,
+		col:            20,
+	}
+	action := Action{
+		ActionType: ActionMouseSelect,
+		Args:       []interface{}{mouseEventLeftClick},
+	}
+
+	actualMouseEvent, err := GetMouseEventFromAction(action)
+
+	if err != nil {
+		t.Errorf("GetMouseEventFromAction failed with error: %v", err)
+	} else if !reflect.DeepEqual(actualMouseEvent, mouseEventLeftClick) {
+		t.Errorf("Returned MouseEvent did not match expected event. Actual: %v. Expected: %v", actualMouseEvent, mouseEventLeftClick)
+	}
+}
+
+func TestGetMouseEventReturnsErrorsForInvalidActions(t *testing.T) {
+	if _, err := GetMouseEventFromAction(Action{}); err == nil {
+		t.Errorf("Expected GetMouseEventFromAction to return error for action with empty Args")
+	}
+
+	if _, err := GetMouseEventFromAction(Action{Args: []interface{}{5}}); err == nil {
+		t.Errorf("Expected GetMouseEventFromAction to return error for action with invalid Args")
+	}
+}
