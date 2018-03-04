@@ -54,6 +54,10 @@ type RenderedRef struct {
 	refNum          uint
 }
 
+func (renderedRef *RenderedRef) isSelectable() bool {
+	return renderedRef.renderedRefType != RvSpace && renderedRef.renderedRefType != RvLoading
+}
+
 type renderedRefSet interface {
 	Add(*RenderedRef)
 	AddChild(renderedRefSet)
@@ -276,11 +280,31 @@ func (refView *RefView) Initialise() (err error) {
 }
 
 func getDetachedHeadDisplayValue(oid *Oid) string {
-	return fmt.Sprintf("HEAD detached at %s", oid.String()[0:7])
+	return fmt.Sprintf("HEAD detached at %s", oid.ShortID())
 }
 
-func isSelectableRenderedRef(renderedRefType RenderedRefType) bool {
-	return renderedRefType != RvSpace && renderedRefType != RvLoading
+func (refView *RefView) moveUpRefIfNonSelectable(action Action) (err error) {
+	viewPos := refView.viewPos
+	renderedRefs := refView.renderedRefs.RenderedRefs()
+	renderedRef := renderedRefs[viewPos.ActiveRowIndex()]
+
+	if !renderedRef.isSelectable() {
+		err = moveUpRef(refView, action)
+	}
+
+	return
+}
+
+func (refView *RefView) moveDownRefIfNonSelectable(action Action) (err error) {
+	viewPos := refView.viewPos
+	renderedRefs := refView.renderedRefs.RenderedRefs()
+	renderedRef := renderedRefs[viewPos.ActiveRowIndex()]
+
+	if !renderedRef.isSelectable() {
+		err = moveDownRef(refView, action)
+	}
+
+	return
 }
 
 // RegisterRefListener adds a ref listener to be notified when a reference is selected
@@ -669,7 +693,7 @@ func (refView *RefView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
 	renderedRefs := refView.renderedRefs.RenderedRefs()
 	renderedRef := renderedRefs[matchLineIndex]
 
-	if isSelectableRenderedRef(renderedRef.renderedRefType) {
+	if renderedRef.isSelectable() {
 		refView.viewPos.SetActiveRowIndex(matchLineIndex)
 	} else {
 		log.Debugf("Unable to select search match at index %v as it is not a selectable type", matchLineIndex)
@@ -771,7 +795,7 @@ func moveUpRef(refView *RefView, action Action) (err error) {
 	for activeRowIndex > 0 {
 		renderedRef := renderedRefs[activeRowIndex]
 
-		if isSelectableRenderedRef(renderedRef.renderedRefType) {
+		if renderedRef.isSelectable() {
 			break
 		}
 
@@ -779,7 +803,7 @@ func moveUpRef(refView *RefView, action Action) (err error) {
 	}
 
 	renderedRef := renderedRefs[activeRowIndex]
-	if isSelectableRenderedRef(renderedRef.renderedRefType) {
+	if renderedRef.isSelectable() {
 		viewPos.SetActiveRowIndex(activeRowIndex)
 		refView.channels.UpdateDisplay()
 	} else {
@@ -806,7 +830,7 @@ func moveDownRef(refView *RefView, action Action) (err error) {
 	for activeRowIndex < renderedRefNum-1 {
 		renderedRef := renderedRefs[activeRowIndex]
 
-		if isSelectableRenderedRef(renderedRef.renderedRefType) {
+		if renderedRef.isSelectable() {
 			break
 		}
 
@@ -814,7 +838,7 @@ func moveDownRef(refView *RefView, action Action) (err error) {
 	}
 
 	renderedRef := renderedRefs[activeRowIndex]
-	if isSelectableRenderedRef(renderedRef.renderedRefType) {
+	if renderedRef.isSelectable() {
 		viewPos.SetActiveRowIndex(activeRowIndex)
 		refView.channels.UpdateDisplay()
 	} else {
@@ -1040,6 +1064,7 @@ func moveCursorTopRefView(refView *RefView, action Action) (err error) {
 
 	if viewPos.MoveCursorTopPage() {
 		log.Debug("Moving Cursor to top of ref view")
+		err = refView.moveUpRefIfNonSelectable(action)
 		refView.channels.UpdateDisplay()
 	}
 
@@ -1054,6 +1079,7 @@ func moveCursorMiddleRefView(refView *RefView, action Action) (err error) {
 
 	if viewPos.MoveCursorMiddlePage(refView.viewDimension.rows-2, lineNumber) {
 		log.Debug("Moving Cursor to middle of ref view")
+		err = refView.moveDownRefIfNonSelectable(action)
 		refView.channels.UpdateDisplay()
 	}
 
@@ -1068,6 +1094,7 @@ func moveCursorBottomRefView(refView *RefView, action Action) (err error) {
 
 	if viewPos.MoveCursorBottomPage(refView.viewDimension.rows-2, lineNumber) {
 		log.Debug("Moving Cursor to bottom of ref view")
+		err = refView.moveDownRefIfNonSelectable(action)
 		refView.channels.UpdateDisplay()
 	}
 
@@ -1096,7 +1123,7 @@ func mouseSelectRef(refView *RefView, action Action) (err error) {
 
 	renderedRef := renderedRefs[selectedIndex]
 
-	if !isSelectableRenderedRef(renderedRef.renderedRefType) {
+	if !renderedRef.isSelectable() {
 		return
 	}
 
@@ -1117,13 +1144,7 @@ func mouseScrollDownRefView(refView *RefView, action Action) (err error) {
 	scrollRows := uint(refView.config.GetInt(CfMouseScrollRows))
 
 	if viewPos.ScrollDown(lineNumber, pageRows, scrollRows) {
-		renderedRefs := refView.renderedRefs.RenderedRefs()
-		renderedRef := renderedRefs[viewPos.ActiveRowIndex()]
-
-		if !isSelectableRenderedRef(renderedRef.renderedRefType) {
-			err = moveDownRef(refView, action)
-		}
-
+		err = refView.moveDownRefIfNonSelectable(action)
 		refView.channels.UpdateDisplay()
 	}
 
@@ -1136,13 +1157,7 @@ func mouseScrollUpRefView(refView *RefView, action Action) (err error) {
 	scrollRows := uint(refView.config.GetInt(CfMouseScrollRows))
 
 	if viewPos.ScrollUp(pageRows, scrollRows) {
-		renderedRefs := refView.renderedRefs.RenderedRefs()
-		renderedRef := renderedRefs[viewPos.ActiveRowIndex()]
-
-		if !isSelectableRenderedRef(renderedRef.renderedRefType) {
-			err = moveUpRef(refView, action)
-		}
-
+		err = refView.moveUpRefIfNonSelectable(action)
 		refView.channels.UpdateDisplay()
 	}
 

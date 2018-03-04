@@ -48,6 +48,10 @@ type renderedStatusEntry struct {
 	StatusEntry      *StatusEntry
 }
 
+func (renderedStatusEntry *renderedStatusEntry) isSelectable() bool {
+	return renderedStatusEntry.text != ""
+}
+
 // GitStatusViewListener is notified when either a file
 // or a non-file entry is selected in the GitStatusView
 type GitStatusViewListener interface {
@@ -480,8 +484,28 @@ func (gitStatusView *GitStatusView) HandleAction(action Action) (err error) {
 	return
 }
 
-func isSelectableRenderedGitStatusEntry(renderedStatusEntry *renderedStatusEntry) bool {
-	return renderedStatusEntry.text != ""
+func (gitStatusView *GitStatusView) moveUpGitStatusEntryIfNonSelectable(action Action) (err error) {
+	viewPos := gitStatusView.ViewPos()
+	renderedStatus := gitStatusView.renderedStatus
+	renderedStatusEntry := renderedStatus[viewPos.ActiveRowIndex()]
+
+	if !renderedStatusEntry.isSelectable() {
+		err = moveUpGitStatusEntry(gitStatusView, action)
+	}
+
+	return
+}
+
+func (gitStatusView *GitStatusView) moveDownGitStatusEntryIfNonSelectable(action Action) (err error) {
+	viewPos := gitStatusView.ViewPos()
+	renderedStatus := gitStatusView.renderedStatus
+	renderedStatusEntry := renderedStatus[viewPos.ActiveRowIndex()]
+
+	if !renderedStatusEntry.isSelectable() {
+		err = moveDownGitStatusEntry(gitStatusView, action)
+	}
+
+	return
 }
 
 func moveUpGitStatusEntry(gitStatusView *GitStatusView, action Action) (err error) {
@@ -493,7 +517,7 @@ func moveUpGitStatusEntry(gitStatusView *GitStatusView, action Action) (err erro
 			return
 		}
 
-		if isSelectableRenderedGitStatusEntry(renderedStatus[viewPos.ActiveRowIndex()]) {
+		if renderedStatus[viewPos.ActiveRowIndex()].isSelectable() {
 			break
 		}
 	}
@@ -521,7 +545,7 @@ func moveDownGitStatusEntry(gitStatusView *GitStatusView, action Action) (err er
 			return
 		}
 
-		if isSelectableRenderedGitStatusEntry(renderedStatus[viewPos.ActiveRowIndex()]) {
+		if renderedStatus[viewPos.ActiveRowIndex()].isSelectable() {
 			break
 		}
 	}
@@ -714,6 +738,7 @@ func moveCursorTopGitStatusView(gitStatusView *GitStatusView, action Action) (er
 
 	if viewPos.MoveCursorTopPage() {
 		log.Debug("Moving Cursor to top of git status view")
+		err = gitStatusView.moveUpGitStatusEntryIfNonSelectable(action)
 		gitStatusView.channels.UpdateDisplay()
 	}
 
@@ -726,6 +751,7 @@ func moveCursorMiddleGitStatusView(gitStatusView *GitStatusView, action Action) 
 
 	if viewPos.MoveCursorMiddlePage(gitStatusView.viewDimension.rows-2, lineNumber) {
 		log.Debug("Moving Cursor to middle of git status view")
+		err = gitStatusView.moveDownGitStatusEntryIfNonSelectable(action)
 		gitStatusView.channels.UpdateDisplay()
 	}
 
@@ -738,6 +764,7 @@ func moveCursorBottomGitStatusView(gitStatusView *GitStatusView, action Action) 
 
 	if viewPos.MoveCursorBottomPage(gitStatusView.viewDimension.rows-2, lineNumber) {
 		log.Debug("Moving Cursor to bottom of git status view")
+		err = gitStatusView.moveDownGitStatusEntryIfNonSelectable(action)
 		gitStatusView.channels.UpdateDisplay()
 	}
 
@@ -773,7 +800,7 @@ func mouseSelectGitStatusEntry(gitStatusView *GitStatusView, action Action) (err
 		return
 	}
 
-	if !isSelectableRenderedGitStatusEntry(renderedStatus[selectedIndex]) {
+	if !renderedStatus[selectedIndex].isSelectable() {
 		return
 	}
 
@@ -787,10 +814,8 @@ func mouseScrollDownGitStatusView(gitStatusView *GitStatusView, action Action) (
 	scrollRows := uint(gitStatusView.config.GetInt(CfMouseScrollRows))
 
 	if viewPos.ScrollDown(lineNumber, pageRows, scrollRows) {
-		renderedStatus := gitStatusView.renderedStatus
-
-		if !isSelectableRenderedGitStatusEntry(renderedStatus[viewPos.ActiveRowIndex()]) {
-			err = moveDownGitStatusEntry(gitStatusView, action)
+		if err = gitStatusView.moveDownGitStatusEntryIfNonSelectable(action); err != nil {
+			return
 		}
 
 		err = gitStatusView.selectEntry(viewPos.ActiveRowIndex())
@@ -806,10 +831,8 @@ func mouseScrollUpGitStatusView(gitStatusView *GitStatusView, action Action) (er
 	scrollRows := uint(gitStatusView.config.GetInt(CfMouseScrollRows))
 
 	if viewPos.ScrollUp(pageRows, scrollRows) {
-		renderedStatus := gitStatusView.renderedStatus
-
-		if !isSelectableRenderedGitStatusEntry(renderedStatus[viewPos.ActiveRowIndex()]) {
-			err = moveUpGitStatusEntry(gitStatusView, action)
+		if err = gitStatusView.moveUpGitStatusEntryIfNonSelectable(action); err != nil {
+			return
 		}
 
 		err = gitStatusView.selectEntry(viewPos.ActiveRowIndex())
