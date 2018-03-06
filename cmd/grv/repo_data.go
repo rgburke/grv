@@ -67,6 +67,7 @@ type RepoData interface {
 	CommitByIndex(ref Ref, index uint) (*Commit, error)
 	Commit(oid *Oid) (*Commit, error)
 	CommitByOid(oidStr string) (*Commit, error)
+	CommitParents(oid *Oid) ([]*Commit, error)
 	AddCommitFilter(Ref, *CommitFilter) error
 	RemoveCommitFilter(Ref) error
 	DiffCommit(commit *Commit) (*Diff, error)
@@ -1274,6 +1275,29 @@ func (repoData *RepositoryData) Commit(oid *Oid) (*Commit, error) {
 // CommitByOid loads the commit from the repository using the provided oid string
 func (repoData *RepositoryData) CommitByOid(oidStr string) (*Commit, error) {
 	return repoData.repoDataLoader.CommitByOid(oidStr)
+}
+
+// CommitParents loads the parents of a commit
+func (repoData *RepositoryData) CommitParents(oid *Oid) (parentCommits []*Commit, err error) {
+	commit, err := repoData.repoDataLoader.Commit(oid)
+	if err != nil {
+		return
+	}
+
+	parentCount := commit.commit.ParentCount()
+	var parentCommit *Commit
+
+	for i := uint(0); i < parentCount; i++ {
+		parentOid := &Oid{commit.commit.ParentId(i)}
+		parentCommit, err = repoData.Commit(parentOid)
+		if err != nil {
+			return
+		}
+
+		parentCommits = append(parentCommits, parentCommit)
+	}
+
+	return
 }
 
 // AddCommitFilter adds the filter to the specified ref
