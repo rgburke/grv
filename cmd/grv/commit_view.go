@@ -392,6 +392,15 @@ func (commitView *CommitView) OnCommitsLoaded(ref Ref) {
 
 	commitSetState := commitView.repoData.CommitSetState(ref)
 	commitView.channels.ReportStatus("Loaded %v commits for ref %v", commitSetState.commitNum, ref.Shorthand())
+
+	commitGraph := NewCommitGraph(commitView.repoData)
+
+	commitCh, _ := commitView.repoData.Commits(ref, 0, 40)
+	for commit := range commitCh {
+		commitGraph.AddCommit(commit)
+	}
+
+	commitGraph.WriteToFile("commit-graph.txt")
 }
 
 // OnCommitsUpdated adjusts the active row index to take account of the newly loaded commits
