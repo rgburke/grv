@@ -395,7 +395,7 @@ func (commitView *CommitView) OnCommitsLoaded(ref Ref) {
 
 	commitGraph := NewCommitGraph(commitView.repoData)
 
-	commitCh, _ := commitView.repoData.Commits(ref, 0, 40)
+	commitCh, _ := commitView.repoData.Commits(ref, 0, 20)
 	for commit := range commitCh {
 		commitGraph.AddCommit(commit)
 	}

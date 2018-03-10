@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"io/ioutil"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // CommitGraph ...
@@ -51,11 +53,97 @@ func (commitGraphRow *commitGraphRow) isEmpty() bool {
 func (commitGraphRow *commitGraphRow) commitIndex() int {
 	for commitIndex, cellType := range commitGraphRow.cells {
 		if cellType == cgtCommit || cellType == cgtMergeCommit {
-			return commitIndex
+			return commitIndex / 2
 		}
 	}
 
 	return -1
+}
+
+type rowProperties int
+
+const (
+	rpNone           rowProperties = 0
+	rpBranchOff      rowProperties = 1 << 0
+	rpMultiBranchOff rowProperties = 1 << 1
+	rpMergeIn        rowProperties = 1 << 2
+	rpMultiMergeIn   rowProperties = 1 << 3
+)
+
+type commitGraphRowBuilder struct {
+	parentCommits       []*Commit
+	commitCellType      commitGraphCellType
+	parentCommitIndexes map[int]bool
+	properties          rowProperties
+	parentsSeen         int
+}
+
+func newCommitGraphRowBuilder(parentCommits []*Commit, commitCellType commitGraphCellType, parentCommitIndexes map[int]bool) *commitGraphRowBuilder {
+	return &commitGraphRowBuilder{
+		parentCommits:       parentCommits,
+		commitCellType:      commitCellType,
+		parentCommitIndexes: parentCommitIndexes,
+	}
+}
+
+func (builder *commitGraphRowBuilder) determineRowProperties() {
+	if builder.commitCellType == cgtMergeCommit {
+		builder.properties &= rpMergeIn
+	}
+
+	if len(builder.parentCommits) > 2 {
+		builder.properties &= rpMultiMergeIn
+	}
+
+	if len(builder.parentCommitIndexes) > 1 {
+		builder.properties &= rpBranchOff
+	}
+
+	if len(builder.parentCommitIndexes) > 2 {
+		builder.properties &= rpMultiBranchOff
+	}
+
+	builder.parentsSeen = 0
+}
+
+func (builder *commitGraphRowBuilder) build() *commitGraphRow {
+	builder.determineRowProperties()
+	row := newCommitGraphRow()
+
+	for parentIndex := range builder.parentCommits {
+		if _, isParentCommit := builder.parentCommitIndexes[parentIndex]; isParentCommit {
+			if builder.parentsSeen == 0 {
+				row.add(builder.commitCellType)
+			} else {
+				if builder.parentsSeen < len(builder.parentCommitIndexes)-1 {
+					row.add(cgtMultiBranchOffLine)
+				} else {
+					row.add(cgtBranchOffLine)
+				}
+			}
+
+			builder.parentsSeen++
+		} else {
+			row.add(cgtParentLine)
+		}
+
+		//if parentIndex != len(builder.parentCommits)-1 {
+		if (builder.parentsSeen > 0 && builder.commitCellType == cgtMergeCommit) ||
+			(builder.parentsSeen > 0 && builder.parentsSeen < len(builder.parentCommitIndexes) && builder.commitCellType == cgtCommit) {
+			row.add(cgtCrossLine)
+		} else {
+			row.add(cgtEmpty)
+		}
+		//}
+	}
+
+	if row.isEmpty() {
+		row.add(builder.commitCellType)
+	} else if builder.commitCellType == cgtMergeCommit {
+		row.add(cgtMergeCommitLine)
+	}
+
+	return row
 }
 
 // AddCommit ...
@@ -65,36 +153,13 @@ func (commitGraph *CommitGraph) AddCommit(commit *Commit) (err error) {
 		return
 	}
 
-	cellType := commitGraph.determineCommitCellType(parentCommits)
-	parentIndexes := commitGraph.determineParentIndexes(commit)
-	row := newCommitGraphRow()
+	commitCellType := commitGraph.determineCommitCellType(parentCommits)
+	parentCommitIndexes := commitGraph.determineParentIndexes(commit)
 
-	parentsSeen := 0
-	for parentIndex := range commitGraph.parentCommits {
-		if _, isParentCommit := parentIndexes[parentIndex]; isParentCommit {
-			if parentsSeen == 0 {
-				row.add(cellType)
-				parentsSeen++
-			} else {
-			}
-		} else {
-
-		}
-
-		if parentsSeen > 0 && parentsSeen < len(parentIndexes) && cellType == cgtMergeCommit {
-			row.add(cgtBranchOffLine)
-		} else {
-			row.add(cgtEmpty)
-		}
-	}
-
-	if row.isEmpty() {
-		row.add(cellType)
-	}
+	row := newCommitGraphRowBuilder(commitGraph.parentCommits, commitCellType, parentCommitIndexes).build()
+	commitGraph.addRow(row)
 
 	commitGraph.updateParentCommits(row, parentCommits)
-
-	commitGraph.addRow(row)
 
 	return
 }
@@ -124,10 +189,12 @@ func (commitGraph *CommitGraph) updateParentCommits(row *commitGraphRow, parentC
 		return
 	} else if len(commitGraph.parentCommits) == 0 {
 		commitGraph.parentCommits = append(commitGraph.parentCommits, parentCommits...)
+		return
 	}
 
-	//commitIndex := row.commitIndex()
-	commitGraph.parentCommits[0] = parentCommits[0]
+	commitIndex := row.commitIndex()
+	log.Debugf("GRAPH: rowIndex: %v, commitIndex: %v", len(commitGraph.rows)-1, commitIndex)
+	commitGraph.parentCommits[commitIndex] = parentCommits[0]
 
 	for i := 1; i < len(parentCommits); i++ {
 		commitGraph.parentCommits = append(commitGraph.parentCommits, parentCommits[i])
@@ -163,6 +230,8 @@ func (commitGraph *CommitGraph) WriteToFile(filePath string) error {
 				cellString = "┘"
 			case cgtMultiBranchOffLine:
 				cellString = "┴"
+			default:
+				cellString = "?"
 			}
 
 			buf.WriteString(cellString)
