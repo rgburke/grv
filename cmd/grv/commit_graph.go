@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"io/ioutil"
 	"math"
-	//log "github.com/Sirupsen/logrus"
+	"sync"
 )
 
-// CommitGraph ...
+// CommitGraph handles building and displaying a commit graph
 type CommitGraph struct {
 	repoData      RepoData
 	rows          []*commitGraphRow
 	parentCommits []*Commit
+	lock          sync.Mutex
 }
 
 type commitGraphRow struct {
@@ -33,7 +34,7 @@ const (
 	cgtShiftDown                                     // ┌
 )
 
-// NewCommitGraph ...
+// NewCommitGraph creates a new CommitGraph instance
 func NewCommitGraph(repoData RepoData) *CommitGraph {
 	return &CommitGraph{
 		repoData: repoData,
@@ -203,8 +204,11 @@ func (builder *commitGraphRowBuilder) build() *commitGraphRow {
 	return row
 }
 
-// AddCommit ...
+// AddCommit adds the next commit to the graph
 func (commitGraph *CommitGraph) AddCommit(commit *Commit) (err error) {
+	commitGraph.lock.Lock()
+	defer commitGraph.lock.Unlock()
+
 	parentCommits, err := commitGraph.repoData.CommitParents(commit.oid)
 	if err != nil {
 		return
@@ -307,10 +311,56 @@ func (commitGraph *CommitGraph) addRow(row *commitGraphRow) {
 	commitGraph.rows = append(commitGraph.rows, row)
 }
 
-// WriteToFile ...
-func (commitGraph *CommitGraph) WriteToFile(filePath string) error {
-	var buf bytes.Buffer
+func (commitGraph *CommitGraph) rowCount() uint {
+	return uint(len(commitGraph.rows))
+}
 
+// Render the graph row for the specified commit
+func (commitGraph *CommitGraph) Render(lineBuilder *LineBuilder, commitIndex uint) {
+	commitGraph.lock.Lock()
+	defer commitGraph.lock.Unlock()
+
+	if commitIndex >= commitGraph.rowCount() {
+		return
+	}
+
+	row := commitGraph.rows[commitIndex]
+	themeComponentID := CmpNone
+
+	for _, cellType := range row.cells {
+		switch cellType {
+		case cgtEmpty:
+			lineBuilder.AppendWithStyle(themeComponentID, " ")
+		case cgtCommit:
+			lineBuilder.AppendWithStyle(themeComponentID, "o")
+		case cgtMergeCommit:
+			lineBuilder.AppendWithStyle(themeComponentID, "M")
+		case cgtParentLine:
+			lineBuilder.AppendACSChar(AcsVline, themeComponentID)
+		case cgtMergeCommitLine:
+			lineBuilder.AppendACSChar(AcsUrcorner, themeComponentID)
+		case cgtCrossLine:
+			lineBuilder.AppendACSChar(AcsHline, themeComponentID)
+		case cgtBranchOffLine, cgtShiftIn:
+			lineBuilder.AppendACSChar(AcsLrcorner, themeComponentID)
+		case cgtMultiBranchOffLine:
+			lineBuilder.AppendACSChar(AcsBtee, themeComponentID)
+		case cgtShiftDown:
+			lineBuilder.AppendACSChar(AcsUlcorner, themeComponentID)
+		}
+	}
+
+	lineBuilder.Append(" ")
+
+	return
+}
+
+// WriteToFile writes the commit graph to the specified file
+func (commitGraph *CommitGraph) WriteToFile(filePath string) error {
+	commitGraph.lock.Lock()
+	defer commitGraph.lock.Unlock()
+
+	var buf bytes.Buffer
 	for _, row := range commitGraph.rows {
 		for _, cellType := range row.cells {
 			var cellString string

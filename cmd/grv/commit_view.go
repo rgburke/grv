@@ -28,6 +28,7 @@ type loadingCommitsRefreshTask struct {
 type referenceViewData struct {
 	viewPos        ViewPos
 	tableFormatter *TableFormatter
+	commitGraph    *CommitGraph
 }
 
 // CommitViewListener is notified when a commit is selected
@@ -341,18 +342,22 @@ func (commitView *CommitView) OnRefSelect(ref Ref) (err error) {
 		return
 	}
 
-	commitView.activeRef = ref
-
 	refViewData, refViewDataExists := commitView.refViewData[ref.Name()]
 	if !refViewDataExists {
 		refViewData = &referenceViewData{
 			viewPos:        NewViewPosition(),
 			tableFormatter: NewTableFormatter(cvColumnNum, commitView.config),
+			commitGraph:    NewCommitGraph(commitView.repoData),
+		}
+
+		if err = refViewData.tableFormatter.SetCellRendererListener(3, commitView); err != nil {
+			return
 		}
 
 		commitView.refViewData[ref.Name()] = refViewData
 	}
 
+	commitView.activeRef = ref
 	commitSetState := commitView.repoData.CommitSetState(ref)
 
 	if commitSetState.loading {
@@ -393,14 +398,26 @@ func (commitView *CommitView) OnCommitsLoaded(ref Ref) {
 	commitSetState := commitView.repoData.CommitSetState(ref)
 	commitView.channels.ReportStatus("Loaded %v commits for ref %v", commitSetState.commitNum, ref.Shorthand())
 
-	commitGraph := NewCommitGraph(commitView.repoData)
-
-	commitCh, _ := commitView.repoData.Commits(ref, 0, 100)
-	for commit := range commitCh {
-		commitGraph.AddCommit(commit)
+	refViewData, ok := commitView.refViewData[commitView.activeRef.Name()]
+	if !ok {
+		// TODO Log error
+		return
 	}
 
-	commitGraph.WriteToFile("commit-graph.txt")
+	commitGraph := refViewData.commitGraph
+	commitCh, err := commitView.repoData.Commits(ref, 0, commitSetState.commitNum)
+	if err != nil {
+		// TODO Log error
+		return
+	}
+
+	go func() {
+		for commit := range commitCh {
+			commitGraph.AddCommit(commit)
+		}
+
+		commitView.channels.UpdateDisplay()
+	}()
 }
 
 // OnCommitsUpdated adjusts the active row index to take account of the newly loaded commits
@@ -426,6 +443,18 @@ func (commitView *CommitView) OnCommitsUpdated(ref Ref) {
 
 		commitView.channels.UpdateDisplay()
 	}
+}
+
+func (commitView *CommitView) preRenderCell(rowIndex, colIndex uint, lineBuilder *LineBuilder, tableCell *TableCell) (err error) {
+	refViewData := commitView.refViewData[commitView.activeRef.Name()]
+	commitIndex := refViewData.viewPos.ViewStartRowIndex() + rowIndex
+	refViewData.commitGraph.Render(lineBuilder, commitIndex)
+
+	return
+}
+
+func (commitView *CommitView) postRenderCell(rowIndex, colIndex uint, lineBuilder *LineBuilder, tableCell *TableCell) (err error) {
+	return
 }
 
 // OnActiveChange updates whether this view is currently active

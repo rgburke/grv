@@ -10,28 +10,51 @@ const (
 	tfSeparator = " "
 )
 
-type tableCellText struct {
+// TableCellText contains cell text and style data
+type TableCellText struct {
 	text             string
 	themeComponentID ThemeComponentID
 }
 
-type tableCell struct {
-	textEntries []tableCellText
+// TableCell represents a cell entry a table
+// It contains all text and style data for a cell
+type TableCell struct {
+	textEntries []TableCellText
+}
+
+// CellRendererListener is notified before and after a cell is rendered
+// It has the option to modify the way the cell is rendered
+type CellRendererListener interface {
+	preRenderCell(rowIndex, colIndex uint, lineBuilder *LineBuilder, tableCell *TableCell) (err error)
+	postRenderCell(rowIndex, colIndex uint, lineBuilder *LineBuilder, tableCell *TableCell) (err error)
 }
 
 // TableFormatter renders provided data in a tabular layout
 type TableFormatter struct {
-	config       Config
-	maxColWidths []uint
-	cells        [][]tableCell
+	config                Config
+	maxColWidths          []uint
+	cells                 [][]TableCell
+	cellRendererListeners map[uint]CellRendererListener
 }
 
 // NewTableFormatter creates a new instance of the table formatter supporting the specified number of columns
 func NewTableFormatter(cols uint, config Config) *TableFormatter {
 	return &TableFormatter{
-		maxColWidths: make([]uint, cols),
-		config:       config,
+		maxColWidths:          make([]uint, cols),
+		cellRendererListeners: make(map[uint]CellRendererListener),
+		config:                config,
 	}
+}
+
+// SetCellRendererListener sets the CellRendererListener for a column
+func (tableFormatter *TableFormatter) SetCellRendererListener(colIndex uint, cellRendererListener CellRendererListener) (err error) {
+	if colIndex >= uint(len(tableFormatter.maxColWidths)) {
+		return fmt.Errorf("Cannot register CellRendererListener on column with index: %v", colIndex)
+	}
+
+	tableFormatter.cellRendererListeners[colIndex] = cellRendererListener
+
+	return
 }
 
 // Rows returns the number of rows in the table formatter
@@ -58,9 +81,9 @@ func (tableFormatter *TableFormatter) Resize(newRows uint) {
 
 	cols := len(tableFormatter.maxColWidths)
 
-	tableFormatter.cells = make([][]tableCell, newRows)
+	tableFormatter.cells = make([][]TableCell, newRows)
 	for rowIndex := range tableFormatter.cells {
-		tableFormatter.cells[rowIndex] = make([]tableCell, cols)
+		tableFormatter.cells[rowIndex] = make([]TableCell, cols)
 	}
 }
 
@@ -87,7 +110,7 @@ func (tableFormatter *TableFormatter) SetCellWithStyle(rowIndex, colIndex uint, 
 
 	tableCell := &tableFormatter.cells[rowIndex][colIndex]
 
-	tableCell.textEntries = []tableCellText{
+	tableCell.textEntries = []TableCellText{
 		{
 			text:             fmt.Sprintf(format, args...),
 			themeComponentID: themeComponentID,
@@ -111,7 +134,7 @@ func (tableFormatter *TableFormatter) AppendToCellWithStyle(rowIndex, colIndex u
 
 	tableCell := &tableFormatter.cells[rowIndex][colIndex]
 
-	tableCell.textEntries = append(tableCell.textEntries, tableCellText{
+	tableCell.textEntries = append(tableCell.textEntries, TableCellText{
 		text:             fmt.Sprintf(format, args...),
 		themeComponentID: themeComponentID,
 	})
@@ -165,12 +188,40 @@ func (tableFormatter *TableFormatter) Render(win RenderWindow, viewStartColumn u
 		for colIndex := range tableFormatter.cells[rowIndex] {
 			tableCell := &tableFormatter.cells[rowIndex][colIndex]
 
+			if err = tableFormatter.firePreCellRenderListener(rowIndex, colIndex, lineBuilder, tableCell); err != nil {
+				return
+			}
+
 			for _, textEntry := range tableCell.textEntries {
 				lineBuilder.AppendWithStyle(textEntry.themeComponentID, "%v", textEntry.text)
 			}
 
+			if err = tableFormatter.firePostCellRenderListener(rowIndex, colIndex, lineBuilder, tableCell); err != nil {
+				return
+			}
+
 			lineBuilder.Append(tfSeparator)
 		}
+	}
+
+	return
+}
+
+func (tableFormatter *TableFormatter) firePreCellRenderListener(rowIndex, colIndex int, lineBuilder *LineBuilder, tableCell *TableCell) (err error) {
+	cellRendererListener, exists := tableFormatter.cellRendererListeners[uint(colIndex)]
+
+	if exists {
+		err = cellRendererListener.preRenderCell(uint(rowIndex), uint(colIndex), lineBuilder, tableCell)
+	}
+
+	return
+}
+
+func (tableFormatter *TableFormatter) firePostCellRenderListener(rowIndex, colIndex int, lineBuilder *LineBuilder, tableCell *TableCell) (err error) {
+	cellRendererListener, exists := tableFormatter.cellRendererListeners[uint(colIndex)]
+
+	if exists {
+		err = cellRendererListener.postRenderCell(uint(rowIndex), uint(colIndex), lineBuilder, tableCell)
 	}
 
 	return
