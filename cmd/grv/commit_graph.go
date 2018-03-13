@@ -129,7 +129,8 @@ func (builder *commitGraphRowBuilder) determineParentCommitCellType(parentIndex 
 }
 
 func (builder *commitGraphRowBuilder) determineSeparatorCellType(parentIndex int) (cellType commitGraphCellType, exists bool) {
-	if (builder.parentsSeen > 0 && builder.commitCellType == cgtMergeCommit && !(parentIndex == len(builder.parentCommits)-1 && builder.lastCellIsBranchOff())) ||
+	if (builder.parentsSeen > 0 && builder.commitCellType == cgtMergeCommit &&
+		!(parentIndex == len(builder.parentCommits)-1 && (builder.lastCellIsBranchOff() || builder.lastCellIsShiftedIn()))) ||
 		(builder.parentsSeen > 0 && builder.parentsSeen < len(builder.parentCommitIndexes) && builder.commitCellType == cgtCommit) ||
 		builder.isShiftedInCell(parentIndex) {
 		cellType = cgtCrossLine
@@ -164,13 +165,21 @@ func (builder *commitGraphRowBuilder) lastCellIsBranchOff() bool {
 	return false
 }
 
+func (builder *commitGraphRowBuilder) lastCellIsShiftedIn() bool {
+	return len(builder.parentCommits) > 0 && builder.parentCommits[len(builder.parentCommits)-1] == nil
+}
+
 func (builder *commitGraphRowBuilder) build() *commitGraphRow {
 	builder.determineRowProperties()
 	row := newCommitGraphRow()
 
 	for parentIndex, parentCommit := range builder.parentCommits {
 		if parentCommit == nil {
-			row.add(cgtShiftIn)
+			if builder.isShiftedInCell(parentIndex) {
+				row.add(cgtCrossLine)
+			} else {
+				row.add(cgtShiftIn)
+			}
 		} else if builder.isParentCommit(parentIndex) {
 			row.add(builder.determineParentCommitCellType(parentIndex))
 			builder.parentsSeen++
@@ -192,7 +201,7 @@ func (builder *commitGraphRowBuilder) build() *commitGraphRow {
 		row.add(builder.commitCellType)
 	}
 	if builder.commitCellType == cgtMergeCommit {
-		if !builder.lastCellIsBranchOff() {
+		if !builder.lastCellIsBranchOff() && !builder.lastCellIsShiftedIn() {
 			if rowIsEmpty {
 				row.add(cgtCrossLine)
 			}
