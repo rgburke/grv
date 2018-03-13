@@ -446,9 +446,11 @@ func (commitView *CommitView) OnCommitsUpdated(ref Ref) {
 }
 
 func (commitView *CommitView) preRenderCell(rowIndex, colIndex uint, lineBuilder *LineBuilder, tableCell *TableCell) (err error) {
-	refViewData := commitView.refViewData[commitView.activeRef.Name()]
-	commitIndex := refViewData.viewPos.ViewStartRowIndex() + rowIndex
-	refViewData.commitGraph.Render(lineBuilder, commitIndex)
+	if commitView.config.GetBool(CfCommitGraph) {
+		refViewData := commitView.refViewData[commitView.activeRef.Name()]
+		commitIndex := refViewData.viewPos.ViewStartRowIndex() + rowIndex
+		refViewData.commitGraph.Render(lineBuilder, commitIndex)
+	}
 
 	return
 }

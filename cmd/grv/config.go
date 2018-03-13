@@ -23,6 +23,7 @@ const (
 	cfSolarizedThemeName          = "solarized"
 	cfMouseDefaultValue           = false
 	cfMouseScrollRowsDefaultValue = 3
+	cfCommitGraphDefaultValue     = false
 
 	cfAllView       = "All"
 	cfMainView      = "MainView"
@@ -50,6 +51,8 @@ const (
 	CfMouse ConfigVariable = "mouse"
 	// CfMouseScrollRows stores the number of rows a view will scroll when a scroll mouse event is received
 	CfMouseScrollRows ConfigVariable = "mouse-scroll-rows"
+	// CfCommitGraph stores whether the commit graph is visible or not
+	CfCommitGraph ConfigVariable = "commit-graph"
 )
 
 var systemColorValues = map[string]SystemColorValue{
@@ -223,6 +226,12 @@ func NewConfiguration(keyBindings KeyBindings, channels *Channels) *Configuratio
 		CfMouseScrollRows: {
 			value:     cfMouseScrollRowsDefaultValue,
 			validator: mouseScrollRowsValidator{},
+		},
+		CfCommitGraph: {
+			value: cfCommitGraphDefaultValue,
+			validator: booleanValueValidator{
+				variableName: string(CfCommitGraph),
+			},
 		},
 	}
 
