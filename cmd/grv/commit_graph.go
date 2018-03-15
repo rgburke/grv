@@ -324,6 +324,14 @@ func (commitGraph *CommitGraph) rowCount() uint {
 	return uint(len(commitGraph.rows))
 }
 
+// Rows returns the number of rows in the commit graph
+func (commitGraph *CommitGraph) Rows() uint {
+	commitGraph.lock.Lock()
+	defer commitGraph.lock.Unlock()
+
+	return commitGraph.rowCount()
+}
+
 // Render the graph row for the specified commit
 func (commitGraph *CommitGraph) Render(lineBuilder *LineBuilder, commitIndex uint) {
 	commitGraph.lock.Lock()
