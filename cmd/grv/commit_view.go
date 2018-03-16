@@ -111,6 +111,14 @@ func (commitView *CommitView) Initialise() (err error) {
 	return
 }
 
+// Dispose of any resources held by the view
+func (commitView *CommitView) Dispose() {
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
+	close(commitView.commitGraphLoadCh)
+}
+
 // Render generates and draws the commit view to the provided window
 func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	log.Debug("Rendering CommitView")
@@ -665,9 +673,11 @@ func (commitView *CommitView) removeCommitViewListener(commitViewListener Commit
 }
 
 func (commitView *CommitView) processCommitGraphLoadRequests() {
+	log.Info("Started processing commit graph load requests")
+
 	for request := range commitView.commitGraphLoadCh {
 		request = commitView.retrieveLatestCommitGraphLoadRequest(request)
-		log.Debugf("Processing commit graph load request: %v", request)
+		log.Debugf("Processing commit graph load request: %v:%v", request.ref.Name(), request.commitIndex)
 		activeRef, commitGraph := commitView.retriveDataForCommitGraphLoadRequest(request)
 
 		if commitGraph == nil {
@@ -678,6 +688,8 @@ func (commitView *CommitView) processCommitGraphLoadRequests() {
 			log.Errorf("Failed to process CommitGraph load request: %v", err)
 		}
 	}
+
+	log.Info("Finished processing commit graph load requests")
 }
 
 func (commitView *CommitView) retrieveLatestCommitGraphLoadRequest(request commitGraphLoadRequest) commitGraphLoadRequest {

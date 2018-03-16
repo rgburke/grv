@@ -41,6 +41,7 @@ type AbstractView interface {
 	HelpRenderer
 	EventListener
 	Initialise() error
+	Dispose()
 	HandleAction(Action) error
 	OnActiveChange(bool)
 	ViewID() ViewID
@@ -124,6 +125,16 @@ func (view *View) Initialise() (err error) {
 	view.OnActiveChange(true)
 
 	return
+}
+
+// Dispose of any resources held by the view
+func (view *View) Dispose() {
+	view.lock.Lock()
+	defer view.lock.Unlock()
+
+	for _, view := range view.views {
+		view.Dispose()
+	}
 }
 
 // Render generates all windows to be drawn to the UI
@@ -306,6 +317,15 @@ func (view *View) HandleEvent(event Event) (err error) {
 	for _, childView := range view.views {
 		if err = childView.HandleEvent(event); err != nil {
 			return
+		}
+	}
+
+	switch event.EventType {
+	case ViewRemovedEvent:
+		for _, removedView := range event.Args {
+			if abstractView, ok := removedView.(AbstractView); ok {
+				abstractView.Dispose()
+			}
 		}
 	}
 

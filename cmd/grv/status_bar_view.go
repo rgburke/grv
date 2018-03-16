@@ -50,6 +50,11 @@ func (statusBarView *StatusBarView) Initialise() (err error) {
 	return
 }
 
+// Dispose of any resources held by the view
+func (statusBarView *StatusBarView) Dispose() {
+
+}
+
 // HandleEvent does nothing
 func (statusBarView *StatusBarView) HandleEvent(event Event) (err error) {
 	return

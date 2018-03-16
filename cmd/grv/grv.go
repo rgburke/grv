@@ -247,6 +247,8 @@ func (grv *GRV) End() {
 	if err := grv.ui.CancelGetInput(); err != nil {
 		log.Errorf("Error calling CancelGetInput: %v", err)
 	}
+
+	grv.view.Dispose()
 }
 
 // Run sets up the input, display, action and singal handler loops

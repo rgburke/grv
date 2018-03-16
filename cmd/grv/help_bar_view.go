@@ -27,6 +27,11 @@ func (helpBarView *HelpBarView) Initialise() (err error) {
 	return
 }
 
+// Dispose of any resources held by the view
+func (helpBarView *HelpBarView) Dispose() {
+
+}
+
 // HandleEvent does nothing
 func (helpBarView *HelpBarView) HandleEvent(event Event) (err error) {
 	return

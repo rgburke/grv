@@ -119,6 +119,11 @@ func (gitStatusView *GitStatusView) Initialise() (err error) {
 	return
 }
 
+// Dispose of any resources held by the view
+func (gitStatusView *GitStatusView) Dispose() {
+
+}
+
 // Render generates and writes the git status view to the provided window
 func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 	gitStatusView.lock.Lock()
