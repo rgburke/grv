@@ -23,7 +23,7 @@ type OnRefsLoaded func([]Ref) error
 // CommitSetListener is notified of load and update events for commit sets
 type CommitSetListener interface {
 	OnCommitsLoaded(Ref)
-	OnCommitsUpdated(ref Ref)
+	OnCommitsUpdated(Ref)
 }
 
 // StatusListener is notified when git status has changed

@@ -154,6 +154,11 @@ func (diffView *DiffView) Initialise() (err error) {
 	return
 }
 
+// Dispose of any resources held by the view
+func (diffView *DiffView) Dispose() {
+
+}
+
 // Render generates and writes the diff view to the provided window
 func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	diffView.lock.Lock()

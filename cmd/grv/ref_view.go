@@ -279,6 +279,11 @@ func (refView *RefView) Initialise() (err error) {
 	return
 }
 
+// Dispose of any resources held by the view
+func (refView *RefView) Dispose() {
+
+}
+
 func getDetachedHeadDisplayValue(oid *Oid) string {
 	return fmt.Sprintf("HEAD detached at %s", oid.ShortID())
 }

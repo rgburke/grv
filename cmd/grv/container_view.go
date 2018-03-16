@@ -164,6 +164,16 @@ func (containerView *ContainerView) Initialise() (err error) {
 	return
 }
 
+// Dispose of any resources held by the view
+func (containerView *ContainerView) Dispose() {
+	containerView.lock.Lock()
+	defer containerView.lock.Unlock()
+
+	for _, childView := range containerView.childViews {
+		childView.Dispose()
+	}
+}
+
 // HandleEvent passes the event on to all child views
 func (containerView *ContainerView) HandleEvent(event Event) (err error) {
 	containerView.lock.Lock()
@@ -446,7 +456,8 @@ func (containerView *ContainerView) removeActiveChildView() {
 	}
 
 	index := containerView.activeViewIndex
-	log.Debugf("Removing child view %T at index %v", containerView.activeChildView(), index)
+	childView := containerView.activeChildView()
+	log.Debugf("Removing child view %T at index %v", childView, index)
 
 	containerView.childViews = append(containerView.childViews[:index], containerView.childViews[index+1:]...)
 	childViewNum := uint(len(containerView.childViews))

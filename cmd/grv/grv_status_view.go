@@ -31,6 +31,11 @@ func (grvStatusView *GRVStatusView) Initialise() (err error) {
 	return
 }
 
+// Dispose of any resources held by the view
+func (grvStatusView *GRVStatusView) Dispose() {
+
+}
+
 // HandleEvent does nothing
 func (grvStatusView *GRVStatusView) HandleEvent(event Event) (err error) {
 	if err = grvStatusView.statusBarView.HandleEvent(event); err != nil {

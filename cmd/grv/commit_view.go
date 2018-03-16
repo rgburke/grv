@@ -11,9 +11,11 @@ import (
 )
 
 const (
-	cvLoadRefreshMs = 500
-	cvColumnNum     = 4
-	cvDateFormat    = "2006-01-02 15:04"
+	cvLoadRefreshMs                     = 500
+	cvColumnNum                         = 4
+	cvDateFormat                        = "2006-01-02 15:04"
+	cvCommitGraphLoadRequestChannelSize = 10
+	cvCommitGraphCommitIndexOffset      = uint(200)
 )
 
 type commitViewHandler func(*CommitView, Action) error
@@ -28,6 +30,12 @@ type loadingCommitsRefreshTask struct {
 type referenceViewData struct {
 	viewPos        ViewPos
 	tableFormatter *TableFormatter
+	commitGraph    *CommitGraph
+}
+
+type commitGraphLoadRequest struct {
+	commitIndex uint
+	ref         Ref
 }
 
 // CommitViewListener is notified when a commit is selected
@@ -49,16 +57,18 @@ type CommitView struct {
 	viewDimension       ViewDimension
 	viewSearch          *ViewSearch
 	loadingDotCount     uint
+	commitGraphLoadCh   chan commitGraphLoadRequest
 	lock                sync.Mutex
 }
 
 // NewCommitView creates a new instance of the commit view
 func NewCommitView(repoData RepoData, channels *Channels, config Config) *CommitView {
 	commitView := &CommitView{
-		channels:    channels,
-		repoData:    repoData,
-		config:      config,
-		refViewData: make(map[string]*referenceViewData),
+		channels:          channels,
+		repoData:          repoData,
+		config:            config,
+		commitGraphLoadCh: make(chan commitGraphLoadRequest, cvCommitGraphLoadRequestChannelSize),
+		refViewData:       make(map[string]*referenceViewData),
 		handlers: map[ActionType]commitViewHandler{
 			ActionPrevLine:           moveUpCommit,
 			ActionNextLine:           moveDownCommit,
@@ -96,7 +106,17 @@ func (commitView *CommitView) Initialise() (err error) {
 
 	commitView.repoData.RegisterCommitSetListener(commitView)
 
+	go commitView.processCommitGraphLoadRequests()
+
 	return
+}
+
+// Dispose of any resources held by the view
+func (commitView *CommitView) Dispose() {
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
+	close(commitView.commitGraphLoadCh)
 }
 
 // Render generates and draws the commit view to the provided window
@@ -341,18 +361,22 @@ func (commitView *CommitView) OnRefSelect(ref Ref) (err error) {
 		return
 	}
 
-	commitView.activeRef = ref
-
 	refViewData, refViewDataExists := commitView.refViewData[ref.Name()]
 	if !refViewDataExists {
 		refViewData = &referenceViewData{
 			viewPos:        NewViewPosition(),
 			tableFormatter: NewTableFormatter(cvColumnNum, commitView.config),
+			commitGraph:    NewCommitGraph(commitView.repoData),
+		}
+
+		if err = refViewData.tableFormatter.SetCellRendererListener(3, commitView); err != nil {
+			return
 		}
 
 		commitView.refViewData[ref.Name()] = refViewData
 	}
 
+	commitView.activeRef = ref
 	commitSetState := commitView.repoData.CommitSetState(ref)
 
 	if commitSetState.loading {
@@ -417,6 +441,33 @@ func (commitView *CommitView) OnCommitsUpdated(ref Ref) {
 
 		commitView.channels.UpdateDisplay()
 	}
+}
+
+func (commitView *CommitView) preRenderCell(rowIndex, colIndex uint, lineBuilder *LineBuilder, tableCell *TableCell) (err error) {
+	if commitView.config.GetBool(CfCommitGraph) {
+		refViewData := commitView.refViewData[commitView.activeRef.Name()]
+		commitIndex := refViewData.viewPos.ViewStartRowIndex() + rowIndex
+
+		if commitIndex >= refViewData.commitGraph.Rows() {
+			request := commitGraphLoadRequest{
+				commitIndex: commitIndex,
+				ref:         commitView.activeRef,
+			}
+
+			select {
+			case commitView.commitGraphLoadCh <- request:
+			default:
+			}
+		} else {
+			refViewData.commitGraph.Render(lineBuilder, commitIndex)
+		}
+	}
+
+	return
+}
+
+func (commitView *CommitView) postRenderCell(rowIndex, colIndex uint, lineBuilder *LineBuilder, tableCell *TableCell) (err error) {
+	return
 }
 
 // OnActiveChange updates whether this view is currently active
@@ -619,6 +670,87 @@ func (commitView *CommitView) removeCommitViewListener(commitViewListener Commit
 			break
 		}
 	}
+}
+
+func (commitView *CommitView) processCommitGraphLoadRequests() {
+	log.Info("Started processing commit graph load requests")
+
+	for request := range commitView.commitGraphLoadCh {
+		request = commitView.retrieveLatestCommitGraphLoadRequest(request)
+		log.Debugf("Processing commit graph load request: %v:%v", request.ref.Name(), request.commitIndex)
+		activeRef, commitGraph := commitView.retriveDataForCommitGraphLoadRequest(request)
+
+		if commitGraph == nil {
+			continue
+		}
+
+		if err := commitView.processCommitGraphLoadRequest(request, commitGraph, activeRef); err != nil {
+			log.Errorf("Failed to process CommitGraph load request: %v", err)
+		}
+	}
+
+	log.Info("Finished processing commit graph load requests")
+}
+
+func (commitView *CommitView) retrieveLatestCommitGraphLoadRequest(request commitGraphLoadRequest) commitGraphLoadRequest {
+	requestFound := true
+
+	for requestFound {
+		select {
+		case request = <-commitView.commitGraphLoadCh:
+		default:
+			requestFound = false
+		}
+	}
+
+	return request
+}
+
+func (commitView *CommitView) retriveDataForCommitGraphLoadRequest(request commitGraphLoadRequest) (activeRef Ref, commitGraph *CommitGraph) {
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
+	activeRef = commitView.activeRef
+
+	if activeRef != nil && request.ref == activeRef {
+		refViewData := commitView.refViewData[commitView.activeRef.Name()]
+		commitGraph = refViewData.commitGraph
+	}
+
+	return
+}
+
+func (commitView *CommitView) processCommitGraphLoadRequest(request commitGraphLoadRequest, commitGraph *CommitGraph, ref Ref) (err error) {
+	commitGraphRows := commitGraph.Rows()
+	commitIndex := request.commitIndex + cvCommitGraphCommitIndexOffset
+	commitSetState := commitView.repoData.CommitSetState(ref)
+
+	if commitIndex+1 > commitSetState.commitNum {
+		commitIndex = commitSetState.commitNum - 1
+	}
+
+	if commitIndex < commitGraphRows {
+		return
+	}
+
+	commitNum := (commitIndex + 1) - commitGraphRows
+	commitCh, err := commitView.repoData.Commits(ref, commitGraphRows, commitNum)
+	if err != nil {
+		return
+	}
+
+	for commit := range commitCh {
+		if err = commitGraph.AddCommit(commit); err != nil {
+			return
+		} else if commitView.channels.Exit() {
+			return
+		}
+	}
+
+	log.Debugf("Added %v commits to commit graph starting at index %v for ref %v", commitNum, commitGraphRows, ref.Name())
+	commitView.channels.UpdateDisplay()
+
+	return
 }
 
 // HandleAction checks if commit view supports this action and if it does executes it
