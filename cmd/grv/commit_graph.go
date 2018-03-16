@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"io/ioutil"
 	"math"
 	"sync"
 )
@@ -53,31 +51,10 @@ func (commitGraphRow *commitGraphRow) isEmpty() bool {
 	return len(commitGraphRow.cells) == 0
 }
 
-func (commitGraphRow *commitGraphRow) commitIndex() int {
-	for commitIndex, cellType := range commitGraphRow.cells {
-		if cellType == cgtCommit || cellType == cgtMergeCommit {
-			return commitIndex / 2
-		}
-	}
-
-	return -1
-}
-
-type rowProperties int
-
-const (
-	rpNone           rowProperties = 0
-	rpBranchOff      rowProperties = 1 << 0
-	rpMultiBranchOff rowProperties = 1 << 1
-	rpMergeIn        rowProperties = 1 << 2
-	rpMultiMergeIn   rowProperties = 1 << 3
-)
-
 type commitGraphRowBuilder struct {
 	parentCommits       []*Commit
 	commitCellType      commitGraphCellType
 	parentCommitIndexes map[int]bool
-	properties          rowProperties
 	parentsSeen         int
 }
 
@@ -87,26 +64,6 @@ func newCommitGraphRowBuilder(parentCommits []*Commit, commitCellType commitGrap
 		commitCellType:      commitCellType,
 		parentCommitIndexes: parentCommitIndexes,
 	}
-}
-
-func (builder *commitGraphRowBuilder) determineRowProperties() {
-	if builder.commitCellType == cgtMergeCommit {
-		builder.properties &= rpMergeIn
-	}
-
-	if len(builder.parentCommits) > 2 {
-		builder.properties &= rpMultiMergeIn
-	}
-
-	if len(builder.parentCommitIndexes) > 1 {
-		builder.properties &= rpBranchOff
-	}
-
-	if len(builder.parentCommitIndexes) > 2 {
-		builder.properties &= rpMultiBranchOff
-	}
-
-	builder.parentsSeen = 0
 }
 
 func (builder *commitGraphRowBuilder) isParentCommit(parentIndex int) bool {
@@ -170,7 +127,6 @@ func (builder *commitGraphRowBuilder) lastCellIsShiftedIn() bool {
 }
 
 func (builder *commitGraphRowBuilder) build() *commitGraphRow {
-	builder.determineRowProperties()
 	row := newCommitGraphRow()
 
 	for parentIndex, parentCommit := range builder.parentCommits {
@@ -349,7 +305,7 @@ func (commitGraph *CommitGraph) Render(lineBuilder *LineBuilder, commitIndex uin
 		case cgtEmpty:
 			lineBuilder.AppendWithStyle(themeComponentID, " ")
 		case cgtCommit:
-			lineBuilder.AppendWithStyle(themeComponentID, "o")
+			lineBuilder.AppendACSChar(AcsDiamond, themeComponentID)
 		case cgtMergeCommit:
 			lineBuilder.AppendWithStyle(themeComponentID, "M")
 		case cgtParentLine:
@@ -370,46 +326,4 @@ func (commitGraph *CommitGraph) Render(lineBuilder *LineBuilder, commitIndex uin
 	lineBuilder.Append(" ")
 
 	return
-}
-
-// WriteToFile writes the commit graph to the specified file
-func (commitGraph *CommitGraph) WriteToFile(filePath string) error {
-	commitGraph.lock.Lock()
-	defer commitGraph.lock.Unlock()
-
-	var buf bytes.Buffer
-	for _, row := range commitGraph.rows {
-		for _, cellType := range row.cells {
-			var cellString string
-
-			switch cellType {
-			case cgtEmpty:
-				cellString = " "
-			case cgtCommit:
-				cellString = "o"
-			case cgtMergeCommit:
-				cellString = "M"
-			case cgtParentLine:
-				cellString = "│"
-			case cgtMergeCommitLine:
-				cellString = "┐"
-			case cgtCrossLine:
-				cellString = "─"
-			case cgtBranchOffLine, cgtShiftIn:
-				cellString = "┘"
-			case cgtMultiBranchOffLine:
-				cellString = "┴"
-			case cgtShiftDown:
-				cellString = "┌"
-			default:
-				cellString = "?"
-			}
-
-			buf.WriteString(cellString)
-		}
-
-		buf.WriteString("\n")
-	}
-
-	return ioutil.WriteFile(filePath, buf.Bytes(), 0644)
 }
