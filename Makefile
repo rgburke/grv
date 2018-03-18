@@ -45,11 +45,8 @@ install: $(BINARY)
 
 .PHONY: update
 update:
-	-@ git submodule foreach --recursive git reset --hard >/dev/null 2>&1
-	# We can't use the --recurisve option here due to https://github.com/libgit2/git2go/issues/407
-	# So we have to do exclude it and init the libgit2 submodule separately
-	git submodule update --init
-	cd $(GIT2GO_DIR) && git submodule update --init
+	git submodule -q foreach --recursive git reset -q --hard
+	git submodule update --init --recursive
 
 .PHONY: update-test
 update-test:
