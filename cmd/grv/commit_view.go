@@ -59,6 +59,7 @@ type CommitView struct {
 	viewDimension          ViewDimension
 	viewSearch             *ViewSearch
 	loadingDotCount        uint
+	lastDotRenderTime      time.Time
 	commitGraphLoadCh      chan commitGraphLoadRequest
 	commitSelectedCh       chan *Commit
 	lock                   sync.Mutex
@@ -73,6 +74,7 @@ func NewCommitView(repoData RepoData, channels *Channels, config Config) *Commit
 		commitGraphLoadCh: make(chan commitGraphLoadRequest, cvCommitGraphLoadRequestChannelSize),
 		commitSelectedCh:  make(chan *Commit, cvCommitSelectedChannelSize),
 		refViewData:       make(map[string]*referenceViewData),
+		lastDotRenderTime: time.Now(),
 		handlers: map[ActionType]commitViewHandler{
 			ActionPrevLine:           moveUpCommit,
 			ActionNextLine:           moveDownCommit,
@@ -183,7 +185,11 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		if commitSetState.loading {
 			commitView.loadingDotCount %= 4
 			err = commitView.renderEmptyView(win, fmt.Sprintf("Fetching commits%v", strings.Repeat(".", int(commitView.loadingDotCount))))
-			commitView.loadingDotCount++
+
+			if time.Since(commitView.lastDotRenderTime).Seconds() >= (cvLoadRefreshMs / 1000.0) {
+				commitView.lastDotRenderTime = time.Now()
+				commitView.loadingDotCount++
+			}
 		} else {
 			err = commitView.renderEmptyView(win, "No commits to display")
 		}
