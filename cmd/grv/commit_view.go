@@ -15,6 +15,7 @@ const (
 	cvColumnNum                         = 4
 	cvDateFormat                        = "2006-01-02 15:04"
 	cvCommitGraphLoadRequestChannelSize = 10
+	cvCommitSelectedChannelSize         = 100
 	cvCommitGraphCommitIndexOffset      = uint(200)
 )
 
@@ -45,20 +46,22 @@ type CommitViewListener interface {
 
 // CommitView is the overall instance representing the commit view
 type CommitView struct {
-	channels            *Channels
-	repoData            RepoData
-	config              Config
-	activeRef           Ref
-	active              bool
-	refViewData         map[string]*referenceViewData
-	handlers            map[ActionType]commitViewHandler
-	refreshTask         *loadingCommitsRefreshTask
-	commitViewListeners []CommitViewListener
-	viewDimension       ViewDimension
-	viewSearch          *ViewSearch
-	loadingDotCount     uint
-	commitGraphLoadCh   chan commitGraphLoadRequest
-	lock                sync.Mutex
+	channels               *Channels
+	repoData               RepoData
+	config                 Config
+	activeRef              Ref
+	active                 bool
+	refViewData            map[string]*referenceViewData
+	handlers               map[ActionType]commitViewHandler
+	refreshTask            *loadingCommitsRefreshTask
+	commitViewListeners    []CommitViewListener
+	commitViewListenerLock sync.Mutex
+	viewDimension          ViewDimension
+	viewSearch             *ViewSearch
+	loadingDotCount        uint
+	commitGraphLoadCh      chan commitGraphLoadRequest
+	commitSelectedCh       chan *Commit
+	lock                   sync.Mutex
 }
 
 // NewCommitView creates a new instance of the commit view
@@ -68,6 +71,7 @@ func NewCommitView(repoData RepoData, channels *Channels, config Config) *Commit
 		repoData:          repoData,
 		config:            config,
 		commitGraphLoadCh: make(chan commitGraphLoadRequest, cvCommitGraphLoadRequestChannelSize),
+		commitSelectedCh:  make(chan *Commit, cvCommitSelectedChannelSize),
 		refViewData:       make(map[string]*referenceViewData),
 		handlers: map[ActionType]commitViewHandler{
 			ActionPrevLine:           moveUpCommit,
@@ -107,6 +111,7 @@ func (commitView *CommitView) Initialise() (err error) {
 	commitView.repoData.RegisterCommitSetListener(commitView)
 
 	go commitView.processCommitGraphLoadRequests()
+	go commitView.processSelectedCommits()
 
 	return
 }
@@ -117,6 +122,7 @@ func (commitView *CommitView) Dispose() {
 	defer commitView.lock.Unlock()
 
 	close(commitView.commitGraphLoadCh)
+	close(commitView.commitSelectedCh)
 }
 
 // Render generates and draws the commit view to the provided window
@@ -492,22 +498,41 @@ func (commitView *CommitView) RegisterCommitViewListener(commitViewListener Comm
 
 	log.Debugf("Registering CommitViewListener %T", commitViewListener)
 
-	commitView.lock.Lock()
-	defer commitView.lock.Unlock()
+	commitView.commitViewListenerLock.Lock()
+	defer commitView.commitViewListenerLock.Unlock()
 
 	commitView.commitViewListeners = append(commitView.commitViewListeners, commitViewListener)
 }
 
-func (commitView *CommitView) notifyCommitViewListeners(commit *Commit) {
-	log.Debugf("Notifying commit listeners of selected commit %v", commit.commit.Id().String())
+func (commitView *CommitView) commitViewListenerCount() uint {
+	commitView.commitViewListenerLock.Lock()
+	defer commitView.commitViewListenerLock.Unlock()
 
-	go func() {
-		for _, commitViewListener := range commitView.commitViewListeners {
+	return uint(len(commitView.commitViewListeners))
+}
+
+func (commitView *CommitView) notifyCommitViewListeners(commit *Commit) {
+	commitView.commitSelectedCh <- commit
+}
+
+func (commitView *CommitView) processSelectedCommits() {
+	for commit := range commitView.commitSelectedCh {
+		log.Debugf("Notifying commit listeners of selected commit %v", commit.oid)
+		commitViewListeners := commitView.commitViewListenersCopy()
+
+		for _, commitViewListener := range commitViewListeners {
 			if err := commitViewListener.OnCommitSelected(commit); err != nil {
 				commitView.channels.ReportError(err)
 			}
 		}
-	}()
+	}
+}
+
+func (commitView *CommitView) commitViewListenersCopy() []CommitViewListener {
+	commitView.commitViewListenerLock.Lock()
+	defer commitView.commitViewListenerLock.Unlock()
+
+	return append([]CommitViewListener(nil), commitView.commitViewListeners...)
 }
 
 func (commitView *CommitView) selectCommit(lineIndex uint) (err error) {
@@ -663,6 +688,9 @@ func (commitView *CommitView) removeCommitViewListeners(views []interface{}) {
 }
 
 func (commitView *CommitView) removeCommitViewListener(commitViewListener CommitViewListener) {
+	commitView.commitViewListenerLock.Lock()
+	defer commitView.commitViewListenerLock.Unlock()
+
 	for index, listener := range commitView.commitViewListeners {
 		if commitViewListener == listener {
 			log.Debugf("Removing CommitViewListener %T", commitViewListener)
@@ -1045,7 +1073,7 @@ func moveCursorBottomCommitView(commitView *CommitView, action Action) (err erro
 func selectCommit(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.ViewPos()
 
-	if len(commitView.commitViewListeners) == 0 {
+	if commitView.commitViewListenerCount() == 0 {
 		var commit *Commit
 		if commit, err = commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.ActiveRowIndex()); err != nil {
 			return
