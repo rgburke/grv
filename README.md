@@ -46,6 +46,20 @@ GRV is available in homebrew and can be installed with:
 brew install grv
 ```
 
+### FreeBSD
+
+GRV can be installed as a binary package
+
+```
+pkg install grv
+```
+
+or from ports
+
+```
+cd /usr/ports/devel/grv && make install clean
+```
+
 ## Build instructions
 
 Go version 1.5 or later is required. GRV depends on the following libraries:
