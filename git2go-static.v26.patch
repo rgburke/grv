@@ -1,0 +1,13 @@
+diff --git a/git_static.go b/git_static.go
+index b42d49f..972cdfc 100644
+--- a/git_static.go
++++ b/git_static.go
+@@ -6,7 +6,7 @@ package git
+ #cgo CFLAGS: -I${SRCDIR}/vendor/libgit2/include
+ #cgo LDFLAGS: -L${SRCDIR}/vendor/libgit2/build/ -lgit2
+ #cgo windows LDFLAGS: -lwinhttp
+-#cgo !windows pkg-config: --static ${SRCDIR}/vendor/libgit2/build/libgit2.pc
++#cgo !windows pkg-config: ${SRCDIR}/vendor/libgit2/build/libgit2.pc
+ #include <git2.h>
+ 
+ #if LIBGIT2_VER_MAJOR != 0 || LIBGIT2_VER_MINOR != 26
