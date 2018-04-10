@@ -64,6 +64,42 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorMagenta),
 			},
+			CmpCommitviewGraphCommit: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpCommitviewGraphMergeCommit: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpCommitviewGraphBranch1: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorYellow),
+			},
+			CmpCommitviewGraphBranch2: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+			},
+			CmpCommitviewGraphBranch3: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorGreen),
+			},
+			CmpCommitviewGraphBranch4: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorMagenta),
+			},
+			CmpCommitviewGraphBranch5: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpCommitviewGraphBranch6: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpCommitviewGraphBranch7: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorWhite),
+			},
 			CmpDiffviewTitle: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
@@ -287,6 +323,42 @@ func NewColdTheme() MutableTheme {
 			CmpCommitviewRemoteBranch: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorMagenta),
+			},
+			CmpCommitviewGraphCommit: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpCommitviewGraphMergeCommit: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpCommitviewGraphBranch1: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorYellow),
+			},
+			CmpCommitviewGraphBranch2: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+			},
+			CmpCommitviewGraphBranch3: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorGreen),
+			},
+			CmpCommitviewGraphBranch4: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorMagenta),
+			},
+			CmpCommitviewGraphBranch5: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpCommitviewGraphBranch6: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpCommitviewGraphBranch7: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorWhite),
 			},
 			CmpDiffviewTitle: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -512,6 +584,42 @@ func NewSolarizedTheme() MutableTheme {
 			CmpCommitviewRemoteBranch: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(125),
+			},
+			CmpCommitviewGraphCommit: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(33),
+			},
+			CmpCommitviewGraphMergeCommit: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(33),
+			},
+			CmpCommitviewGraphBranch1: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(136),
+			},
+			CmpCommitviewGraphBranch2: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(160),
+			},
+			CmpCommitviewGraphBranch3: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(64),
+			},
+			CmpCommitviewGraphBranch4: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(125),
+			},
+			CmpCommitviewGraphBranch5: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(37),
+			},
+			CmpCommitviewGraphBranch6: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(33),
+			},
+			CmpCommitviewGraphBranch7: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(254),
 			},
 			CmpDiffviewTitle: {
 				bgcolor: NewSystemColor(ColorNone),

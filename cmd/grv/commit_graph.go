@@ -3,18 +3,38 @@ package main
 import (
 	"math"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
+
+// TODO: Rewrite this mess
+
+var branchThemeComponentIDs = []ThemeComponentID{
+	CmpCommitviewGraphBranch1,
+	CmpCommitviewGraphBranch2,
+	CmpCommitviewGraphBranch3,
+	CmpCommitviewGraphBranch4,
+	CmpCommitviewGraphBranch5,
+	CmpCommitviewGraphBranch6,
+	CmpCommitviewGraphBranch7,
+}
 
 // CommitGraph handles building and displaying a commit graph
 type CommitGraph struct {
 	repoData      RepoData
 	rows          []*commitGraphRow
 	parentCommits []*Commit
+	branchIndexes []int
 	lock          sync.Mutex
 }
 
 type commitGraphRow struct {
-	cells []commitGraphCellType
+	cells []*commitGraphCell
+}
+
+type commitGraphCell struct {
+	cellType    commitGraphCellType
+	branchIndex int
 }
 
 type commitGraphCellType int
@@ -43,8 +63,15 @@ func newCommitGraphRow() *commitGraphRow {
 	return &commitGraphRow{}
 }
 
-func (commitGraphRow *commitGraphRow) add(cellType commitGraphCellType) {
-	commitGraphRow.cells = append(commitGraphRow.cells, cellType)
+func newCommitGraphCell(cellType commitGraphCellType, branchIndex int) *commitGraphCell {
+	return &commitGraphCell{
+		cellType:    cellType,
+		branchIndex: branchIndex,
+	}
+}
+
+func (commitGraphRow *commitGraphRow) add(cellType commitGraphCellType, branchIndex int) {
+	commitGraphRow.cells = append(commitGraphRow.cells, newCommitGraphCell(cellType, branchIndex))
 }
 
 func (commitGraphRow *commitGraphRow) isEmpty() bool {
@@ -55,14 +82,16 @@ type commitGraphRowBuilder struct {
 	parentCommits       []*Commit
 	commitCellType      commitGraphCellType
 	parentCommitIndexes map[int]bool
+	branchIndexes       []int
 	parentsSeen         int
 }
 
-func newCommitGraphRowBuilder(parentCommits []*Commit, commitCellType commitGraphCellType, parentCommitIndexes map[int]bool) *commitGraphRowBuilder {
+func newCommitGraphRowBuilder(parentCommits []*Commit, commitCellType commitGraphCellType, parentCommitIndexes map[int]bool, branchIndexes []int) *commitGraphRowBuilder {
 	return &commitGraphRowBuilder{
 		parentCommits:       parentCommits,
 		commitCellType:      commitCellType,
 		parentCommitIndexes: parentCommitIndexes,
+		branchIndexes:       branchIndexes,
 	}
 }
 
@@ -75,7 +104,9 @@ func (builder *commitGraphRowBuilder) determineParentCommitCellType(parentIndex 
 	if builder.parentsSeen == 0 {
 		cellType = builder.commitCellType
 	} else {
-		if builder.parentsSeen < len(builder.parentCommitIndexes)-1 {
+		if builder.isShiftedInCell(parentIndex) {
+			cellType = cgtCrossLine
+		} else if builder.parentsSeen < len(builder.parentCommitIndexes)-1 {
 			cellType = cgtMultiBranchOffLine
 		} else {
 			cellType = cgtBranchOffLine
@@ -85,16 +116,78 @@ func (builder *commitGraphRowBuilder) determineParentCommitCellType(parentIndex 
 	return
 }
 
-func (builder *commitGraphRowBuilder) determineSeparatorCellType(parentIndex int) (cellType commitGraphCellType, exists bool) {
-	if (builder.parentsSeen > 0 && builder.commitCellType == cgtMergeCommit &&
-		!(parentIndex == len(builder.parentCommits)-1 && (builder.lastCellIsBranchOff() || builder.lastCellIsShiftedIn()))) ||
-		(builder.parentsSeen > 0 && builder.parentsSeen < len(builder.parentCommitIndexes) && builder.commitCellType == cgtCommit) ||
-		builder.isShiftedInCell(parentIndex) {
+func (builder *commitGraphRowBuilder) determineSeparatorCellType(parentIndex int) (cellType commitGraphCellType, branchIndex int, exists bool) {
+	isMergeCrossLine := builder.parentsSeen > 0 && builder.commitCellType == cgtMergeCommit &&
+		!(parentIndex == len(builder.parentCommits)-1 && (builder.lastCellIsBranchOff() || builder.lastCellIsShiftedIn()))
+
+	isBranchOff := len(builder.parentCommitIndexes) > 1 && builder.parentsSeen > 0 && builder.parentsSeen < len(builder.parentCommitIndexes)
+
+	isShiftedInCell := builder.isShiftedInCell(parentIndex)
+
+	notLastParentCommit := parentIndex != len(builder.parentCommits)-1
+
+	branchIndex = builder.getOrSetBranchIndex(parentIndex)
+
+	switch {
+	case isBranchOff && !isShiftedInCell:
 		cellType = cgtCrossLine
 		exists = true
-	} else if parentIndex != len(builder.parentCommits)-1 {
+
+		maxParentIndex := 0
+		for parentIndex := range builder.parentCommitIndexes {
+			if parentIndex > maxParentIndex {
+				maxParentIndex = parentIndex
+			}
+		}
+
+		branchIndex = builder.getOrSetBranchIndex(maxParentIndex)
+	case isMergeCrossLine:
+		cellType = cgtCrossLine
+		exists = true
+
+		if parentIndex == len(builder.parentCommits)-1 {
+			branchIndex = builder.getOrSetBranchIndex(len(builder.parentCommits))
+		} else if builder.isShiftedInCell(parentIndex) {
+			prevParentIndex := builder.previousParentCommitIndex(parentIndex)
+			branchIndex = builder.getOrSetBranchIndex(prevParentIndex)
+		} else {
+			branchIndex = builder.getOrSetBranchIndex(parentIndex + 1)
+		}
+	case isShiftedInCell:
+		cellType = cgtCrossLine
+		exists = true
+
+		nextParentIndex := builder.nextParentCommitIndex(parentIndex)
+		branchIndex = builder.getOrSetBranchIndex(nextParentIndex)
+	case notLastParentCommit:
 		cellType = cgtEmpty
 		exists = true
+	}
+
+	return
+}
+
+func (builder *commitGraphRowBuilder) previousParentCommitIndex(parentIndex int) (prevParentIndex int) {
+	for prevParentIndex = parentIndex; prevParentIndex > -1; prevParentIndex-- {
+		if builder.parentCommits[prevParentIndex] != nil {
+			return
+		}
+	}
+
+	return
+}
+
+func (builder *commitGraphRowBuilder) nextParentCommitIndex(parentIndex int) (nextParentIndex int) {
+	for nextParentIndex = parentIndex; nextParentIndex > -1; nextParentIndex-- {
+		if builder.parentCommits[nextParentIndex] != nil {
+			return
+		}
+	}
+
+	for nextParentIndex = parentIndex + 1; nextParentIndex < len(builder.parentCommits); nextParentIndex++ {
+		if builder.parentCommits[nextParentIndex] != nil {
+			return
+		}
 	}
 
 	return
@@ -126,43 +219,87 @@ func (builder *commitGraphRowBuilder) lastCellIsShiftedIn() bool {
 	return len(builder.parentCommits) > 0 && builder.parentCommits[len(builder.parentCommits)-1] == nil
 }
 
+func (builder *commitGraphRowBuilder) nextBranchIndex() int {
+	maxBranchIndex := 0
+
+	if len(builder.branchIndexes) == 0 {
+		return maxBranchIndex
+	}
+
+	for _, branchIndex := range builder.branchIndexes {
+		if branchIndex > maxBranchIndex {
+			maxBranchIndex = branchIndex
+		}
+	}
+
+	return maxBranchIndex + 1
+}
+
+func (builder *commitGraphRowBuilder) getOrSetBranchIndex(parentIndex int) (branchIndex int) {
+	if parentIndex < len(builder.branchIndexes) {
+		return builder.branchIndexes[parentIndex]
+	} else if parentIndex != len(builder.branchIndexes) {
+		log.Errorf("Invalid parentIndex: %v, len(builder.branchIndexes): %v", parentIndex, len(builder.branchIndexes))
+	}
+
+	branchIndex = builder.nextBranchIndex()
+	builder.branchIndexes = append(builder.branchIndexes, branchIndex)
+
+	return
+}
+
 func (builder *commitGraphRowBuilder) build() *commitGraphRow {
 	row := newCommitGraphRow()
 
 	for parentIndex, parentCommit := range builder.parentCommits {
+		var branchIndex int
+
 		if parentCommit == nil {
+			nextParentIndex := builder.nextParentCommitIndex(parentIndex)
+			branchIndex = builder.getOrSetBranchIndex(nextParentIndex)
+
 			if builder.isShiftedInCell(parentIndex) {
-				row.add(cgtCrossLine)
+				row.add(cgtCrossLine, branchIndex)
 			} else {
-				row.add(cgtShiftIn)
+				row.add(cgtShiftIn, branchIndex)
 			}
-		} else if builder.isParentCommit(parentIndex) {
-			row.add(builder.determineParentCommitCellType(parentIndex))
-			builder.parentsSeen++
+
 		} else {
-			if builder.isShiftedInCell(parentIndex) {
-				row.add(cgtShiftDown)
+			branchIndex = builder.getOrSetBranchIndex(parentIndex)
+
+			if builder.isParentCommit(parentIndex) {
+				row.add(builder.determineParentCommitCellType(parentIndex), branchIndex)
+				builder.parentsSeen++
 			} else {
-				row.add(cgtParentLine)
+				if builder.isShiftedInCell(parentIndex) {
+					row.add(cgtShiftDown, branchIndex)
+				} else {
+					row.add(cgtParentLine, branchIndex)
+				}
 			}
 		}
 
-		if cellSeparatorType, exists := builder.determineSeparatorCellType(parentIndex); exists {
-			row.add(cellSeparatorType)
+		if cellSeparatorType, branchIndex, exists := builder.determineSeparatorCellType(parentIndex); exists {
+			row.add(cellSeparatorType, branchIndex)
 		}
 	}
 
 	rowIsEmpty := row.isEmpty()
 	if rowIsEmpty {
-		row.add(builder.commitCellType)
+		row.add(builder.commitCellType, 0)
 	}
 	if builder.commitCellType == cgtMergeCommit {
 		if !builder.lastCellIsBranchOff() && !builder.lastCellIsShiftedIn() {
+			branchIndex := builder.getOrSetBranchIndex(len(builder.parentCommits))
 			if rowIsEmpty {
-				row.add(cgtCrossLine)
+				if len(builder.parentCommits) == 0 {
+					branchIndex = builder.getOrSetBranchIndex(1)
+				}
+
+				row.add(cgtCrossLine, branchIndex)
 			}
 
-			row.add(cgtMergeCommitLine)
+			row.add(cgtMergeCommitLine, branchIndex)
 		}
 	}
 
@@ -183,7 +320,10 @@ func (commitGraph *CommitGraph) AddCommit(commit *Commit) (err error) {
 	commitCellType := commitGraph.determineCommitCellType(parentCommits)
 	parentCommitIndexes := commitGraph.determineParentIndexes(commit)
 
-	row := newCommitGraphRowBuilder(commitGraph.parentCommits, commitCellType, parentCommitIndexes).build()
+	builder := newCommitGraphRowBuilder(commitGraph.parentCommits, commitCellType, parentCommitIndexes, commitGraph.branchIndexes)
+	row := builder.build()
+	commitGraph.branchIndexes = builder.branchIndexes
+
 	commitGraph.addRow(row)
 
 	commitGraph.afterAddCommitUpdateParentCommits(parentCommitIndexes, parentCommits)
@@ -220,6 +360,10 @@ func (commitGraph *CommitGraph) beforeAddCommitUpdateParentCommits() {
 		if commitGraph.parentCommits[i] == nil {
 			commitGraph.parentCommits[i] = commitGraph.parentCommits[i+1]
 			commitGraph.parentCommits[i+1] = nil
+
+			branchIndex := commitGraph.branchIndexes[i]
+			commitGraph.branchIndexes[i] = commitGraph.branchIndexes[i+1]
+			commitGraph.branchIndexes[i+1] = branchIndex
 		}
 	}
 }
@@ -247,6 +391,7 @@ func (commitGraph *CommitGraph) afterAddCommitUpdateParentCommits(parentCommitIn
 
 	if nilsIndex != len(commitGraph.parentCommits)-1 {
 		commitGraph.parentCommits = commitGraph.parentCommits[:nilsIndex+1]
+		commitGraph.branchIndexes = commitGraph.branchIndexes[:nilsIndex+1]
 	}
 
 	commitGraph.parentCommits[minParentIndex] = parentCommits[0]
@@ -298,16 +443,18 @@ func (commitGraph *CommitGraph) Render(lineBuilder *LineBuilder, commitIndex uin
 	}
 
 	row := commitGraph.rows[commitIndex]
-	themeComponentID := CmpNone
+	var themeComponentID ThemeComponentID
 
-	for _, cellType := range row.cells {
-		switch cellType {
+	for _, cell := range row.cells {
+		themeComponentID = branchThemeComponentIDs[cell.branchIndex%len(branchThemeComponentIDs)]
+
+		switch cell.cellType {
 		case cgtEmpty:
 			lineBuilder.AppendWithStyle(themeComponentID, " ")
 		case cgtCommit:
-			lineBuilder.AppendACSChar(AcsDiamond, themeComponentID)
+			lineBuilder.AppendACSChar(AcsDiamond, CmpCommitviewGraphCommit)
 		case cgtMergeCommit:
-			lineBuilder.AppendWithStyle(themeComponentID, "M")
+			lineBuilder.AppendWithStyle(CmpCommitviewGraphMergeCommit, "M")
 		case cgtParentLine:
 			lineBuilder.AppendACSChar(AcsVline, themeComponentID)
 		case cgtMergeCommitLine:

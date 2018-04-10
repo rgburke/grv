@@ -35,6 +35,15 @@ const (
 	CmpCommitviewTag
 	CmpCommitviewLocalBranch
 	CmpCommitviewRemoteBranch
+	CmpCommitviewGraphCommit
+	CmpCommitviewGraphMergeCommit
+	CmpCommitviewGraphBranch1
+	CmpCommitviewGraphBranch2
+	CmpCommitviewGraphBranch3
+	CmpCommitviewGraphBranch4
+	CmpCommitviewGraphBranch5
+	CmpCommitviewGraphBranch6
+	CmpCommitviewGraphBranch7
 
 	CmpDiffviewTitle
 	CmpDiffviewFooter

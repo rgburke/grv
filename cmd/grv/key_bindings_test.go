@@ -137,12 +137,12 @@ func TestMouseEventActionReturnsExpectedActions(t *testing.T) {
 	}
 
 	tests := map[MouseEvent]Action{
-		mouseEventLeftClick: Action{
+		mouseEventLeftClick: {
 			ActionType: ActionMouseSelect,
 			Args:       []interface{}{mouseEventLeftClick},
 		},
-		MouseEvent{mouseEventType: MetScrollDown}: Action{ActionType: ActionMouseScrollDown},
-		MouseEvent{mouseEventType: MetScrollUp}:   Action{ActionType: ActionMouseScrollUp},
+		{mouseEventType: MetScrollDown}: {ActionType: ActionMouseScrollDown},
+		{mouseEventType: MetScrollUp}:   {ActionType: ActionMouseScrollUp},
 	}
 
 	for mouseEvent, expectedAction := range tests {
