@@ -474,3 +474,13 @@ func (commitGraph *CommitGraph) Render(lineBuilder *LineBuilder, commitIndex uin
 
 	return
 }
+
+// Clear removes all rows
+func (commitGraph *CommitGraph) Clear() {
+	commitGraph.lock.Lock()
+	defer commitGraph.lock.Unlock()
+
+	commitGraph.rows = nil
+	commitGraph.parentCommits = nil
+	commitGraph.branchIndexes = nil
+}

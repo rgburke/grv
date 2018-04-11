@@ -451,6 +451,11 @@ func (commitView *CommitView) OnCommitsUpdated(ref Ref) {
 			commitView.channels.ReportError(err)
 		}
 
+		if commitView.config.GetBool(CfCommitGraph) {
+			refViewData := commitView.refViewData[ref.Name()]
+			refViewData.commitGraph.Clear()
+		}
+
 		commitView.channels.UpdateDisplay()
 	}
 }
