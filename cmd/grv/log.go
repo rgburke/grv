@@ -116,6 +116,4 @@ func InitialiseLogging(logLevel, logFilePath string) {
 	log.SetFormatter(logFormatter{})
 
 	log.AddHook(fileHook{})
-
-	log.Info("Logging initialised")
 }

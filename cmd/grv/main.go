@@ -38,6 +38,7 @@ func main() {
 	}
 
 	InitialiseLogging(args.logLevel, args.logFilePath)
+	log.Info(getVersion())
 
 	log.Debugf("Creating GRV instance")
 	grv := NewGRV()
@@ -73,6 +74,10 @@ func parseArgs() *grvArgs {
 	}
 }
 
+func getVersion() string {
+	return fmt.Sprintf("GRV - Git Repository Viewer %v (commit: %v, compiled: %v)", version, headOid, buildDateTime)
+}
+
 func printVersion() {
-	fmt.Printf("GRV - Git Repository Viewer %v (commit: %v, compiled: %v)\n", version, headOid, buildDateTime)
+	fmt.Printf("%v\n", getVersion())
 }
