@@ -190,6 +190,7 @@ func (diffView *DiffView) Dispose() {
 	defer diffView.lock.Unlock()
 
 	close(diffView.diffLoadRequestCh)
+	diffView.diffLoadRequestCh = nil
 }
 
 // Render generates and writes the diff view to the provided window
@@ -407,7 +408,9 @@ func (diffView *DiffView) OnNoEntrySelected() {
 }
 
 func (diffView *DiffView) addDiffLoadRequest(request diffLoadRequest) {
-	diffView.diffLoadRequestCh <- request
+	if diffView.diffLoadRequestCh != nil {
+		diffView.diffLoadRequestCh <- request
+	}
 }
 
 func (diffView *DiffView) processDiffLoadRequests() {

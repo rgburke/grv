@@ -981,6 +981,7 @@ func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *Repo
 // Free free's any underlying resources
 func (repoData *RepositoryData) Free() {
 	close(repoData.refUpdateCh)
+	repoData.refUpdateCh = nil
 	repoData.repoDataLoader.Free()
 }
 
@@ -1317,9 +1318,14 @@ func (repoData *RepositoryData) OnRefsChanged(addedRefs, removedRefs []Ref, upda
 }
 
 func (repoData *RepositoryData) addUpdatedRefsToProcessingQueue(updatedRefs []*UpdatedRef) {
+	refUpdateCh := repoData.refUpdateCh
+	if refUpdateCh == nil {
+		return
+	}
+
 	for _, updatedRef := range updatedRefs {
 		select {
-		case repoData.refUpdateCh <- updatedRef:
+		case refUpdateCh <- updatedRef:
 		default:
 			log.Errorf("Unable process UpdatedRef %v", updatedRef)
 		}

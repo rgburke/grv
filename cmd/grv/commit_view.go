@@ -125,6 +125,8 @@ func (commitView *CommitView) Dispose() {
 
 	close(commitView.commitGraphLoadCh)
 	close(commitView.commitSelectedCh)
+	commitView.commitGraphLoadCh = nil
+	commitView.commitSelectedCh = nil
 }
 
 // Render generates and draws the commit view to the provided window
@@ -461,7 +463,7 @@ func (commitView *CommitView) OnCommitsUpdated(ref Ref) {
 }
 
 func (commitView *CommitView) preRenderCell(rowIndex, colIndex uint, lineBuilder *LineBuilder, tableCell *TableCell) (err error) {
-	if commitView.config.GetBool(CfCommitGraph) {
+	if commitView.config.GetBool(CfCommitGraph) && commitView.commitGraphLoadCh != nil {
 		refViewData := commitView.refViewData[commitView.activeRef.Name()]
 		commitIndex := refViewData.viewPos.ViewStartRowIndex() + rowIndex
 
@@ -523,7 +525,9 @@ func (commitView *CommitView) commitViewListenerCount() uint {
 }
 
 func (commitView *CommitView) notifyCommitViewListeners(commit *Commit) {
-	commitView.commitSelectedCh <- commit
+	if commitView.commitSelectedCh != nil {
+		commitView.commitSelectedCh <- commit
+	}
 }
 
 func (commitView *CommitView) processSelectedCommits() {
