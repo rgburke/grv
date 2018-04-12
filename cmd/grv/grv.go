@@ -183,7 +183,13 @@ func NewGRV() *GRV {
 func (grv *GRV) Initialise(repoPath, workTreePath string) (err error) {
 	log.Info("Initialising GRV")
 
-	if err = grv.repoData.Initialise(repoPath, workTreePath); err != nil {
+	repoInitialiser := NewRepositoryInitialiser(repoPath, workTreePath)
+
+	if err = repoInitialiser.CreateRepositoryInstance(); err != nil {
+		return
+	}
+
+	if err = grv.repoData.Initialise(repoInitialiser); err != nil {
 		return
 	}
 

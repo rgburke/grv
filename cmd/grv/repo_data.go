@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"reflect"
 	"sync"
 
@@ -987,63 +985,13 @@ func (repoData *RepositoryData) Free() {
 }
 
 // Initialise performs setup to allow loading data from the repository
-func (repoData *RepositoryData) Initialise(repoPath, workTreePath string) (err error) {
-	repoPath, err = repoData.processRepoPath(repoPath)
-	if err != nil {
-		return
-	}
-	workTreePath = repoData.processWorkTreePath(workTreePath)
-
-	if err = repoData.repoDataLoader.Initialise(repoPath, workTreePath); err != nil {
-		return
-	}
+func (repoData *RepositoryData) Initialise(repoSupplier RepoSupplier) (err error) {
+	repoData.repoDataLoader.Initialise(repoSupplier)
 
 	go repoData.processUpdatedRefs()
 	repoData.RegisterRefStateListener(repoData)
 
 	return repoData.LoadStatus()
-}
-
-func (repoData *RepositoryData) processRepoPath(repoPath string) (processedRepoPath string, err error) {
-	if gitDir, gitDirSet := os.LookupEnv("GIT_DIR"); gitDirSet {
-		return gitDir, nil
-	}
-
-	path, err := CanonicalPath(repoPath)
-	if err != nil {
-		return
-	}
-
-	for {
-		gitDirPath := filepath.Join(path, GitRepositoryDirectoryName)
-		log.Debugf("gitDirPath: %v", gitDirPath)
-
-		if _, err = os.Stat(gitDirPath); err != nil {
-			if !os.IsNotExist(err) {
-				break
-			}
-		} else {
-			processedRepoPath = gitDirPath
-			break
-		}
-
-		if path == "/" {
-			err = fmt.Errorf("Unable to find a git repository in %v or any of its parent directories", repoPath)
-			break
-		}
-
-		path = filepath.Dir(path)
-	}
-
-	return
-}
-
-func (repoData *RepositoryData) processWorkTreePath(workTreePath string) string {
-	if gitWorkTree, gitWorkTreeSet := os.LookupEnv("GIT_WORK_TREE"); gitWorkTreeSet {
-		return gitWorkTree
-	}
-
-	return workTreePath
 }
 
 // Path returns the file patch location of the repository

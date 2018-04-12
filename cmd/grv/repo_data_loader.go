@@ -573,25 +573,9 @@ func (repoDataLoader *RepoDataLoader) Free() {
 }
 
 // Initialise attempts to access the repository
-func (repoDataLoader *RepoDataLoader) Initialise(repoPath, workTreePath string) error {
-	log.Infof("Opening repository at %v", repoPath)
-
-	repo, err := git.OpenRepository(repoPath)
-	if err != nil {
-		log.Debugf("Failed to open repository: %v", err)
-		return err
-	}
-
-	if workTreePath != "" {
-		if err = repo.SetWorkdir(workTreePath, false); err != nil {
-			log.Debugf("Failed to set work dir: %v", err)
-			return err
-		}
-	}
-
-	repoDataLoader.repo = repo
-
-	return nil
+func (repoDataLoader *RepoDataLoader) Initialise(repoSupplier RepoSupplier) {
+	repoDataLoader.repo = repoSupplier.RepositoryInstance()
+	return
 }
 
 // Path returns the file path location of the repository
