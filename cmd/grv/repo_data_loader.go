@@ -563,19 +563,9 @@ func NewRepoDataLoader(channels *Channels) *RepoDataLoader {
 	}
 }
 
-// Free releases any resources
-func (repoDataLoader *RepoDataLoader) Free() {
-	log.Info("Freeing RepoDataLoader")
-
-	if repoDataLoader.repo != nil {
-		repoDataLoader.repo.Free()
-	}
-}
-
 // Initialise attempts to access the repository
 func (repoDataLoader *RepoDataLoader) Initialise(repoSupplier RepoSupplier) {
 	repoDataLoader.repo = repoSupplier.RepositoryInstance()
-	return
 }
 
 // Path returns the file path location of the repository

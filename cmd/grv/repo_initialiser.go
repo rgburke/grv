@@ -16,17 +16,12 @@ type RepoSupplier interface {
 
 // RepositoryInitialiser creates a git2go repository instance
 type RepositoryInitialiser struct {
-	repoPath     string
-	workTreePath string
-	repo         *git.Repository
+	repo *git.Repository
 }
 
 // NewRepositoryInitialiser creates a new instance
-func NewRepositoryInitialiser(repoPath, workTreePath string) *RepositoryInitialiser {
-	return &RepositoryInitialiser{
-		repoPath:     repoPath,
-		workTreePath: workTreePath,
-	}
+func NewRepositoryInitialiser() *RepositoryInitialiser {
+	return &RepositoryInitialiser{}
 }
 
 // RepositoryInstance returns a git2go repository instance
@@ -34,14 +29,23 @@ func (initialiser *RepositoryInitialiser) RepositoryInstance() *git.Repository {
 	return initialiser.repo
 }
 
+// Free releases the git2go repository instance
+func (initialiser *RepositoryInitialiser) Free() {
+	log.Info("Freeing git2go repository instance")
+
+	if initialiser.repo != nil {
+		initialiser.repo.Free()
+	}
+}
+
 // CreateRepositoryInstance creates a git2go repository instance using the
-// repoPath and workTreePath values it was created with
-func (initialiser *RepositoryInitialiser) CreateRepositoryInstance() (err error) {
-	repoPath, err := initialiser.processRepoPath(initialiser.repoPath)
+// repoPath and workTreePath values provided
+func (initialiser *RepositoryInitialiser) CreateRepositoryInstance(repoPath, workTreePath string) (err error) {
+	repoPath, err = initialiser.processRepoPath(repoPath)
 	if err != nil {
 		return
 	}
-	workTreePath := initialiser.processWorkTreePath(initialiser.workTreePath)
+	workTreePath = initialiser.processWorkTreePath(workTreePath)
 
 	log.Infof("Opening repository at %v", repoPath)
 

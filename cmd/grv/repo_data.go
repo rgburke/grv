@@ -982,7 +982,6 @@ func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *Repo
 func (repoData *RepositoryData) Free() {
 	close(repoData.refUpdateCh)
 	repoData.refUpdateCh = nil
-	repoData.repoDataLoader.Free()
 }
 
 // Initialise performs setup to allow loading data from the repository

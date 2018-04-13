@@ -75,14 +75,15 @@ type EventListener interface {
 
 // GRV is the top level structure containing all state in the program
 type GRV struct {
-	repoData       *RepositoryData
-	view           *View
-	ui             UI
-	channels       gRVChannels
-	config         *Configuration
-	inputBuffer    *InputBuffer
-	input          *InputKeyMapper
-	eventListeners []EventListener
+	repoInitialiser *RepositoryInitialiser
+	repoData        *RepositoryData
+	view            *View
+	ui              UI
+	channels        gRVChannels
+	config          *Configuration
+	inputBuffer     *InputBuffer
+	input           *InputKeyMapper
+	eventListeners  []EventListener
 }
 
 // UpdateDisplay sends a request to update the display
@@ -168,14 +169,15 @@ func NewGRV() *GRV {
 	view := NewView(repoData, channels, config)
 
 	return &GRV{
-		repoData:       repoData,
-		view:           view,
-		ui:             ui,
-		channels:       grvChannels,
-		config:         config,
-		inputBuffer:    NewInputBuffer(keyBindings),
-		input:          NewInputKeyMapper(ui),
-		eventListeners: []EventListener{view, repoData},
+		repoInitialiser: NewRepositoryInitialiser(),
+		repoData:        repoData,
+		view:            view,
+		ui:              ui,
+		channels:        grvChannels,
+		config:          config,
+		inputBuffer:     NewInputBuffer(keyBindings),
+		input:           NewInputKeyMapper(ui),
+		eventListeners:  []EventListener{view, repoData},
 	}
 }
 
@@ -183,13 +185,11 @@ func NewGRV() *GRV {
 func (grv *GRV) Initialise(repoPath, workTreePath string) (err error) {
 	log.Info("Initialising GRV")
 
-	repoInitialiser := NewRepositoryInitialiser(repoPath, workTreePath)
-
-	if err = repoInitialiser.CreateRepositoryInstance(); err != nil {
+	if err = grv.repoInitialiser.CreateRepositoryInstance(repoPath, workTreePath); err != nil {
 		return
 	}
 
-	if err = grv.repoData.Initialise(repoInitialiser); err != nil {
+	if err = grv.repoData.Initialise(grv.repoInitialiser); err != nil {
 		return
 	}
 
@@ -220,6 +220,7 @@ func (grv *GRV) Free() {
 	FreeReadLine()
 	grv.ui.Free()
 	grv.repoData.Free()
+	grv.repoInitialiser.Free()
 }
 
 // Suspend prepares GRV to be suspended and sends a SIGTSTP
