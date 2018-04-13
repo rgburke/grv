@@ -95,15 +95,15 @@ type View struct {
 }
 
 // NewView creates a new instance
-func NewView(repoData RepoData, channels *Channels, config ConfigSetter) (view *View) {
+func NewView(repoData RepoData, repoController RepoController, channels *Channels, config ConfigSetter) (view *View) {
 	view = &View{
 		views: []WindowViewCollection{
-			NewHistoryView(repoData, channels, config),
+			NewHistoryView(repoData, repoController, channels, config),
 			NewStatusView(repoData, channels, config),
 		},
 		channels:          channels,
 		config:            config,
-		windowViewFactory: NewWindowViewFactory(repoData, channels, config),
+		windowViewFactory: NewWindowViewFactory(repoData, repoController, channels, config),
 	}
 
 	view.grvStatusView = NewGRVStatusView(view, repoData, channels, config)

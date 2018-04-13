@@ -77,6 +77,7 @@ type EventListener interface {
 type GRV struct {
 	repoInitialiser *RepositoryInitialiser
 	repoData        *RepositoryData
+	repoController  *RepositoryController
 	view            *View
 	ui              UI
 	channels        gRVChannels
@@ -163,14 +164,16 @@ func NewGRV() *GRV {
 
 	repoDataLoader := NewRepoDataLoader(channels)
 	repoData := NewRepositoryData(repoDataLoader, channels)
+	repoController := NewRepoController()
 	keyBindings := NewKeyBindingManager()
 	config := NewConfiguration(keyBindings, channels)
 	ui := NewNCursesDisplay(config)
-	view := NewView(repoData, channels, config)
+	view := NewView(repoData, repoController, channels, config)
 
 	return &GRV{
 		repoInitialiser: NewRepositoryInitialiser(),
 		repoData:        repoData,
+		repoController:  repoController,
 		view:            view,
 		ui:              ui,
 		channels:        grvChannels,
@@ -192,6 +195,8 @@ func (grv *GRV) Initialise(repoPath, workTreePath string) (err error) {
 	if err = grv.repoData.Initialise(grv.repoInitialiser); err != nil {
 		return
 	}
+
+	grv.repoController.Initialise(grv.repoInitialiser)
 
 	if err = grv.ui.Initialise(); err != nil {
 		return

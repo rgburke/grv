@@ -48,6 +48,7 @@ type CommitViewListener interface {
 type CommitView struct {
 	channels               *Channels
 	repoData               RepoData
+	repoController         RepoController
 	config                 Config
 	activeRef              Ref
 	active                 bool
@@ -66,10 +67,11 @@ type CommitView struct {
 }
 
 // NewCommitView creates a new instance of the commit view
-func NewCommitView(repoData RepoData, channels *Channels, config Config) *CommitView {
+func NewCommitView(repoData RepoData, repoController RepoController, channels *Channels, config Config) *CommitView {
 	commitView := &CommitView{
 		channels:          channels,
 		repoData:          repoData,
+		repoController:    repoController,
 		config:            config,
 		commitGraphLoadCh: make(chan commitGraphLoadRequest, cvCommitGraphLoadRequestChannelSize),
 		commitSelectedCh:  make(chan *Commit, cvCommitSelectedChannelSize),

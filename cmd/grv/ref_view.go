@@ -160,18 +160,19 @@ func (renderedRefList *renderedRefList) Children() (children uint) {
 
 // RefView manages the display of references
 type RefView struct {
-	channels      *Channels
-	repoData      RepoData
-	config        Config
-	refLists      []*refList
-	refListeners  []RefListener
-	active        bool
-	renderedRefs  renderedRefSet
-	viewPos       ViewPos
-	viewDimension ViewDimension
-	handlers      map[ActionType]refViewHandler
-	viewSearch    *ViewSearch
-	lock          sync.Mutex
+	channels       *Channels
+	repoData       RepoData
+	repoController RepoController
+	config         Config
+	refLists       []*refList
+	refListeners   []RefListener
+	active         bool
+	renderedRefs   renderedRefSet
+	viewPos        ViewPos
+	viewDimension  ViewDimension
+	handlers       map[ActionType]refViewHandler
+	viewSearch     *ViewSearch
+	lock           sync.Mutex
 }
 
 // RefListener is notified when a reference is selected
@@ -180,13 +181,14 @@ type RefListener interface {
 }
 
 // NewRefView creates a new instance
-func NewRefView(repoData RepoData, channels *Channels, config Config) *RefView {
+func NewRefView(repoData RepoData, repoController RepoController, channels *Channels, config Config) *RefView {
 	refView := &RefView{
-		channels:     channels,
-		repoData:     repoData,
-		config:       config,
-		viewPos:      NewViewPosition(),
-		renderedRefs: newRenderedRefList(),
+		channels:       channels,
+		repoData:       repoData,
+		repoController: repoController,
+		config:         config,
+		viewPos:        NewViewPosition(),
+		renderedRefs:   newRenderedRefList(),
 		refLists: []*refList{
 			{
 				name:            "Branches",

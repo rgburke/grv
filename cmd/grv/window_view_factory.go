@@ -10,19 +10,21 @@ import (
 // WindowViewFactory provides a generic interface
 // for creating view instances
 type WindowViewFactory struct {
-	repoData RepoData
-	channels *Channels
-	config   Config
+	repoData       RepoData
+	repoController RepoController
+	channels       *Channels
+	config         Config
 }
 
 var hexRegexp = regexp.MustCompile(`^[[:xdigit:]]+$`)
 
 // NewWindowViewFactory creates a new instance
-func NewWindowViewFactory(repoData RepoData, channels *Channels, config Config) *WindowViewFactory {
+func NewWindowViewFactory(repoData RepoData, repoController RepoController, channels *Channels, config Config) *WindowViewFactory {
 	return &WindowViewFactory{
-		repoData: repoData,
-		channels: channels,
-		config:   config,
+		repoData:       repoData,
+		repoController: repoController,
+		channels:       channels,
+		config:         config,
 	}
 }
 
@@ -51,7 +53,7 @@ func (windowViewFactory *WindowViewFactory) CreateWindowViewWithArgs(viewID View
 
 func (windowViewFactory *WindowViewFactory) createRefView() *RefView {
 	log.Info("Created RefView instance")
-	return NewRefView(windowViewFactory.repoData, windowViewFactory.channels, windowViewFactory.config)
+	return NewRefView(windowViewFactory.repoData, windowViewFactory.repoController, windowViewFactory.channels, windowViewFactory.config)
 }
 
 func (windowViewFactory *WindowViewFactory) createCommitView(args []interface{}) (commitView *CommitView, err error) {
@@ -60,7 +62,7 @@ func (windowViewFactory *WindowViewFactory) createCommitView(args []interface{})
 		return
 	}
 
-	commitView = NewCommitView(windowViewFactory.repoData, windowViewFactory.channels, windowViewFactory.config)
+	commitView = NewCommitView(windowViewFactory.repoData, windowViewFactory.repoController, windowViewFactory.channels, windowViewFactory.config)
 
 	log.Info("Created CommitView instance")
 
