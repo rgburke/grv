@@ -59,6 +59,7 @@ type RepoData interface {
 	Ref(refName string) (Ref, error)
 	Branches() (localBranches, remoteBranches []Branch, loading bool)
 	Tags() (tags []*Tag, loading bool)
+	LocalBranches(*RemoteBranch) []*LocalBranch
 	RefsForCommit(*Commit) *CommitRefs
 	CommitSetState(Ref) CommitSetState
 	Commits(ref Ref, startIndex, count uint) (<-chan *Commit, error)
@@ -651,6 +652,23 @@ func (refSet *refSet) tags() (tagsList []*Tag, loading bool) {
 	return
 }
 
+func (refSet *refSet) localBranches(remoteBranch *RemoteBranch) (localBranches []*LocalBranch) {
+	refSet.lock.Lock()
+	defer refSet.lock.Unlock()
+
+	localBranchNames, exist := refSet.remoteToLocalTrackingBranches[remoteBranch.Name()]
+	if !exist {
+		return
+	}
+
+	for localBranchName := range localBranchNames {
+		localBranch := refSet.refs[localBranchName].(*LocalBranch)
+		localBranches = append(localBranches, localBranch)
+	}
+
+	return
+}
+
 // CommitRefs contain all refs to a commit
 type CommitRefs struct {
 	tags     []*Tag
@@ -1150,6 +1168,11 @@ func (repoData *RepositoryData) Branches() (localBranches []Branch, remoteBranch
 // Tags returns all loaded tags
 func (repoData *RepositoryData) Tags() (tags []*Tag, loading bool) {
 	return repoData.refSet.tags()
+}
+
+// LocalBranches returns all local tracking branches for the provided remote branch
+func (repoData *RepositoryData) LocalBranches(remoteBranch *RemoteBranch) []*LocalBranch {
+	return repoData.refSet.localBranches(remoteBranch)
 }
 
 // RefsForCommit returns the set of all refs that point to the provided commit

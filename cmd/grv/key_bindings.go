@@ -57,6 +57,7 @@ const (
 	ActionMouseSelect
 	ActionMouseScrollDown
 	ActionMouseScrollUp
+	ActionCheckoutRef
 )
 
 // Action represents a type of actions and its arguments to be executed
@@ -134,6 +135,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-split-view>":            ActionSplitView,
 	"<grv-remove-view>":           ActionRemoveView,
 	"<grv-mouse-select>":          ActionMouseSelect,
+	"<grv-checkout-ref>":          ActionCheckoutRef,
 }
 
 var promptActions = map[ActionType]bool{
@@ -241,6 +243,9 @@ var defaultKeyBindings = map[ActionType]map[ViewID][]string{
 	},
 	ActionRemoveView: {
 		ViewAll: {"q"},
+	},
+	ActionCheckoutRef: {
+		ViewRef: {"c"},
 	},
 }
 

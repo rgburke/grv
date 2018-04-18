@@ -164,7 +164,7 @@ func NewGRV() *GRV {
 
 	repoDataLoader := NewRepoDataLoader(channels)
 	repoData := NewRepositoryData(repoDataLoader, channels)
-	repoController := NewRepoController()
+	repoController := NewRepoController(repoData, channels)
 	keyBindings := NewKeyBindingManager()
 	config := NewConfiguration(keyBindings, channels)
 	ui := NewNCursesDisplay(config)

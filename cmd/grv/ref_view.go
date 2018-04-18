@@ -230,6 +230,7 @@ func NewRefView(repoData RepoData, repoController RepoController, channels *Chan
 			ActionMouseSelect:        mouseSelectRef,
 			ActionMouseScrollDown:    mouseScrollDownRefView,
 			ActionMouseScrollUp:      mouseScrollUpRefView,
+			ActionCheckoutRef:        checkoutRef,
 		},
 	}
 
@@ -1167,6 +1168,42 @@ func mouseScrollUpRefView(refView *RefView, action Action) (err error) {
 		err = refView.moveUpRefIfNonSelectable(action)
 		refView.channels.UpdateDisplay()
 	}
+
+	return
+}
+
+func checkoutRef(refView *RefView, action Action) (err error) {
+	renderedRefs := refView.renderedRefs.RenderedRefs()
+	renderedRef := renderedRefs[refView.viewPos.ActiveRowIndex()]
+
+	if renderedRef.ref == nil {
+		return
+	}
+
+	refView.repoController.CheckoutRef(renderedRef.ref, func(ref Ref, err error) {
+		refView.lock.Lock()
+		defer refView.lock.Unlock()
+
+		if err != nil {
+			refView.channels.ReportError(err)
+			return
+		}
+
+		refView.generateRenderedRefs()
+
+		for renderedRefIndex, renderedRef := range refView.renderedRefs.RenderedRefs() {
+			if renderedRef.ref != nil && renderedRef.ref.Equal(ref) {
+				refView.viewPos.SetActiveRowIndex(uint(renderedRefIndex))
+				if err = selectRef(refView, action); err != nil {
+					refView.channels.ReportError(err)
+				}
+
+				break
+			}
+		}
+
+		refView.channels.UpdateDisplay()
+	})
 
 	return
 }

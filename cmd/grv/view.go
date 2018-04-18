@@ -483,6 +483,14 @@ func (view *View) Title() string {
 	return "Main View"
 }
 
+// ReportStatus reports the provided status in the status bar
+func (view *View) ReportStatus(status string) error {
+	return view.grvStatusView.HandleAction(Action{
+		ActionType: ActionShowStatus,
+		Args:       []interface{}{status},
+	})
+}
+
 func (view *View) prompt(action Action) (err error) {
 	view.lock.Lock()
 	view.views[view.activeViewPos].OnActiveChange(false)

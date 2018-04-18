@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -193,16 +194,23 @@ func (localBranch *LocalBranch) Equal(other Ref) bool {
 // RemoteBranch contains data for a remote branch reference
 type RemoteBranch struct {
 	*abstractBranch
+	remoteName string
 }
 
-func newRemoteBranch(oid *Oid, name, shorthand string) *RemoteBranch {
+func newRemoteBranch(oid *Oid, remoteName, name, shorthand string) *RemoteBranch {
 	return &RemoteBranch{
 		abstractBranch: &abstractBranch{
 			oid:       oid,
 			name:      name,
 			shorthand: shorthand,
 		},
+		remoteName: remoteName,
 	}
+}
+
+// ShorthandWithoutRemote returns only the branch name
+func (remoteBranch *RemoteBranch) ShorthandWithoutRemote() string {
+	return strings.TrimPrefix(remoteBranch.shorthand, remoteBranch.remoteName+"/")
 }
 
 // IsRemote returns true
@@ -262,7 +270,7 @@ func (tag *Tag) Equal(other Ref) bool {
 		tag.Oid().Equal(otherTag.Oid())
 }
 
-// Tag returns tag data in a string format
+// String returns tag data in a string format
 func (tag *Tag) String() string {
 	return fmt.Sprintf("%v:%v", tag.name, tag.oid)
 }
@@ -304,6 +312,11 @@ func (head *HEAD) Equal(other Ref) bool {
 	}
 
 	return head.Oid().Equal(otherHead.Oid())
+}
+
+// String returns HEAD in a string format
+func (head *HEAD) String() string {
+	return fmt.Sprintf("%v:%v", head.Name(), head.Oid())
 }
 
 // Commit contains data for a commit
@@ -666,11 +679,18 @@ func (repoDataLoader *RepoDataLoader) loadBranches() (branches []Branch, err err
 		var newBranch Branch
 
 		if branch.IsRemote() {
-			newBranch = newRemoteBranch(oid, branch.Reference.Name(), branchName)
+			fullBranchName := branch.Reference.Name()
+			remoteName, err := repoDataLoader.repo.RemoteName(fullBranchName)
+			if err != nil {
+				err = fmt.Errorf("Failed to determine remote for branch %v: %v", fullBranchName, err)
+				return err
+			}
+
+			newBranch = newRemoteBranch(oid, remoteName, fullBranchName, branchName)
 		} else {
 			newBranch, err = newLocalBranch(oid, branch)
 			if err != nil {
-				log.Debugf("Failed to create ref instance for branch %v: %v",
+				err = fmt.Errorf("Failed to create ref instance for branch %v: %v",
 					branch.Reference.Name(), err)
 				return err
 			}

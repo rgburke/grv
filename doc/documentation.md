@@ -119,6 +119,7 @@ Ref View specific key bindings:
 <Enter>                 Select ref and load commits
 <C-q>                   Add ref filter
 <C-r>                   Remove ref filter
+c                       Checkout ref
 ```
 
 Commit View specific key bindings:
