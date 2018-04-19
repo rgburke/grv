@@ -100,6 +100,7 @@ func NewCommitView(repoData RepoData, repoController RepoController, channels *C
 			ActionMouseSelect:        mouseSelectCommit,
 			ActionMouseScrollDown:    mouseScrollDownCommitView,
 			ActionMouseScrollUp:      mouseScrollUpCommitView,
+			ActionCheckoutCommit:     checkoutCommit,
 		},
 	}
 
@@ -316,6 +317,7 @@ func (commitView *CommitView) RenderHelpBar(lineBuilder *LineBuilder) (err error
 	RenderKeyBindingHelp(commitView.ViewID(), lineBuilder, []ActionMessage{
 		{action: ActionFilterPrompt, message: "Add Filter"},
 		{action: ActionRemoveFilter, message: "Remove Filter"},
+		{action: ActionCheckoutCommit, message: "Checkout commit"},
 	})
 
 	return
@@ -1146,6 +1148,26 @@ func mouseScrollUpCommitView(commitView *CommitView, action Action) (err error) 
 		err = commitView.selectCommit(viewPos.ActiveRowIndex())
 		commitView.channels.UpdateDisplay()
 	}
+
+	return
+}
+
+func checkoutCommit(commitView *CommitView, action Action) (err error) {
+	viewPos := commitView.ViewPos()
+
+	commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.ActiveRowIndex())
+	if err != nil {
+		return
+	}
+
+	commitView.repoController.CheckoutCommit(commit, func(err error) {
+		if err != nil {
+			commitView.channels.ReportError(fmt.Errorf("Unable to checkout commit: %v", err))
+			return
+		}
+
+		commitView.channels.ReportStatus("Checked out commit %v", commit.oid.ShortID())
+	})
 
 	return
 }

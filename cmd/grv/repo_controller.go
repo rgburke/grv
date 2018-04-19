@@ -8,8 +8,11 @@ import (
 	git "gopkg.in/libgit2/git2go.v26"
 )
 
-// CheckoutRefResultHandler is notified when checkout is complete
+// CheckoutRefResultHandler is notified when the checkout is complete
 type CheckoutRefResultHandler func(Ref, error)
+
+// CheckoutCommitResultHandler is notified when the checkout is complete
+type CheckoutCommitResultHandler func(err error)
 
 const (
 	checkoutPercentageDiffReportThreshold = 10.0
@@ -19,6 +22,7 @@ const (
 // and modifies repository state
 type RepoController interface {
 	CheckoutRef(Ref, CheckoutRefResultHandler)
+	CheckoutCommit(*Commit, CheckoutCommitResultHandler)
 }
 
 // RepositoryController implements the RepoController interface
@@ -42,7 +46,30 @@ func (repoController *RepositoryController) Initialise(repoSupplier RepoSupplier
 	repoController.repo = repoSupplier.RepositoryInstance()
 }
 
-// CheckoutRef checks out ref and sets HEAD equal to the ref
+// CheckoutCommit checks out the provided commit and makes HEAD detached at the commit oid
+func (repoController *RepositoryController) CheckoutCommit(commit *Commit, resultHandler CheckoutCommitResultHandler) {
+	go func() {
+		repoController.lock.Lock()
+		defer repoController.lock.Unlock()
+
+		err := repoController.checkoutTree(commit)
+		if err != nil {
+			resultHandler(err)
+			return
+		}
+
+		if err = repoController.repo.SetHeadDetached(commit.oid.oid); err != nil {
+			err = fmt.Errorf("Unable to update HEAD: %v", err)
+		}
+
+		repoController.repoData.LoadRefs(func([]Ref) (err error) {
+			resultHandler(err)
+			return
+		})
+	}()
+}
+
+// CheckoutRef checks out the provided ref and sets HEAD equal to the ref
 func (repoController *RepositoryController) CheckoutRef(ref Ref, resultHandler CheckoutRefResultHandler) {
 	go func() {
 		repoController.lock.Lock()
@@ -127,9 +154,23 @@ func (repoController *RepositoryController) checkoutRef(ref Ref) (refName string
 		return
 	}
 
+	if err = repoController.checkoutTree(commit); err != nil {
+		return
+	}
+
+	if err = repoController.repo.SetHead(refName); err != nil {
+		err = fmt.Errorf("Checkout failed - Unable to update HEAD: %v", err)
+	}
+
+	log.Info("Checked out %v", refName)
+
+	return
+}
+
+func (repoController *RepositoryController) checkoutTree(commit *Commit) (err error) {
 	tree, err := commit.commit.Tree()
 	if err != nil {
-		err = fmt.Errorf("Checkout failed - Unable to load tree for commit with oid %v: %v", oid, err)
+		err = fmt.Errorf("Checkout failed - Unable to load tree for commit with oid %v: %v", commit.oid, err)
 		return
 	}
 	defer tree.Free()
@@ -151,17 +192,11 @@ func (repoController *RepositoryController) checkoutRef(ref Ref) (refName string
 	}
 
 	if err = repoController.repo.CheckoutTree(tree, checkoutOpts); err != nil {
-		err = fmt.Errorf("Checkout failed - Unable to checkout ref %v: %v", refName, err)
+		err = fmt.Errorf("Checkout failed - Unable to checkout to commit %v: %v", commit.oid, err)
 		return
 	}
 
 	repoController.channels.ReportStatus("Checkout complete")
-
-	if err = repoController.repo.SetHead(refName); err != nil {
-		err = fmt.Errorf("Checkout failed - Unable to update HEAD: %v", err)
-	}
-
-	log.Info("Checked out %v", refName)
 
 	return
 }

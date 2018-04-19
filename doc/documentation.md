@@ -127,6 +127,7 @@ Commit View specific key bindings:
 ```
 <C-q>                   Add commit filter
 <C-r>                   Remove commit filter
+c                       Checkout commit
 ```
 
 ## Configuration

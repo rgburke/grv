@@ -460,6 +460,7 @@ func (refView *RefView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 		{action: ActionSelect, message: "Select"},
 		{action: ActionFilterPrompt, message: "Add Filter"},
 		{action: ActionRemoveFilter, message: "Remove Filter"},
+		{action: ActionCheckoutRef, message: "Checkout ref"},
 	})
 
 	return
