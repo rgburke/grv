@@ -28,6 +28,7 @@ type grvArgs struct {
 	logLevel         string
 	logFilePath      string
 	version          bool
+	readOnly         bool
 }
 
 func main() {
@@ -41,7 +42,7 @@ func main() {
 	log.Info(getVersion())
 
 	log.Debugf("Creating GRV instance")
-	grv := NewGRV()
+	grv := NewGRV(args.readOnly)
 
 	if err := grv.Initialise(args.repoFilePath, args.workTreeFilePath); err != nil {
 		fmt.Fprintf(os.Stderr, "FATAL: Unable to initialise grv: %v\n", err)
@@ -62,6 +63,7 @@ func parseArgs() *grvArgs {
 	logLevelPtr := flag.String("logLevel", MnLogLevelDefault, "Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG]")
 	logFilePathPtr := flag.String("logFile", mnLogFilePathDefault, "Log file path")
 	versionPtr := flag.Bool("version", false, "Print version")
+	readOnlyPtr := flag.Bool("readOnly", false, "Run grv in read only mode")
 
 	flag.Parse()
 
@@ -71,6 +73,7 @@ func parseArgs() *grvArgs {
 		logLevel:         *logLevelPtr,
 		logFilePath:      *logFilePathPtr,
 		version:          *versionPtr,
+		readOnly:         *readOnlyPtr,
 	}
 }
 

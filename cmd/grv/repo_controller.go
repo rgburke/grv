@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -18,11 +19,37 @@ const (
 	checkoutPercentageDiffReportThreshold = 10.0
 )
 
+var errReadOnly error = errors.New("Invalid operation in read only mode")
+
 // RepoController performs actions on a repository
 // and modifies repository state
 type RepoController interface {
+	Initialise(RepoSupplier)
 	CheckoutRef(Ref, CheckoutRefResultHandler)
 	CheckoutCommit(*Commit, CheckoutCommitResultHandler)
+}
+
+// ReadOnlyRepositoryController does not permit any
+// repository modification and returns a read only error
+// when such operations are attempted
+type ReadOnlyRepositoryController struct{}
+
+// NewReadOnlyRepositoryController creates a new instance
+func NewReadOnlyRepositoryController() RepoController {
+	return &ReadOnlyRepositoryController{}
+}
+
+// Initialise does nothing
+func (repoController *ReadOnlyRepositoryController) Initialise(RepoSupplier) {}
+
+// CheckoutRef returns a read only error
+func (repoController *ReadOnlyRepositoryController) CheckoutRef(ref Ref, resultHandler CheckoutRefResultHandler) {
+	go resultHandler(nil, errReadOnly)
+}
+
+// CheckoutCommit returns a read only error
+func (repoController *ReadOnlyRepositoryController) CheckoutCommit(commit *Commit, resultHandler CheckoutCommitResultHandler) {
+	go resultHandler(errReadOnly)
 }
 
 // RepositoryController implements the RepoController interface
@@ -34,7 +61,7 @@ type RepositoryController struct {
 }
 
 // NewRepoController creates a new instance
-func NewRepoController(repoData RepoData, channels *Channels) *RepositoryController {
+func NewRepoController(repoData RepoData, channels *Channels) RepoController {
 	return &RepositoryController{
 		repoData: repoData,
 		channels: channels,

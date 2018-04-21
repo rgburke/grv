@@ -77,7 +77,7 @@ type EventListener interface {
 type GRV struct {
 	repoInitialiser *RepositoryInitialiser
 	repoData        *RepositoryData
-	repoController  *RepositoryController
+	repoController  RepoController
 	view            *View
 	ui              UI
 	channels        gRVChannels
@@ -150,7 +150,7 @@ func (channels *Channels) ReportStatus(format string, args ...interface{}) {
 }
 
 // NewGRV creates a new instace of GRV
-func NewGRV() *GRV {
+func NewGRV(readOnly bool) *GRV {
 	grvChannels := gRVChannels{
 		exitCh:     make(chan bool),
 		inputKeyCh: make(chan string, grvInputBufferSize),
@@ -164,7 +164,15 @@ func NewGRV() *GRV {
 
 	repoDataLoader := NewRepoDataLoader(channels)
 	repoData := NewRepositoryData(repoDataLoader, channels)
-	repoController := NewRepoController(repoData, channels)
+
+	var repoController RepoController
+	if readOnly {
+		log.Info("Running grv in read only mode")
+		repoController = NewReadOnlyRepositoryController()
+	} else {
+		repoController = NewRepoController(repoData, channels)
+	}
+
 	keyBindings := NewKeyBindingManager()
 	config := NewConfiguration(keyBindings, channels)
 	ui := NewNCursesDisplay(config)

@@ -55,6 +55,8 @@ GRV accepts the following command line arguments:
         Print version
 -workTreeFilePath string
         Work tree file path
+-readOnly
+        Run grv in read only mode
 ```
 
 ## Key Bindings
