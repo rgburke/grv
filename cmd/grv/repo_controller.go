@@ -19,7 +19,7 @@ const (
 	checkoutPercentageDiffReportThreshold = 10.0
 )
 
-var errReadOnly error = errors.New("Invalid operation in read only mode")
+var errReadOnly = errors.New("Invalid operation in read only mode")
 
 // RepoController performs actions on a repository
 // and modifies repository state
