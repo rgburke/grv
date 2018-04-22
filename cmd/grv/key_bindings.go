@@ -294,6 +294,7 @@ type KeyBindings interface {
 	Binding(viewHierarchy ViewHierarchy, keystring string) (binding Binding, isPrefix bool)
 	SetActionBinding(viewID ViewID, keystring string, actionType ActionType)
 	SetKeystringBinding(viewID ViewID, keystring, mappedKeystring string)
+	RemoveBinding(viewID ViewID, keystring string) (removed bool)
 }
 
 // KeyBindingManager manages key bindings in grv
@@ -352,6 +353,15 @@ func (keyBindingManager *KeyBindingManager) getOrCreateViewBindings(viewID ViewI
 	viewBindings = pt.NewTrie()
 	keyBindingManager.bindings[viewID] = viewBindings
 	return viewBindings
+}
+
+// RemoveBinding removes the binding for the provided keystring if it exists
+func (keyBindingManager *KeyBindingManager) RemoveBinding(viewID ViewID, keystring string) (removed bool) {
+	if viewBindings, ok := keyBindingManager.bindings[viewID]; ok {
+		return viewBindings.Delete(pt.Prefix(keystring))
+	}
+
+	return
 }
 
 func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {

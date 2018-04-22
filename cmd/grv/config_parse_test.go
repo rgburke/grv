@@ -64,6 +64,54 @@ func (themeCommandValues *ThemeCommandValues) Equal(command ConfigCommand) bool 
 		themeCommandValues.fgcolour == other.fgcolor.value
 }
 
+type MapCommandValues struct {
+	view string
+	from string
+	to   string
+}
+
+func (mapCommandValues *MapCommandValues) Equal(command ConfigCommand) bool {
+	if command == nil {
+		return false
+	}
+
+	other, ok := command.(*MapCommand)
+	if !ok {
+		return false
+	}
+
+	if other.view == nil || other.from == nil || other.to == nil {
+		return false
+	}
+
+	return mapCommandValues.view == other.view.value &&
+		mapCommandValues.from == other.from.value &&
+		mapCommandValues.to == other.to.value
+}
+
+type UnmapCommandValues struct {
+	view string
+	from string
+}
+
+func (unmapCommandValues *UnmapCommandValues) Equal(command ConfigCommand) bool {
+	if command == nil {
+		return false
+	}
+
+	other, ok := command.(*UnmapCommand)
+	if !ok {
+		return false
+	}
+
+	if other.view == nil || other.from == nil {
+		return false
+	}
+
+	return unmapCommandValues.view == other.view.value &&
+		unmapCommandValues.from == other.from.value
+}
+
 type NewTabCommandValues struct {
 	tabName string
 }
@@ -173,6 +221,21 @@ func TestParseSingleCommand(t *testing.T) {
 				component: "CommitView.CommitDate",
 				bgcolor:   "NONE",
 				fgcolour:  "YELLOW",
+			},
+		},
+		{
+			input: "map All <C-c> <grv-prompt>q<Enter>",
+			expectedCommand: &MapCommandValues{
+				view: "All",
+				from: "<C-c>",
+				to:   "<grv-prompt>q<Enter>",
+			},
+		},
+		{
+			input: "unmap All <C-c>",
+			expectedCommand: &UnmapCommandValues{
+				view: "All",
+				from: "<C-c>",
 			},
 		},
 		{

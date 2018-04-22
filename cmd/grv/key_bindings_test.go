@@ -110,6 +110,43 @@ func TestDefaultKeyBindingsReturnsBindings(t *testing.T) {
 	}
 }
 
+func TestRemoveBindingRemovesBinding(t *testing.T) {
+	keyBindings := NewKeyBindingManager()
+
+	keyBindings.SetActionBinding(ViewRef, "aaa", ActionFirstLine)
+	removed := keyBindings.RemoveBinding(ViewRef, "aaa")
+	binding, isPrefix := keyBindings.Binding(ViewHierarchy([]ViewID{ViewMain, ViewHistory, ViewRef}), "aaa")
+
+	if !removed {
+		t.Errorf("Expected binding to be removed")
+	}
+
+	expectedBinding := newActionBinding(ActionNone)
+	checkBinding(binding, isPrefix, expectedBinding, false, t)
+}
+
+func TestRemoveBindingRemovesNothingWhenNoBindingExists(t *testing.T) {
+	keyBindings := NewKeyBindingManager()
+
+	removed := keyBindings.RemoveBinding(ViewRef, "aaa")
+
+	if removed {
+		t.Errorf("Expected no binding to be removed")
+	}
+}
+
+func TestRemoveBindingDoesNotAffectSubTreeBindings(t *testing.T) {
+	keyBindings := NewKeyBindingManager()
+
+	keyBindings.SetActionBinding(ViewRef, "aaa", ActionFirstLine)
+	keyBindings.SetActionBinding(ViewRef, "aaaa", ActionLastLine)
+	keyBindings.RemoveBinding(ViewRef, "aaa")
+	binding, isPrefix := keyBindings.Binding(ViewHierarchy([]ViewID{ViewMain, ViewHistory, ViewRef}), "aaaa")
+
+	expectedBinding := newActionBinding(ActionLastLine)
+	checkBinding(binding, isPrefix, expectedBinding, false, t)
+}
+
 func TestIsPromptActionCorrectlyIdentifiesPromptActions(t *testing.T) {
 	tests := map[ActionType]bool{
 		ActionPrompt:              true,

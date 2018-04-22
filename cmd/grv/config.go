@@ -344,6 +344,8 @@ func (config *Configuration) processCommand(command ConfigCommand, inputSource s
 		err = config.processThemeCommand(command, inputSource)
 	case *MapCommand:
 		err = config.processMapCommand(command, inputSource)
+	case *UnmapCommand:
+		err = config.processUnmapCommand(command, inputSource)
 	case *QuitCommand:
 		err = config.processQuitCommand()
 	case *NewTabCommand:
@@ -508,6 +510,25 @@ func (config *Configuration) processMapCommand(mapCommand *MapCommand, inputSour
 	config.keyBindings.SetKeystringBinding(viewID, mapCommand.from.value, mapCommand.to.value)
 
 	log.Infof("Mapped \"%v\" to \"%v\" for view %v", mapCommand.from.value, mapCommand.to.value, mapCommand.view.value)
+
+	return
+}
+
+func (config *Configuration) processUnmapCommand(unmapCommand *UnmapCommand, inputSource string) (err error) {
+	viewID, ok := viewIDNames[unmapCommand.view.value]
+	if !ok {
+		return generateConfigError(inputSource, unmapCommand.view, "Invalid view: %v", unmapCommand.view.value)
+	}
+
+	if unmapCommand.from.value == "" {
+		return generateConfigError(inputSource, unmapCommand.from, "from keystring cannot be empty")
+	}
+
+	if config.keyBindings.RemoveBinding(viewID, unmapCommand.from.value) {
+		log.Infof("Unmapped \"%v\" for view %v", unmapCommand.from.value, unmapCommand.view.value)
+	} else {
+		log.Infof("Attempted to unmap \"%v\" for view %v but no binding existed", unmapCommand.from.value, unmapCommand.view.value)
+	}
 
 	return
 }

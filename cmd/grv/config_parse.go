@@ -11,6 +11,7 @@ const (
 	setCommand       = "set"
 	themeCommand     = "theme"
 	mapCommand       = "map"
+	unmapCommand     = "unmap"
 	quitCommand      = "q"
 	addtabCommand    = "addtab"
 	removetabCommand = "rmtab"
@@ -53,6 +54,14 @@ type MapCommand struct {
 }
 
 func (mapCommand *MapCommand) configCommand() {}
+
+// UnmapCommand contains state for unmapping a key sequence
+type UnmapCommand struct {
+	view *ConfigToken
+	from *ConfigToken
+}
+
+func (unmapCommand *UnmapCommand) configCommand() {}
 
 // QuitCommand represents the command to quit grv
 type QuitCommand struct{}
@@ -108,6 +117,10 @@ var commandDescriptors = map[string]*commandDescriptor{
 	mapCommand: {
 		tokenTypes:  []ConfigTokenType{CtkWord, CtkWord, CtkWord},
 		constructor: mapCommandConstructor,
+	},
+	unmapCommand: {
+		tokenTypes:  []ConfigTokenType{CtkWord, CtkWord},
+		constructor: unmapCommandConstructor,
 	},
 	quitCommand: {
 		constructor: quitCommandConstructor,
@@ -348,6 +361,13 @@ func mapCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, toke
 		view: tokens[0],
 		from: tokens[1],
 		to:   tokens[2],
+	}, nil
+}
+
+func unmapCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
+	return &UnmapCommand{
+		view: tokens[0],
+		from: tokens[1],
 	}, nil
 }
 

@@ -14,6 +14,7 @@
      * [set](#set)
      * [theme](#theme)
      * [map](#map)
+     * [unmap](#unmap)
      * [q](#q)
      * [addtab](#addtab)
      * [rmtab](#rmtab)
@@ -49,14 +50,14 @@ GRV accepts the following command line arguments:
         Log file path (default "grv.log")
 -logLevel string
         Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG] (default "NONE")
+-readOnly
+        Run grv in read only mode
 -repoFilePath string
         Repository file path (default ".")
 -version
         Print version
 -workTreeFilePath string
         Work tree file path
--readOnly
-        Run grv in read only mode
 ```
 
 ## Key Bindings
@@ -376,6 +377,21 @@ The set of actions available is:
 <grv-prev-tab>
 <grv-remove-tab>
 <grv-remove-view>
+```
+
+### unmap
+
+The unmap command removes any defined key binding for a key sequence in the
+specified view. The form of the unmap command is:
+
+```
+unmap view fromkeys
+```
+
+For example, to unmap the key 'c' in the Ref View:
+
+```
+unmap RefView c
 ```
 
 ### q
