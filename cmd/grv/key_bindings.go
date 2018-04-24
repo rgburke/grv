@@ -6,6 +6,16 @@ import (
 	pt "github.com/tchap/go-patricia/patricia"
 )
 
+// QuestionResponse represents a response to a question
+type QuestionResponse int
+
+// The set of currently supported question responses
+const (
+	ResponseNone QuestionResponse = iota
+	ResponseYes
+	ResponseNo
+)
+
 // ActionType represents an action to be performed
 type ActionType int
 
@@ -18,6 +28,7 @@ const (
 	ActionSearchPrompt
 	ActionReverseSearchPrompt
 	ActionFilterPrompt
+	ActionQuestionPrompt
 	ActionSearch
 	ActionReverseSearch
 	ActionSearchFindNext
@@ -91,6 +102,14 @@ type ActionPromptArgs struct {
 	terminated bool
 }
 
+// ActionQuestionPromptArgs contains arguments to configure a question prompt
+type ActionQuestionPromptArgs struct {
+	question      string
+	answers       []string
+	defaultAnswer string
+	onAnswer      func(string)
+}
+
 var actionKeys = map[string]ActionType{
 	"<grv-nop>":                   ActionNone,
 	"<grv-exit>":                  ActionExit,
@@ -99,6 +118,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-search-prompt>":         ActionSearchPrompt,
 	"<grv-reverse-search-prompt>": ActionReverseSearchPrompt,
 	"<grv-filter-prompt>":         ActionFilterPrompt,
+	"<grv-question-prompt>":       ActionQuestionPrompt,
 	"<grv-search>":                ActionSearch,
 	"<grv-reverse-search>":        ActionReverseSearch,
 	"<grv-search-find-next>":      ActionSearchFindNext,
@@ -145,6 +165,7 @@ var promptActions = map[ActionType]bool{
 	ActionSearchPrompt:        true,
 	ActionReverseSearchPrompt: true,
 	ActionFilterPrompt:        true,
+	ActionQuestionPrompt:      true,
 }
 
 var defaultKeyBindings = map[ActionType]map[ViewID][]string{
@@ -440,4 +461,29 @@ func GetMouseEventFromAction(action Action) (mouseEvent MouseEvent, err error) {
 	}
 
 	return
+}
+
+// YesNoQuestion generates an action that will prompt the user for a yes/no response
+// The onResponse handler is called when an answer is received
+func YesNoQuestion(question string, onResponse func(QuestionResponse)) Action {
+	return Action{
+		ActionType: ActionQuestionPrompt,
+		Args: []interface{}{ActionQuestionPromptArgs{
+			question: question,
+			answers:  []string{"y", "n"},
+			onAnswer: func(answer string) {
+				var response QuestionResponse
+				switch answer {
+				case "y":
+					response = ResponseYes
+				case "n":
+					response = ResponseNo
+				default:
+					response = ResponseNone
+				}
+
+				onResponse(response)
+			},
+		}},
+	}
 }

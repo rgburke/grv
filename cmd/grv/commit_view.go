@@ -1160,6 +1160,22 @@ func checkoutCommit(commitView *CommitView, action Action) (err error) {
 		return
 	}
 
+	if commitView.config.GetBool(CfConfirmCheckout) {
+		question := fmt.Sprintf("Are you sure you want to checkout commit %v", commit.oid.ShortID())
+
+		commitView.channels.DoAction(YesNoQuestion(question, func(response QuestionResponse) {
+			if response == ResponseYes {
+				commitView.checkoutCommit(commit)
+			}
+		}))
+	} else {
+		commitView.checkoutCommit(commit)
+	}
+
+	return
+}
+
+func (commitView *CommitView) checkoutCommit(commit *Commit) {
 	commitView.repoController.CheckoutCommit(commit, func(err error) {
 		if err != nil {
 			commitView.channels.ReportError(fmt.Errorf("Unable to checkout commit: %v", err))
@@ -1168,6 +1184,4 @@ func checkoutCommit(commitView *CommitView, action Action) (err error) {
 
 		commitView.channels.ReportStatus("Checked out commit %v", commit.oid.ShortID())
 	})
-
-	return
 }

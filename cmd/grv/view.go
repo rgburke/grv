@@ -337,10 +337,11 @@ func (view *View) HandleEvent(event Event) (err error) {
 func (view *View) HandleAction(action Action) (err error) {
 	log.Debugf("View handling action %v", action)
 
+	if IsPromptAction(action.ActionType) {
+		return view.prompt(action)
+	}
+
 	switch action.ActionType {
-	case ActionPrompt, ActionSearchPrompt, ActionReverseSearchPrompt, ActionFilterPrompt:
-		err = view.prompt(action)
-		return
 	case ActionShowStatus:
 		view.lock.Lock()
 		defer view.lock.Unlock()

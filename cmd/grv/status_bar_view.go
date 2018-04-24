@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"unicode/utf8"
 
@@ -23,6 +24,7 @@ const (
 	ptCommand
 	ptSearch
 	ptFilter
+	ptQuestion
 )
 
 // StatusBarView manages the display of the status bar
@@ -71,6 +73,8 @@ func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
 		statusBarView.showSearchPrompt(action, ReverseSearchPromptText, ActionReverseSearch)
 	case ActionFilterPrompt:
 		statusBarView.showFilterPrompt(action)
+	case ActionQuestionPrompt:
+		statusBarView.showQuestionPrompt(action)
 	case ActionShowStatus:
 		statusBarView.lock.Lock()
 		defer statusBarView.lock.Unlock()
@@ -93,7 +97,7 @@ func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
 
 func (statusBarView *StatusBarView) showCommandPrompt(action Action) {
 	statusBarView.promptType = ptCommand
-	input := statusBarView.showPrompt(PromptText, action)
+	input := statusBarView.showPrompt(&PromptArgs{Prompt: PromptText}, action)
 	errors := statusBarView.config.Evaluate(input)
 	statusBarView.channels.ReportErrors(errors)
 	statusBarView.promptType = ptNone
@@ -101,7 +105,7 @@ func (statusBarView *StatusBarView) showCommandPrompt(action Action) {
 
 func (statusBarView *StatusBarView) showSearchPrompt(action Action, prompt string, actionType ActionType) {
 	statusBarView.promptType = ptSearch
-	input := statusBarView.showPrompt(prompt, action)
+	input := statusBarView.showPrompt(&PromptArgs{Prompt: prompt}, action)
 
 	if input == "" {
 		statusBarView.channels.DoAction(Action{
@@ -119,7 +123,7 @@ func (statusBarView *StatusBarView) showSearchPrompt(action Action, prompt strin
 
 func (statusBarView *StatusBarView) showFilterPrompt(action Action) {
 	statusBarView.promptType = ptFilter
-	input := statusBarView.showPrompt(FilterPromptText, action)
+	input := statusBarView.showPrompt(&PromptArgs{Prompt: FilterPromptText}, action)
 
 	if input != "" {
 		statusBarView.channels.DoAction(Action{
@@ -131,18 +135,77 @@ func (statusBarView *StatusBarView) showFilterPrompt(action Action) {
 	statusBarView.promptType = ptNone
 }
 
-func (statusBarView *StatusBarView) showPrompt(prompt string, action Action) string {
-	if len(action.Args) > 0 {
-		if promptArgs, ok := action.Args[0].(ActionPromptArgs); ok {
-			if promptArgs.terminated {
-				return promptArgs.keys
-			}
+func (statusBarView *StatusBarView) showQuestionPrompt(action Action) {
+	if len(action.Args) == 0 {
+		log.Errorf("Expected to find ActionQuestionPromptArgs arg but found none")
+		return
+	}
 
-			return PromptWithText(prompt, promptArgs.keys)
+	args, ok := action.Args[0].(ActionQuestionPromptArgs)
+	if !ok {
+		log.Errorf("Expected to find type ActionQuestionPromptArgs but found %T", action.Args[0])
+		return
+	}
+
+	validAnswers := make(map[string]string)
+
+	promptText := fmt.Sprintf("%v (%v)", args.question, strings.Join(args.answers, "|"))
+
+	if args.defaultAnswer != "" {
+		promptText = fmt.Sprintf("%v (default=%v)", promptText, args.defaultAnswer)
+		validAnswers[""] = args.defaultAnswer
+	}
+
+	promptText = fmt.Sprintf(" %v? ", promptText)
+
+	maxAnswerLength := 0
+
+	for _, answer := range args.answers {
+		validAnswers[answer] = answer
+
+		answerLength := len([]rune(answer))
+		if answerLength > maxAnswerLength {
+			maxAnswerLength = answerLength
 		}
 	}
 
-	return Prompt(prompt)
+	promptArgs := PromptArgs{
+		Prompt:         promptText,
+		NumCharsToRead: maxAnswerLength,
+	}
+
+	statusBarView.promptType = ptQuestion
+
+	for {
+		answer := statusBarView.showPrompt(&promptArgs, action)
+
+		if validAnswer, isValidAnswer := validAnswers[answer]; isValidAnswer {
+			if args.onAnswer != nil {
+				args.onAnswer(validAnswer)
+			}
+
+			break
+		} else if answer == "" {
+			break
+		}
+	}
+
+	statusBarView.promptType = ptNone
+}
+
+func (statusBarView *StatusBarView) showPrompt(promptArgs *PromptArgs, action Action) string {
+	for _, arg := range action.Args {
+		if actionPromptArgs, ok := arg.(ActionPromptArgs); ok {
+			if actionPromptArgs.terminated {
+				return actionPromptArgs.keys
+			}
+
+			promptArgs.InitialBufferText = actionPromptArgs.keys
+			break
+		}
+	}
+
+	return Prompt(promptArgs)
 }
 
 // OnActiveChange updates the active state of this view
@@ -206,6 +269,8 @@ func (statusBarView *StatusBarView) RenderHelpBar(lineBuilder *LineBuilder) (err
 		message = "Enter a regex pattern"
 	case ptFilter:
 		message = "Enter a filter query"
+	case ptQuestion:
+		message = "Enter an answer"
 	}
 
 	if message != "" {

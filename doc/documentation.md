@@ -176,6 +176,7 @@ Configuration variables available in GRV are:
  mouse             | bool   | false         | Mouse support enabled
  mouse-scroll-rows | int    | 3             | Number of rows scrolled for each mouse event
  commit-graph      | bool   | false         | Commit graph visible
+ confirm-checkout  | bool   | true          | Confirm before performing git checkout
 ```
 
 For example, to set the tab width to tab width to 4, the currently active

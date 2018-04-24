@@ -51,6 +51,13 @@ var historyFilePrompts = map[string]string{
 	FilterPromptText:        rlFilterHistoryFile,
 }
 
+// PromptArgs contains arguments to configure the display of a prompt
+type PromptArgs struct {
+	Prompt            string
+	InitialBufferText string
+	NumCharsToRead    int
+}
+
 var readLine ReadLine
 
 // ReadLine is a wrapper around the readline library
@@ -120,28 +127,27 @@ func writeHistoryFile(file string) {
 	C.free(unsafe.Pointer(cHistoryFilePath))
 }
 
-// Prompt shows a readline prompt using prompt text provided
+// Prompt shows a readline prompt using the args provided
 // User input is returned
-func Prompt(prompt string) string {
-	return PromptWithText(prompt, "")
-}
-
-// PromptWithText is the same as Prompt except the readline buffer
-// is pre-populated with the initialBufferText
-func PromptWithText(prompt, initialBufferText string) string {
-	if initialBufferText != "" {
-		readLineSetInitialBufferText(initialBufferText)
+func Prompt(promptArgs *PromptArgs) string {
+	if promptArgs.InitialBufferText != "" {
+		readLineSetInitialBufferText(promptArgs.InitialBufferText)
 		defer readLineSetInitialBufferText("")
 	}
 
-	readLineSetupPromptHistory(prompt)
+	if promptArgs.NumCharsToRead > 0 {
+		readLineSetNumCharsToRead(promptArgs.NumCharsToRead)
+		defer readLineSetNumCharsToRead(0)
+	}
+
+	readLineSetupPromptHistory(promptArgs.Prompt)
 	readLineSetActive(true)
-	cPrompt := C.CString(prompt)
+	cPrompt := C.CString(promptArgs.Prompt)
 	cInput := C.readline(cPrompt)
 	readLineSetActive(false)
 
 	C.free(unsafe.Pointer(cPrompt))
-	readLineAddPromptHistory(prompt, cInput)
+	readLineAddPromptHistory(promptArgs.Prompt, cInput)
 	input := C.GoString(cInput)
 	C.free(unsafe.Pointer(cInput))
 
@@ -176,6 +182,13 @@ func readLineSetInitialBufferText(initialBufferText string) {
 	defer readLine.lock.Unlock()
 
 	readLine.initialBufferText = initialBufferText
+}
+
+func readLineSetNumCharsToRead(numCharsToRead int) {
+	readLine.lock.Lock()
+	defer readLine.lock.Unlock()
+
+	C.rl_num_chars_to_read = C.int(numCharsToRead)
 }
 
 func readLineSetupPromptHistory(prompt string) {

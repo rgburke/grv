@@ -1181,6 +1181,22 @@ func checkoutRef(refView *RefView, action Action) (err error) {
 		return
 	}
 
+	if refView.config.GetBool(CfConfirmCheckout) {
+		question := fmt.Sprintf("Are you sure you want to checkout ref %v", renderedRef.ref.Shorthand())
+
+		refView.channels.DoAction(YesNoQuestion(question, func(response QuestionResponse) {
+			if response == ResponseYes {
+				refView.performCheckoutRef(renderedRef)
+			}
+		}))
+	} else {
+		refView.performCheckoutRef(renderedRef)
+	}
+
+	return
+}
+
+func (refView *RefView) performCheckoutRef(renderedRef *RenderedRef) {
 	refView.repoController.CheckoutRef(renderedRef.ref, func(ref Ref, err error) {
 		refView.lock.Lock()
 		defer refView.lock.Unlock()
@@ -1195,7 +1211,7 @@ func checkoutRef(refView *RefView, action Action) (err error) {
 		for renderedRefIndex, renderedRef := range refView.renderedRefs.RenderedRefs() {
 			if renderedRef.ref != nil && renderedRef.ref.Equal(ref) {
 				refView.viewPos.SetActiveRowIndex(uint(renderedRefIndex))
-				if err = selectRef(refView, action); err != nil {
+				if err = selectRef(refView, Action{}); err != nil {
 					refView.channels.ReportError(err)
 				}
 
@@ -1205,6 +1221,4 @@ func checkoutRef(refView *RefView, action Action) (err error) {
 
 		refView.channels.UpdateDisplay()
 	})
-
-	return
 }

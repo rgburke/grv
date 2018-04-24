@@ -24,6 +24,7 @@ const (
 	cfMouseDefaultValue           = false
 	cfMouseScrollRowsDefaultValue = 3
 	cfCommitGraphDefaultValue     = false
+	cfConfirmCheckoutValue        = true
 
 	cfAllView       = "All"
 	cfMainView      = "MainView"
@@ -53,6 +54,8 @@ const (
 	CfMouseScrollRows ConfigVariable = "mouse-scroll-rows"
 	// CfCommitGraph stores whether the commit graph is visible or not
 	CfCommitGraph ConfigVariable = "commit-graph"
+	// CfConfirmCheckout stores whether checkouts should be confirmed
+	CfConfirmCheckout ConfigVariable = "confirm-checkout"
 )
 
 var systemColorValues = map[string]SystemColorValue{
@@ -233,6 +236,12 @@ func NewConfiguration(keyBindings KeyBindings, channels *Channels) *Configuratio
 				variableName: string(CfCommitGraph),
 			},
 		},
+		CfConfirmCheckout: {
+			value: cfConfirmCheckoutValue,
+			validator: booleanValueValidator{
+				variableName: string(CfConfirmCheckout),
+			},
+		},
 	}
 
 	return config
@@ -393,6 +402,7 @@ func (config *Configuration) processSetCommand(setCommand *SetCommand, inputSour
 
 	log.Infof("Setting %v = %v", configVariable, value)
 	variable.value = value
+	config.channels.ReportStatus("Set %v = %v", configVariable, value)
 
 	if oldValue != value {
 		log.Infof("Value of config variable %v has changed from %v to %v", configVariable, oldValue, value)
