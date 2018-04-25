@@ -39,9 +39,10 @@ import (
 )
 
 const (
-	rlCommandHistoryFile = "/command_history"
-	rlSearchHistoryFile  = "/search_history"
-	rlFilterHistoryFile  = "/filter_history"
+	rlCommandHistoryFile    = "/command_history"
+	rlSearchHistoryFile     = "/search_history"
+	rlFilterHistoryFile     = "/filter_history"
+	rlBranchNameHistoryFile = "/branch_name_history"
 )
 
 var historyFilePrompts = map[string]string{
@@ -49,6 +50,7 @@ var historyFilePrompts = map[string]string{
 	SearchPromptText:        rlSearchHistoryFile,
 	ReverseSearchPromptText: rlSearchHistoryFile,
 	FilterPromptText:        rlFilterHistoryFile,
+	BranchNamePromptText:    rlBranchNameHistoryFile,
 }
 
 // PromptArgs contains arguments to configure the display of a prompt

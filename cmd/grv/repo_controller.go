@@ -27,6 +27,7 @@ type RepoController interface {
 	Initialise(RepoSupplier)
 	CheckoutRef(Ref, CheckoutRefResultHandler)
 	CheckoutCommit(*Commit, CheckoutCommitResultHandler)
+	CreateBranch(branchName string, oid *Oid) error
 }
 
 // ReadOnlyRepositoryController does not permit any
@@ -50,6 +51,11 @@ func (repoController *ReadOnlyRepositoryController) CheckoutRef(ref Ref, resultH
 // CheckoutCommit returns a read only error
 func (repoController *ReadOnlyRepositoryController) CheckoutCommit(commit *Commit, resultHandler CheckoutCommitResultHandler) {
 	go resultHandler(errReadOnly)
+}
+
+// CreateBranch returns a read only error
+func (repoController *ReadOnlyRepositoryController) CreateBranch(branchName string, oid *Oid) (err error) {
+	return errReadOnly
 }
 
 // RepositoryController implements the RepoController interface
@@ -140,28 +146,20 @@ func (repoController *RepositoryController) checkoutRef(ref Ref) (refName string
 		if localBranch == nil {
 			log.Debugf("No local branch exists for %v, creating local tracking branch", refName)
 
-			var commit *Commit
-			commit, err = repoController.repoData.Commit(oid)
-			if err != nil {
-				err = fmt.Errorf("Checkout failed - Unable to load commit with oid %v: %v", oid, err)
-				return
-			}
-
 			var newBranch *git.Branch
-			newBranch, err = repoController.repo.CreateBranch(refInstance.ShorthandWithoutRemote(), commit.commit, false)
+			newBranch, err = repoController.createBranch(refInstance.ShorthandWithoutRemote(), oid)
 			if err != nil {
-				err = fmt.Errorf("Checkout failed - Unable to create branch %v: %v", refInstance.ShorthandWithoutRemote(), err)
+				err = fmt.Errorf("Checkout failed - %v", err)
 				return
 			}
-
-			log.Debugf("Created local branch %v to track remote branch %v", newBranch.Reference.Name(), refName)
 
 			if err = newBranch.SetUpstream(refInstance.Shorthand()); err != nil {
 				err = fmt.Errorf("Checkout failed - Unable to set upstream for branch %v: %v", refInstance.ShorthandWithoutRemote(), err)
 				return
 			}
 
-			oid = commit.oid
+			log.Debugf("Updated branch %v to track %v", refInstance.ShorthandWithoutRemote(), refName)
+
 			refName = newBranch.Reference.Name()
 		} else {
 			oid = localBranch.Oid()
@@ -243,4 +241,32 @@ func (repoController *RepositoryController) localBranch(remoteBranch *RemoteBran
 	}
 
 	return localBranches[0]
+}
+
+// CreateBranch creates a new local branch with the specified name pointing to the provided oid
+func (repoController *RepositoryController) CreateBranch(branchName string, oid *Oid) (err error) {
+	repoController.lock.Lock()
+	defer repoController.lock.Unlock()
+
+	_, err = repoController.createBranch(branchName, oid)
+
+	return
+}
+
+func (repoController *RepositoryController) createBranch(branchName string, oid *Oid) (branch *git.Branch, err error) {
+	commit, err := repoController.repoData.Commit(oid)
+	if err != nil {
+		err = fmt.Errorf("Create branch failed - Unable to load commit with oid %v: %v", oid, err)
+		return
+	}
+
+	branch, err = repoController.repo.CreateBranch(branchName, commit.commit, false)
+	if err != nil {
+		err = fmt.Errorf("Create branch failed - Unable to create branch %v: %v", branchName, err)
+		return
+	}
+
+	log.Info("Created local branch %v", branchName)
+
+	return
 }

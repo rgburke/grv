@@ -231,6 +231,7 @@ func NewRefView(repoData RepoData, repoController RepoController, channels *Chan
 			ActionMouseScrollDown:    mouseScrollDownRefView,
 			ActionMouseScrollUp:      mouseScrollUpRefView,
 			ActionCheckoutRef:        checkoutRef,
+			ActionCreateBranch:       createBranchFromRef,
 		},
 	}
 
@@ -461,6 +462,7 @@ func (refView *RefView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 		{action: ActionFilterPrompt, message: "Add Filter"},
 		{action: ActionRemoveFilter, message: "Remove Filter"},
 		{action: ActionCheckoutRef, message: "Checkout ref"},
+		{action: ActionCreateBranch, message: "Create branch"},
 	})
 
 	return
@@ -1221,4 +1223,32 @@ func (refView *RefView) performCheckoutRef(renderedRef *RenderedRef) {
 
 		refView.channels.UpdateDisplay()
 	})
+}
+
+func createBranchFromRef(refView *RefView, action Action) (err error) {
+	if len(action.Args) == 0 {
+		return fmt.Errorf("Expected branch name argument")
+	}
+
+	branchName, isString := action.Args[0].(string)
+	if !isString {
+		return fmt.Errorf("Expected first argument to be branch name but found %T", action.Args[0])
+	}
+
+	renderedRefs := refView.renderedRefs.RenderedRefs()
+	renderedRef := renderedRefs[refView.viewPos.ActiveRowIndex()]
+
+	if renderedRef.ref == nil {
+		return
+	}
+
+	ref := renderedRef.ref
+
+	if err = refView.repoController.CreateBranch(branchName, ref.Oid()); err != nil {
+		return
+	}
+
+	refView.channels.ReportStatus("Created branch %v at %v", branchName, ref.Oid().ShortID())
+
+	return
 }

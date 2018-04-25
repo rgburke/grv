@@ -123,6 +123,7 @@ Ref View specific key bindings:
 <C-q>                   Add ref filter
 <C-r>                   Remove ref filter
 c                       Checkout ref
+b                       Create branch
 ```
 
 Commit View specific key bindings:
@@ -131,6 +132,7 @@ Commit View specific key bindings:
 <C-q>                   Add commit filter
 <C-r>                   Remove commit filter
 c                       Checkout commit
+b                       Create branch
 ```
 
 ## Configuration

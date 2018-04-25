@@ -29,6 +29,7 @@ const (
 	ActionReverseSearchPrompt
 	ActionFilterPrompt
 	ActionQuestionPrompt
+	ActionBranchNamePrompt
 	ActionSearch
 	ActionReverseSearch
 	ActionSearchFindNext
@@ -70,6 +71,7 @@ const (
 	ActionMouseScrollUp
 	ActionCheckoutRef
 	ActionCheckoutCommit
+	ActionCreateBranch
 )
 
 // Action represents a type of actions and its arguments to be executed
@@ -119,6 +121,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-reverse-search-prompt>": ActionReverseSearchPrompt,
 	"<grv-filter-prompt>":         ActionFilterPrompt,
 	"<grv-question-prompt>":       ActionQuestionPrompt,
+	"<grv-branch-name-prompt>":    ActionBranchNamePrompt,
 	"<grv-search>":                ActionSearch,
 	"<grv-reverse-search>":        ActionReverseSearch,
 	"<grv-search-find-next>":      ActionSearchFindNext,
@@ -158,6 +161,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-mouse-select>":          ActionMouseSelect,
 	"<grv-checkout-ref>":          ActionCheckoutRef,
 	"<grv-checkout-commit>":       ActionCheckoutCommit,
+	"<grv-create-branch>":         ActionCreateBranch,
 }
 
 var promptActions = map[ActionType]bool{
@@ -166,6 +170,7 @@ var promptActions = map[ActionType]bool{
 	ActionReverseSearchPrompt: true,
 	ActionFilterPrompt:        true,
 	ActionQuestionPrompt:      true,
+	ActionBranchNamePrompt:    true,
 }
 
 var defaultKeyBindings = map[ActionType]map[ViewID][]string{
@@ -272,6 +277,10 @@ var defaultKeyBindings = map[ActionType]map[ViewID][]string{
 	},
 	ActionCheckoutCommit: {
 		ViewCommit: {"c"},
+	},
+	ActionBranchNamePrompt: {
+		ViewRef:    {"b"},
+		ViewCommit: {"b"},
 	},
 }
 

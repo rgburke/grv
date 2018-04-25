@@ -101,6 +101,7 @@ func NewCommitView(repoData RepoData, repoController RepoController, channels *C
 			ActionMouseScrollDown:    mouseScrollDownCommitView,
 			ActionMouseScrollUp:      mouseScrollUpCommitView,
 			ActionCheckoutCommit:     checkoutCommit,
+			ActionCreateBranch:       createBranchFromCommit,
 		},
 	}
 
@@ -318,6 +319,7 @@ func (commitView *CommitView) RenderHelpBar(lineBuilder *LineBuilder) (err error
 		{action: ActionFilterPrompt, message: "Add Filter"},
 		{action: ActionRemoveFilter, message: "Remove Filter"},
 		{action: ActionCheckoutCommit, message: "Checkout commit"},
+		{action: ActionCreateBranch, message: "Create branch"},
 	})
 
 	return
@@ -1184,4 +1186,30 @@ func (commitView *CommitView) checkoutCommit(commit *Commit) {
 
 		commitView.channels.ReportStatus("Checked out commit %v", commit.oid.ShortID())
 	})
+}
+
+func createBranchFromCommit(commitView *CommitView, action Action) (err error) {
+	if len(action.Args) == 0 {
+		return fmt.Errorf("Expected branch name argument")
+	}
+
+	branchName, isString := action.Args[0].(string)
+	if !isString {
+		return fmt.Errorf("Expected first argument to be branch name but found %T", action.Args[0])
+	}
+
+	viewPos := commitView.ViewPos()
+
+	commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.ActiveRowIndex())
+	if err != nil {
+		return
+	}
+
+	if err = commitView.repoController.CreateBranch(branchName, commit.oid); err != nil {
+		return
+	}
+
+	commitView.channels.ReportStatus("Created branch %v at %v", branchName, commit.oid.ShortID())
+
+	return
 }
