@@ -1180,7 +1180,7 @@ func checkoutCommit(commitView *CommitView, action Action) (err error) {
 func (commitView *CommitView) checkoutCommit(commit *Commit) {
 	commitView.repoController.CheckoutCommit(commit, func(err error) {
 		if err != nil {
-			commitView.channels.ReportError(fmt.Errorf("Unable to checkout commit: %v", err))
+			commitView.channels.ReportError(err)
 			return
 		}
 

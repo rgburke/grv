@@ -203,7 +203,7 @@ func (repoController *RepositoryController) checkoutTree(commit *Commit) (err er
 	lastReportedCheckoutPercentage := 0.0
 
 	checkoutOpts := &git.CheckoutOpts{
-		Strategy: git.CheckoutSafe | git.CheckoutRecreateMissing | git.CheckoutAllowConflicts | git.CheckoutUseTheirs,
+		Strategy: git.CheckoutSafe | git.CheckoutRecreateMissing,
 		ProgressCallback: func(path string, completed, total uint) git.ErrorCode {
 			percentageComplete := (float64(completed) * 100.0) / float64(total)
 
