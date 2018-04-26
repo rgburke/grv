@@ -83,6 +83,18 @@ func InitReadLine(channels *Channels, config Config) {
 	}
 
 	C.grv_init_readline()
+
+	promptHistorySize := readLine.config.GetInt(CfPromptHistorySize)
+	readLineStifleHistory(promptHistorySize)
+
+	config.AddOnChangeListener(CfPromptHistorySize, &readLine)
+}
+
+func (readLine *ReadLine) onConfigVariableChange(configVariable ConfigVariable) {
+	if configVariable == CfPromptHistorySize {
+		promptHistorySize := readLine.config.GetInt(CfPromptHistorySize)
+		readLineStifleHistory(promptHistorySize)
+	}
 }
 
 // FreeReadLine flushes any history to disk
@@ -191,6 +203,13 @@ func readLineSetNumCharsToRead(numCharsToRead int) {
 	defer readLine.lock.Unlock()
 
 	C.rl_num_chars_to_read = C.int(numCharsToRead)
+}
+
+func readLineStifleHistory(promptHistorySize int) {
+	readLine.lock.Lock()
+	defer readLine.lock.Unlock()
+
+	C.stifle_history(C.int(promptHistorySize))
 }
 
 func readLineSetupPromptHistory(prompt string) {

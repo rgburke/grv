@@ -13,18 +13,19 @@ import (
 )
 
 const (
-	cfDefaultConfigHomeDir        = "/.config"
-	cfGrvConfigDir                = "/grv"
-	cfGrvrcFile                   = "/grvrc"
-	cfTabWidthMinValue            = 1
-	cfTabWidthDefaultValue        = 8
-	cfClassicThemeName            = "classic"
-	cfColdThemeName               = "cold"
-	cfSolarizedThemeName          = "solarized"
-	cfMouseDefaultValue           = false
-	cfMouseScrollRowsDefaultValue = 3
-	cfCommitGraphDefaultValue     = false
-	cfConfirmCheckoutValue        = true
+	cfDefaultConfigHomeDir          = "/.config"
+	cfGrvConfigDir                  = "/grv"
+	cfGrvrcFile                     = "/grvrc"
+	cfTabWidthMinValue              = 1
+	cfTabWidthDefaultValue          = 8
+	cfClassicThemeName              = "classic"
+	cfColdThemeName                 = "cold"
+	cfSolarizedThemeName            = "solarized"
+	cfMouseDefaultValue             = false
+	cfMouseScrollRowsDefaultValue   = 3
+	cfCommitGraphDefaultValue       = false
+	cfConfirmCheckoutDefaultValue   = true
+	cfPromptHistorySizeDefaultValue = 1000
 
 	cfAllView       = "All"
 	cfMainView      = "MainView"
@@ -56,6 +57,8 @@ const (
 	CfCommitGraph ConfigVariable = "commit-graph"
 	// CfConfirmCheckout stores whether checkouts should be confirmed
 	CfConfirmCheckout ConfigVariable = "confirm-checkout"
+	// CfPromptHistorySize stores the maximum number of prompt entries retained
+	CfPromptHistorySize ConfigVariable = "prompt-history-size"
 )
 
 var systemColorValues = map[string]SystemColorValue{
@@ -237,10 +240,14 @@ func NewConfiguration(keyBindings KeyBindings, channels *Channels) *Configuratio
 			},
 		},
 		CfConfirmCheckout: {
-			value: cfConfirmCheckoutValue,
+			value: cfConfirmCheckoutDefaultValue,
 			validator: booleanValueValidator{
 				variableName: string(CfConfirmCheckout),
 			},
+		},
+		CfPromptHistorySize: {
+			value:     cfPromptHistorySizeDefaultValue,
+			validator: promptHistorySizeValidator{},
 		},
 	}
 
@@ -746,6 +753,22 @@ func (mouseScrollRowsValidator mouseScrollRowsValidator) validate(value string) 
 		err = fmt.Errorf("%v must be greater than 0", CfMouseScrollRows)
 	} else {
 		processedValue = mouseScrollRows
+	}
+
+	return
+}
+
+type promptHistorySizeValidator struct{}
+
+func (promptHistorySizeValidator promptHistorySizeValidator) validate(value string) (processedValue interface{}, err error) {
+	var promptHistorySize int
+
+	if promptHistorySize, err = strconv.Atoi(value); err != nil {
+		err = fmt.Errorf("%v must be an integer value greater than or equal to 0", CfPromptHistorySize)
+	} else if promptHistorySize < 0 {
+		err = fmt.Errorf("%v must be greater than or equal to 0", CfPromptHistorySize)
+	} else {
+		processedValue = promptHistorySize
 	}
 
 	return
