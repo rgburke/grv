@@ -8,6 +8,7 @@ package main
 //
 // #include <stdio.h>
 // #include <stdlib.h>
+// #include <string.h>
 // #include <readline/readline.h>
 // #include <readline/history.h>
 //
@@ -28,6 +29,17 @@ package main
 //	history_comment_char = '#';
 //	using_history();
 // }
+//
+// static void grv_add_history(const char *input) {
+// 	const HIST_ENTRY *last_entry = history_get(history_length);
+//
+//	if (last_entry && !strcmp(last_entry->line, input)) {
+//		return;
+//	}
+//
+//	add_history(input);
+// }
+//
 import "C"
 
 import (
@@ -246,7 +258,7 @@ func readLineAddPromptHistory(prompt string, cInput *C.char) {
 	_, hasHistoryFile := historyFilePrompts[readLine.lastPromptText]
 
 	if hasHistoryFile {
-		C.add_history(cInput)
+		C.grv_add_history(cInput)
 	}
 }
 
