@@ -319,7 +319,7 @@ func (commitView *CommitView) RenderHelpBar(lineBuilder *LineBuilder) (err error
 		{action: ActionFilterPrompt, message: "Add Filter"},
 		{action: ActionRemoveFilter, message: "Remove Filter"},
 		{action: ActionCheckoutCommit, message: "Checkout commit"},
-		{action: ActionCreateBranch, message: "Create branch"},
+		{action: ActionBranchNamePrompt, message: "Create branch"},
 	})
 
 	return
