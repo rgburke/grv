@@ -469,7 +469,9 @@ func (commitView *CommitView) OnCommitsUpdated(ref Ref) {
 }
 
 func (commitView *CommitView) preRenderCell(rowIndex, colIndex uint, lineBuilder *LineBuilder, tableCell *TableCell) (err error) {
-	if commitView.config.GetBool(CfCommitGraph) && commitView.commitGraphLoadCh != nil {
+	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
+
+	if commitSetState.filterState == nil && commitView.config.GetBool(CfCommitGraph) && commitView.commitGraphLoadCh != nil {
 		refViewData := commitView.refViewData[commitView.activeRef.Name()]
 		commitIndex := refViewData.viewPos.ViewStartRowIndex() + rowIndex
 
