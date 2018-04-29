@@ -49,7 +49,7 @@ type containerViewHandler func(*ContainerView, Action) error
 type ContainerView struct {
 	channels                    *Channels
 	config                      Config
-	childViews                  []AbstractView
+	childViews                  []BaseView
 	title                       string
 	viewWins                    map[WindowView]*Window
 	emptyWin                    *Window
@@ -88,7 +88,7 @@ func NewContainerView(channels *Channels, config Config) *ContainerView {
 }
 
 // AddChildViews adds new child views to this container
-func (containerView *ContainerView) AddChildViews(newViews ...AbstractView) {
+func (containerView *ContainerView) AddChildViews(newViews ...BaseView) {
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
@@ -97,7 +97,7 @@ func (containerView *ContainerView) AddChildViews(newViews ...AbstractView) {
 	}
 }
 
-func (containerView *ContainerView) addChildView(newView AbstractView) {
+func (containerView *ContainerView) addChildView(newView BaseView) {
 	if !containerView.isEmpty() {
 		if childView, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
 			childView.AddChildViews(newView)
@@ -415,7 +415,7 @@ func (containerView *ContainerView) renderEmptyView(viewDimension ViewDimension)
 }
 
 // ActiveView returns the active child view
-func (containerView *ContainerView) ActiveView() AbstractView {
+func (containerView *ContainerView) ActiveView() BaseView {
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
@@ -446,7 +446,7 @@ func (containerView *ContainerView) isEmpty() bool {
 	return len(containerView.childViews) == 0
 }
 
-func (containerView *ContainerView) activeChildView() AbstractView {
+func (containerView *ContainerView) activeChildView() BaseView {
 	return containerView.childViews[containerView.activeViewIndex]
 }
 

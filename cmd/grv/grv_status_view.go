@@ -111,7 +111,7 @@ func (grvStatusView *GRVStatusView) RenderHelpBar(lineBuilder *LineBuilder) (err
 
 // ActiveView returns the status bar view
 // The help bar view is display only
-func (grvStatusView *GRVStatusView) ActiveView() (childView AbstractView) {
+func (grvStatusView *GRVStatusView) ActiveView() (childView BaseView) {
 	return grvStatusView.statusBarView
 }
 

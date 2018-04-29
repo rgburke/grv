@@ -36,8 +36,8 @@ type HelpRenderer interface {
 	RenderHelpBar(*LineBuilder) error
 }
 
-// AbstractView exposes common functionality amongst all views
-type AbstractView interface {
+// BaseView exposes common functionality amongst all views
+type BaseView interface {
 	HelpRenderer
 	EventListener
 	Initialise() error
@@ -49,15 +49,15 @@ type AbstractView interface {
 
 // WindowView is a single window view
 type WindowView interface {
-	AbstractView
+	BaseView
 	Render(RenderWindow) error
 }
 
 // WindowViewCollection is a view that contains multiple child views
 type WindowViewCollection interface {
-	AbstractView
+	BaseView
 	Render(ViewDimension) ([]*Window, error)
-	ActiveView() AbstractView
+	ActiveView() BaseView
 	Title() string
 }
 
@@ -323,8 +323,8 @@ func (view *View) HandleEvent(event Event) (err error) {
 	switch event.EventType {
 	case ViewRemovedEvent:
 		for _, removedView := range event.Args {
-			if abstractView, ok := removedView.(AbstractView); ok {
-				abstractView.Dispose()
+			if baseView, ok := removedView.(BaseView); ok {
+				baseView.Dispose()
 			}
 		}
 	}
@@ -423,8 +423,8 @@ func (view *View) ViewID() ViewID {
 }
 
 // ActiveViewHierarchy generates the currently active view hierarchy and returns the views that define it
-func (view *View) ActiveViewHierarchy() []AbstractView {
-	viewHierarchy := []AbstractView{view}
+func (view *View) ActiveViewHierarchy() []BaseView {
+	viewHierarchy := []BaseView{view}
 	var parentView WindowViewCollection = view
 	var ok bool
 
@@ -456,14 +456,14 @@ func (view *View) ActiveViewIDHierarchy() (viewIds []ViewID) {
 }
 
 // ActiveView returns the currently active child view
-func (view *View) ActiveView() AbstractView {
+func (view *View) ActiveView() BaseView {
 	view.lock.Lock()
 	defer view.lock.Unlock()
 
 	return view.activeView()
 }
 
-func (view *View) activeView() AbstractView {
+func (view *View) activeView() BaseView {
 	if view.promptActive {
 		return view.grvStatusView
 	}
