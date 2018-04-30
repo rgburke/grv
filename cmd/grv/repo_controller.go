@@ -62,12 +62,12 @@ func (repoController *ReadOnlyRepositoryController) CreateBranch(branchName stri
 type RepositoryController struct {
 	repo     *git.Repository
 	repoData RepoData
-	channels *Channels
+	channels Channels
 	lock     sync.Mutex
 }
 
 // NewRepoController creates a new instance
-func NewRepoController(repoData RepoData, channels *Channels) RepoController {
+func NewRepoController(repoData RepoData, channels Channels) RepoController {
 	return &RepositoryController{
 		repoData: repoData,
 		channels: channels,

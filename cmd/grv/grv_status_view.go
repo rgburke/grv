@@ -17,7 +17,7 @@ type GRVStatusView struct {
 }
 
 // NewGRVStatusView creates a new instance
-func NewGRVStatusView(helpRenderer HelpRenderer, repoData RepoData, channels *Channels, config ConfigSetter) *GRVStatusView {
+func NewGRVStatusView(helpRenderer HelpRenderer, repoData RepoData, channels Channels, config ConfigSetter) *GRVStatusView {
 	return &GRVStatusView{
 		statusBarView: NewStatusBarView(repoData, channels, config),
 		helpBarView:   NewHelpBarView(helpRenderer),

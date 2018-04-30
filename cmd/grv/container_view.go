@@ -47,7 +47,7 @@ type containerViewHandler func(*ContainerView, Action) error
 // ContainerView is a container with no visual presence that manages the
 // layout of its child views
 type ContainerView struct {
-	channels                    *Channels
+	channels                    Channels
 	config                      Config
 	childViews                  []BaseView
 	title                       string
@@ -64,7 +64,7 @@ type ContainerView struct {
 }
 
 // NewContainerView creates a new instance
-func NewContainerView(channels *Channels, config Config) *ContainerView {
+func NewContainerView(channels Channels, config Config) *ContainerView {
 	containerView := &ContainerView{
 		config:      config,
 		channels:    channels,

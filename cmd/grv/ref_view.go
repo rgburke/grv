@@ -160,7 +160,7 @@ func (renderedRefList *renderedRefList) Children() (children uint) {
 
 // RefView manages the display of references
 type RefView struct {
-	channels       *Channels
+	channels       Channels
 	repoData       RepoData
 	repoController RepoController
 	config         Config
@@ -181,7 +181,7 @@ type RefListener interface {
 }
 
 // NewRefView creates a new instance
-func NewRefView(repoData RepoData, repoController RepoController, channels *Channels, config Config) *RefView {
+func NewRefView(repoData RepoData, repoController RepoController, channels Channels, config Config) *RefView {
 	refView := &RefView{
 		channels:       channels,
 		repoData:       repoData,

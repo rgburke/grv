@@ -197,11 +197,11 @@ type Configuration struct {
 	themes       map[string]MutableTheme
 	keyBindings  KeyBindings
 	grvConfigDir string
-	channels     *Channels
+	channels     Channels
 }
 
 // NewConfiguration creates a Configuration instance with default values
-func NewConfiguration(keyBindings KeyBindings, channels *Channels) *Configuration {
+func NewConfiguration(keyBindings KeyBindings, channels Channels) *Configuration {
 	config := &Configuration{
 		keyBindings: keyBindings,
 		themes: map[string]MutableTheme{

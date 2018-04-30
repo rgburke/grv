@@ -12,14 +12,14 @@ import (
 type WindowViewFactory struct {
 	repoData       RepoData
 	repoController RepoController
-	channels       *Channels
+	channels       Channels
 	config         Config
 }
 
 var hexRegexp = regexp.MustCompile(`^[[:xdigit:]]+$`)
 
 // NewWindowViewFactory creates a new instance
-func NewWindowViewFactory(repoData RepoData, repoController RepoController, channels *Channels, config Config) *WindowViewFactory {
+func NewWindowViewFactory(repoData RepoData, repoController RepoController, channels Channels, config Config) *WindowViewFactory {
 	return &WindowViewFactory{
 		repoData:       repoData,
 		repoController: repoController,

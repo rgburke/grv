@@ -32,7 +32,7 @@ type instanceCache struct {
 type RepoDataLoader struct {
 	repo     *git.Repository
 	cache    *instanceCache
-	channels *Channels
+	channels Channels
 }
 
 // Oid is reference to a git object
@@ -569,7 +569,7 @@ func (cache *instanceCache) getCachedOid(oidStr string) (oid *Oid, exists bool) 
 }
 
 // NewRepoDataLoader creates a new instance
-func NewRepoDataLoader(channels *Channels) *RepoDataLoader {
+func NewRepoDataLoader(channels Channels) *RepoDataLoader {
 	return &RepoDataLoader{
 		cache:    newInstanceCache(),
 		channels: channels,

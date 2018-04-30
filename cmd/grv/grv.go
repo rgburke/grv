@@ -34,8 +34,8 @@ type gRVChannels struct {
 	errorCh    chan error
 }
 
-func (grvChannels gRVChannels) Channels() *Channels {
-	return &Channels{
+func (grvChannels gRVChannels) Channels() Channels {
+	return &channels{
 		displayCh: grvChannels.displayCh,
 		exitCh:    grvChannels.exitCh,
 		errorCh:   grvChannels.errorCh,
@@ -45,7 +45,17 @@ func (grvChannels gRVChannels) Channels() *Channels {
 }
 
 // Channels contains channels used for communication within grv
-type Channels struct {
+type Channels interface {
+	UpdateDisplay()
+	Exit() bool
+	ReportError(err error)
+	ReportErrors(errors []error)
+	DoAction(action Action)
+	ReportEvent(event Event)
+	ReportStatus(format string, args ...interface{})
+}
+
+type channels struct {
 	displayCh chan<- bool
 	exitCh    <-chan bool
 	errorCh   chan<- error
@@ -88,7 +98,7 @@ type GRV struct {
 }
 
 // UpdateDisplay sends a request to update the display
-func (channels *Channels) UpdateDisplay() {
+func (channels *channels) UpdateDisplay() {
 	select {
 	case channels.displayCh <- true:
 	default:
@@ -96,7 +106,7 @@ func (channels *Channels) UpdateDisplay() {
 }
 
 // Exit returns true if GRV is in the process of exiting
-func (channels *Channels) Exit() bool {
+func (channels *channels) Exit() bool {
 	select {
 	case _, ok := <-channels.exitCh:
 		return !ok
@@ -106,7 +116,7 @@ func (channels *Channels) Exit() bool {
 }
 
 // ReportError reports an error to be displayed
-func (channels *Channels) ReportError(err error) {
+func (channels *channels) ReportError(err error) {
 	if err != nil {
 		select {
 		case channels.errorCh <- err:
@@ -117,28 +127,28 @@ func (channels *Channels) ReportError(err error) {
 }
 
 // ReportErrors reports multiple errors to be displayed
-func (channels *Channels) ReportErrors(errors []error) {
+func (channels *channels) ReportErrors(errors []error) {
 	for _, err := range errors {
 		channels.ReportError(err)
 	}
 }
 
 // DoAction sends an action to be executed
-func (channels *Channels) DoAction(action Action) {
+func (channels *channels) DoAction(action Action) {
 	if action.ActionType != ActionNone {
 		channels.actionCh <- action
 	}
 }
 
 // ReportEvent sends the event to all listeners
-func (channels *Channels) ReportEvent(event Event) {
+func (channels *channels) ReportEvent(event Event) {
 	if event.EventType != NoEvent {
 		channels.eventCh <- event
 	}
 }
 
 // ReportStatus updates the status bar with the provided status
-func (channels *Channels) ReportStatus(format string, args ...interface{}) {
+func (channels *channels) ReportStatus(format string, args ...interface{}) {
 	status := fmt.Sprintf(format, args...)
 
 	if status != "" {
@@ -340,7 +350,7 @@ func (grv *GRV) runDisplayLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, di
 
 	var errors []error
 	lastErrorReceivedTime := time.Now()
-	channels := &Channels{errorCh: errorCh}
+	channels := &channels{errorCh: errorCh}
 
 	timer := time.NewTimer(time.Hour)
 	timer.Stop()

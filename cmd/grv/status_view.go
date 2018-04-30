@@ -1,7 +1,7 @@
 package main
 
 // NewStatusView creates a new instance
-func NewStatusView(repoData RepoData, channels *Channels, config Config) *ContainerView {
+func NewStatusView(repoData RepoData, channels Channels, config Config) *ContainerView {
 	gitStatusView := NewGitStatusView(repoData, channels, config)
 	diffView := NewDiffView(repoData, channels, config)
 

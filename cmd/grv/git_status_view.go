@@ -63,7 +63,7 @@ type GitStatusViewListener interface {
 // GitStatusView manages displaying git status data
 type GitStatusView struct {
 	repoData               RepoData
-	channels               *Channels
+	channels               Channels
 	config                 Config
 	status                 *Status
 	renderedStatus         []*renderedStatusEntry
@@ -77,7 +77,7 @@ type GitStatusView struct {
 }
 
 // NewGitStatusView created a new GitStatusView
-func NewGitStatusView(repoData RepoData, channels *Channels, config Config) *GitStatusView {
+func NewGitStatusView(repoData RepoData, channels Channels, config Config) *GitStatusView {
 	gitStatusView := &GitStatusView{
 		repoData: repoData,
 		channels: channels,

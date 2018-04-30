@@ -120,7 +120,7 @@ type diffID string
 
 // DiffView contains all state for the diff view
 type DiffView struct {
-	channels          *Channels
+	channels          Channels
 	repoData          RepoData
 	config            Config
 	activeDiff        diffID
@@ -135,7 +135,7 @@ type DiffView struct {
 }
 
 // NewDiffView creates a new diff view instance
-func NewDiffView(repoData RepoData, channels *Channels, config Config) *DiffView {
+func NewDiffView(repoData RepoData, channels Channels, config Config) *DiffView {
 	diffView := &DiffView{
 		repoData:          repoData,
 		channels:          channels,

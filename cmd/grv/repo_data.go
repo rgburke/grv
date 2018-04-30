@@ -749,11 +749,11 @@ func (commitRefSet *commitRefSet) refsForCommit(commit *Commit) (commitRefsCopy 
 type refCommitSets struct {
 	commits            map[string]commitSet
 	commitSetListeners []CommitSetListener
-	channels           *Channels
+	channels           Channels
 	lock               sync.Mutex
 }
 
-func newRefCommitSets(channels *Channels) *refCommitSets {
+func newRefCommitSets(channels Channels) *refCommitSets {
 	return &refCommitSets{
 		commits:  make(map[string]commitSet),
 		channels: channels,
@@ -970,7 +970,7 @@ func (statusManager *statusManager) unregisterStatusListener(statusListener Stat
 
 // RepositoryData implements RepoData and stores all loaded repository data
 type RepositoryData struct {
-	channels       *Channels
+	channels       Channels
 	repoDataLoader *RepoDataLoader
 	head           Ref
 	refSet         *refSet
@@ -981,7 +981,7 @@ type RepositoryData struct {
 }
 
 // NewRepositoryData creates a new instance
-func NewRepositoryData(repoDataLoader *RepoDataLoader, channels *Channels) *RepositoryData {
+func NewRepositoryData(repoDataLoader *RepoDataLoader, channels Channels) *RepositoryData {
 	repoData := &RepositoryData{
 		channels:       channels,
 		repoDataLoader: repoDataLoader,

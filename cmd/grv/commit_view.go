@@ -24,7 +24,7 @@ type commitViewHandler func(*CommitView, Action) error
 type loadingCommitsRefreshTask struct {
 	refreshRate time.Duration
 	ticker      *time.Ticker
-	channels    *Channels
+	channels    Channels
 	cancelCh    chan<- bool
 }
 
@@ -46,7 +46,7 @@ type CommitViewListener interface {
 
 // CommitView is the overall instance representing the commit view
 type CommitView struct {
-	channels               *Channels
+	channels               Channels
 	repoData               RepoData
 	repoController         RepoController
 	config                 Config
@@ -67,7 +67,7 @@ type CommitView struct {
 }
 
 // NewCommitView creates a new instance of the commit view
-func NewCommitView(repoData RepoData, repoController RepoController, channels *Channels, config Config) *CommitView {
+func NewCommitView(repoData RepoData, repoController RepoController, channels Channels, config Config) *CommitView {
 	commitView := &CommitView{
 		channels:          channels,
 		repoData:          repoData,
@@ -325,7 +325,7 @@ func (commitView *CommitView) RenderHelpBar(lineBuilder *LineBuilder) (err error
 	return
 }
 
-func newLoadingCommitsRefreshTask(refreshRate time.Duration, channels *Channels) *loadingCommitsRefreshTask {
+func newLoadingCommitsRefreshTask(refreshRate time.Duration, channels Channels) *loadingCommitsRefreshTask {
 	return &loadingCommitsRefreshTask{
 		refreshRate: refreshRate,
 		channels:    channels,

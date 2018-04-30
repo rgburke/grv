@@ -32,7 +32,7 @@ const (
 // StatusBarView manages the display of the status bar
 type StatusBarView struct {
 	repoData      RepoData
-	channels      *Channels
+	channels      Channels
 	config        ConfigSetter
 	active        bool
 	promptType    promptType
@@ -41,7 +41,7 @@ type StatusBarView struct {
 }
 
 // NewStatusBarView creates a new instance
-func NewStatusBarView(repoData RepoData, channels *Channels, config ConfigSetter) *StatusBarView {
+func NewStatusBarView(repoData RepoData, channels Channels, config ConfigSetter) *StatusBarView {
 	return &StatusBarView{
 		repoData: repoData,
 		channels: channels,

@@ -76,7 +76,7 @@ var readLine ReadLine
 
 // ReadLine is a wrapper around the readline library
 type ReadLine struct {
-	channels          *Channels
+	channels          Channels
 	config            Config
 	promptText        string
 	promptInput       string
@@ -88,7 +88,7 @@ type ReadLine struct {
 }
 
 // InitReadLine initialises the readline library
-func InitReadLine(channels *Channels, config Config) {
+func InitReadLine(channels Channels, config Config) {
 	readLine = ReadLine{
 		channels: channels,
 		config:   config,

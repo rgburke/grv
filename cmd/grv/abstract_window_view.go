@@ -14,13 +14,13 @@ type abstractWindowViewHandler func(*AbstractWindowView, Action) error
 // AbstractWindowView handles behaviour common to all window views
 type AbstractWindowView struct {
 	child    ChildWindowView
-	channels *Channels
+	channels Channels
 	config   Config
 	handlers map[ActionType]abstractWindowViewHandler
 }
 
 // NewAbstractWindowView create a new instance
-func NewAbstractWindowView(child ChildWindowView, channels *Channels, config Config) *AbstractWindowView {
+func NewAbstractWindowView(child ChildWindowView, channels Channels, config Config) *AbstractWindowView {
 	return &AbstractWindowView{
 		child:    child,
 		channels: channels,

@@ -81,7 +81,7 @@ type View struct {
 	views             []WindowViewCollection
 	activeViewPos     uint
 	grvStatusView     WindowViewCollection
-	channels          *Channels
+	channels          Channels
 	config            Config
 	promptActive      bool
 	errorView         *ErrorView
@@ -95,7 +95,7 @@ type View struct {
 }
 
 // NewView creates a new instance
-func NewView(repoData RepoData, repoController RepoController, channels *Channels, config ConfigSetter) (view *View) {
+func NewView(repoData RepoData, repoController RepoController, channels Channels, config ConfigSetter) (view *View) {
 	view = &View{
 		views: []WindowViewCollection{
 			NewHistoryView(repoData, repoController, channels, config),

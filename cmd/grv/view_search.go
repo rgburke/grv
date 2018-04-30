@@ -17,13 +17,13 @@ type SearchableView interface {
 type ViewSearch struct {
 	search               *Search
 	searchableView       SearchableView
-	channels             *Channels
+	channels             Channels
 	lastSearchFoundMatch bool
 	lock                 sync.Mutex
 }
 
 // NewViewSearch creates a new instance
-func NewViewSearch(searchableView SearchableView, channels *Channels) *ViewSearch {
+func NewViewSearch(searchableView SearchableView, channels Channels) *ViewSearch {
 	return &ViewSearch{
 		searchableView: searchableView,
 		channels:       channels,
