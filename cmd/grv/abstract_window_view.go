@@ -93,10 +93,7 @@ func moveUpRow(abstractWindowView *AbstractWindowView, action Action) (err error
 	viewPos := abstractWindowView.child.viewPos()
 
 	if viewPos.MoveLineUp() {
-		if err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex()); err != nil {
-			return
-		}
-
+		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -286,7 +283,10 @@ func mouseSelectRow(abstractWindowView *AbstractWindowView, action Action) (err 
 
 	viewPos.SetActiveRowIndex(selectedIndex)
 
-	return abstractWindowView.child.onRowSelected(selectedIndex)
+	err = abstractWindowView.child.onRowSelected(selectedIndex)
+	abstractWindowView.channels.UpdateDisplay()
+
+	return
 }
 
 func mouseScrollDown(abstractWindowView *AbstractWindowView, action Action) (err error) {
