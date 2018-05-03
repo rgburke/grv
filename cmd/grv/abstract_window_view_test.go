@@ -233,10 +233,12 @@ func setupAbstractWindowView() (*AbstractWindowView, *mocks) {
 	mocks.child.On("viewDimension").Return(ViewDimension{rows: 24, cols: 80})
 	mocks.child.On("rows").Return(uint(24))
 	mocks.viewPos.On("ActiveRowIndex").Return(uint(0))
+	mocks.viewPos.On("ViewStartRowIndex").Return(uint(0))
+	mocks.viewPos.On("ViewStartColumn").Return(uint(1))
 	mocks.channels.On("UpdateDisplay").Return()
 	mocks.config.On("GetInt", CfMouseScrollRows).Return(3)
 
-	return NewAbstractWindowView(mocks.child, mocks.channels, mocks.config), mocks
+	return NewAbstractWindowView(mocks.child, mocks.channels, mocks.config, "test line"), mocks
 }
 
 func assertChildViewAndDisplayUpdated(t *testing.T, mocks *mocks) {
@@ -293,6 +295,17 @@ func TestErrorByActionHandlerIsReturned(t *testing.T) {
 	if errTest != err {
 		t.Errorf(`Expected error returned to be "%v" but found "%v"`, errTest, err)
 	}
+}
+
+func TestViewPosIsLoggedBeforeAndAfterActionIsHandled(t *testing.T) {
+	abstractWindowView, mocks := setupAbstractWindowView()
+	mocks.viewPos.On("MoveLineUp").Return(false)
+
+	abstractWindowView.HandleAction(Action{ActionType: ActionPrevLine})
+
+	mocks.viewPos.AssertNumberOfCalls(t, "ActiveRowIndex", 2)
+	mocks.viewPos.AssertNumberOfCalls(t, "ViewStartRowIndex", 2)
+	mocks.viewPos.AssertNumberOfCalls(t, "ViewStartColumn", 2)
 }
 
 func TestActionPrevLineIsHandledAndNoUpdatesResultWhenMoveLineUpReturnsFalse(t *testing.T) {

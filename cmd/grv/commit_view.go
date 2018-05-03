@@ -87,7 +87,7 @@ func NewCommitView(repoData RepoData, repoController RepoController, channels Ch
 		},
 	}
 
-	commitView.AbstractWindowView = NewAbstractWindowView(commitView, channels, config)
+	commitView.AbstractWindowView = NewAbstractWindowView(commitView, channels, config, "commit")
 	commitView.viewSearch = NewViewSearch(commitView, channels)
 
 	return commitView
