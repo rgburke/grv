@@ -13,18 +13,20 @@ type abstractWindowViewHandler func(*AbstractWindowView, Action) error
 
 // AbstractWindowView handles behaviour common to all window views
 type AbstractWindowView struct {
-	child    ChildWindowView
-	channels Channels
-	config   Config
-	handlers map[ActionType]abstractWindowViewHandler
+	child       ChildWindowView
+	channels    Channels
+	config      Config
+	borderWidth uint
+	handlers    map[ActionType]abstractWindowViewHandler
 }
 
 // NewAbstractWindowView create a new instance
 func NewAbstractWindowView(child ChildWindowView, channels Channels, config Config) *AbstractWindowView {
 	return &AbstractWindowView{
-		child:    child,
-		channels: channels,
-		config:   config,
+		child:       child,
+		channels:    channels,
+		config:      config,
+		borderWidth: 2,
 		handlers: map[ActionType]abstractWindowViewHandler{
 			ActionPrevLine:           moveUpRow,
 			ActionNextLine:           moveDownRow,
@@ -115,7 +117,7 @@ func moveDownRow(abstractWindowView *AbstractWindowView, action Action) (err err
 func moveUpPage(abstractWindowView *AbstractWindowView, action Action) (err error) {
 	viewPos := abstractWindowView.child.viewPos()
 
-	if viewPos.MovePageUp(abstractWindowView.child.viewDimension().rows - 2) {
+	if viewPos.MovePageUp(abstractWindowView.child.viewDimension().rows - abstractWindowView.borderWidth) {
 		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
@@ -127,7 +129,7 @@ func moveDownPage(abstractWindowView *AbstractWindowView, action Action) (err er
 	rows := abstractWindowView.child.rows()
 	viewPos := abstractWindowView.child.viewPos()
 
-	if viewPos.MovePageDown(abstractWindowView.child.viewDimension().rows-2, rows) {
+	if viewPos.MovePageDown(abstractWindowView.child.viewDimension().rows-abstractWindowView.borderWidth, rows) {
 		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
@@ -138,7 +140,7 @@ func moveDownPage(abstractWindowView *AbstractWindowView, action Action) (err er
 func moveUpHalfPage(abstractWindowView *AbstractWindowView, action Action) (err error) {
 	viewPos := abstractWindowView.child.viewPos()
 
-	if viewPos.MovePageUp(abstractWindowView.child.viewDimension().rows/2 - 2) {
+	if viewPos.MovePageUp(abstractWindowView.child.viewDimension().rows/2 - abstractWindowView.borderWidth) {
 		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
@@ -150,7 +152,7 @@ func moveDownHalfPage(abstractWindowView *AbstractWindowView, action Action) (er
 	rows := abstractWindowView.child.rows()
 	viewPos := abstractWindowView.child.viewPos()
 
-	if viewPos.MovePageDown(abstractWindowView.child.viewDimension().rows/2-2, rows) {
+	if viewPos.MovePageDown(abstractWindowView.child.viewDimension().rows/2-abstractWindowView.borderWidth, rows) {
 		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
@@ -202,7 +204,7 @@ func moveToLastRow(abstractWindowView *AbstractWindowView, action Action) (err e
 func centerView(abstractWindowView *AbstractWindowView, action Action) (err error) {
 	viewPos := abstractWindowView.child.viewPos()
 
-	if viewPos.CenterActiveRow(abstractWindowView.child.viewDimension().rows - 2) {
+	if viewPos.CenterActiveRow(abstractWindowView.child.viewDimension().rows - abstractWindowView.borderWidth) {
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -222,7 +224,7 @@ func scrollToViewTop(abstractWindowView *AbstractWindowView, action Action) (err
 func scrollToViewBottom(abstractWindowView *AbstractWindowView, action Action) (err error) {
 	viewPos := abstractWindowView.child.viewPos()
 
-	if viewPos.ScrollActiveRowBottom(abstractWindowView.child.viewDimension().rows - 2) {
+	if viewPos.ScrollActiveRowBottom(abstractWindowView.child.viewDimension().rows - abstractWindowView.borderWidth) {
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -244,7 +246,7 @@ func moveCursorMiddleOfView(abstractWindowView *AbstractWindowView, action Actio
 	rows := abstractWindowView.child.rows()
 	viewPos := abstractWindowView.child.viewPos()
 
-	if viewPos.MoveCursorMiddlePage(abstractWindowView.child.viewDimension().rows-2, rows) {
+	if viewPos.MoveCursorMiddlePage(abstractWindowView.child.viewDimension().rows-abstractWindowView.borderWidth, rows) {
 		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
@@ -256,7 +258,7 @@ func moveCursorBottomOfView(abstractWindowView *AbstractWindowView, action Actio
 	rows := abstractWindowView.child.rows()
 	viewPos := abstractWindowView.child.viewPos()
 
-	if viewPos.MoveCursorBottomPage(abstractWindowView.child.viewDimension().rows-2, rows) {
+	if viewPos.MoveCursorBottomPage(abstractWindowView.child.viewDimension().rows-abstractWindowView.borderWidth, rows) {
 		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
@@ -292,7 +294,7 @@ func mouseSelectRow(abstractWindowView *AbstractWindowView, action Action) (err 
 func mouseScrollDown(abstractWindowView *AbstractWindowView, action Action) (err error) {
 	viewPos := abstractWindowView.child.viewPos()
 	rows := abstractWindowView.child.rows()
-	pageRows := abstractWindowView.child.viewDimension().rows - 2
+	pageRows := abstractWindowView.child.viewDimension().rows - abstractWindowView.borderWidth
 	scrollRows := uint(abstractWindowView.config.GetInt(CfMouseScrollRows))
 
 	if viewPos.ScrollDown(rows, pageRows, scrollRows) {
@@ -305,7 +307,7 @@ func mouseScrollDown(abstractWindowView *AbstractWindowView, action Action) (err
 
 func mouseScrollUp(abstractWindowView *AbstractWindowView, action Action) (err error) {
 	viewPos := abstractWindowView.child.viewPos()
-	pageRows := abstractWindowView.child.viewDimension().rows - 2
+	pageRows := abstractWindowView.child.viewDimension().rows - abstractWindowView.borderWidth
 	scrollRows := uint(abstractWindowView.config.GetInt(CfMouseScrollRows))
 
 	if viewPos.ScrollUp(pageRows, scrollRows) {

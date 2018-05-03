@@ -248,6 +248,14 @@ func assertChildViewAndDisplayNotUpdated(t *testing.T, mocks *mocks) {
 	mocks.channels.AssertNotCalled(t, "UpdateDisplay")
 }
 
+func TestBorderWidthDefaultsToTwo(t *testing.T) {
+	abstractWindowView, _ := setupAbstractWindowView()
+
+	if abstractWindowView.borderWidth != 2 {
+		t.Errorf("Expected borderWidth to be 2 but found: %v", abstractWindowView.borderWidth)
+	}
+}
+
 func TestActionPrevLineIsHandledAndNoUpdatesResultWhenMoveLineUpReturnsFalse(t *testing.T) {
 	abstractWindowView, mocks := setupAbstractWindowView()
 	mocks.viewPos.On("MoveLineUp").Return(false)
