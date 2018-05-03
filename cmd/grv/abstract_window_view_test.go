@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -253,6 +254,44 @@ func TestBorderWidthDefaultsToTwo(t *testing.T) {
 
 	if abstractWindowView.borderWidth != 2 {
 		t.Errorf("Expected borderWidth to be 2 but found: %v", abstractWindowView.borderWidth)
+	}
+}
+
+func TestHandleActionReturnsHandledTrueWhenActionIsHandled(t *testing.T) {
+	abstractWindowView, mocks := setupAbstractWindowView()
+	mocks.viewPos.On("MoveLineUp").Return(false)
+
+	handled, _ := abstractWindowView.HandleAction(Action{ActionType: ActionPrevLine})
+
+	if !handled {
+		t.Errorf("Expected handled to be true")
+	}
+}
+
+func TestHandleActionReturnsHandledFalseWhenActionIsHandled(t *testing.T) {
+	abstractWindowView, _ := setupAbstractWindowView()
+
+	handled, _ := abstractWindowView.HandleAction(Action{ActionType: ActionNone})
+
+	if handled {
+		t.Errorf("Expected handled to be false")
+	}
+}
+
+func TestErrorByActionHandlerIsReturned(t *testing.T) {
+	abstractWindowView, mocks := setupAbstractWindowView()
+	errTest := errors.New("Test error")
+
+	mocks.viewPos.On("MoveLineUp").Return(true)
+	mocks.child = &MockChildWindowView{}
+	mocks.child.On("viewPos").Return(mocks.viewPos)
+	abstractWindowView.child = mocks.child
+	mocks.child.On("onRowSelected", uint(0)).Return(errTest)
+
+	_, err := abstractWindowView.HandleAction(Action{ActionType: ActionPrevLine})
+
+	if errTest != err {
+		t.Errorf(`Expected error returned to be "%v" but found "%v"`, errTest, err)
 	}
 }
 
@@ -569,7 +608,7 @@ func TestActionCursorBottomViewIsHandledAndUpdatesResultWhenMoveCursorBottomPage
 func TestActionMouseSelectIsHandledAndResultsInAnErrorWhenActionIsInvalid(t *testing.T) {
 	abstractWindowView, _ := setupAbstractWindowView()
 
-	err := abstractWindowView.HandleAction(Action{ActionType: ActionMouseSelect})
+	_, err := abstractWindowView.HandleAction(Action{ActionType: ActionMouseSelect})
 
 	if err == nil {
 		t.Errorf("Expected error but returned error was nil")

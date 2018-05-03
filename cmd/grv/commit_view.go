@@ -46,6 +46,7 @@ type CommitViewListener interface {
 
 // CommitView is the overall instance representing the commit view
 type CommitView struct {
+	*AbstractWindowView
 	channels               Channels
 	repoData               RepoData
 	repoController         RepoController
@@ -57,7 +58,7 @@ type CommitView struct {
 	refreshTask            *loadingCommitsRefreshTask
 	commitViewListeners    []CommitViewListener
 	commitViewListenerLock sync.Mutex
-	viewDimension          ViewDimension
+	lastViewDimension      ViewDimension
 	viewSearch             *ViewSearch
 	loadingDotCount        uint
 	lastDotRenderTime      time.Time
@@ -78,33 +79,15 @@ func NewCommitView(repoData RepoData, repoController RepoController, channels Ch
 		refViewData:       make(map[string]*referenceViewData),
 		lastDotRenderTime: time.Now(),
 		handlers: map[ActionType]commitViewHandler{
-			ActionPrevLine:           moveUpCommit,
-			ActionNextLine:           moveDownCommit,
-			ActionPrevPage:           moveUpCommitPage,
-			ActionNextPage:           moveDownCommitPage,
-			ActionPrevHalfPage:       moveUpCommitHalfPage,
-			ActionNextHalfPage:       moveDownCommitHalfPage,
-			ActionScrollRight:        scrollCommitViewRight,
-			ActionScrollLeft:         scrollCommitViewLeft,
-			ActionFirstLine:          moveToFirstCommit,
-			ActionLastLine:           moveToLastCommit,
-			ActionAddFilter:          addCommitFilter,
-			ActionRemoveFilter:       removeCommitFilter,
-			ActionCenterView:         centerCommitView,
-			ActionScrollCursorTop:    scrollCommitViewTop,
-			ActionScrollCursorBottom: scrollCommitViewBottom,
-			ActionCursorTopView:      moveCursorTopCommitView,
-			ActionCursorMiddleView:   moveCursorMiddleCommitView,
-			ActionCursorBottomView:   moveCursorBottomCommitView,
-			ActionSelect:             selectCommit,
-			ActionMouseSelect:        mouseSelectCommit,
-			ActionMouseScrollDown:    mouseScrollDownCommitView,
-			ActionMouseScrollUp:      mouseScrollUpCommitView,
-			ActionCheckoutCommit:     checkoutCommit,
-			ActionCreateBranch:       createBranchFromCommit,
+			ActionAddFilter:      addCommitFilter,
+			ActionRemoveFilter:   removeCommitFilter,
+			ActionSelect:         selectCommit,
+			ActionCheckoutCommit: checkoutCommit,
+			ActionCreateBranch:   createBranchFromCommit,
 		},
 	}
 
+	commitView.AbstractWindowView = NewAbstractWindowView(commitView, channels, config)
 	commitView.viewSearch = NewViewSearch(commitView, channels)
 
 	return commitView
@@ -139,7 +122,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
-	commitView.viewDimension = win.ViewDimensions()
+	commitView.lastViewDimension = win.ViewDimensions()
 
 	if commitView.activeRef == nil {
 		return commitView.renderEmptyView(win, "No commits to display")
@@ -617,6 +600,10 @@ func (commitView *CommitView) ViewPos() ViewPos {
 	return refViewData.viewPos
 }
 
+func (commitView *CommitView) viewPos() ViewPos {
+	return commitView.ViewPos()
+}
+
 // OnSearchMatch updates the view position when there is a search match
 func (commitView *CommitView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
 	commitView.lock.Lock()
@@ -637,9 +624,9 @@ func (commitView *CommitView) Line(lineIndex uint) (line string) {
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
-	lineNumber := commitView.lineNumber()
+	rows := commitView.rows()
 
-	if lineIndex >= lineNumber {
+	if lineIndex >= rows {
 		log.Errorf("Invalid lineIndex: %v", lineIndex)
 		return
 	}
@@ -675,18 +662,24 @@ func (commitView *CommitView) Line(lineIndex uint) (line string) {
 }
 
 // LineNumber returns the total number of rendered lines the commit view has
-func (commitView *CommitView) LineNumber() (lineNumber uint) {
+func (commitView *CommitView) LineNumber() (rows uint) {
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
-	return commitView.lineNumber()
+	return commitView.rows()
 }
 
-func (commitView *CommitView) lineNumber() (lineNumber uint) {
+func (commitView *CommitView) rows() (rows uint) {
 	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
-	lineNum := commitSetState.commitNum
+	return commitSetState.commitNum
+}
 
-	return lineNum
+func (commitView *CommitView) viewDimension() ViewDimension {
+	return commitView.lastViewDimension
+}
+
+func (commitView *CommitView) onRowSelected(rowIndex uint) error {
+	return commitView.selectCommit(rowIndex)
 }
 
 // HandleEvent reacts to an event
@@ -814,146 +807,16 @@ func (commitView *CommitView) HandleAction(action Action) (err error) {
 		return
 	}
 
+	var handled bool
 	if handler, ok := commitView.handlers[action.ActionType]; ok {
+		log.Debugf("Action handled by CommitView")
 		err = handler(commitView, action)
+	} else if handled, err = commitView.viewSearch.HandleAction(action); handled {
+		log.Debugf("Action handled by ViewSearch")
+	} else if handled, err = commitView.AbstractWindowView.HandleAction(action); handled {
+		log.Debugf("Action handled by AbstractWindowView")
 	} else {
-		_, err = commitView.viewSearch.HandleAction(action)
-	}
-
-	return
-}
-
-func moveUpCommit(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
-
-	if viewPos.MoveLineUp() {
-		log.Debug("Moving up one commit")
-		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
-			return
-		}
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveDownCommit(commitView *CommitView, action Action) (err error) {
-	lineNumber := commitView.lineNumber()
-	viewPos := commitView.ViewPos()
-
-	if viewPos.MoveLineDown(lineNumber) {
-		log.Debug("Moving down one commit")
-		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
-			return
-		}
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveUpCommitPage(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
-
-	if viewPos.MovePageUp(commitView.viewDimension.rows - 2) {
-		log.Debug("Moving up one page")
-		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
-			return
-		}
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveDownCommitPage(commitView *CommitView, action Action) (err error) {
-	lineNumber := commitView.lineNumber()
-	viewPos := commitView.ViewPos()
-
-	if viewPos.MovePageDown(commitView.viewDimension.rows-2, lineNumber) {
-		log.Debug("Moving down one page")
-		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
-			return
-		}
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveUpCommitHalfPage(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
-
-	if viewPos.MovePageUp(commitView.viewDimension.rows/2 - 2) {
-		log.Debug("Moving up one half page")
-		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
-			return
-		}
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveDownCommitHalfPage(commitView *CommitView, action Action) (err error) {
-	lineNumber := commitView.lineNumber()
-	viewPos := commitView.ViewPos()
-
-	if viewPos.MovePageDown(commitView.viewDimension.rows/2-2, lineNumber) {
-		log.Debug("Moving down one half page")
-		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
-			return
-		}
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func scrollCommitViewRight(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
-	viewPos.MovePageRight(commitView.viewDimension.cols)
-	log.Debugf("Scrolling right. View starts at column %v", viewPos.ViewStartColumn())
-	commitView.channels.UpdateDisplay()
-
-	return
-}
-
-func scrollCommitViewLeft(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
-
-	if viewPos.MovePageLeft(commitView.viewDimension.cols) {
-		log.Debugf("Scrolling left. View starts at column %v", viewPos.ViewStartColumn())
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveToFirstCommit(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
-
-	if viewPos.MoveToFirstLine() {
-		log.Debug("Moving up to first commit")
-		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
-			return
-		}
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveToLastCommit(commitView *CommitView, action Action) (err error) {
-	lineNumber := commitView.lineNumber()
-	viewPos := commitView.ViewPos()
-
-	if viewPos.MoveToLastLine(lineNumber) {
-		log.Debug("Moving to last commit")
-		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
-			return
-		}
-		commitView.channels.UpdateDisplay()
+		log.Debugf("Action not handled")
 	}
 
 	return
@@ -1016,83 +879,6 @@ func removeCommitFilter(commitView *CommitView, action Action) (err error) {
 	return
 }
 
-func centerCommitView(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
-
-	if viewPos.CenterActiveRow(commitView.viewDimension.rows - 2) {
-		log.Debug("Centering CommitView")
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func scrollCommitViewTop(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
-
-	if viewPos.ScrollActiveRowTop() {
-		log.Debug("Scrolling CommitView to make curor on top")
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func scrollCommitViewBottom(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
-
-	if viewPos.ScrollActiveRowBottom(commitView.viewDimension.rows - 2) {
-		log.Debug("Scrolling CommitView to make curor on bottom")
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveCursorTopCommitView(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
-
-	if viewPos.MoveCursorTopPage() {
-		log.Debug("Moving Cursor to top of commit view")
-		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
-			return
-		}
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveCursorMiddleCommitView(commitView *CommitView, action Action) (err error) {
-	lineNumber := commitView.lineNumber()
-	viewPos := commitView.ViewPos()
-
-	if viewPos.MoveCursorMiddlePage(commitView.viewDimension.rows-2, lineNumber) {
-		log.Debug("Moving Cursor to middle of commit view")
-		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
-			return
-		}
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveCursorBottomCommitView(commitView *CommitView, action Action) (err error) {
-	lineNumber := commitView.lineNumber()
-	viewPos := commitView.ViewPos()
-
-	if viewPos.MoveCursorBottomPage(commitView.viewDimension.rows-2, lineNumber) {
-		log.Debug("Moving Cursor to bottom of commit view")
-		if err = commitView.selectCommit(viewPos.ActiveRowIndex()); err != nil {
-			return
-		}
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
 func selectCommit(commitView *CommitView, action Action) (err error) {
 	viewPos := commitView.ViewPos()
 
@@ -1106,54 +892,6 @@ func selectCommit(commitView *CommitView, action Action) (err error) {
 	}
 
 	return commitView.selectCommit(viewPos.ActiveRowIndex())
-}
-
-func mouseSelectCommit(commitView *CommitView, action Action) (err error) {
-	mouseEvent, err := GetMouseEventFromAction(action)
-	if err != nil {
-		return
-	}
-
-	if mouseEvent.row == 0 || mouseEvent.row == commitView.viewDimension.rows-1 {
-		return
-	}
-
-	viewPos := commitView.ViewPos()
-	selectedIndex := viewPos.ViewStartRowIndex() + mouseEvent.row - 1
-
-	commitSetState := commitView.repoData.CommitSetState(commitView.activeRef)
-	if selectedIndex >= commitSetState.commitNum {
-		return
-	}
-
-	return commitView.selectCommit(selectedIndex)
-}
-
-func mouseScrollDownCommitView(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
-	lineNumber := commitView.lineNumber()
-	pageRows := commitView.viewDimension.rows - 2
-	scrollRows := uint(commitView.config.GetInt(CfMouseScrollRows))
-
-	if viewPos.ScrollDown(lineNumber, pageRows, scrollRows) {
-		err = commitView.selectCommit(viewPos.ActiveRowIndex())
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func mouseScrollUpCommitView(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
-	pageRows := commitView.viewDimension.rows - 2
-	scrollRows := uint(commitView.config.GetInt(CfMouseScrollRows))
-
-	if viewPos.ScrollUp(pageRows, scrollRows) {
-		err = commitView.selectCommit(viewPos.ActiveRowIndex())
-		commitView.channels.UpdateDisplay()
-	}
-
-	return
 }
 
 func checkoutCommit(commitView *CommitView, action Action) (err error) {

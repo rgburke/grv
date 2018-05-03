@@ -83,9 +83,10 @@ func (abstractWindowView *AbstractWindowView) HandleEvent(event Event) (err erro
 
 // HandleAction checks if this action is supported by the AbstractWindowView
 // and if so handles it
-func (abstractWindowView *AbstractWindowView) HandleAction(action Action) (err error) {
+func (abstractWindowView *AbstractWindowView) HandleAction(action Action) (handled bool, err error) {
 	if handler, ok := abstractWindowView.handlers[action.ActionType]; ok {
 		err = handler(abstractWindowView, action)
+		handled = true
 	}
 
 	return
