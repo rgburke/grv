@@ -120,13 +120,14 @@ type diffID string
 
 // DiffView contains all state for the diff view
 type DiffView struct {
+	*AbstractWindowView
 	channels          Channels
 	repoData          RepoData
 	config            Config
 	activeDiff        diffID
 	diffs             map[diffID]*diffLines
-	viewPos           ViewPos
-	viewDimension     ViewDimension
+	activeViewPos     ViewPos
+	lastViewDimension ViewDimension
 	handlers          map[ActionType]diffViewHandler
 	active            bool
 	viewSearch        *ViewSearch
@@ -140,33 +141,15 @@ func NewDiffView(repoData RepoData, channels Channels, config Config) *DiffView 
 		repoData:          repoData,
 		channels:          channels,
 		config:            config,
-		viewPos:           NewViewPosition(),
+		activeViewPos:     NewViewPosition(),
 		diffs:             make(map[diffID]*diffLines),
 		diffLoadRequestCh: make(chan diffLoadRequest, dvDiffLoadRequestChannelSize),
 		handlers: map[ActionType]diffViewHandler{
-			ActionPrevLine:           moveUpDiffLine,
-			ActionNextLine:           moveDownDiffLine,
-			ActionPrevPage:           moveUpDiffPage,
-			ActionNextPage:           moveDownDiffPage,
-			ActionPrevHalfPage:       moveUpDiffHalfPage,
-			ActionNextHalfPage:       moveDownDiffHalfPage,
-			ActionScrollRight:        scrollDiffViewRight,
-			ActionScrollLeft:         scrollDiffViewLeft,
-			ActionFirstLine:          moveToFirstDiffLine,
-			ActionLastLine:           moveToLastDiffLine,
-			ActionCenterView:         centerDiffView,
-			ActionScrollCursorTop:    scrollDiffViewTop,
-			ActionScrollCursorBottom: scrollDiffViewBottom,
-			ActionCursorTopView:      moveCursorTopDiffView,
-			ActionCursorMiddleView:   moveCursorMiddleDiffView,
-			ActionCursorBottomView:   moveCursorBottomDiffView,
-			ActionSelect:             selectDiffLine,
-			ActionMouseSelect:        mouseSelectDiffLine,
-			ActionMouseScrollDown:    mouseScrollDownDiffView,
-			ActionMouseScrollUp:      mouseScrollUpDiffView,
+			ActionSelect: selectDiffLine,
 		},
 	}
 
+	diffView.AbstractWindowView = NewAbstractWindowView(diffView, channels, config, "diff line")
 	diffView.viewSearch = NewViewSearch(diffView, channels)
 
 	return diffView
@@ -198,7 +181,7 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
-	diffView.viewDimension = win.ViewDimensions()
+	diffView.lastViewDimension = win.ViewDimensions()
 
 	if diffView.activeDiff == "" {
 		return diffView.renderEmptyView(win, "No diff to display")
@@ -207,7 +190,7 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	}
 
 	rows := win.Rows() - 2
-	viewPos := diffView.viewPos
+	viewPos := diffView.activeViewPos
 	diffLines, ok := diffView.diffs[diffView.activeDiff]
 	if !ok {
 		log.Errorf("No diff data found for %v", diffView.activeDiff)
@@ -298,7 +281,7 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 }
 
 func (diffView *DiffView) renderEmptyView(win RenderWindow, msg string) (err error) {
-	viewPos := diffView.viewPos
+	viewPos := diffView.activeViewPos
 	startColumn := viewPos.ViewStartColumn()
 
 	if err = win.SetRow(2, startColumn, CmpNone, "   %v", msg); err != nil {
@@ -324,7 +307,7 @@ func (diffView *DiffView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 		return
 	}
 
-	lineIndex := diffView.viewPos.ActiveRowIndex()
+	lineIndex := diffView.activeViewPos.ActiveRowIndex()
 
 	if lineIndex < uint(len(diffLines.lines)) {
 		line := diffLines.lines[lineIndex]
@@ -362,7 +345,7 @@ func (diffView *DiffView) OnCommitSelected(commit *Commit) (err error) {
 	diffView.lock.Lock()
 	if diffLines, ok := diffView.diffs[diffID]; ok {
 		diffView.activeDiff = diffID
-		diffView.viewPos = diffLines.viewPos
+		diffView.activeViewPos = diffLines.viewPos
 		diffView.channels.UpdateDisplay()
 		diffView.lock.Unlock()
 		return
@@ -470,7 +453,7 @@ func (diffView *DiffView) loadCommitDiffAndMakeActive(request *commitDiffLoadReq
 
 	diffView.activeDiff = diffID
 	diffView.diffs[diffID] = diffLines
-	diffView.viewPos = diffLines.viewPos
+	diffView.activeViewPos = diffLines.viewPos
 
 	return
 }
@@ -527,7 +510,7 @@ func (diffView *DiffView) storeDiff(diffID diffID, diff *Diff) (err error) {
 
 	diffView.diffs[diffID] = diffLines
 	diffView.activeDiff = diffID
-	diffView.viewPos = diffLines.viewPos
+	diffView.activeViewPos = diffLines.viewPos
 
 	return
 }
@@ -626,7 +609,11 @@ func (diffView *DiffView) HandleEvent(event Event) (err error) {
 
 // ViewPos returns the current view position
 func (diffView *DiffView) ViewPos() ViewPos {
-	return diffView.viewPos
+	return diffView.activeViewPos
+}
+
+func (diffView *DiffView) viewPos() ViewPos {
+	return diffView.activeViewPos
 }
 
 // OnSearchMatch sets the current view position to the search match position
@@ -650,10 +637,16 @@ func (diffView *DiffView) HandleAction(action Action) (err error) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
+	var handled bool
 	if handler, ok := diffView.handlers[action.ActionType]; ok {
+		log.Debugf("Action handled by DiffView")
 		err = handler(diffView, action)
+	} else if handled, err = diffView.viewSearch.HandleAction(action); handled {
+		log.Debugf("Action handled by ViewSearch")
+	} else if handled, err = diffView.AbstractWindowView.HandleAction(action); handled {
+		log.Debugf("Action handled by AbstractWindowView")
 	} else {
-		_, err = diffView.viewSearch.HandleAction(action)
+		log.Debugf("Action not handled")
 	}
 
 	return
@@ -687,227 +680,23 @@ func (diffView *DiffView) LineNumber() (lineNumber uint) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
-	return diffView.lineNumber()
+	return diffView.rows()
 }
 
-func (diffView *DiffView) lineNumber() (lineNumber uint) {
+func (diffView *DiffView) rows() uint {
 	diffLines, ok := diffView.diffs[diffView.activeDiff]
 	if !ok {
-		return
+		return 0
 	}
 
-	lineNum := uint(len(diffLines.lines))
-
-	return lineNum
+	return uint(len(diffLines.lines))
 }
 
-func moveDownDiffLine(diffView *DiffView, action Action) (err error) {
-	diffLines, ok := diffView.diffs[diffView.activeDiff]
-	if !ok {
-		return
-	}
-
-	lineNum := uint(len(diffLines.lines))
-	viewPos := diffView.viewPos
-
-	if viewPos.MoveLineDown(lineNum) {
-		log.Debugf("Moving down one line in diff view")
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
+func (diffView *DiffView) viewDimension() ViewDimension {
+	return diffView.lastViewDimension
 }
 
-func moveUpDiffLine(diffView *DiffView, action Action) (err error) {
-	viewPos := diffView.viewPos
-
-	if viewPos.MoveLineUp() {
-		log.Debugf("Moving up one line in diff view")
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveDownDiffPage(diffView *DiffView, action Action) (err error) {
-	diffLines, ok := diffView.diffs[diffView.activeDiff]
-	if !ok {
-		return
-	}
-
-	lineNum := uint(len(diffLines.lines))
-	viewPos := diffView.viewPos
-
-	if viewPos.MovePageDown(diffView.viewDimension.rows-2, lineNum) {
-		log.Debugf("Moving down one page in diff view")
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveUpDiffPage(diffView *DiffView, action Action) (err error) {
-	viewPos := diffView.viewPos
-
-	if viewPos.MovePageUp(diffView.viewDimension.rows - 2) {
-		log.Debugf("Moving up one page in diff view")
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveDownDiffHalfPage(diffView *DiffView, action Action) (err error) {
-	diffLines, ok := diffView.diffs[diffView.activeDiff]
-	if !ok {
-		return
-	}
-
-	lineNum := uint(len(diffLines.lines))
-	viewPos := diffView.viewPos
-
-	if viewPos.MovePageDown(diffView.viewDimension.rows/2-2, lineNum) {
-		log.Debugf("Moving down one page in diff view")
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveUpDiffHalfPage(diffView *DiffView, action Action) (err error) {
-	viewPos := diffView.viewPos
-
-	if viewPos.MovePageUp(diffView.viewDimension.rows/2 - 2) {
-		log.Debugf("Moving up one page in diff view")
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func scrollDiffViewRight(diffView *DiffView, action Action) (err error) {
-	viewPos := diffView.viewPos
-	viewPos.MovePageRight(diffView.viewDimension.cols)
-	log.Debugf("Scrolling right. View starts at column %v", viewPos.ViewStartColumn())
-	diffView.channels.UpdateDisplay()
-
-	return
-}
-
-func scrollDiffViewLeft(diffView *DiffView, action Action) (err error) {
-	viewPos := diffView.viewPos
-
-	if viewPos.MovePageLeft(diffView.viewDimension.cols) {
-		log.Debugf("Scrolling left. View starts at column %v", viewPos.ViewStartColumn())
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveToFirstDiffLine(diffView *DiffView, action Action) (err error) {
-	viewPos := diffView.viewPos
-
-	if viewPos.MoveToFirstLine() {
-		log.Debugf("Moving to first line in diff view")
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveToLastDiffLine(diffView *DiffView, action Action) (err error) {
-	diffLines, ok := diffView.diffs[diffView.activeDiff]
-	if !ok {
-		return
-	}
-
-	lineNum := uint(len(diffLines.lines))
-	viewPos := diffView.viewPos
-
-	if viewPos.MoveToLastLine(lineNum) {
-		log.Debugf("Moving to last line in diff view")
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func centerDiffView(diffView *DiffView, action Action) (err error) {
-	viewPos := diffView.viewPos
-
-	if viewPos.CenterActiveRow(diffView.viewDimension.rows - 2) {
-		log.Debug("Centering DiffView")
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func scrollDiffViewTop(diffView *DiffView, action Action) (err error) {
-	viewPos := diffView.ViewPos()
-
-	if viewPos.ScrollActiveRowTop() {
-		log.Debug("Scrolling DiffView to make curor on top")
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func scrollDiffViewBottom(diffView *DiffView, action Action) (err error) {
-	viewPos := diffView.ViewPos()
-
-	if viewPos.ScrollActiveRowBottom(diffView.viewDimension.rows - 2) {
-		log.Debug("Scrolling DiffView to make curor on bottom")
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveCursorTopDiffView(diffView *DiffView, action Action) (err error) {
-	viewPos := diffView.ViewPos()
-
-	if viewPos.MoveCursorTopPage() {
-		log.Debug("Moving Cursor to top of diff view")
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveCursorMiddleDiffView(diffView *DiffView, action Action) (err error) {
-	diffLines, ok := diffView.diffs[diffView.activeDiff]
-	if !ok {
-		return
-	}
-	lineNumber := uint(len(diffLines.lines))
-
-	viewPos := diffView.ViewPos()
-
-	if viewPos.MoveCursorMiddlePage(diffView.viewDimension.rows-2, lineNumber) {
-		log.Debug("Moving Cursor to middle of diff view")
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func moveCursorBottomDiffView(diffView *DiffView, action Action) (err error) {
-	diffLines, ok := diffView.diffs[diffView.activeDiff]
-	if !ok {
-		return
-	}
-	lineNumber := uint(len(diffLines.lines))
-
-	viewPos := diffView.ViewPos()
-
-	if viewPos.MoveCursorBottomPage(diffView.viewDimension.rows-2, lineNumber) {
-		log.Debug("Moving Cursor to bottom of diff view")
-		diffView.channels.UpdateDisplay()
-	}
-
+func (diffView *DiffView) onRowSelected(rowIndex uint) (err error) {
 	return
 }
 
@@ -917,7 +706,7 @@ func selectDiffLine(diffView *DiffView, action Action) (err error) {
 		return
 	}
 
-	lineIndex := diffView.viewPos.ActiveRowIndex()
+	lineIndex := diffView.activeViewPos.ActiveRowIndex()
 	diffLine := diffLines.lines[lineIndex]
 
 	if diffLine.lineType != dltDiffStatsFile {
@@ -945,61 +734,9 @@ func selectDiffLine(diffView *DiffView, action Action) (err error) {
 		return fmt.Errorf("Unable to find diff for file: %v", filePart)
 	}
 
-	diffView.viewPos.SetActiveRowIndex(lineIndex)
+	diffView.activeViewPos.SetActiveRowIndex(lineIndex)
 	defer diffView.channels.UpdateDisplay()
 
-	return centerDiffView(diffView, action)
-}
-
-func mouseSelectDiffLine(diffView *DiffView, action Action) (err error) {
-	mouseEvent, err := GetMouseEventFromAction(action)
-	if err != nil {
-		return
-	}
-
-	if mouseEvent.row == 0 || mouseEvent.row == diffView.viewDimension.rows-1 {
-		return
-	}
-
-	viewPos := diffView.viewPos
-	selectedIndex := viewPos.ViewStartRowIndex() + mouseEvent.row - 1
-
-	diffLines, ok := diffView.diffs[diffView.activeDiff]
-	if !ok {
-		return
-	}
-
-	if selectedIndex >= uint(len(diffLines.lines)) {
-		return
-	}
-
-	diffView.viewPos.SetActiveRowIndex(selectedIndex)
-	diffView.channels.UpdateDisplay()
-
-	return
-}
-
-func mouseScrollDownDiffView(diffView *DiffView, action Action) (err error) {
-	viewPos := diffView.viewPos
-	lineNumber := diffView.lineNumber()
-	pageRows := diffView.viewDimension.rows - 2
-	scrollRows := uint(diffView.config.GetInt(CfMouseScrollRows))
-
-	if viewPos.ScrollDown(lineNumber, pageRows, scrollRows) {
-		diffView.channels.UpdateDisplay()
-	}
-
-	return
-}
-
-func mouseScrollUpDiffView(diffView *DiffView, action Action) (err error) {
-	viewPos := diffView.viewPos
-	pageRows := diffView.viewDimension.rows - 2
-	scrollRows := uint(diffView.config.GetInt(CfMouseScrollRows))
-
-	if viewPos.ScrollUp(pageRows, scrollRows) {
-		diffView.channels.UpdateDisplay()
-	}
-
+	_, err = diffView.AbstractWindowView.HandleAction(Action{ActionType: ActionCenterView})
 	return
 }
