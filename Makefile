@@ -54,6 +54,7 @@ update:
 update-test:
 	$(GOCMD) get github.com/golang/lint/golint
 	$(GOCMD) get github.com/stretchr/testify/mock
+	$(GOCMD) get github.com/stretchr/testify/assert
 
 .PHONY: apply-patches
 apply-patches: update
