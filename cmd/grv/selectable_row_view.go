@@ -44,7 +44,7 @@ func (selectableRowView *SelectableRowView) HandleAction(action Action) (handled
 	if selectableRowView.child.isSelectableRow(activeRowIndexEnd) {
 		selectedRowIndex = activeRowIndexEnd
 	} else {
-		selectedRowIndex := selectableRowView.findNearestSelectableRow(activeRowIndexStart, activeRowIndexEnd)
+		selectedRowIndex = selectableRowView.findNearestSelectableRow(activeRowIndexStart, activeRowIndexEnd)
 		selectableRowView.child.viewPos().SetActiveRowIndex(selectedRowIndex)
 	}
 

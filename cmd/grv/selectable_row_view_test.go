@@ -80,3 +80,128 @@ func TestSelectableRowDecoratorCallesOnRowSelectedWhennotifyChildRowSelectedIsCa
 	decorated.AssertCalled(t, "onRowSelected", uint(8))
 	assert.EqualError(t, returnedError, "Test error", "notifyChildRowSelected should returned error from onRowSelected")
 }
+
+type selectableRowViewMocks struct {
+	viewPos  *MockViewPos
+	child    *MockSelectableRowChildWindowView
+	channels *MockChannels
+	config   *MockConfig
+}
+
+func setupSelectableRowView() (*SelectableRowView, *selectableRowViewMocks) {
+	mocks := &selectableRowViewMocks{
+		viewPos:  &MockViewPos{},
+		child:    &MockSelectableRowChildWindowView{},
+		channels: &MockChannels{},
+		config:   &MockConfig{},
+	}
+
+	mocks.child.On("rows").Return(uint(100))
+	mocks.child.On("viewPos").Return(mocks.viewPos)
+	mocks.viewPos.On("ViewStartRowIndex").Return(uint(0))
+	mocks.viewPos.On("ViewStartColumn").Return(uint(1))
+	mocks.channels.On("UpdateDisplay").Return()
+
+	return NewSelectableRowView(mocks.child, mocks.channels, mocks.config, "test line"), mocks
+}
+
+func TestWhenActionIsNotHandledThenSelectableCheckIsNotDone(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(0))
+
+	handled, _ := selectableRowView.HandleAction(Action{ActionType: ActionNone})
+
+	mocks.child.AssertNotCalled(t, "isSelectableRow", uint(0))
+	assert.False(t, handled, "ActionNone should not be handled")
+}
+
+func TestWhenActionIsHandledButActiveRowIndexDoesNotChangeThenSelectableCheckIsNotDone(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(0)).Times(4)
+	mocks.viewPos.On("MoveLineUp").Return(false)
+
+	handled, _ := selectableRowView.HandleAction(Action{ActionType: ActionPrevLine})
+
+	mocks.child.AssertNotCalled(t, "isSelectableRow", uint(0))
+	assert.True(t, handled, "ActionPrevLine should be handled")
+}
+
+func TestWhenActionResultsInErrorThenErrorIsReturnedAndSelectableCheckIsNotDone(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(0)).Times(4)
+
+	_, err := selectableRowView.HandleAction(Action{ActionType: ActionMouseSelect})
+
+	mocks.child.AssertNotCalled(t, "isSelectableRow", uint(0))
+	assert.NotNil(t, err, "Error should be returned for invalid action")
+}
+
+func TestWhenActiveRowIndexDoesChangeAndRowIsSelectableThenChildIsNotifiedRowIsSelected(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(0)).Times(2)
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(1))
+	mocks.viewPos.On("MoveLineDown", uint(100)).Return(true)
+	mocks.child.On("isSelectableRow", uint(1)).Return(true)
+	mocks.child.On("onRowSelected", uint(1)).Return(nil)
+
+	selectableRowView.HandleAction(Action{ActionType: ActionNextLine})
+
+	mocks.child.AssertCalled(t, "isSelectableRow", uint(1))
+	mocks.child.AssertCalled(t, "onRowSelected", uint(1))
+}
+
+func TestWhenActiveRowIndexDoesChangeDownwardsAndRowIsNotSelectableThenNextSelectableRowDownIsFoundAndChildIsNotifiedRowIsSelected(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(0)).Times(2)
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(1))
+	mocks.viewPos.On("MoveLineDown", uint(100)).Return(true)
+	mocks.child.On("isSelectableRow", uint(1)).Return(false)
+	mocks.child.On("isSelectableRow", uint(2)).Return(true)
+	mocks.viewPos.On("SetActiveRowIndex", uint(2)).Return()
+	mocks.child.On("onRowSelected", uint(2)).Return(nil)
+
+	selectableRowView.HandleAction(Action{ActionType: ActionNextLine})
+
+	mocks.child.AssertCalled(t, "isSelectableRow", uint(1))
+	mocks.child.AssertCalled(t, "isSelectableRow", uint(2))
+	mocks.viewPos.AssertCalled(t, "SetActiveRowIndex", uint(2))
+	mocks.child.AssertCalled(t, "onRowSelected", uint(2))
+}
+
+func TestWhenActiveRowIndexDoesChangeUpwardsAndRowIsNotSelectableThenNextSelectableRowUpIsFoundAndChildIsNotifiedRowIsSelected(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(3)).Times(2)
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(2))
+	mocks.viewPos.On("MoveLineUp").Return(true)
+	mocks.child.On("isSelectableRow", uint(2)).Return(false)
+	mocks.child.On("isSelectableRow", uint(1)).Return(true)
+	mocks.viewPos.On("SetActiveRowIndex", uint(1)).Return()
+	mocks.child.On("onRowSelected", uint(1)).Return(nil)
+
+	selectableRowView.HandleAction(Action{ActionType: ActionPrevLine})
+
+	mocks.child.AssertCalled(t, "isSelectableRow", uint(2))
+	mocks.child.AssertCalled(t, "isSelectableRow", uint(1))
+	mocks.viewPos.AssertCalled(t, "SetActiveRowIndex", uint(1))
+	mocks.child.AssertCalled(t, "onRowSelected", uint(1))
+}
+
+func TestWhenActiveRowIndexDoesChangeDownwardsAndRowIsNotSelectableThenNextSelectableRowUpIsFoundAndChildIsNotifiedRowIsSelectedIfNoDownwardsRowsAreAvailable(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(98)).Times(2)
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(99))
+	mocks.viewPos.On("MoveLineDown", uint(100)).Return(true)
+	mocks.child.On("isSelectableRow", uint(99)).Return(false)
+	mocks.child.On("isSelectableRow", uint(98)).Return(false)
+	mocks.child.On("isSelectableRow", uint(97)).Return(true)
+	mocks.viewPos.On("SetActiveRowIndex", uint(97)).Return()
+	mocks.child.On("onRowSelected", uint(97)).Return(nil)
+
+	selectableRowView.HandleAction(Action{ActionType: ActionNextLine})
+
+	mocks.child.AssertCalled(t, "isSelectableRow", uint(99))
+	mocks.child.AssertCalled(t, "isSelectableRow", uint(98))
+	mocks.child.AssertCalled(t, "isSelectableRow", uint(97))
+	mocks.viewPos.AssertCalled(t, "SetActiveRowIndex", uint(97))
+	mocks.child.AssertCalled(t, "onRowSelected", uint(97))
+}

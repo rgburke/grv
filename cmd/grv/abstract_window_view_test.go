@@ -213,15 +213,15 @@ func (config *MockConfig) ConfigDir() string {
 	return args.String(0)
 }
 
-type mocks struct {
+type abstractWindowViewMocks struct {
 	viewPos  *MockViewPos
 	child    *MockChildWindowView
 	channels *MockChannels
 	config   *MockConfig
 }
 
-func setupAbstractWindowView() (*AbstractWindowView, *mocks) {
-	mocks := &mocks{
+func setupAbstractWindowView() (*AbstractWindowView, *abstractWindowViewMocks) {
+	mocks := &abstractWindowViewMocks{
 		viewPos:  &MockViewPos{},
 		child:    &MockChildWindowView{},
 		channels: &MockChannels{},
@@ -241,12 +241,12 @@ func setupAbstractWindowView() (*AbstractWindowView, *mocks) {
 	return NewAbstractWindowView(mocks.child, mocks.channels, mocks.config, "test line"), mocks
 }
 
-func assertChildViewAndDisplayUpdated(t *testing.T, mocks *mocks) {
+func assertChildViewAndDisplayUpdated(t *testing.T, mocks *abstractWindowViewMocks) {
 	mocks.child.AssertCalled(t, "onRowSelected", uint(0))
 	mocks.channels.AssertCalled(t, "UpdateDisplay")
 }
 
-func assertChildViewAndDisplayNotUpdated(t *testing.T, mocks *mocks) {
+func assertChildViewAndDisplayNotUpdated(t *testing.T, mocks *abstractWindowViewMocks) {
 	mocks.child.AssertNotCalled(t, "onRowSelected", uint(0))
 	mocks.channels.AssertNotCalled(t, "UpdateDisplay")
 }
