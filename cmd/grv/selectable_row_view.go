@@ -1,5 +1,9 @@
 package main
 
+import (
+	log "github.com/Sirupsen/logrus"
+)
+
 // SelectableRowChildWindowView extends ChildWindowView to handle
 // views with rows that aren't selectable
 type SelectableRowChildWindowView interface {
@@ -37,6 +41,7 @@ func (selectableRowView *SelectableRowView) HandleAction(action Action) (handled
 	activeRowIndexEnd := selectableRowView.child.viewPos().ActiveRowIndex()
 
 	if activeRowIndexStart == activeRowIndexEnd {
+		log.Debugf("activeRowIndexStart (%v) == activeRowIndexEnd (%v)", activeRowIndexStart, activeRowIndexEnd)
 		return
 	}
 
@@ -45,9 +50,11 @@ func (selectableRowView *SelectableRowView) HandleAction(action Action) (handled
 		selectedRowIndex = activeRowIndexEnd
 	} else {
 		selectedRowIndex = selectableRowView.findNearestSelectableRow(activeRowIndexStart, activeRowIndexEnd)
+		log.Debugf("Nearest selectable row index: %v", selectedRowIndex)
 		selectableRowView.child.viewPos().SetActiveRowIndex(selectedRowIndex)
 	}
 
+	log.Debugf("Notifying child view of selected row index: %v", selectedRowIndex)
 	err = selectableRowView.child.notifyChildRowSelected(selectedRowIndex)
 	return
 }
