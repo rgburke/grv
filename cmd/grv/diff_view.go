@@ -75,7 +75,7 @@ func (diffLine *diffLineData) determineDiffLineType() {
 		lineType = dltGitDiffHeader
 	case strings.HasPrefix(line, "index"):
 		lineType = dltGitDiffExtendedHeader
-	case strings.HasPrefix(line, "---") || strings.HasPrefix(line, "+++"):
+	case strings.HasPrefix(line, "--- ") || strings.HasPrefix(line, "+++ "):
 		lineType = dltUnifiedDiffHeader
 	case strings.HasPrefix(line, "@@"):
 		lineType = dltHunkStart
