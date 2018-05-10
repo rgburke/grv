@@ -27,18 +27,19 @@ const (
 	cfConfirmCheckoutDefaultValue   = true
 	cfPromptHistorySizeDefaultValue = 1000
 
-	cfAllView       = "All"
-	cfMainView      = "MainView"
-	cfHistoryView   = "HistoryView"
-	cfStatusView    = "StatusView"
-	cfGRVStatusView = "GRVStatusView"
-	cfRefView       = "RefView"
-	cfCommitView    = "CommitView"
-	cfDiffView      = "DiffView"
-	cfStatusBarView = "StatusBarView"
-	cfHelpBarView   = "HelpBarView"
-	cfErrorView     = "ErrorView"
-	cfGitStatusView = "GitStatusView"
+	cfAllView         = "All"
+	cfMainView        = "MainView"
+	cfHistoryView     = "HistoryView"
+	cfStatusView      = "StatusView"
+	cfGRVStatusView   = "GRVStatusView"
+	cfRefView         = "RefView"
+	cfCommitView      = "CommitView"
+	cfDiffView        = "DiffView"
+	cfStatusBarView   = "StatusBarView"
+	cfHelpBarView     = "HelpBarView"
+	cfErrorView       = "ErrorView"
+	cfGitStatusView   = "GitStatusView"
+	cfContextMenuView = "ContextMenuView"
 )
 
 // ConfigVariable stores a config variable name
@@ -74,18 +75,19 @@ var systemColorValues = map[string]SystemColorValue{
 }
 
 var viewIDNames = map[string]ViewID{
-	cfAllView:       ViewAll,
-	cfMainView:      ViewMain,
-	cfHistoryView:   ViewHistory,
-	cfStatusView:    ViewStatus,
-	cfGRVStatusView: ViewGRVStatus,
-	cfRefView:       ViewRef,
-	cfCommitView:    ViewCommit,
-	cfDiffView:      ViewDiff,
-	cfStatusBarView: ViewStatusBar,
-	cfHelpBarView:   ViewHelpBar,
-	cfErrorView:     ViewError,
-	cfGitStatusView: ViewGitStatus,
+	cfAllView:         ViewAll,
+	cfMainView:        ViewMain,
+	cfHistoryView:     ViewHistory,
+	cfStatusView:      ViewStatus,
+	cfGRVStatusView:   ViewGRVStatus,
+	cfRefView:         ViewRef,
+	cfCommitView:      ViewCommit,
+	cfDiffView:        ViewDiff,
+	cfStatusBarView:   ViewStatusBar,
+	cfHelpBarView:     ViewHelpBar,
+	cfErrorView:       ViewError,
+	cfGitStatusView:   ViewGitStatus,
+	cfContextMenuView: ViewContextMenu,
 }
 
 var themeComponents = map[string]ThemeComponentID{

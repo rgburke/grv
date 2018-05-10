@@ -29,6 +29,7 @@ const (
 	ViewHelpBar
 	ViewError
 	ViewGitStatus
+	ViewContextMenu
 )
 
 // HelpRenderer renders help information
