@@ -35,8 +35,8 @@ type ContextMenuView struct {
 	lock              sync.Mutex
 }
 
-// NewContextMenu creates a new instance
-func NewContextMenu(contextMenuConfig ContextMenuConfig, channels Channels, config Config) *ContextMenuView {
+// NewContextMenuView creates a new instance
+func NewContextMenuView(contextMenuConfig ContextMenuConfig, channels Channels, config Config) *ContextMenuView {
 	contextMenuView := &ContextMenuView{
 		contextMenuConfig: contextMenuConfig,
 		activeViewPos:     NewViewPosition(),

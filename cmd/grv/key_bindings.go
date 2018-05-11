@@ -72,6 +72,7 @@ const (
 	ActionCheckoutRef
 	ActionCheckoutCommit
 	ActionCreateBranch
+	ActionCreateContextMenu
 )
 
 // Action represents a type of actions and its arguments to be executed
@@ -110,6 +111,12 @@ type ActionQuestionPromptArgs struct {
 	answers       []string
 	defaultAnswer string
 	onAnswer      func(string)
+}
+
+// ActionCreateContextMenuArgs contains arguments to create and configure a context menu
+type ActionCreateContextMenuArgs struct {
+	config        ContextMenuConfig
+	viewDimension ViewDimension
 }
 
 var actionKeys = map[string]ActionType{
@@ -162,6 +169,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-checkout-ref>":          ActionCheckoutRef,
 	"<grv-checkout-commit>":       ActionCheckoutCommit,
 	"<grv-create-branch>":         ActionCreateBranch,
+	"<grv-create-context-menu>":   ActionCreateContextMenu,
 }
 
 var promptActions = map[ActionType]bool{

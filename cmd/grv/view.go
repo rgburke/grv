@@ -76,10 +76,17 @@ func (viewDimension ViewDimension) String() string {
 // RegisterViewListener is a function which registers an observer on a view
 type RegisterViewListener func(observer interface{}) error
 
+type popupView struct {
+	view          WindowView
+	viewDimension ViewDimension
+	win           *Window
+}
+
 // View is the top level view in grv
 // All views in grv are children of this view
 type View struct {
 	views             []WindowViewCollection
+	popupViews        []*popupView
 	activeViewPos     uint
 	grvStatusView     WindowViewCollection
 	channels          Channels
@@ -205,7 +212,14 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 
 	wins = append(wins, statusViewWins...)
 
-	return wins, err
+	popupViewWins, err := view.renderPopupViews(viewDimension)
+	if err != nil {
+		return
+	}
+
+	wins = append(wins, popupViewWins...)
+
+	return
 }
 
 func (view *View) determineErrorViewDimensions(errorViewDim, activeViewDim *ViewDimension) {
@@ -291,6 +305,31 @@ func (view *View) renderActiveView(availableCols uint) (err error) {
 	return
 }
 
+func (view *View) renderPopupViews(availableViewDimension ViewDimension) (wins []*Window, err error) {
+	for _, popupView := range view.popupViews {
+		viewDimension := ViewDimension{
+			rows: MinUint(popupView.viewDimension.rows, availableViewDimension.rows) - 2,
+			cols: MinUint(popupView.viewDimension.cols, availableViewDimension.cols) - 2,
+		}
+
+		startRow := (availableViewDimension.rows - viewDimension.rows) / 2
+		startCol := (availableViewDimension.cols - viewDimension.cols) / 2
+
+		win := popupView.win
+		win.Resize(viewDimension)
+		win.SetPosition(startRow, startCol)
+		win.Clear()
+
+		if err = popupView.view.Render(win); err != nil {
+			return
+		}
+
+		wins = append(wins, win)
+	}
+
+	return
+}
+
 // RenderHelpBar renders key binding help to the help bar for this view
 func (view *View) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	view.lock.Lock()
@@ -337,6 +376,10 @@ func (view *View) HandleEvent(event Event) (err error) {
 // If not the action is passed down to child views to handle
 func (view *View) HandleAction(action Action) (err error) {
 	log.Debugf("View handling action %v", action)
+
+	if view.popupViewsActive() {
+		return view.handlePopupViewAction(action)
+	}
 
 	if IsPromptAction(action.ActionType) {
 		return view.prompt(action)
@@ -400,6 +443,11 @@ func (view *View) HandleAction(action Action) (err error) {
 		if handled || err != nil {
 			return
 		}
+	case ActionCreateContextMenu:
+		view.lock.Lock()
+		defer view.lock.Unlock()
+
+		return view.createContextMenuView(action)
 	}
 
 	return view.ActiveView().HandleAction(action)
@@ -465,7 +513,9 @@ func (view *View) ActiveView() BaseView {
 }
 
 func (view *View) activeView() BaseView {
-	if view.promptActive {
+	if view.popupViewsActive() {
+		return view.popupViews[len(view.popupViews)-1].view
+	} else if view.promptActive {
 		return view.grvStatusView
 	}
 
@@ -691,4 +741,48 @@ func (view *View) handleTabClick(col uint) {
 
 		cols += width
 	}
+}
+
+func (view *View) createContextMenuView(action Action) (err error) {
+	if len(action.Args) == 0 {
+		return fmt.Errorf("Expected ActionCreateContextMenuArgs argument")
+	}
+
+	arg, ok := action.Args[0].(ActionCreateContextMenuArgs)
+	if !ok {
+		return fmt.Errorf("Expected ActionCreateContextMenuArgs argument but got %T", action.Args[0])
+	}
+
+	view.popupViews = append(view.popupViews, &popupView{
+		view:          NewContextMenuView(arg.config, view.channels, view.config),
+		viewDimension: arg.viewDimension,
+		win:           NewWindow(fmt.Sprintf("popupView-%v", len(view.popupViews)), view.config),
+	})
+
+	return
+}
+
+func (view *View) popupViewsActive() bool {
+	return len(view.popupViews) > 0
+}
+
+func (view *View) handlePopupViewAction(action Action) (err error) {
+	if !view.popupViewsActive() {
+		return fmt.Errorf("Expected at least one popup view to be active")
+	}
+
+	if action.ActionType == ActionRemoveView {
+		removedPopupView := view.popupViews[len(view.popupViews)-1]
+		view.popupViews = view.popupViews[:len(view.popupViews)-1]
+		view.channels.UpdateDisplay()
+
+		view.channels.ReportEvent(Event{
+			EventType: ViewRemovedEvent,
+			Args:      []interface{}{removedPopupView},
+		})
+
+		return
+	}
+
+	return view.activeView().HandleAction(action)
 }
