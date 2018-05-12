@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -18,7 +19,6 @@ const (
 
 var (
 	version       = "Unknown"
-	headOid       = "Unknown"
 	buildDateTime = "Unknown"
 )
 
@@ -78,7 +78,7 @@ func parseArgs() *grvArgs {
 }
 
 func getVersion() string {
-	return fmt.Sprintf("GRV - Git Repository Viewer %v (commit: %v, compiled: %v)", version, headOid, buildDateTime)
+	return fmt.Sprintf("GRV - Git Repository Viewer %v (compiled with %v at %v)", version, runtime.Version(), buildDateTime)
 }
 
 func printVersion() {

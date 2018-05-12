@@ -1,5 +1,4 @@
 GRV_VERSION=$(shell git describe --long --tags --dirty --always 2>/dev/null || echo 'Unknown')
-GRV_HEAD_OID=$(shell git rev-parse --short HEAD 2>/dev/null || echo 'Unknown')
 GRV_BUILD_DATETIME=$(shell date '+%Y-%m-%d %H:%M:%S %Z')
 GRV_LESS_THAN_GO18=$(shell go version | awk '{print $$3}' | sed 's/^go//' | awk -F. '{ if ($$1 == 1 && $$2 < 8) { print 1;} }')
 
@@ -8,7 +7,7 @@ GOLINT=golint
 
 BINARY?=grv
 GRV_SOURCE_DIR=./cmd/grv
-GRV_LDFLAGS=-X 'main.version=$(GRV_VERSION)' -X 'main.headOid=$(GRV_HEAD_OID)' -X 'main.buildDateTime=$(GRV_BUILD_DATETIME)'
+GRV_LDFLAGS=-X 'main.version=$(GRV_VERSION)' -X 'main.buildDateTime=$(GRV_BUILD_DATETIME)'
 GRV_STATIC_LDFLAGS=-extldflags '-lncurses -ltinfo -lgpm -static'
 GRV_BUILD_FLAGS=--tags static -ldflags "$(GRV_LDFLAGS)"
 GRV_STATIC_BUILD_FLAGS=--tags static -ldflags "$(GRV_LDFLAGS) $(GRV_STATIC_LDFLAGS)"
