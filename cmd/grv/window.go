@@ -64,6 +64,7 @@ type RenderWindow interface {
 	ApplyStyle(themeComponentID ThemeComponentID)
 	Highlight(pattern string, themeComponentID ThemeComponentID) error
 	DrawBorder()
+	DrawBorderWithStyle(ThemeComponentID)
 	LineBuilder(rowIndex, startColumn uint) (*LineBuilder, error)
 }
 
@@ -454,27 +455,33 @@ func (win *Window) setHeader(rowIndex uint, rightJustified bool, themeComponentI
 
 // DrawBorder draws a line of a single cells width around the edge of the window
 func (win *Window) DrawBorder() {
+	win.DrawBorderWithStyle(CmpNone)
+}
+
+// DrawBorderWithStyle draws a line of a single cells width around the edge of the window
+// using the style provided
+func (win *Window) DrawBorderWithStyle(themeComponentID ThemeComponentID) {
 	if win.rows < 3 || win.cols < 3 {
 		return
 	}
 
 	firstLine := win.lines[0]
 	firstLine.cells[0].setStyle(cellStyle{
-		themeComponentID: CmpNone,
+		themeComponentID: themeComponentID,
 		acsChar:          gc.ACS_ULCORNER,
 		attr:             gc.A_NORMAL,
 	})
 
 	for i := uint(1); i < win.cols-1; i++ {
 		firstLine.cells[i].setStyle(cellStyle{
-			themeComponentID: CmpNone,
+			themeComponentID: themeComponentID,
 			acsChar:          gc.ACS_HLINE,
 			attr:             gc.A_NORMAL,
 		})
 	}
 
 	firstLine.cells[win.cols-1].setStyle(cellStyle{
-		themeComponentID: CmpNone,
+		themeComponentID: themeComponentID,
 		acsChar:          gc.ACS_URCORNER,
 		attr:             gc.A_NORMAL,
 	})
@@ -482,12 +489,12 @@ func (win *Window) DrawBorder() {
 	for i := uint(1); i < win.rows-1; i++ {
 		line := win.lines[i]
 		line.cells[0].setStyle(cellStyle{
-			themeComponentID: CmpNone,
+			themeComponentID: themeComponentID,
 			acsChar:          gc.ACS_VLINE,
 			attr:             gc.A_NORMAL,
 		})
 		line.cells[win.cols-1].setStyle(cellStyle{
-			themeComponentID: CmpNone,
+			themeComponentID: themeComponentID,
 			acsChar:          gc.ACS_VLINE,
 			attr:             gc.A_NORMAL,
 		})
@@ -495,21 +502,21 @@ func (win *Window) DrawBorder() {
 
 	lastLine := win.lines[win.rows-1]
 	lastLine.cells[0].setStyle(cellStyle{
-		themeComponentID: CmpNone,
+		themeComponentID: themeComponentID,
 		acsChar:          gc.ACS_LLCORNER,
 		attr:             gc.A_NORMAL,
 	})
 
 	for i := uint(1); i < win.cols-1; i++ {
 		lastLine.cells[i].setStyle(cellStyle{
-			themeComponentID: CmpNone,
+			themeComponentID: themeComponentID,
 			acsChar:          gc.ACS_HLINE,
 			attr:             gc.A_NORMAL,
 		})
 	}
 
 	lastLine.cells[win.cols-1].setStyle(cellStyle{
-		themeComponentID: CmpNone,
+		themeComponentID: themeComponentID,
 		acsChar:          gc.ACS_LRCORNER,
 		attr:             gc.A_NORMAL,
 	})

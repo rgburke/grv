@@ -79,11 +79,12 @@ func NewCommitView(repoData RepoData, repoController RepoController, channels Ch
 		refViewData:       make(map[string]*referenceViewData),
 		lastDotRenderTime: time.Now(),
 		handlers: map[ActionType]commitViewHandler{
-			ActionAddFilter:      addCommitFilter,
-			ActionRemoveFilter:   removeCommitFilter,
-			ActionSelect:         selectCommit,
-			ActionCheckoutCommit: checkoutCommit,
-			ActionCreateBranch:   createBranchFromCommit,
+			ActionAddFilter:            addCommitFilter,
+			ActionRemoveFilter:         removeCommitFilter,
+			ActionSelect:               selectCommit,
+			ActionCheckoutCommit:       checkoutCommit,
+			ActionCreateBranch:         createBranchFromCommit,
+			ActionShowAvailableActions: showActionsForCommit,
 		},
 	}
 
@@ -299,10 +300,9 @@ func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIn
 // RenderHelpBar shows key bindings custom to the commit view
 func (commitView *CommitView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	RenderKeyBindingHelp(commitView.ViewID(), lineBuilder, []ActionMessage{
+		{action: ActionShowAvailableActions, message: "Show actions for commit"},
 		{action: ActionFilterPrompt, message: "Add Filter"},
 		{action: ActionRemoveFilter, message: "Remove Filter"},
-		{action: ActionCheckoutCommit, message: "Checkout commit"},
-		{action: ActionBranchNamePrompt, message: "Create branch"},
 	})
 
 	return
@@ -950,6 +950,62 @@ func createBranchFromCommit(commitView *CommitView, action Action) (err error) {
 	}
 
 	commitView.channels.ReportStatus("Created branch %v at %v", branchName, commit.oid.ShortID())
+
+	return
+}
+
+func showActionsForCommit(commitView *CommitView, action Action) (err error) {
+	if commitView.rows() == 0 {
+		return
+	}
+
+	viewPos := commitView.ViewPos()
+	commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.ActiveRowIndex())
+	if err != nil {
+		return
+	}
+
+	commitAuthor := commit.commit.Author().Name
+
+	commitView.channels.DoAction(Action{
+		ActionType: ActionCreateContextMenu,
+		Args: []interface{}{
+			ActionCreateContextMenuArgs{
+				viewDimension: ViewDimension{
+					rows: 10,
+					cols: 60,
+				},
+				config: ContextMenuConfig{
+					Entries: []ContextMenuEntry{
+						ContextMenuEntry{
+							DisplayName: "Checkout commit",
+							Value:       Action{ActionType: ActionCheckoutCommit},
+						},
+						ContextMenuEntry{
+							DisplayName: "Create branch from commit",
+							Value:       Action{ActionType: ActionBranchNamePrompt},
+						},
+						ContextMenuEntry{
+							DisplayName: fmt.Sprintf(`Filter commits by author "%v"`, commitAuthor),
+							Value: Action{
+								ActionType: ActionAddFilter,
+								Args: []interface{}{
+									fmt.Sprintf(`authorname = "%v"`, strings.Replace(commitAuthor, `"`, `\"`, -1)),
+								},
+							},
+						},
+					},
+					OnSelect: func(entry ContextMenuEntry, entryIndex uint) {
+						if selectedAction, ok := entry.Value.(Action); ok {
+							commitView.channels.DoAction(selectedAction)
+						} else {
+							log.Errorf("Expected Action instance but found: %v", entry.Value)
+						}
+					},
+				},
+			},
+		},
+	})
 
 	return
 }

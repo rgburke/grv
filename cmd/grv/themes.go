@@ -256,6 +256,18 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorRed),
 			},
+			CmpContextMenuTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpContextMenuContent: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpContextMenuFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
 		},
 	}
 }
@@ -515,6 +527,18 @@ func NewColdTheme() MutableTheme {
 			CmpGitStatusConflictedFile: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorRed),
+			},
+			CmpContextMenuTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpContextMenuContent: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpContextMenuFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
 			},
 		},
 	}
@@ -776,6 +800,18 @@ func NewSolarizedTheme() MutableTheme {
 			CmpGitStatusConflictedFile: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(160),
+			},
+			CmpContextMenuTitle: {
+				bgcolor: NewColorNumber(235),
+				fgcolor: NewColorNumber(37),
+			},
+			CmpContextMenuContent: {
+				bgcolor: NewColorNumber(235),
+				fgcolor: NewColorNumber(254),
+			},
+			CmpContextMenuFooter: {
+				bgcolor: NewColorNumber(235),
+				fgcolor: NewColorNumber(37),
 			},
 		},
 	}

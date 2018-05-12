@@ -153,6 +153,10 @@ var themeComponents = map[string]ThemeComponentID{
 	cfErrorView + ".Title":  CmpErrorViewTitle,
 	cfErrorView + ".Footer": CmpErrorViewFooter,
 	cfErrorView + ".Errors": CmpErrorViewErrors,
+
+	cfContextMenuView + ".Title":   CmpContextMenuTitle,
+	cfContextMenuView + ".Content": CmpContextMenuContent,
+	cfContextMenuView + ".Footer":  CmpContextMenuFooter,
 }
 
 var colorNumberPattern = regexp.MustCompile(`[0-9]{1,3}`)

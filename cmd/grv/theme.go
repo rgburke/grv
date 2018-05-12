@@ -80,6 +80,10 @@ const (
 	CmpErrorViewFooter
 	CmpErrorViewErrors
 
+	CmpContextMenuTitle
+	CmpContextMenuContent
+	CmpContextMenuFooter
+
 	CmpCount
 )
 

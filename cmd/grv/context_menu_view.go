@@ -81,16 +81,28 @@ func (contextMenuView *ContextMenuView) Render(win RenderWindow) (err error) {
 		viewRowIndex++
 	}
 
+	win.ApplyStyle(CmpContextMenuContent)
+
 	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, true); err != nil {
 		return
 	}
 
-	win.DrawBorder()
+	win.DrawBorderWithStyle(CmpContextMenuContent)
 
-	if err = win.SetTitle(CmpNone, "Select action"); err != nil {
+	if err = win.SetTitle(CmpContextMenuTitle, "Select action"); err != nil {
 		return
 	}
 
+	if err = win.SetFooter(CmpContextMenuTitle, "Action %v of %v", viewPos.SelectedRowIndex()+1, viewRows); err != nil {
+		return
+	}
+
+	return
+}
+
+// RenderHelpBar does nothing
+func (contextMenuView *ContextMenuView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
+	lineBuilder.AppendWithStyle(CmpHelpbarviewSpecial, " %v", "Select action to perform")
 	return
 }
 

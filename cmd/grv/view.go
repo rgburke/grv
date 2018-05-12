@@ -308,8 +308,8 @@ func (view *View) renderActiveView(availableCols uint) (err error) {
 func (view *View) renderPopupViews(availableViewDimension ViewDimension) (wins []*Window, err error) {
 	for _, popupView := range view.popupViews {
 		viewDimension := ViewDimension{
-			rows: MinUint(popupView.viewDimension.rows, availableViewDimension.rows) - 2,
-			cols: MinUint(popupView.viewDimension.cols, availableViewDimension.cols) - 2,
+			rows: MinUint(popupView.viewDimension.rows, availableViewDimension.rows-2),
+			cols: MinUint(popupView.viewDimension.cols, availableViewDimension.cols-2),
 		}
 
 		startRow := (availableViewDimension.rows - viewDimension.rows) / 2
@@ -336,7 +336,7 @@ func (view *View) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	promptActive := view.promptActive
 	view.lock.Unlock()
 
-	if !promptActive {
+	if !promptActive && !view.popupViewsActive() {
 		RenderKeyBindingHelp(view.ViewID(), lineBuilder, []ActionMessage{
 			{action: ActionPrompt, message: "Cmd Prompt"},
 			{action: ActionNextTab, message: "Next Tab"},
@@ -753,13 +753,43 @@ func (view *View) createContextMenuView(action Action) (err error) {
 		return fmt.Errorf("Expected ActionCreateContextMenuArgs argument but got %T", action.Args[0])
 	}
 
-	view.popupViews = append(view.popupViews, &popupView{
+	view.addPopupView(&popupView{
 		view:          NewContextMenuView(arg.config, view.channels, view.config),
 		viewDimension: arg.viewDimension,
 		win:           NewWindow(fmt.Sprintf("popupView-%v", len(view.popupViews)), view.config),
 	})
 
+	log.Debugf("Created context menu")
+
 	return
+}
+
+func (view *View) addPopupView(popupView *popupView) {
+	if !view.popupViewsActive() {
+		view.onActiveChange(false)
+	}
+
+	view.popupViews = append(view.popupViews, popupView)
+	log.Debugf("Added popupView. %v popup view(s) active", len(view.popupViews))
+
+	view.channels.UpdateDisplay()
+}
+
+func (view *View) removePopupView() {
+	removedPopupView := view.popupViews[len(view.popupViews)-1]
+	view.popupViews = view.popupViews[:len(view.popupViews)-1]
+	log.Debugf("Removed popupView. %v popup view(s) active", len(view.popupViews))
+
+	view.channels.ReportEvent(Event{
+		EventType: ViewRemovedEvent,
+		Args:      []interface{}{removedPopupView},
+	})
+
+	if !view.popupViewsActive() {
+		view.onActiveChange(true)
+	}
+
+	view.channels.UpdateDisplay()
 }
 
 func (view *View) popupViewsActive() bool {
@@ -772,15 +802,7 @@ func (view *View) handlePopupViewAction(action Action) (err error) {
 	}
 
 	if action.ActionType == ActionRemoveView {
-		removedPopupView := view.popupViews[len(view.popupViews)-1]
-		view.popupViews = view.popupViews[:len(view.popupViews)-1]
-		view.channels.UpdateDisplay()
-
-		view.channels.ReportEvent(Event{
-			EventType: ViewRemovedEvent,
-			Args:      []interface{}{removedPopupView},
-		})
-
+		view.removePopupView()
 		return
 	}
 
