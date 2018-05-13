@@ -209,12 +209,13 @@ func NewRefView(repoData RepoData, repoController RepoController, channels Chann
 			},
 		},
 		handlers: map[ActionType]refViewHandler{
-			ActionSelect:       selectRef,
-			ActionAddFilter:    addRefFilter,
-			ActionRemoveFilter: removeRefFilter,
-			ActionMouseSelect:  mouseSelectRef,
-			ActionCheckoutRef:  checkoutRef,
-			ActionCreateBranch: createBranchFromRef,
+			ActionSelect:               selectRef,
+			ActionAddFilter:            addRefFilter,
+			ActionRemoveFilter:         removeRefFilter,
+			ActionMouseSelect:          mouseSelectRef,
+			ActionCheckoutRef:          checkoutRef,
+			ActionCreateBranch:         createBranchFromRef,
+			ActionShowAvailableActions: showActionsForRef,
 		},
 	}
 
@@ -419,10 +420,9 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 func (refView *RefView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	RenderKeyBindingHelp(refView.ViewID(), lineBuilder, []ActionMessage{
 		{action: ActionSelect, message: "Select"},
+		{action: ActionShowAvailableActions, message: "Show actions for ref"},
 		{action: ActionFilterPrompt, message: "Add Filter"},
 		{action: ActionRemoveFilter, message: "Remove Filter"},
-		{action: ActionCheckoutRef, message: "Checkout ref"},
-		{action: ActionBranchNamePrompt, message: "Create branch"},
 	})
 
 	return
@@ -958,6 +958,57 @@ func createBranchFromRef(refView *RefView, action Action) (err error) {
 	}
 
 	refView.channels.ReportStatus("Created branch %v at %v", branchName, ref.Oid().ShortID())
+
+	return
+}
+
+func showActionsForRef(refView *RefView, action Action) (err error) {
+	if refView.rows() == 0 {
+		return
+	}
+
+	renderedRefs := refView.renderedRefs.RenderedRefs()
+	renderedRef := renderedRefs[refView.activeViewPos.ActiveRowIndex()]
+
+	if renderedRef.ref == nil {
+		return
+	}
+
+	var contextMenuEntries []ContextMenuEntry
+
+	if _, isHead := renderedRef.ref.(*HEAD); !isHead {
+		contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
+			DisplayName: "Checkout ref",
+			Value:       Action{ActionType: ActionCheckoutRef},
+		})
+	}
+
+	contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
+		DisplayName: "Create branch from ref",
+		Value:       Action{ActionType: ActionBranchNamePrompt},
+	})
+
+	refView.channels.DoAction(Action{
+		ActionType: ActionCreateContextMenu,
+		Args: []interface{}{
+			ActionCreateContextMenuArgs{
+				viewDimension: ViewDimension{
+					rows: 10,
+					cols: 60,
+				},
+				config: ContextMenuConfig{
+					Entries: contextMenuEntries,
+					OnSelect: func(entry ContextMenuEntry, entryIndex uint) {
+						if selectedAction, ok := entry.Value.(Action); ok {
+							refView.channels.DoAction(selectedAction)
+						} else {
+							log.Errorf("Expected Action instance but found: %v", entry.Value)
+						}
+					},
+				},
+			},
+		},
+	})
 
 	return
 }

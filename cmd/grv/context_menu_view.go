@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -100,9 +101,16 @@ func (contextMenuView *ContextMenuView) Render(win RenderWindow) (err error) {
 	return
 }
 
-// RenderHelpBar does nothing
+// RenderHelpBar renders a help message for the context menu
 func (contextMenuView *ContextMenuView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
-	lineBuilder.AppendWithStyle(CmpHelpbarviewSpecial, " %v", "Select action to perform")
+	var quitKeyText string
+
+	quitKeys := DefaultKeyBindings(ActionRemoveView, contextMenuView.ViewID())
+	if len(quitKeys) > 0 {
+		quitKeyText = fmt.Sprintf("(Press %v to close menu)", quitKeys[0])
+	}
+
+	lineBuilder.AppendWithStyle(CmpHelpbarviewSpecial, " %v %v", "Select action to perform", quitKeyText)
 	return
 }
 

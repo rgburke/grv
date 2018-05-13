@@ -112,6 +112,7 @@ q                       Close view (or close tab if empty)
 <Enter>                 Select item (opens listener view if none exists)
 :                       GRV Command prompt
 <C-z>                   Suspend GRV
+<C-a>                   Show available actions for the selected row
 ```
 
 ### View Specific Bindings
