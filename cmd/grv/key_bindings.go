@@ -74,6 +74,7 @@ const (
 	ActionCreateBranch
 	ActionCreateContextMenu
 	ActionShowAvailableActions
+	ActionStageFile
 )
 
 // Action represents a type of actions and its arguments to be executed
@@ -172,6 +173,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-create-branch>":          ActionCreateBranch,
 	"<grv-create-context-menu>":    ActionCreateContextMenu,
 	"<grv-show-available-actions>": ActionShowAvailableActions,
+	"<grv-stage-file>":             ActionStageFile,
 }
 
 var promptActions = map[ActionType]bool{
@@ -294,6 +296,9 @@ var defaultKeyBindings = map[ActionType]map[ViewID][]string{
 	},
 	ActionShowAvailableActions: {
 		ViewAll: {"<C-a>"},
+	},
+	ActionStageFile: {
+		ViewGitStatus: {"a"},
 	},
 }
 

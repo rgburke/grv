@@ -107,7 +107,7 @@ func NewView(repoData RepoData, repoController RepoController, channels Channels
 	view = &View{
 		views: []WindowViewCollection{
 			NewHistoryView(repoData, repoController, channels, config),
-			NewStatusView(repoData, channels, config),
+			NewStatusView(repoData, repoController, channels, config),
 		},
 		channels:          channels,
 		config:            config,

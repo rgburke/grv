@@ -1,8 +1,8 @@
 package main
 
 // NewStatusView creates a new instance
-func NewStatusView(repoData RepoData, channels Channels, config Config) *ContainerView {
-	gitStatusView := NewGitStatusView(repoData, channels, config)
+func NewStatusView(repoData RepoData, repoController RepoController, channels Channels, config Config) *ContainerView {
+	gitStatusView := NewGitStatusView(repoData, repoController, channels, config)
 	diffView := NewDiffView(repoData, channels, config)
 
 	gitStatusView.RegisterGitStatusFileSelectedListener(diffView)

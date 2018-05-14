@@ -43,6 +43,7 @@ var emptyStatusLine = &renderedStatusEntry{}
 
 type renderedStatusEntry struct {
 	text             string
+	filePath         string
 	themeComponentID ThemeComponentID
 	statusType       StatusType
 	StatusEntry      *StatusEntry
@@ -64,6 +65,7 @@ type GitStatusViewListener interface {
 type GitStatusView struct {
 	*SelectableRowView
 	repoData               RepoData
+	repoController         RepoController
 	channels               Channels
 	config                 Config
 	status                 *Status
@@ -78,14 +80,16 @@ type GitStatusView struct {
 }
 
 // NewGitStatusView created a new GitStatusView
-func NewGitStatusView(repoData RepoData, channels Channels, config Config) *GitStatusView {
+func NewGitStatusView(repoData RepoData, repoController RepoController, channels Channels, config Config) *GitStatusView {
 	gitStatusView := &GitStatusView{
-		repoData:      repoData,
-		channels:      channels,
-		config:        config,
-		activeViewPos: NewViewPosition(),
+		repoData:       repoData,
+		repoController: repoController,
+		channels:       channels,
+		config:         config,
+		activeViewPos:  NewViewPosition(),
 		handlers: map[ActionType]gitStatusViewHandler{
-			ActionSelect: selectGitStatusEntry,
+			ActionSelect:    selectGitStatusEntry,
+			ActionStageFile: stageFile,
 		},
 	}
 
@@ -411,6 +415,7 @@ func (gitStatusView *GitStatusView) generateRenderedStatus() {
 
 			renderedStatus = append(renderedStatus, &renderedStatusEntry{
 				text:             "\t" + text,
+				filePath:         statusEntry.diffDelta.NewFile.Path,
 				themeComponentID: themeComponentID,
 				statusType:       statusType,
 				StatusEntry:      statusEntry,
@@ -508,4 +513,19 @@ func selectGitStatusEntry(gitStatusView *GitStatusView, action Action) (err erro
 	}
 
 	return
+}
+
+func stageFile(gitStatusView *GitStatusView, action Action) (err error) {
+	if gitStatusView.rows() == 0 {
+		return
+	}
+
+	renderedStatus := gitStatusView.renderedStatus
+	statusEntry := renderedStatus[gitStatusView.activeViewPos.ActiveRowIndex()]
+
+	if statusEntry.filePath == "" || statusEntry.statusType == StStaged {
+		return
+	}
+
+	return gitStatusView.repoController.StageFile(statusEntry.filePath)
 }

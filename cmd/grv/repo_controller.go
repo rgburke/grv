@@ -28,6 +28,7 @@ type RepoController interface {
 	CheckoutRef(Ref, CheckoutRefResultHandler)
 	CheckoutCommit(*Commit, CheckoutCommitResultHandler)
 	CreateBranch(branchName string, oid *Oid) error
+	StageFile(filePath string) error
 }
 
 // ReadOnlyRepositoryController does not permit any
@@ -55,6 +56,11 @@ func (repoController *ReadOnlyRepositoryController) CheckoutCommit(commit *Commi
 
 // CreateBranch returns a read only error
 func (repoController *ReadOnlyRepositoryController) CreateBranch(branchName string, oid *Oid) (err error) {
+	return errReadOnly
+}
+
+// StageFile returns a read only error
+func (repoController *ReadOnlyRepositoryController) StageFile(filePath string) (err error) {
 	return errReadOnly
 }
 
@@ -267,6 +273,26 @@ func (repoController *RepositoryController) createBranch(branchName string, oid 
 	}
 
 	log.Info("Created local branch %v", branchName)
+
+	return
+}
+
+// StageFile stages the specified file
+func (repoController *RepositoryController) StageFile(filePath string) (err error) {
+	index, err := repoController.repo.Index()
+	if err != nil {
+		return fmt.Errorf("Unable to stage file: %v", err)
+	}
+
+	if err = index.AddByPath(filePath); err != nil {
+		return fmt.Errorf("Unable to stage file: %v", err)
+	}
+
+	if err = index.Write(); err != nil {
+		return fmt.Errorf("Unable to stage file: %v", err)
+	}
+
+	go repoController.repoData.LoadStatus()
 
 	return
 }
