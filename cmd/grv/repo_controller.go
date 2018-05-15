@@ -29,6 +29,7 @@ type RepoController interface {
 	CheckoutCommit(*Commit, CheckoutCommitResultHandler)
 	CreateBranch(branchName string, oid *Oid) error
 	StageFile(filePath string) error
+	UnstageFile(filePath string) error
 }
 
 // ReadOnlyRepositoryController does not permit any
@@ -61,6 +62,11 @@ func (repoController *ReadOnlyRepositoryController) CreateBranch(branchName stri
 
 // StageFile returns a read only error
 func (repoController *ReadOnlyRepositoryController) StageFile(filePath string) (err error) {
+	return errReadOnly
+}
+
+// UnstageFile returns a read only error
+func (repoController *ReadOnlyRepositoryController) UnstageFile(filePath string) (err error) {
 	return errReadOnly
 }
 
@@ -290,6 +296,32 @@ func (repoController *RepositoryController) StageFile(filePath string) (err erro
 
 	if err = index.Write(); err != nil {
 		return fmt.Errorf("Unable to stage file: %v", err)
+	}
+
+	go repoController.repoData.LoadStatus()
+
+	return
+}
+
+// UnstageFile removes a file from the staged area
+func (repoController *RepositoryController) UnstageFile(filePath string) (err error) {
+	head := repoController.repoData.Head()
+	commit, err := repoController.repoData.Commit(head.Oid())
+	if err != nil {
+		return fmt.Errorf("Unable to unstage file: %v", err)
+	}
+
+	index, err := repoController.repo.Index()
+	if err != nil {
+		return fmt.Errorf("Unable to unstage file: %v", err)
+	}
+
+	if err = repoController.repo.ResetDefaultToCommit(commit.commit, []string{filePath}); err != nil {
+		return fmt.Errorf("Unable to unstage file: %v", err)
+	}
+
+	if err = index.Write(); err != nil {
+		return fmt.Errorf("Unable to unstage file: %v", err)
 	}
 
 	go repoController.repoData.LoadStatus()

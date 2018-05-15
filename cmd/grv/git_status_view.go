@@ -88,8 +88,9 @@ func NewGitStatusView(repoData RepoData, repoController RepoController, channels
 		config:         config,
 		activeViewPos:  NewViewPosition(),
 		handlers: map[ActionType]gitStatusViewHandler{
-			ActionSelect:    selectGitStatusEntry,
-			ActionStageFile: stageFile,
+			ActionSelect:      selectGitStatusEntry,
+			ActionStageFile:   stageFile,
+			ActionUnstageFile: unstageFile,
 		},
 	}
 
@@ -528,4 +529,19 @@ func stageFile(gitStatusView *GitStatusView, action Action) (err error) {
 	}
 
 	return gitStatusView.repoController.StageFile(statusEntry.filePath)
+}
+
+func unstageFile(gitStatusView *GitStatusView, action Action) (err error) {
+	if gitStatusView.rows() == 0 {
+		return
+	}
+
+	renderedStatus := gitStatusView.renderedStatus
+	statusEntry := renderedStatus[gitStatusView.activeViewPos.ActiveRowIndex()]
+
+	if statusEntry.filePath == "" || statusEntry.statusType != StStaged {
+		return
+	}
+
+	return gitStatusView.repoController.UnstageFile(statusEntry.filePath)
 }
