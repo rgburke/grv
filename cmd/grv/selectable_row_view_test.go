@@ -205,3 +205,50 @@ func TestWhenActiveRowIndexDoesChangeDownwardsAndRowIsNotSelectableThenNextSelec
 	mocks.viewPos.AssertCalled(t, "SetActiveRowIndex", uint(97))
 	mocks.child.AssertCalled(t, "onRowSelected", uint(97))
 }
+
+func TestWhenRowCountIsZeroThenSelectNearestSelectableRowDoesNothing(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+
+	mocks.child.On("rows").Return(uint(0))
+	mocks.child.ExpectedCalls = mocks.child.ExpectedCalls[1:]
+
+	selectableRowView.SelectNearestSelectableRow()
+}
+
+func TestWhenCurrentRowIsSelectableThenSelectNearestSelectableRowDoesNothing(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(0))
+	mocks.child.On("isSelectableRow", uint(0)).Return(true)
+
+	selectableRowView.SelectNearestSelectableRow()
+}
+
+func TestWhenCurrentRowIsNotSelectableThenSelectNearestSelectableRowSetsNearestSelectableRow(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(0))
+	mocks.child.On("isSelectableRow", uint(0)).Return(false)
+	mocks.child.On("isSelectableRow", uint(1)).Return(true)
+	mocks.viewPos.On("SetActiveRowIndex", uint(1)).Return()
+	mocks.child.On("onRowSelected", uint(1)).Return(nil)
+
+	selectableRowView.SelectNearestSelectableRow()
+
+	mocks.viewPos.AssertCalled(t, "SetActiveRowIndex", uint(1))
+	mocks.child.AssertCalled(t, "onRowSelected", uint(1))
+}
+
+func TestErrorReturnedByOnRowSelectedIsReturnedBySelectNeartestSelectableRow(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(0))
+	mocks.child.On("isSelectableRow", uint(0)).Return(false)
+	mocks.child.On("isSelectableRow", uint(1)).Return(true)
+	mocks.viewPos.On("SetActiveRowIndex", uint(1)).Return()
+	mocks.child.On("onRowSelected", uint(1)).Return(errors.New("Test error"))
+
+	returnedError := selectableRowView.SelectNearestSelectableRow()
+
+	assert.EqualError(t, returnedError, "Test error", "SelectNearestSelectableRow should return error returned by onRowSelected")
+}

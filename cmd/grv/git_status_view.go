@@ -377,6 +377,8 @@ func (gitStatusView *GitStatusView) OnStatusChanged(status *Status) {
 	if renderedStatusNum == 0 {
 		gitStatusView.notifyNoEntrySelected()
 	}
+
+	gitStatusView.channels.ReportError(gitStatusView.SelectNearestSelectableRow())
 }
 
 func (gitStatusView *GitStatusView) generateRenderedStatus() {

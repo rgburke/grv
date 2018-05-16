@@ -523,6 +523,8 @@ func (refView *RefView) generateRenderedRefs() {
 			refView.SelectableRowView.HandleAction(Action{ActionType: ActionPrevLine})
 		}
 	}
+
+	refView.channels.ReportError(refView.SelectNearestSelectableRow())
 }
 
 func generateBranches(refView *RefView, refList *refList, renderedRefs renderedRefSet) {

@@ -49,7 +49,7 @@ func (selectableRowView *SelectableRowView) HandleAction(action Action) (handled
 	if selectableRowView.child.isSelectableRow(activeRowIndexEnd) {
 		selectedRowIndex = activeRowIndexEnd
 	} else {
-		selectedRowIndex = selectableRowView.findNearestSelectableRow(activeRowIndexStart, activeRowIndexEnd)
+		selectedRowIndex = selectableRowView.findNearestSelectableRow(activeRowIndexEnd, activeRowIndexEnd > activeRowIndexStart)
 		log.Debugf("Nearest selectable row index: %v", selectedRowIndex)
 		selectableRowView.child.viewPos().SetActiveRowIndex(selectedRowIndex)
 	}
@@ -59,29 +59,44 @@ func (selectableRowView *SelectableRowView) HandleAction(action Action) (handled
 	return
 }
 
-func (selectableRowView *SelectableRowView) findNearestSelectableRow(activeRowIndexStart, activeRowIndexEnd uint) (rowIndex uint) {
-	downwards := activeRowIndexEnd > activeRowIndexStart
-
-	if downwards {
+func (selectableRowView *SelectableRowView) findNearestSelectableRow(startRowIndex uint, searchDownwards bool) (rowIndex uint) {
+	if searchDownwards {
 		rows := selectableRowView.child.rows()
-		for rowIndex = activeRowIndexEnd + 1; rowIndex < rows; rowIndex++ {
+		for rowIndex = startRowIndex + 1; rowIndex < rows; rowIndex++ {
 			if selectableRowView.child.isSelectableRow(rowIndex) {
 				return
 			}
 		}
 	}
 
-	if activeRowIndexEnd == 0 {
+	if startRowIndex == 0 {
 		return 0
 	}
 
-	for rowIndex = activeRowIndexEnd - 1; rowIndex > 0; rowIndex-- {
+	for rowIndex = startRowIndex - 1; rowIndex > 0; rowIndex-- {
 		if selectableRowView.child.isSelectableRow(rowIndex) {
 			return
 		}
 	}
 
 	return
+}
+
+// SelectNearestSelectableRow selects the nearest selectable row
+// if the current row is not selectable
+func (selectableRowView *SelectableRowView) SelectNearestSelectableRow() (err error) {
+	if selectableRowView.child.rows() == 0 {
+		return
+	}
+
+	currentRowIndex := selectableRowView.child.viewPos().ActiveRowIndex()
+	if selectableRowView.child.isSelectableRow(currentRowIndex) {
+		return
+	}
+
+	nearestSelectableRow := selectableRowView.findNearestSelectableRow(currentRowIndex, true)
+	selectableRowView.child.viewPos().SetActiveRowIndex(nearestSelectableRow)
+	return selectableRowView.child.notifyChildRowSelected(nearestSelectableRow)
 }
 
 type selectableRowDecorator struct {
