@@ -28,8 +28,8 @@ type RepoController interface {
 	CheckoutRef(Ref, CheckoutRefResultHandler)
 	CheckoutCommit(*Commit, CheckoutCommitResultHandler)
 	CreateBranch(branchName string, oid *Oid) error
-	StageFile(filePath string) error
-	UnstageFile(filePath string) error
+	StageFiles(filePaths []string) error
+	UnstageFiles(filePaths []string) error
 }
 
 // ReadOnlyRepositoryController does not permit any
@@ -60,13 +60,13 @@ func (repoController *ReadOnlyRepositoryController) CreateBranch(branchName stri
 	return errReadOnly
 }
 
-// StageFile returns a read only error
-func (repoController *ReadOnlyRepositoryController) StageFile(filePath string) (err error) {
+// StageFiles returns a read only error
+func (repoController *ReadOnlyRepositoryController) StageFiles(filePaths []string) (err error) {
 	return errReadOnly
 }
 
-// UnstageFile returns a read only error
-func (repoController *ReadOnlyRepositoryController) UnstageFile(filePath string) (err error) {
+// UnstageFiles returns a read only error
+func (repoController *ReadOnlyRepositoryController) UnstageFiles(filePaths []string) (err error) {
 	return errReadOnly
 }
 
@@ -283,15 +283,15 @@ func (repoController *RepositoryController) createBranch(branchName string, oid 
 	return
 }
 
-// StageFile stages the specified file
-func (repoController *RepositoryController) StageFile(filePath string) (err error) {
+// StageFiles stages the specified filea
+func (repoController *RepositoryController) StageFiles(filePaths []string) (err error) {
 	index, err := repoController.repo.Index()
 	if err != nil {
 		return fmt.Errorf("Unable to stage file: %v", err)
 	}
 
-	if err = index.AddByPath(filePath); err != nil {
-		return fmt.Errorf("Unable to stage file: %v", err)
+	if err = index.AddAll(filePaths, git.IndexAddDefault, nil); err != nil {
+		return fmt.Errorf("Unable to stage files: %v", err)
 	}
 
 	if err = index.Write(); err != nil {
@@ -303,8 +303,8 @@ func (repoController *RepositoryController) StageFile(filePath string) (err erro
 	return
 }
 
-// UnstageFile removes a file from the staged area
-func (repoController *RepositoryController) UnstageFile(filePath string) (err error) {
+// UnstageFiles removes files from the staged area
+func (repoController *RepositoryController) UnstageFiles(filePaths []string) (err error) {
 	head := repoController.repoData.Head()
 	commit, err := repoController.repoData.Commit(head.Oid())
 	if err != nil {
@@ -316,7 +316,7 @@ func (repoController *RepositoryController) UnstageFile(filePath string) (err er
 		return fmt.Errorf("Unable to unstage file: %v", err)
 	}
 
-	if err = repoController.repo.ResetDefaultToCommit(commit.commit, []string{filePath}); err != nil {
+	if err = repoController.repo.ResetDefaultToCommit(commit.commit, filePaths); err != nil {
 		return fmt.Errorf("Unable to unstage file: %v", err)
 	}
 

@@ -977,15 +977,15 @@ func showActionsForCommit(commitView *CommitView, action Action) (err error) {
 				},
 				config: ContextMenuConfig{
 					Entries: []ContextMenuEntry{
-						ContextMenuEntry{
+						{
 							DisplayName: "Checkout commit",
 							Value:       Action{ActionType: ActionCheckoutCommit},
 						},
-						ContextMenuEntry{
+						{
 							DisplayName: "Create branch from commit",
 							Value:       Action{ActionType: ActionBranchNamePrompt},
 						},
-						ContextMenuEntry{
+						{
 							DisplayName: fmt.Sprintf(`Filter commits by author "%v"`, commitAuthor),
 							Value: Action{
 								ActionType: ActionAddFilter,

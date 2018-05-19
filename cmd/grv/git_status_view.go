@@ -16,21 +16,25 @@ const (
 
 var statusTypeTitle = map[StatusType]*renderedStatusEntry{
 	StStaged: {
+		entryType:        rsetHeader,
 		text:             "Changes to be committed:",
 		themeComponentID: CmpGitStatusStagedTitle,
 		statusType:       StStaged,
 	},
 	StUnstaged: {
+		entryType:        rsetHeader,
 		text:             "Changes not staged for commit:",
 		themeComponentID: CmpGitStatusUnstagedTitle,
 		statusType:       StUnstaged,
 	},
 	StUntracked: {
+		entryType:        rsetHeader,
 		text:             "Untracked files:",
 		themeComponentID: CmpGitStatusUntrackedTitle,
 		statusType:       StUntracked,
 	},
 	StConflicted: {
+		entryType:        rsetHeader,
 		text:             "Unmerged paths:",
 		themeComponentID: CmpGitStatusConflictedTitle,
 		statusType:       StConflicted,
@@ -46,7 +50,16 @@ var statusTypeFileStyle = map[StatusType]ThemeComponentID{
 
 var emptyStatusLine = &renderedStatusEntry{}
 
+type renderedStatusEntryType int
+
+const (
+	rsetEmpty renderedStatusEntryType = iota
+	rsetHeader
+	rsetFile
+)
+
 type renderedStatusEntry struct {
+	entryType        renderedStatusEntryType
 	text             string
 	filePath         string
 	themeComponentID ThemeComponentID
@@ -55,11 +68,11 @@ type renderedStatusEntry struct {
 }
 
 func (renderedStatusEntry *renderedStatusEntry) isSelectable() bool {
-	return renderedStatusEntry.text != ""
+	return renderedStatusEntry.entryType != rsetEmpty
 }
 
 func (renderedStatusEntry *renderedStatusEntry) isFileEntry() bool {
-	return renderedStatusEntry.filePath != ""
+	return renderedStatusEntry.entryType == rsetFile
 }
 
 // GitStatusViewListener is notified when either a file
@@ -251,7 +264,7 @@ func (gitStatusView *GitStatusView) notifyFileEntrySelected(renderedStatus *rend
 
 	go func() {
 		for _, gitStatusViewListener := range gitStatusView.gitStatusViewListeners {
-			gitStatusViewListener.OnFileSelected(renderedStatus.statusType, renderedStatus.StatusEntry.diffDelta.NewFile.Path)
+			gitStatusViewListener.OnFileSelected(renderedStatus.statusType, renderedStatus.StatusEntry.NewFilePath())
 		}
 	}()
 
@@ -416,22 +429,23 @@ func (gitStatusView *GitStatusView) generateRenderedStatus() {
 					prefix = "new file:   "
 				}
 
-				text = fmt.Sprintf("%v%v", prefix, statusEntry.diffDelta.NewFile.Path)
+				text = fmt.Sprintf("%v%v", prefix, statusEntry.NewFilePath())
 			case SetModified:
-				text = fmt.Sprintf("modified:   %v", statusEntry.diffDelta.NewFile.Path)
+				text = fmt.Sprintf("modified:   %v", statusEntry.NewFilePath())
 			case SetDeleted:
-				text = fmt.Sprintf("deleted:   %v", statusEntry.diffDelta.NewFile.Path)
+				text = fmt.Sprintf("deleted:   %v", statusEntry.NewFilePath())
 			case SetRenamed:
-				text = fmt.Sprintf("renamed:   %v -> %v", statusEntry.diffDelta.OldFile.Path, statusEntry.diffDelta.NewFile.Path)
+				text = fmt.Sprintf("renamed:   %v -> %v", statusEntry.OldFilePath(), statusEntry.NewFilePath())
 			case SetTypeChange:
-				text = fmt.Sprintf("typechange: %v", statusEntry.diffDelta.NewFile.Path)
+				text = fmt.Sprintf("typechange: %v", statusEntry.NewFilePath())
 			case SetConflicted:
-				text = fmt.Sprintf("both modified:   %v", statusEntry.diffDelta.NewFile.Path)
+				text = fmt.Sprintf("both modified:   %v", statusEntry.NewFilePath())
 			}
 
 			renderedStatus = append(renderedStatus, &renderedStatusEntry{
+				entryType:        rsetFile,
 				text:             "\t" + text,
-				filePath:         statusEntry.diffDelta.NewFile.Path,
+				filePath:         statusEntry.NewFilePath(),
 				themeComponentID: themeComponentID,
 				statusType:       statusType,
 				StatusEntry:      statusEntry,
@@ -581,15 +595,29 @@ func stageFile(gitStatusView *GitStatusView, action Action) (err error) {
 	renderedStatus := gitStatusView.renderedStatus
 	statusEntry := renderedStatus[gitStatusView.activeViewPos.ActiveRowIndex()]
 
-	if statusEntry.filePath == "" || statusEntry.statusType == StStaged {
+	if !statusEntry.isSelectable() || statusEntry.statusType == StStaged {
 		return
 	}
 
-	if err = gitStatusView.repoController.StageFile(statusEntry.filePath); err != nil {
+	var filePaths []string
+
+	if statusEntry.entryType == rsetFile {
+		filePaths = append(filePaths, statusEntry.filePath)
+	} else if statusEntry.entryType == rsetHeader {
+		filePaths = gitStatusView.status.FilePaths(statusEntry.statusType)
+	}
+
+	if len(filePaths) == 0 {
+		return
+	}
+
+	if err = gitStatusView.repoController.StageFiles(filePaths); err != nil {
 		return
 	}
 
 	_, err = gitStatusView.SelectableRowView.HandleAction(Action{ActionType: ActionNextLine})
+	gitStatusView.channels.UpdateDisplay()
+
 	return
 }
 
@@ -601,14 +629,28 @@ func unstageFile(gitStatusView *GitStatusView, action Action) (err error) {
 	renderedStatus := gitStatusView.renderedStatus
 	statusEntry := renderedStatus[gitStatusView.activeViewPos.ActiveRowIndex()]
 
-	if statusEntry.filePath == "" || statusEntry.statusType != StStaged {
+	if !statusEntry.isSelectable() || statusEntry.statusType != StStaged {
 		return
 	}
 
-	if err = gitStatusView.repoController.UnstageFile(statusEntry.filePath); err != nil {
+	var filePaths []string
+
+	if statusEntry.entryType == rsetFile {
+		filePaths = append(filePaths, statusEntry.filePath)
+	} else if statusEntry.entryType == rsetHeader {
+		filePaths = gitStatusView.status.FilePaths(StStaged)
+	}
+
+	if len(filePaths) == 0 {
+		return
+	}
+
+	if err = gitStatusView.repoController.UnstageFiles(filePaths); err != nil {
 		return
 	}
 
 	_, err = gitStatusView.SelectableRowView.HandleAction(Action{ActionType: ActionPrevLine})
+	gitStatusView.channels.UpdateDisplay()
+
 	return
 }

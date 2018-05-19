@@ -381,6 +381,16 @@ func newStatusEntry(gitStatus git.Status, statusType StatusType, rawStatusEntry 
 	}
 }
 
+// NewFilePath returns the new file path of the status entry
+func (statusEntry *StatusEntry) NewFilePath() string {
+	return statusEntry.diffDelta.NewFile.Path
+}
+
+// OldFilePath returns the old file path of the status entry
+func (statusEntry *StatusEntry) OldFilePath() string {
+	return statusEntry.diffDelta.OldFile.Path
+}
+
 // StatusType describes the different stages a status entry can be in
 type StatusType int
 
@@ -436,13 +446,27 @@ func (status *Status) StatusTypes() (statusTypes []StatusType) {
 }
 
 // Entries returns the status entries for the provided status type
-func (status *Status) Entries(statusType StatusType) []*StatusEntry {
+func (status *Status) Entries(statusType StatusType) (statusEntries []*StatusEntry) {
 	statusEntries, ok := status.entries[statusType]
 	if !ok {
-		return nil
+		return
 	}
 
 	return statusEntries
+}
+
+// FilePaths returns the paths of all files with the provided StatusType
+func (status *Status) FilePaths(statusType StatusType) (filePaths []string) {
+	statusEntries, ok := status.entries[statusType]
+	if !ok {
+		return
+	}
+
+	for _, statusEntry := range statusEntries {
+		filePaths = append(filePaths, statusEntry.NewFilePath())
+	}
+
+	return
 }
 
 // IsEmpty returns true if there are no entries
