@@ -3,11 +3,16 @@ package main
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 )
 
 type gitStatusViewHandler func(*GitStatusView, Action) error
+
+const (
+	gsvLastModifyThresholdMillis = 500
+)
 
 var statusTypeTitle = map[StatusType]*renderedStatusEntry{
 	StStaged: {
@@ -53,6 +58,10 @@ func (renderedStatusEntry *renderedStatusEntry) isSelectable() bool {
 	return renderedStatusEntry.text != ""
 }
 
+func (renderedStatusEntry *renderedStatusEntry) isFileEntry() bool {
+	return renderedStatusEntry.filePath != ""
+}
+
 // GitStatusViewListener is notified when either a file
 // or a non-file entry is selected in the GitStatusView
 type GitStatusViewListener interface {
@@ -76,6 +85,7 @@ type GitStatusView struct {
 	gitStatusViewListeners []GitStatusViewListener
 	lastViewDimension      ViewDimension
 	viewSearch             *ViewSearch
+	lastModify             time.Time
 	lock                   sync.Mutex
 }
 
@@ -87,6 +97,7 @@ func NewGitStatusView(repoData RepoData, repoController RepoController, channels
 		channels:       channels,
 		config:         config,
 		activeViewPos:  NewViewPosition(),
+		lastModify:     time.Now(),
 		handlers: map[ActionType]gitStatusViewHandler{
 			ActionSelect:      selectGitStatusEntry,
 			ActionStageFile:   stageFile,
@@ -376,9 +387,11 @@ func (gitStatusView *GitStatusView) OnStatusChanged(status *Status) {
 
 	if renderedStatusNum == 0 {
 		gitStatusView.notifyNoEntrySelected()
-	}
+	} else if (!gitStatusView.isSelectableRow(index)) ||
+		time.Now().Before(gitStatusView.lastModify.Add(time.Millisecond*gsvLastModifyThresholdMillis)) {
 
-	gitStatusView.channels.ReportError(gitStatusView.SelectNearestSelectableRow())
+		gitStatusView.channels.ReportError(gitStatusView.selectNextFileEntry())
+	}
 }
 
 func (gitStatusView *GitStatusView) generateRenderedStatus() {
@@ -455,6 +468,16 @@ func (gitStatusView *GitStatusView) isSelectableRow(rowIndex uint) (isSelectable
 	return renderedStatus[rowIndex].isSelectable()
 }
 
+func (gitStatusView *GitStatusView) isFileEntry(rowIndex uint) (isFileEntry bool) {
+	renderedStatus := gitStatusView.renderedStatus
+
+	if rowIndex >= uint(len(renderedStatus)) {
+		return
+	}
+
+	return renderedStatus[rowIndex].isFileEntry()
+}
+
 func (gitStatusView *GitStatusView) createGitStatusViewListener() {
 	createViewArgs := CreateViewArgs{
 		viewID: ViewDiff,
@@ -496,6 +519,7 @@ func (gitStatusView *GitStatusView) HandleAction(action Action) (err error) {
 	if handler, ok := gitStatusView.handlers[action.ActionType]; ok {
 		log.Debugf("Action handled by GitStatusView")
 		err = handler(gitStatusView, action)
+		gitStatusView.lastModify = time.Now()
 	} else if handled, err = gitStatusView.viewSearch.HandleAction(action); handled {
 		log.Debugf("Action handled by ViewSearch")
 	} else if handled, err = gitStatusView.SelectableRowView.HandleAction(action); handled {
@@ -505,6 +529,37 @@ func (gitStatusView *GitStatusView) HandleAction(action Action) (err error) {
 	}
 
 	return
+}
+
+func (gitStatusView *GitStatusView) selectNextFileEntry() (err error) {
+	rows := gitStatusView.rows()
+	if rows == 0 {
+		return
+	}
+
+	selectedRowIndex := gitStatusView.activeViewPos.ActiveRowIndex()
+
+	if gitStatusView.isFileEntry(selectedRowIndex) {
+		return
+	}
+
+	defer gitStatusView.channels.UpdateDisplay()
+
+	for rowIndex := selectedRowIndex + 1; rowIndex < rows; rowIndex++ {
+		if gitStatusView.isFileEntry(rowIndex) {
+			return gitStatusView.selectEntry(rowIndex)
+		}
+	}
+
+	if selectedRowIndex > 0 {
+		for rowIndex := selectedRowIndex - 1; rowIndex > 0; rowIndex-- {
+			if gitStatusView.isFileEntry(rowIndex) {
+				return gitStatusView.selectEntry(rowIndex)
+			}
+		}
+	}
+
+	return gitStatusView.selectEntry(0)
 }
 
 func selectGitStatusEntry(gitStatusView *GitStatusView, action Action) (err error) {
@@ -530,7 +585,12 @@ func stageFile(gitStatusView *GitStatusView, action Action) (err error) {
 		return
 	}
 
-	return gitStatusView.repoController.StageFile(statusEntry.filePath)
+	if err = gitStatusView.repoController.StageFile(statusEntry.filePath); err != nil {
+		return
+	}
+
+	_, err = gitStatusView.SelectableRowView.HandleAction(Action{ActionType: ActionNextLine})
+	return
 }
 
 func unstageFile(gitStatusView *GitStatusView, action Action) (err error) {
@@ -545,5 +605,10 @@ func unstageFile(gitStatusView *GitStatusView, action Action) (err error) {
 		return
 	}
 
-	return gitStatusView.repoController.UnstageFile(statusEntry.filePath)
+	if err = gitStatusView.repoController.UnstageFile(statusEntry.filePath); err != nil {
+		return
+	}
+
+	_, err = gitStatusView.SelectableRowView.HandleAction(Action{ActionType: ActionPrevLine})
+	return
 }
