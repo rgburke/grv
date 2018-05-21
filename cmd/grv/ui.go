@@ -162,16 +162,21 @@ type NCursesUI struct {
 	maxColors     int
 	maxColorPairs int
 	suspended     bool
+	suspendedLock *sync.Cond
 	mouseMask     gc.MouseButton
 }
 
 // NewNCursesDisplay creates a new NCursesUI instance
 func NewNCursesDisplay(config Config) *NCursesUI {
-	return &NCursesUI{
+	ui := &NCursesUI{
 		windows:   make(map[*Window]*nCursesWindow),
 		config:    config,
 		mouseMask: gc.M_ALL,
 	}
+
+	ui.suspendedLock = sync.NewCond(&ui.lock)
+
+	return ui
 }
 
 // Free releases ncurses resourese used
@@ -287,6 +292,8 @@ func (ui *NCursesUI) Resume() (err error) {
 
 	ui.stdscr.Refresh()
 	ui.suspended = false
+	ui.suspendedLock.Signal()
+
 	return ui.resize()
 }
 
@@ -477,9 +484,11 @@ func drawWindow(win *Window, nwin *nCursesWindow) {
 func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 	key = UINoKey
 
-	if ui.suspended {
-		return
+	ui.lock.Lock()
+	for ui.suspended {
+		ui.suspendedLock.Wait()
 	}
+	ui.lock.Unlock()
 
 	if !force {
 		rfds := &syscall.FdSet{}
