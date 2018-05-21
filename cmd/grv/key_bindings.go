@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 
 	pt "github.com/tchap/go-patricia/patricia"
 )
@@ -24,6 +25,7 @@ const (
 	ActionNone ActionType = iota
 	ActionExit
 	ActionSuspend
+	ActionRunCommand
 	ActionPrompt
 	ActionSearchPrompt
 	ActionReverseSearchPrompt
@@ -122,10 +124,21 @@ type ActionCreateContextMenuArgs struct {
 	viewDimension ViewDimension
 }
 
+// ActionRunCommandArgs contains arguments to run a command and process
+// the status and output
+type ActionRunCommandArgs struct {
+	command    string
+	stdin      io.Reader
+	stdout     io.Writer
+	stderr     io.Writer
+	onComplete func(err error, exitStatus int)
+}
+
 var actionKeys = map[string]ActionType{
 	"<grv-nop>":                    ActionNone,
 	"<grv-exit>":                   ActionExit,
 	"<grv-suspend>":                ActionSuspend,
+	"<grv-run-command>":            ActionRunCommand,
 	"<grv-prompt>":                 ActionPrompt,
 	"<grv-search-prompt>":          ActionSearchPrompt,
 	"<grv-reverse-search-prompt>":  ActionReverseSearchPrompt,

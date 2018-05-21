@@ -4,6 +4,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"sync"
@@ -461,6 +462,10 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, in
 				grv.End()
 			case ActionSuspend:
 				grv.Suspend()
+			case ActionRunCommand:
+				if err := grv.runCommand(action); err != nil {
+					errorCh <- err
+				}
 			default:
 				if err := grv.view.HandleAction(action); err != nil {
 					errorCh <- err
@@ -479,6 +484,53 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, in
 			}
 		}
 	}
+}
+
+func (grv *GRV) runCommand(action Action) (err error) {
+	if len(action.Args) == 0 {
+		return fmt.Errorf("Expected argument of type ActionRunCommandArgs")
+	}
+
+	arg, ok := action.Args[0].(ActionRunCommandArgs)
+	if !ok {
+		return fmt.Errorf("Expected argument of type ActionRunCommandArgs but found type %T", action.Args[0])
+	}
+
+	cmd := exec.Command("/bin/sh", "-c", arg.command)
+
+	if arg.stdin != nil {
+		cmd.Stdin = arg.stdin
+	}
+
+	if arg.stdout != nil {
+		cmd.Stdout = arg.stdout
+	}
+
+	if arg.stderr != nil {
+		cmd.Stderr = arg.stderr
+	}
+
+	grv.ui.Suspend()
+	cmdError := cmd.Run()
+	grv.ui.Resume()
+
+	exitStatus := -1
+
+	if cmdError != nil {
+		if exitError, ok := cmdError.(*exec.ExitError); ok {
+			waitStatus := exitError.Sys().(syscall.WaitStatus)
+			exitStatus = waitStatus.ExitStatus()
+		}
+	} else {
+		waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
+		waitStatus.ExitStatus()
+	}
+
+	if arg.onComplete != nil {
+		arg.onComplete(cmdError, exitStatus)
+	}
+
+	return
 }
 
 func (grv *GRV) runSignalHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool) {
