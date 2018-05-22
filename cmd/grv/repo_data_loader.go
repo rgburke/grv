@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -1124,4 +1125,25 @@ func (repoDataLoader *RepoDataLoader) LoadStatus() (*Status, error) {
 	}
 
 	return status, nil
+}
+
+// UserEditor returns the editor git is configured to use
+func (repoDataLoader *RepoDataLoader) UserEditor() (editor string, err error) {
+	config, err := repoDataLoader.repo.Config()
+	if err != nil {
+		err = fmt.Errorf("Unable to retrieve git config: %v", err)
+	}
+
+	editor, err = config.LookupString("core.editor")
+	if err != nil {
+		err = fmt.Errorf("Unable to get core.editor config property: %v", err)
+		return
+	}
+
+	if editor != "" {
+		return
+	}
+
+	editor = os.Getenv("GIT_EDITOR")
+	return
 }

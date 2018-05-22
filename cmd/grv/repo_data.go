@@ -52,6 +52,7 @@ type RefStateListener interface {
 type RepoData interface {
 	EventListener
 	Path() string
+	UserEditor() (string, error)
 	LoadHead() error
 	LoadRefs(OnRefsLoaded)
 	LoadCommits(Ref) error
@@ -1015,6 +1016,11 @@ func (repoData *RepositoryData) Initialise(repoSupplier RepoSupplier) (err error
 // Path returns the file patch location of the repository
 func (repoData *RepositoryData) Path() string {
 	return repoData.repoDataLoader.Path()
+}
+
+// UserEditor returns the editor git is configured to use
+func (repoData *RepositoryData) UserEditor() (string, error) {
+	return repoData.repoDataLoader.UserEditor()
 }
 
 // LoadHead attempts to load the HEAD reference
