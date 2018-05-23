@@ -360,6 +360,12 @@ func (refSet *refSet) updateHead(head Ref) {
 	refSet.lock.Lock()
 	defer refSet.lock.Unlock()
 
+	if branch, isLocalBranch := head.(*LocalBranch); isLocalBranch {
+		if branchRef, ok := refSet.refs[branch.Name()]; ok {
+			head = branchRef
+		}
+	}
+
 	oldHead := refSet.headRef
 	refSet.headRef = head
 
@@ -1049,11 +1055,6 @@ func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 	go func() {
 		defer refSet.endRefUpdate()
 
-		if err := repoData.LoadHead(); err != nil {
-			repoData.channels.ReportError(err)
-			return
-		}
-
 		refs, err := repoData.repoDataLoader.LoadRefs()
 		if err != nil {
 			repoData.channels.ReportError(err)
@@ -1063,6 +1064,11 @@ func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 		repoData.mapRefsToCommits(refs)
 
 		if err = refSet.updateRefs(refs); err != nil {
+			repoData.channels.ReportError(err)
+			return
+		}
+
+		if err := repoData.LoadHead(); err != nil {
 			repoData.channels.ReportError(err)
 			return
 		}

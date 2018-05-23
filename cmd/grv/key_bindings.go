@@ -78,6 +78,7 @@ const (
 	ActionShowAvailableActions
 	ActionStageFile
 	ActionUnstageFile
+	ActionCommit
 )
 
 // Action represents a type of actions and its arguments to be executed
@@ -189,6 +190,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-show-available-actions>": ActionShowAvailableActions,
 	"<grv-stage-file>":             ActionStageFile,
 	"<grv-unstage-file>":           ActionUnstageFile,
+	"<grv-action-commit>":          ActionCommit,
 }
 
 var promptActions = map[ActionType]bool{
@@ -317,6 +319,9 @@ var defaultKeyBindings = map[ActionType]map[ViewID][]string{
 	},
 	ActionUnstageFile: {
 		ViewGitStatus: {"u"},
+	},
+	ActionCommit: {
+		ViewGitStatus: {"c"},
 	},
 }
 

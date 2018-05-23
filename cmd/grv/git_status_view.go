@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -115,6 +117,7 @@ func NewGitStatusView(repoData RepoData, repoController RepoController, channels
 			ActionSelect:      selectGitStatusEntry,
 			ActionStageFile:   stageFile,
 			ActionUnstageFile: unstageFile,
+			ActionCommit:      commit,
 		},
 	}
 
@@ -524,6 +527,118 @@ func (gitStatusView *GitStatusView) createGitStatusViewListener() {
 	})
 }
 
+func (gitStatusView *GitStatusView) userEditor() (editor string, err error) {
+	if editor, err = gitStatusView.repoData.UserEditor(); err != nil || editor != "" {
+		return
+	} else if editor = os.Getenv("EDITOR"); editor != "" {
+		return
+	} else if editor = os.Getenv("VISUAL"); editor != "" {
+		return
+	} else {
+		editor = "vi"
+	}
+
+	return
+}
+
+func (gitStatusView *GitStatusView) generateBranchStatus() (lines []string) {
+	head := gitStatusView.repoData.Head()
+
+	if _, isDetached := head.(*HEAD); isDetached {
+		lines = append(lines, GetDetachedHeadDisplayValue(head.Oid()))
+		return
+	}
+
+	branch, isLocalBranch := head.(*LocalBranch)
+	if !isLocalBranch {
+		return
+	}
+
+	lines = append(lines, fmt.Sprintf("On branch %v", branch.Shorthand()))
+
+	if !branch.IsTrackingBranch() {
+		return
+	}
+
+	remoteBranch, err := gitStatusView.repoData.Ref(branch.remoteBranch)
+	if err != nil {
+		return
+	}
+
+	var trackingStatus string
+
+	switch {
+	case branch.ahead == 0 && branch.behind == 0:
+		trackingStatus = fmt.Sprintf("Your branch is up-to-date with '%v'.", remoteBranch.Shorthand())
+	case branch.ahead > 0 && branch.behind > 0:
+		trackingStatus = fmt.Sprintf("Your branch and '%v' have diverged, "+
+			"and have %v and %v different commits each, respectively",
+			remoteBranch.Shorthand(), branch.ahead, branch.behind)
+	case branch.ahead > 0:
+		multiple := ""
+		if branch.ahead > 0 {
+			multiple = "s"
+		}
+		trackingStatus = fmt.Sprintf("Your branch is ahead of '%v' by %v commit%v.",
+			remoteBranch.Shorthand(), branch.ahead, multiple)
+	case branch.behind > 0:
+		multiple := ""
+		if branch.behind > 0 {
+			multiple = "s"
+		}
+		trackingStatus = fmt.Sprintf("Your branch is behind '%v' by %v commit%v.",
+			remoteBranch.Shorthand(), branch.behind, multiple)
+	}
+
+	lines = append(lines, trackingStatus)
+
+	return
+}
+
+func (gitStatusView *GitStatusView) generateCommitMessageFile() (filePath string, err error) {
+	commitMessageFile, err := gitStatusView.repoController.CommitMessageFile()
+	if err != nil {
+		return
+	}
+	defer commitMessageFile.Close()
+	filePath = commitMessageFile.Name()
+
+	lines := []string{
+		"Please enter the commit message for your changes. Lines starting",
+		"with '#' will be ignored, and an empty message aborts the commit.",
+		"",
+	}
+
+	lines = append(lines, gitStatusView.generateBranchStatus()...)
+	lines = append(lines, "")
+
+	for _, renderedStatusEntry := range gitStatusView.renderedStatus {
+		lines = append(lines, renderedStatusEntry.text)
+	}
+
+	lines = append(lines, "")
+
+	writer := bufio.NewWriter(commitMessageFile)
+
+	if _, err = writer.WriteString("\n"); err != nil {
+		err = fmt.Errorf("Failed to write commit message file: %v", err)
+		return
+	}
+
+	for _, line := range lines {
+		if _, err = writer.WriteString(fmt.Sprintf("# %v\n", line)); err != nil {
+			err = fmt.Errorf("Failed to write commit message file: %v", err)
+			return
+		}
+	}
+
+	if err = writer.Flush(); err != nil {
+		err = fmt.Errorf("Failed to write commit message file: %v", err)
+	}
+
+	return
+}
+
 // HandleAction checks if git status view supports this action and if it does executes it
 func (gitStatusView *GitStatusView) HandleAction(action Action) (err error) {
 	gitStatusView.lock.Lock()
@@ -651,6 +766,38 @@ func unstageFile(gitStatusView *GitStatusView, action Action) (err error) {
 
 	_, err = gitStatusView.SelectableRowView.HandleAction(Action{ActionType: ActionPrevLine})
 	gitStatusView.channels.UpdateDisplay()
+
+	return
+}
+
+func commit(gitStatusView *GitStatusView, action Action) (err error) {
+	if gitStatusView.rows() == 0 || len(gitStatusView.status.FilePaths(StStaged)) == 0 {
+		return
+	}
+
+	editor, err := gitStatusView.userEditor()
+	if err != nil {
+		return
+	}
+
+	filePath, err := gitStatusView.generateCommitMessageFile()
+	if err != nil {
+		return
+	}
+
+	command := fmt.Sprintf("%v %v", editor, filePath)
+
+	gitStatusView.channels.DoAction(Action{ActionType: ActionRunCommand, Args: []interface{}{
+		ActionRunCommandArgs{
+			command: command,
+			stdin:   os.Stdin,
+			stdout:  os.Stdout,
+			stderr:  os.Stderr,
+			onComplete: func(err error, exitStatus int) {
+				gitStatusView.channels.UpdateDisplay()
+			},
+		},
+	}})
 
 	return
 }

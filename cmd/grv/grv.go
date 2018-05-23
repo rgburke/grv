@@ -512,7 +512,7 @@ func (grv *GRV) runCommand(action Action) (err error) {
 
 	grv.ui.Suspend()
 	cmdError := cmd.Run()
-	grv.ui.Resume()
+	err = grv.ui.Resume()
 
 	exitStatus := -1
 

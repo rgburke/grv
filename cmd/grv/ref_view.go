@@ -273,7 +273,8 @@ func (refView *RefView) Dispose() {
 
 }
 
-func getDetachedHeadDisplayValue(oid *Oid) string {
+// GetDetachedHeadDisplayValue generates a HEAD detached message
+func GetDetachedHeadDisplayValue(oid *Oid) string {
 	return fmt.Sprintf("HEAD detached at %s", oid.ShortID())
 }
 
@@ -550,7 +551,7 @@ func generateBranches(refView *RefView, refList *refList, renderedRefs renderedR
 
 		if _, isDetached := head.(*HEAD); isDetached {
 			renderedRefs.Add(&RenderedRef{
-				value:           fmt.Sprintf("   %s", getDetachedHeadDisplayValue(head.Oid())),
+				value:           fmt.Sprintf("   %s", GetDetachedHeadDisplayValue(head.Oid())),
 				renderedRefType: branchRenderedRefType,
 				refNum:          branchNum,
 				ref:             head,

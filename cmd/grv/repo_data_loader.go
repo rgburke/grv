@@ -1134,13 +1134,7 @@ func (repoDataLoader *RepoDataLoader) UserEditor() (editor string, err error) {
 		err = fmt.Errorf("Unable to retrieve git config: %v", err)
 	}
 
-	editor, err = config.LookupString("core.editor")
-	if err != nil {
-		err = fmt.Errorf("Unable to get core.editor config property: %v", err)
-		return
-	}
-
-	if editor != "" {
+	if editor, _ = config.LookupString("core.editor"); editor != "" {
 		return
 	}
 

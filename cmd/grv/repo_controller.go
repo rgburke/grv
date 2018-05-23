@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -30,6 +31,7 @@ type RepoController interface {
 	CreateBranch(branchName string, oid *Oid) error
 	StageFiles(filePaths []string) error
 	UnstageFiles(filePaths []string) error
+	CommitMessageFile() (*os.File, error)
 }
 
 // ReadOnlyRepositoryController does not permit any
@@ -68,6 +70,11 @@ func (repoController *ReadOnlyRepositoryController) StageFiles(filePaths []strin
 // UnstageFiles returns a read only error
 func (repoController *ReadOnlyRepositoryController) UnstageFiles(filePaths []string) (err error) {
 	return errReadOnly
+}
+
+// CommitMessageFile returns a read only error
+func (repoController *ReadOnlyRepositoryController) CommitMessageFile() (file *os.File, err error) {
+	return file, errReadOnly
 }
 
 // RepositoryController implements the RepoController interface
@@ -325,6 +332,20 @@ func (repoController *RepositoryController) UnstageFiles(filePaths []string) (er
 	}
 
 	go repoController.repoData.LoadStatus()
+
+	return
+}
+
+// CommitMessageFile creates and truncates the COMMIT_EDITMSG file so that a new
+// commit message file is ready to be written
+func (repoController *RepositoryController) CommitMessageFile() (file *os.File, err error) {
+	repoPath := repoController.repoData.Path()
+	commitMessageFilePath := fmt.Sprintf("%v/%v", repoPath, "COMMIT_EDITMSG")
+
+	file, err = os.OpenFile(commitMessageFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		err = fmt.Errorf("Unable to open file %v for writing: %v", commitMessageFilePath, err)
+	}
 
 	return
 }
