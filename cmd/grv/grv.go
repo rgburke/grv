@@ -514,6 +514,10 @@ func (grv *GRV) runCommand(action Action) (err error) {
 	cmdError := cmd.Run()
 	err = grv.ui.Resume()
 
+	if err != nil {
+		return
+	}
+
 	exitStatus := -1
 
 	if cmdError != nil {
@@ -523,11 +527,11 @@ func (grv *GRV) runCommand(action Action) (err error) {
 		}
 	} else {
 		waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
-		waitStatus.ExitStatus()
+		exitStatus = waitStatus.ExitStatus()
 	}
 
 	if arg.onComplete != nil {
-		arg.onComplete(cmdError, exitStatus)
+		err = arg.onComplete(cmdError, exitStatus)
 	}
 
 	return

@@ -4,8 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -15,6 +18,8 @@ type gitStatusViewHandler func(*GitStatusView, Action) error
 const (
 	gsvLastModifyThresholdMillis = 500
 )
+
+var commitMessageFileCommentLineRegex = regexp.MustCompile(`^\s*#`)
 
 var statusTypeTitle = map[StatusType]*renderedStatusEntry{
 	StStaged: {
@@ -639,6 +644,47 @@ func (gitStatusView *GitStatusView) generateCommitMessageFile() (filePath string
 	return
 }
 
+func (gitStatusView *GitStatusView) processCommitMessageFile(filePath string) (commitMessage string, err error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		err = fmt.Errorf("Unable to open commit message file for reading: %v", err)
+		return
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	commitMessageLines := []string{}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !commitMessageFileCommentLineRegex.MatchString(line) {
+			commitMessageLines = append(commitMessageLines, line)
+		}
+	}
+
+	if err = scanner.Err(); err != nil {
+		err = fmt.Errorf("Error when reading commit message file: %v", err)
+		return
+	}
+
+	commitMessage = strings.Join(commitMessageLines, "\n")
+
+	trimmedCommitMessage := strings.Map(func(char rune) rune {
+		if unicode.IsSpace(char) {
+			return -1
+		}
+
+		return char
+	}, commitMessage)
+
+	if trimmedCommitMessage == "" {
+		err = fmt.Errorf("Aborting commit due to empty commit message")
+		return
+	}
+
+	return
+}
+
 // HandleAction checks if git status view supports this action and if it does executes it
 func (gitStatusView *GitStatusView) HandleAction(action Action) (err error) {
 	gitStatusView.lock.Lock()
@@ -793,8 +839,24 @@ func commit(gitStatusView *GitStatusView, action Action) (err error) {
 			stdin:   os.Stdin,
 			stdout:  os.Stdout,
 			stderr:  os.Stderr,
-			onComplete: func(err error, exitStatus int) {
-				gitStatusView.channels.UpdateDisplay()
+			onComplete: func(commandErr error, exitStatus int) (err error) {
+				if commandErr != nil || exitStatus != 0 {
+					return fmt.Errorf("Editor command failed - Not proceeding with commit")
+				}
+
+				commitMessage, err := gitStatusView.processCommitMessageFile(filePath)
+				if err != nil {
+					return
+				}
+
+				head := gitStatusView.repoData.Head()
+				oid, err := gitStatusView.repoController.Commit(head, commitMessage)
+				if err != nil {
+					return
+				}
+
+				gitStatusView.channels.ReportStatus("Created commit %v", oid.ShortID())
+				return
 			},
 		},
 	}})

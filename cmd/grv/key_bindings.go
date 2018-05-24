@@ -132,7 +132,7 @@ type ActionRunCommandArgs struct {
 	stdin      io.Reader
 	stdout     io.Writer
 	stderr     io.Writer
-	onComplete func(err error, exitStatus int)
+	onComplete func(err error, exitStatus int) error
 }
 
 var actionKeys = map[string]ActionType{

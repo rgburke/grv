@@ -32,6 +32,7 @@ type RepoController interface {
 	StageFiles(filePaths []string) error
 	UnstageFiles(filePaths []string) error
 	CommitMessageFile() (*os.File, error)
+	Commit(ref Ref, message string) (*Oid, error)
 }
 
 // ReadOnlyRepositoryController does not permit any
@@ -75,6 +76,11 @@ func (repoController *ReadOnlyRepositoryController) UnstageFiles(filePaths []str
 // CommitMessageFile returns a read only error
 func (repoController *ReadOnlyRepositoryController) CommitMessageFile() (file *os.File, err error) {
 	return file, errReadOnly
+}
+
+// Commit returns a read only error
+func (repoController *ReadOnlyRepositoryController) Commit(ref Ref, message string) (oid *Oid, err error) {
+	return oid, errReadOnly
 }
 
 // RepositoryController implements the RepoController interface
@@ -346,6 +352,49 @@ func (repoController *RepositoryController) CommitMessageFile() (file *os.File, 
 	if err != nil {
 		err = fmt.Errorf("Unable to open file %v for writing: %v", commitMessageFilePath, err)
 	}
+
+	return
+}
+
+// Commit creates a new commit based on the current index state for the specified reference and commit message
+func (repoController *RepositoryController) Commit(ref Ref, message string) (oid *Oid, err error) {
+	signature, err := repoController.repo.DefaultSignature()
+	if err != nil {
+		err = fmt.Errorf("Unable to determine signature information: %v", err)
+		return
+	}
+
+	parentCommit, err := repoController.repoData.Commit(ref.Oid())
+	if err != nil {
+		err = fmt.Errorf("Unable to load parent commit: %v", err)
+		return
+	}
+
+	index, err := repoController.repo.Index()
+	if err != nil {
+		err = fmt.Errorf("Unable to load index: %v", err)
+		return
+	}
+
+	treeID, err := index.WriteTree()
+	if err != nil {
+		err = fmt.Errorf("Unable to write index tree: %v", err)
+		return
+	}
+
+	tree, err := repoController.repo.LookupTree(treeID)
+	if err != nil {
+		err = fmt.Errorf("Unable to load index tree: %v", err)
+		return
+	}
+
+	rawOid, err := repoController.repo.CreateCommit(ref.Name(), signature, signature, message, tree, parentCommit.commit)
+	if err != nil {
+		err = fmt.Errorf("Unable to create commit: %v", err)
+		return
+	}
+
+	oid = &Oid{oid: rawOid}
 
 	return
 }
