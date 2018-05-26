@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	pt "github.com/tchap/go-patricia/patricia"
 )
@@ -252,13 +253,13 @@ var defaultKeyBindings = map[ActionType]map[ViewID][]string{
 		ViewAll: {"G"},
 	},
 	ActionNextView: {
-		ViewAll: {"<Tab>", "<C-w>w", "<C-w><C-w>"},
+		ViewAll: {"<C-w>w", "<C-w><C-w>", "<Tab>"},
 	},
 	ActionPrevView: {
-		ViewAll: {"<S-Tab>", "<C-w>W"},
+		ViewAll: {"<C-w>W", "<S-Tab>"},
 	},
 	ActionFullScreenView: {
-		ViewAll: {"f", "<C-w>o", "<C-w><C-o>"},
+		ViewAll: {"<C-w>o", "<C-w><C-o>", "f"},
 	},
 	ActionToggleViewLayout: {
 		ViewAll: {"<C-w>t"},
@@ -275,7 +276,7 @@ var defaultKeyBindings = map[ActionType]map[ViewID][]string{
 		ViewRef:    {"<C-r>"},
 	},
 	ActionCenterView: {
-		ViewAll: {"zz", "z."},
+		ViewAll: {"z.", "zz"},
 	},
 	ActionScrollCursorTop: {
 		ViewAll: {"zt"},
@@ -366,20 +367,31 @@ type KeyBindings interface {
 	SetActionBinding(viewID ViewID, keystring string, actionType ActionType)
 	SetKeystringBinding(viewID ViewID, keystring, mappedKeystring string)
 	RemoveBinding(viewID ViewID, keystring string) (removed bool)
+	KeyStrings(actionType ActionType, viewID ViewID) (keystrings []BoundKeyString)
+}
+
+// BoundKeyString is a keystring bound to an action
+type BoundKeyString struct {
+	keystring          string
+	userDefinedBinding bool
 }
 
 // KeyBindingManager manages key bindings in grv
 type KeyBindingManager struct {
-	bindings map[ViewID]*pt.Trie
+	bindings           map[ViewID]*pt.Trie
+	helpFormat         map[ActionType]map[ViewID][]BoundKeyString
+	userDefinedBinding bool
 }
 
 // NewKeyBindingManager creates a new instance
 func NewKeyBindingManager() KeyBindings {
 	keyBindingManager := &KeyBindingManager{
-		bindings: make(map[ViewID]*pt.Trie),
+		bindings:   make(map[ViewID]*pt.Trie),
+		helpFormat: make(map[ActionType]map[ViewID][]BoundKeyString),
 	}
 
 	keyBindingManager.setDefaultKeyBindings()
+	keyBindingManager.userDefinedBinding = true
 
 	return keyBindingManager
 }
@@ -407,12 +419,17 @@ func (keyBindingManager *KeyBindingManager) Binding(viewHierarchy ViewHierarchy,
 func (keyBindingManager *KeyBindingManager) SetActionBinding(viewID ViewID, keystring string, actionType ActionType) {
 	viewBindings := keyBindingManager.getOrCreateViewBindings(viewID)
 	viewBindings.Set(pt.Prefix(keystring), newActionBinding(actionType))
+	keyBindingManager.updateHelpFormat(actionType, viewID, keystring)
 }
 
 // SetKeystringBinding allows a key sequence to be bound to the provided key sequence and view
 func (keyBindingManager *KeyBindingManager) SetKeystringBinding(viewID ViewID, keystring, mappedKeystring string) {
 	viewBindings := keyBindingManager.getOrCreateViewBindings(viewID)
 	viewBindings.Set(pt.Prefix(keystring), newKeystringBinding(mappedKeystring))
+
+	if actionType, ok := actionKeys[mappedKeystring]; ok {
+		keyBindingManager.updateHelpFormat(actionType, viewID, keystring)
+	}
 }
 
 func (keyBindingManager *KeyBindingManager) getOrCreateViewBindings(viewID ViewID) *pt.Trie {
@@ -426,12 +443,83 @@ func (keyBindingManager *KeyBindingManager) getOrCreateViewBindings(viewID ViewI
 	return viewBindings
 }
 
-// RemoveBinding removes the binding for the provided keystring if it exists
-func (keyBindingManager *KeyBindingManager) RemoveBinding(viewID ViewID, keystring string) (removed bool) {
-	if viewBindings, ok := keyBindingManager.bindings[viewID]; ok {
-		return viewBindings.Delete(pt.Prefix(keystring))
+func (keyBindingManager *KeyBindingManager) updateHelpFormat(actionType ActionType, viewID ViewID, keystring string) {
+	if strings.HasPrefix(keystring, "<grv-") {
+		return
 	}
 
+	viewBindings, ok := keyBindingManager.helpFormat[actionType]
+	if !ok {
+		viewBindings = map[ViewID][]BoundKeyString{}
+		keyBindingManager.helpFormat[actionType] = viewBindings
+	}
+
+	keystrings, ok := viewBindings[viewID]
+	if !ok {
+		keystrings = []BoundKeyString{}
+	}
+
+	viewBindings[viewID] = append(keystrings, BoundKeyString{
+		keystring:          keystring,
+		userDefinedBinding: keyBindingManager.userDefinedBinding,
+	})
+}
+
+// RemoveBinding removes the binding for the provided keystring if it exists
+func (keyBindingManager *KeyBindingManager) RemoveBinding(viewID ViewID, keystring string) (removed bool) {
+	binding, _ := keyBindingManager.Binding([]ViewID{viewID}, keystring)
+
+	if viewBindings, ok := keyBindingManager.bindings[viewID]; ok {
+		removed = viewBindings.Delete(pt.Prefix(keystring))
+	}
+
+	if binding.actionType != ActionNone || binding.keystring != "" {
+		keyBindingManager.removeHelpFormatEntry(binding, viewID, keystring)
+	}
+
+	return
+}
+
+func (keyBindingManager *KeyBindingManager) removeHelpFormatEntry(binding Binding, viewID ViewID, keystring string) {
+	var actionType ActionType
+
+	if binding.bindingType == BtAction {
+		actionType = binding.actionType
+	} else if binding.bindingType == BtKeystring {
+		if mappedActionType, ok := actionKeys[binding.keystring]; ok {
+			actionType = mappedActionType
+		}
+	}
+
+	viewBindings, ok := keyBindingManager.helpFormat[actionType]
+	if !ok {
+		return
+	}
+
+	keystrings, ok := viewBindings[viewID]
+	if !ok {
+		return
+	}
+
+	updatedKeystrings := []BoundKeyString{}
+
+	for _, key := range keystrings {
+		if key.keystring != keystring {
+			updatedKeystrings = append(updatedKeystrings, key)
+		}
+	}
+
+	viewBindings[viewID] = updatedKeystrings
+}
+
+// KeyStrings returns the keystrings bound to the provided action and view
+func (keyBindingManager *KeyBindingManager) KeyStrings(actionType ActionType, viewID ViewID) (keystrings []BoundKeyString) {
+	viewBindings, ok := keyBindingManager.helpFormat[actionType]
+	if !ok {
+		return
+	}
+
+	keystrings, _ = viewBindings[viewID]
 	return
 }
 
@@ -458,25 +546,6 @@ func isValidAction(action string) bool {
 func IsPromptAction(actionType ActionType) bool {
 	_, isPrompt := promptActions[actionType]
 	return isPrompt
-}
-
-// DefaultKeyBindings returns the default key sequences that are bound to an action for the provided view
-func DefaultKeyBindings(actionType ActionType, viewID ViewID) (keyBindings []string) {
-	viewKeys, ok := defaultKeyBindings[actionType]
-	if !ok {
-		return
-	}
-
-	keys, ok := viewKeys[viewID]
-	if !ok {
-		keys, ok = viewKeys[ViewAll]
-
-		if !ok {
-			return
-		}
-	}
-
-	return keys
 }
 
 // MouseEventAction maps a mouse event to an action

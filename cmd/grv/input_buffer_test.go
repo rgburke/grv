@@ -29,6 +29,11 @@ func (keyBindings *MockKeyBindings) RemoveBinding(viewID ViewID, keystring strin
 	return args.Bool(0)
 }
 
+func (keyBindings *MockKeyBindings) KeyStrings(actionType ActionType, viewID ViewID) []BoundKeyString {
+	args := keyBindings.Called(actionType, viewID)
+	return args.Get(0).([]BoundKeyString)
+}
+
 func checkProcessResult(expectedAction Action, expectedKeystring string, actualAction Action, actualKeystring string, t *testing.T) {
 	if !reflect.DeepEqual(expectedAction, actualAction) {
 		t.Errorf("Returned action does not match expected value. Expected: %v, Actual: %v", expectedAction, actualAction)

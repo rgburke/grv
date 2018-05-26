@@ -6,10 +6,12 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	slice "github.com/bradfitz/slice"
 )
 
 const (
@@ -172,6 +174,7 @@ type Config interface {
 	GetTheme() Theme
 	AddOnChangeListener(ConfigVariable, ConfigVariableOnChangeListener)
 	ConfigDir() string
+	KeyStrings(ActionType, ViewHierarchy) []BoundKeyString
 }
 
 // ConfigSetter extends the config interface and exposes the ability to set config values
@@ -699,6 +702,19 @@ func (config *Configuration) GetTheme() Theme {
 	}
 
 	return theme
+}
+
+// KeyStrings returns the set of keystrings bound to the provided action and view
+func (config *Configuration) KeyStrings(actionType ActionType, viewHierarchy ViewHierarchy) (keystrings []BoundKeyString) {
+	for i := len(viewHierarchy) - 1; i > -1; i-- {
+		keystrings = append(keystrings, config.keyBindings.KeyStrings(actionType, viewHierarchy[i])...)
+	}
+
+	sort.Stable(slice.SortInterface(keystrings, func(i, j int) bool {
+		return !keystrings[i].userDefinedBinding && keystrings[j].userDefinedBinding
+	}))
+
+	return
 }
 
 type tabWidithValidator struct{}

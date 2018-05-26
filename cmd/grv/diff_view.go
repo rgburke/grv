@@ -313,7 +313,7 @@ func (diffView *DiffView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 		line := diffLines.lines[lineIndex]
 
 		if line.lineType == dltDiffStatsFile {
-			RenderKeyBindingHelp(diffView.ViewID(), lineBuilder, []ActionMessage{
+			RenderKeyBindingHelp(diffView.ViewID(), lineBuilder, diffView.config, []ActionMessage{
 				{action: ActionSelect, message: "Jump to file diff"},
 			})
 		}

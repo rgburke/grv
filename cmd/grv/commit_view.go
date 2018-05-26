@@ -299,7 +299,7 @@ func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIn
 
 // RenderHelpBar shows key bindings custom to the commit view
 func (commitView *CommitView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
-	RenderKeyBindingHelp(commitView.ViewID(), lineBuilder, []ActionMessage{
+	RenderKeyBindingHelp(commitView.ViewID(), lineBuilder, commitView.config, []ActionMessage{
 		{action: ActionShowAvailableActions, message: "Show actions for commit"},
 		{action: ActionFilterPrompt, message: "Add Filter"},
 		{action: ActionRemoveFilter, message: "Remove Filter"},

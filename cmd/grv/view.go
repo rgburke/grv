@@ -337,7 +337,7 @@ func (view *View) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	view.lock.Unlock()
 
 	if !promptActive && !view.popupViewsActive() {
-		RenderKeyBindingHelp(view.ViewID(), lineBuilder, []ActionMessage{
+		RenderKeyBindingHelp(view.ViewID(), lineBuilder, view.config, []ActionMessage{
 			{action: ActionPrompt, message: "Cmd Prompt"},
 			{action: ActionNextTab, message: "Next Tab"},
 			{action: ActionPrevTab, message: "Prev Tab"},

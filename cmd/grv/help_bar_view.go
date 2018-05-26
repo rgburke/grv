@@ -72,17 +72,16 @@ func (helpBarView *HelpBarView) RenderHelpBar(lineBuilder *LineBuilder) (err err
 }
 
 // RenderKeyBindingHelp is a helper method for views to generate key binding help
-func RenderKeyBindingHelp(viewID ViewID, lineBuilder *LineBuilder, actionMessages []ActionMessage) {
+func RenderKeyBindingHelp(viewID ViewID, lineBuilder *LineBuilder, config Config, actionMessages []ActionMessage) {
+	viewHierarchy := ViewHierarchy{viewID, ViewAll}
+
 	for _, actionMessage := range actionMessages {
-		keys := DefaultKeyBindings(actionMessage.action, viewID)
+		keystrings := config.KeyStrings(actionMessage.action, viewHierarchy)
 
-		if len(keys) == 0 {
-			log.Debugf("No keys mapped for action %v", actionMessage.action)
-			continue
+		if len(keystrings) > 0 {
+			lineBuilder.
+				AppendWithStyle(CmpHelpbarviewSpecial, "%v ", keystrings[len(keystrings)-1].keystring).
+				AppendWithStyle(CmpHelpbarviewNormal, "%v   ", actionMessage.message)
 		}
-
-		lineBuilder.
-			AppendWithStyle(CmpHelpbarviewSpecial, "%v ", keys[0]).
-			AppendWithStyle(CmpHelpbarviewNormal, "%v   ", actionMessage.message)
 	}
 }

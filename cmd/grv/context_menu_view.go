@@ -105,9 +105,9 @@ func (contextMenuView *ContextMenuView) Render(win RenderWindow) (err error) {
 func (contextMenuView *ContextMenuView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	var quitKeyText string
 
-	quitKeys := DefaultKeyBindings(ActionRemoveView, contextMenuView.ViewID())
+	quitKeys := contextMenuView.config.KeyStrings(ActionRemoveView, ViewHierarchy{ViewContextMenu, ViewAll})
 	if len(quitKeys) > 0 {
-		quitKeyText = fmt.Sprintf("(Press %v to close menu)", quitKeys[0])
+		quitKeyText = fmt.Sprintf("(Press %v to close menu)", quitKeys[len(quitKeys)-1].keystring)
 	}
 
 	lineBuilder.AppendWithStyle(CmpHelpbarviewSpecial, " %v %v", "Select action to perform", quitKeyText)

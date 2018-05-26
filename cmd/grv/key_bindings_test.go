@@ -94,19 +94,31 @@ func TestViewAllBindingIsAvailableInAllViews(t *testing.T) {
 	checkBinding(binding, isPrefix, expectedBinding, false, t)
 }
 
-func TestDefaultKeyBindingsReturnsBindings(t *testing.T) {
-	tests := map[ActionType][]string{
-		ActionFirstLine:    {"gg"},
-		ActionScrollLeft:   {"<Left>", "h"},
-		ActionFilterPrompt: {"<C-q>"},
+func TestKeyStringsReturnsExpectedBoundKeys(t *testing.T) {
+	keyBindings := NewKeyBindingManager()
+
+	keyBindings.SetActionBinding(ViewAll, "aaa", ActionFirstLine)
+	keyBindings.SetKeystringBinding(ViewAll, "bbb", "<grv-first-line>")
+
+	expectedKeystrings := []BoundKeyString{
+		BoundKeyString{
+			keystring:          "gg",
+			userDefinedBinding: false,
+		},
+		BoundKeyString{
+			keystring:          "aaa",
+			userDefinedBinding: true,
+		},
+		BoundKeyString{
+			keystring:          "bbb",
+			userDefinedBinding: true,
+		},
 	}
 
-	for actionType, expectedKeys := range tests {
-		actualKeys := DefaultKeyBindings(actionType, ViewCommit)
+	actualKeystrings := keyBindings.KeyStrings(ActionFirstLine, ViewAll)
 
-		if !reflect.DeepEqual(expectedKeys, actualKeys) {
-			t.Errorf("DefaultKeyBindings result did not match expected result. Expected: %v, Actual: %v", expectedKeys, actualKeys)
-		}
+	if !reflect.DeepEqual(expectedKeystrings, actualKeystrings) {
+		t.Errorf("Returned keystrings did not match expected value. Expected: %v, Actual: %v", expectedKeystrings, actualKeystrings)
 	}
 }
 

@@ -213,6 +213,11 @@ func (config *MockConfig) ConfigDir() string {
 	return args.String(0)
 }
 
+func (config *MockConfig) KeyStrings(actionType ActionType, viewHierarchy ViewHierarchy) []BoundKeyString {
+	args := config.Called(actionType, viewHierarchy)
+	return args.Get(0).([]BoundKeyString)
+}
+
 type abstractWindowViewMocks struct {
 	viewPos  *MockViewPos
 	child    *MockChildWindowView

@@ -419,7 +419,7 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 
 // RenderHelpBar generates key binding help info for the ref view
 func (refView *RefView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
-	RenderKeyBindingHelp(refView.ViewID(), lineBuilder, []ActionMessage{
+	RenderKeyBindingHelp(refView.ViewID(), lineBuilder, refView.config, []ActionMessage{
 		{action: ActionSelect, message: "Select"},
 		{action: ActionShowAvailableActions, message: "Show actions for ref"},
 		{action: ActionFilterPrompt, message: "Add Filter"},
