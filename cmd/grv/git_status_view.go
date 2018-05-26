@@ -249,7 +249,13 @@ func (gitStatusView *GitStatusView) ViewID() ViewID {
 }
 
 // RenderHelpBar does nothing
-func (gitStatusView *GitStatusView) RenderHelpBar(*LineBuilder) (err error) {
+func (gitStatusView *GitStatusView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
+	RenderKeyBindingHelp(gitStatusView.ViewID(), lineBuilder, gitStatusView.config, []ActionMessage{
+		{action: ActionStageFile, message: "Stage"},
+		{action: ActionUnstageFile, message: "Unstage"},
+		{action: ActionCommit, message: "Commit"},
+	})
+
 	return
 }
 
@@ -818,7 +824,7 @@ func unstageFile(gitStatusView *GitStatusView, action Action) (err error) {
 
 func commit(gitStatusView *GitStatusView, action Action) (err error) {
 	if gitStatusView.rows() == 0 || len(gitStatusView.status.FilePaths(StStaged)) == 0 {
-		return
+		return fmt.Errorf("No files to commit")
 	}
 
 	editor, err := gitStatusView.userEditor()

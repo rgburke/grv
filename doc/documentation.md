@@ -136,6 +136,14 @@ c                       Checkout commit
 b                       Create branch
 ```
 
+Git Status View specific key bindings:
+
+```
+a                       Stage
+u                       Unstage
+c                       Commit
+```
+
 ## Configuration
 
 The behaviour of GRV can be customised through the use of commands specified
@@ -359,6 +367,7 @@ The set of actions available is:
 <grv-search-prompt>
 <grv-reverse-search-prompt>
 <grv-filter-prompt>
+<grv-branch-name-prompt>
 <grv-search>
 <grv-reverse-search>
 <grv-search-find-next>
@@ -382,6 +391,12 @@ The set of actions available is:
 <grv-prev-tab>
 <grv-remove-tab>
 <grv-remove-view>
+<grv-checkout-ref>
+<grv-checkout-commit>
+<grv-show-available-actions>
+<grv-stage-file>
+<grv-unstage-file>
+<grv-action-commit>
 ```
 
 ### unmap
