@@ -825,6 +825,8 @@ func unstageFile(gitStatusView *GitStatusView, action Action) (err error) {
 func commit(gitStatusView *GitStatusView, action Action) (err error) {
 	if gitStatusView.rows() == 0 || len(gitStatusView.status.FilePaths(StStaged)) == 0 {
 		return fmt.Errorf("No files to commit")
+	} else if len(gitStatusView.status.FilePaths(StConflicted)) > 0 {
+		return fmt.Errorf("Committing is not possible due to unmerged files - Resolve conflicts before commiting")
 	}
 
 	editor, err := gitStatusView.userEditor()
