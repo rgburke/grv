@@ -449,6 +449,11 @@ func (view *View) HandleAction(action Action) (err error) {
 		defer view.lock.Unlock()
 
 		return view.createContextMenuView(action)
+	case ActionCreateCommandOutputView:
+		view.lock.Lock()
+		defer view.lock.Unlock()
+
+		return view.createCommandOutputView(action)
 	}
 
 	return view.ActiveView().HandleAction(action)
@@ -761,6 +766,33 @@ func (view *View) createContextMenuView(action Action) (err error) {
 	})
 
 	log.Debugf("Created context menu")
+
+	return
+}
+
+func (view *View) createCommandOutputView(action Action) (err error) {
+	if len(action.Args) == 0 {
+		return fmt.Errorf("Expected ActionCreateCommandOutputViewArgs argument")
+	}
+
+	arg, ok := action.Args[0].(ActionCreateCommandOutputViewArgs)
+	if !ok {
+		return fmt.Errorf("Expected ActionCreateCommandOutputViewArgs argument but got %T", action.Args[0])
+	}
+
+	commandOutputView := NewCommandOutputView(arg.command, view.channels, view.config)
+
+	view.addPopupView(&popupView{
+		view:          commandOutputView,
+		viewDimension: arg.viewDimension,
+		win:           NewWindow(fmt.Sprintf("popupView-%v", len(view.popupViews)), view.config),
+	})
+
+	arg.onCreation(commandOutputView)
+
+	log.Debugf("Created command output view")
+
+	view.channels.UpdateDisplay()
 
 	return
 }

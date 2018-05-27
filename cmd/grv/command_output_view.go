@@ -11,12 +11,14 @@ type outputLineType int
 
 const (
 	oltNormal outputLineType = iota
+	oltCommand
 	oltError
 	oltSuccess
 )
 
 var outputLineThemeComponentIDs = map[outputLineType]ThemeComponentID{
 	oltNormal:  CmpCommandOutputNormal,
+	oltCommand: CmpCommandOutputCommand,
 	oltError:   CmpCommandOutputError,
 	oltSuccess: CmpCommandOutputSuccess,
 }
@@ -43,12 +45,17 @@ type CommandOutputView struct {
 }
 
 // NewCommandOutputView creates a new instance
-func NewCommandOutputView(channels Channels, config Config) *CommandOutputView {
+func NewCommandOutputView(command string, channels Channels, config Config) *CommandOutputView {
 	commandOutputView := &CommandOutputView{
 		activeViewPos: NewViewPosition(),
 	}
 
 	commandOutputView.AbstractWindowView = NewAbstractWindowView(commandOutputView, channels, config, "output line")
+
+	commandOutputView.addOutputLine(outputLine{
+		line:     fmt.Sprintf("$ %v", command),
+		lineType: oltCommand,
+	})
 
 	return commandOutputView
 }
@@ -74,8 +81,10 @@ func (commandOutputView *CommandOutputView) Render(win RenderWindow) (err error)
 	viewRowIndex := viewPos.ViewStartRowIndex()
 	startColumn := viewPos.ViewStartColumn()
 
+	win.ApplyStyle(CmpCommandOutputNormal)
+
 	for rowIndex := uint(0); rowIndex < winRows && viewRowIndex < viewRows; rowIndex++ {
-		outputLine := commandOutputView.outputLines[rowIndex]
+		outputLine := commandOutputView.outputLines[viewRowIndex]
 		themeComponentID := outputLineThemeComponentIDs[outputLine.lineType]
 
 		if err = win.SetRow(rowIndex+1, startColumn, themeComponentID, " %v", outputLine.line); err != nil {
@@ -85,7 +94,10 @@ func (commandOutputView *CommandOutputView) Render(win RenderWindow) (err error)
 		viewRowIndex++
 	}
 
-	win.ApplyStyle(CmpCommandOutputNormal)
+	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, true); err != nil {
+		return
+	}
+
 	win.DrawBorderWithStyle(CmpCommandOutputNormal)
 
 	if err = win.SetTitle(CmpCommandOutputTitle, "Command Output"); err != nil {
@@ -127,10 +139,16 @@ func (commandOutputView *CommandOutputView) OnCommandExecutionError(err error) {
 	commandOutputView.lock.Lock()
 	defer commandOutputView.lock.Unlock()
 
-	commandOutputView.addOutputLine(outputLine{
-		line:     fmt.Sprintf("Command execution failed: %v", err),
-		lineType: oltError,
-	})
+	commandOutputView.addOutputLine(
+		outputLine{
+			line:     "",
+			lineType: oltNormal,
+		},
+		outputLine{
+			line:     fmt.Sprintf("Command execution failed: %v", err),
+			lineType: oltError,
+		},
+	)
 }
 
 // OnCommandComplete is called when a command has completed and it's exit status is available
@@ -146,15 +164,21 @@ func (commandOutputView *CommandOutputView) OnCommandComplete(exitCode int) {
 		lineType = oltError
 	}
 
-	commandOutputView.addOutputLine(outputLine{
-		line:     fmt.Sprintf("Command exited with %v", exitCode),
-		lineType: lineType,
-	})
+	commandOutputView.addOutputLine(
+		outputLine{
+			line:     "",
+			lineType: oltNormal,
+		},
+		outputLine{
+			line:     fmt.Sprintf("Command exited with status %v", exitCode),
+			lineType: lineType,
+		},
+	)
 }
 
-func (commandOutputView *CommandOutputView) addOutputLine(outputLine outputLine) {
-	commandOutputView.outputLines = append(commandOutputView.outputLines, outputLine)
-	commandOutputView.activeViewPos.SetActiveRowIndex(uint(len(commandOutputView.outputLines) - 1))
+func (commandOutputView *CommandOutputView) addOutputLine(outputLines ...outputLine) {
+	commandOutputView.outputLines = append(commandOutputView.outputLines, outputLines...)
+	commandOutputView.activeViewPos.SetActiveRowIndex(commandOutputView.rows() - 1)
 	commandOutputView.channels.UpdateDisplay()
 }
 

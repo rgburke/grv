@@ -843,10 +843,11 @@ func commit(gitStatusView *GitStatusView, action Action) (err error) {
 
 	gitStatusView.channels.DoAction(Action{ActionType: ActionRunCommand, Args: []interface{}{
 		ActionRunCommandArgs{
-			command: command,
-			stdin:   os.Stdin,
-			stdout:  os.Stdout,
-			stderr:  os.Stderr,
+			command:     command,
+			interactive: true,
+			stdin:       os.Stdin,
+			stdout:      os.Stdout,
+			stderr:      os.Stderr,
 			onComplete: func(commandErr error, exitStatus int) (err error) {
 				if commandErr != nil || exitStatus != 0 {
 					return fmt.Errorf("Editor command failed - Not proceeding with commit")

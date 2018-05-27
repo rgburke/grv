@@ -85,6 +85,7 @@ const (
 	CmpContextMenuFooter
 
 	CmpCommandOutputTitle
+	CmpCommandOutputCommand
 	CmpCommandOutputNormal
 	CmpCommandOutputError
 	CmpCommandOutputSuccess

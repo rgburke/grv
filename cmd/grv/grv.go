@@ -510,12 +510,28 @@ func (grv *GRV) runCommand(action Action) (err error) {
 		cmd.Stderr = arg.stderr
 	}
 
-	grv.ui.Suspend()
-	cmdError := cmd.Run()
-	err = grv.ui.Resume()
+	if arg.interactive {
+		grv.ui.Suspend()
+	}
 
-	if err != nil {
-		return
+	if arg.beforeStart != nil {
+		arg.beforeStart(cmd)
+	}
+
+	cmdError := cmd.Start()
+
+	if cmdError == nil {
+		if arg.onStart != nil {
+			arg.onStart(cmd)
+		}
+
+		cmdError = cmd.Wait()
+	}
+
+	if arg.interactive {
+		if err = grv.ui.Resume(); err != nil {
+			return
+		}
 	}
 
 	exitStatus := -1

@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"reflect"
 	"regexp"
 	"sort"
@@ -389,6 +393,8 @@ func (config *Configuration) processCommand(command ConfigCommand, inputSource s
 		err = config.processAddViewCommand(command, inputSource)
 	case *SplitViewCommand:
 		err = config.processSplitViewCommand(command, inputSource)
+	case *GitCommand:
+		err = config.processGitCommand(command, inputSource)
 	default:
 		log.Errorf("Unknown command type %T", command)
 	}
@@ -652,6 +658,74 @@ func (config *Configuration) processSplitViewCommand(splitViewCommand *SplitView
 	})
 
 	return
+}
+
+func (config *Configuration) processGitCommand(gitCommand *GitCommand, inputSource string) (err error) {
+	var buffer bytes.Buffer
+
+	buffer.WriteString("git ")
+
+	for _, token := range gitCommand.args {
+		buffer.WriteString(token.value)
+		buffer.WriteRune(' ')
+	}
+
+	command := buffer.String()
+
+	config.channels.DoAction(Action{ActionType: ActionCreateCommandOutputView, Args: []interface{}{
+		ActionCreateCommandOutputViewArgs{
+			command: command,
+			viewDimension: ViewDimension{
+				cols: 80,
+				rows: 24,
+			},
+			onCreation: func(commandOutputProcessor CommandOutputProcessor) {
+				config.runCommand(buffer.String(), commandOutputProcessor)
+			},
+		},
+	}})
+
+	return
+}
+
+func (config *Configuration) runCommand(command string, commandOutputProcessor CommandOutputProcessor) {
+	var scanner *bufio.Scanner
+
+	config.channels.DoAction(Action{ActionType: ActionRunCommand, Args: []interface{}{
+		ActionRunCommandArgs{
+			command:     command,
+			interactive: false,
+			beforeStart: func(cmd *exec.Cmd) {
+				stdout, err := cmd.StdoutPipe()
+				if err != nil {
+					commandOutputProcessor.OnCommandExecutionError(err)
+					return
+				}
+
+				stderr, err := cmd.StderrPipe()
+				if err != nil {
+					commandOutputProcessor.OnCommandExecutionError(err)
+					return
+				}
+
+				scanner = bufio.NewScanner(io.MultiReader(stdout, stderr))
+			},
+			onStart: func(cmd *exec.Cmd) {
+				for scanner.Scan() {
+					commandOutputProcessor.AddOutputLine(scanner.Text())
+				}
+			},
+			onComplete: func(commandErr error, exitStatus int) (err error) {
+				if commandErr != nil {
+					commandOutputProcessor.OnCommandExecutionError(commandErr)
+				} else {
+					commandOutputProcessor.OnCommandComplete(exitStatus)
+				}
+
+				return
+			},
+		},
+	}})
 }
 
 // AddOnChangeListener adds a listener to be notified when a configuration variable changes value

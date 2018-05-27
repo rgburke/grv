@@ -272,6 +272,10 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
 			},
+			CmpCommandOutputCommand: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorYellow),
+			},
 			CmpCommandOutputNormal: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
@@ -563,6 +567,10 @@ func NewColdTheme() MutableTheme {
 			CmpCommandOutputTitle: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpCommandOutputCommand: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorYellow),
 			},
 			CmpCommandOutputNormal: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -856,6 +864,10 @@ func NewSolarizedTheme() MutableTheme {
 			CmpCommandOutputTitle: {
 				bgcolor: NewColorNumber(235),
 				fgcolor: NewColorNumber(37),
+			},
+			CmpCommandOutputCommand: {
+				bgcolor: NewColorNumber(235),
+				fgcolor: NewColorNumber(136),
 			},
 			CmpCommandOutputNormal: {
 				bgcolor: NewColorNumber(235),

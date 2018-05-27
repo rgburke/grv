@@ -19,6 +19,7 @@ const (
 	vsplitCommand    = "vsplit"
 	hsplitCommand    = "hsplit"
 	splitCommand     = "split"
+	gitCommand       = "git"
 )
 
 type commandConstructor func(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error)
@@ -99,6 +100,13 @@ type SplitViewCommand struct {
 
 func (splitViewCommand *SplitViewCommand) configCommand() {}
 
+// GitCommand represents a git command
+type GitCommand struct {
+	args []*ConfigToken
+}
+
+func (gitCommand *GitCommand) configCommand() {}
+
 type commandDescriptor struct {
 	tokenTypes  []ConfigTokenType
 	varArgs     bool
@@ -147,6 +155,10 @@ var commandDescriptors = map[string]*commandDescriptor{
 	splitCommand: {
 		varArgs:     true,
 		constructor: splitViewCommandConstructor,
+	},
+	gitCommand: {
+		varArgs:     true,
+		constructor: gitCommandConstructor,
 	},
 }
 
@@ -421,5 +433,11 @@ func splitViewCommandConstructor(parser *ConfigParser, commandToken *ConfigToken
 		orientation: orientation,
 		view:        tokens[0],
 		args:        tokens[1:],
+	}, nil
+}
+
+func gitCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
+	return &GitCommand{
+		args: tokens,
 	}, nil
 }

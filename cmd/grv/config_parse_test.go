@@ -202,6 +202,28 @@ func (splitViewCommandValues *SplitViewCommandValues) Equal(command ConfigComman
 		reflect.DeepEqual(splitViewCommandValues.args, otherArgs)
 }
 
+type GitCommandValues struct {
+	args []string
+}
+
+func (gitCommandValues *GitCommandValues) Equal(command ConfigCommand) bool {
+	if command == nil {
+		return false
+	}
+
+	other, ok := command.(*GitCommand)
+	if !ok {
+		return false
+	}
+
+	var otherArgs []string
+	for _, arg := range other.args {
+		otherArgs = append(otherArgs, arg.value)
+	}
+
+	return reflect.DeepEqual(gitCommandValues.args, otherArgs)
+}
+
 func TestParseSingleCommand(t *testing.T) {
 	var singleCommandTests = []struct {
 		input           string
@@ -281,6 +303,12 @@ func TestParseSingleCommand(t *testing.T) {
 			expectedCommand: &SplitViewCommandValues{
 				orientation: CoDynamic,
 				view:        "GitStatusView",
+			},
+		},
+		{
+			input: "git status --show-stash",
+			expectedCommand: &GitCommandValues{
+				args: []string{"status", "--show-stash"},
 			},
 		},
 	}

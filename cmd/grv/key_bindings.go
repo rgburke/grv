@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os/exec"
 	"strings"
 
 	pt "github.com/tchap/go-patricia/patricia"
@@ -76,6 +77,7 @@ const (
 	ActionCheckoutCommit
 	ActionCreateBranch
 	ActionCreateContextMenu
+	ActionCreateCommandOutputView
 	ActionShowAvailableActions
 	ActionStageFile
 	ActionUnstageFile
@@ -126,14 +128,24 @@ type ActionCreateContextMenuArgs struct {
 	viewDimension ViewDimension
 }
 
+// ActionCreateCommandOutputViewArgs contains arguments to create and configure a command output view
+type ActionCreateCommandOutputViewArgs struct {
+	command       string
+	viewDimension ViewDimension
+	onCreation    func(commandOutputProcessor CommandOutputProcessor)
+}
+
 // ActionRunCommandArgs contains arguments to run a command and process
 // the status and output
 type ActionRunCommandArgs struct {
-	command    string
-	stdin      io.Reader
-	stdout     io.Writer
-	stderr     io.Writer
-	onComplete func(err error, exitStatus int) error
+	command     string
+	interactive bool
+	stdin       io.Reader
+	stdout      io.Writer
+	stderr      io.Writer
+	beforeStart func(cmd *exec.Cmd)
+	onStart     func(cmd *exec.Cmd)
+	onComplete  func(err error, exitStatus int) error
 }
 
 var actionKeys = map[string]ActionType{
