@@ -101,15 +101,15 @@ func TestKeyStringsReturnsExpectedBoundKeys(t *testing.T) {
 	keyBindings.SetKeystringBinding(ViewAll, "bbb", "<grv-first-line>")
 
 	expectedKeystrings := []BoundKeyString{
-		BoundKeyString{
+		{
 			keystring:          "gg",
 			userDefinedBinding: false,
 		},
-		BoundKeyString{
+		{
 			keystring:          "aaa",
 			userDefinedBinding: true,
 		},
-		BoundKeyString{
+		{
 			keystring:          "bbb",
 			userDefinedBinding: true,
 		},

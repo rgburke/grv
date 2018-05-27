@@ -268,6 +268,26 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
 			},
+			CmpCommandOutputTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpCommandOutputNormal: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpCommandOutputError: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+			},
+			CmpCommandOutputSuccess: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorGreen),
+			},
+			CmpCommandOutputFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
 		},
 	}
 }
@@ -537,6 +557,26 @@ func NewColdTheme() MutableTheme {
 				fgcolor: NewSystemColor(ColorNone),
 			},
 			CmpContextMenuFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpCommandOutputTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpCommandOutputNormal: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpCommandOutputError: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+			},
+			CmpCommandOutputSuccess: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorGreen),
+			},
+			CmpCommandOutputFooter: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorBlue),
 			},
@@ -810,6 +850,26 @@ func NewSolarizedTheme() MutableTheme {
 				fgcolor: NewColorNumber(254),
 			},
 			CmpContextMenuFooter: {
+				bgcolor: NewColorNumber(235),
+				fgcolor: NewColorNumber(37),
+			},
+			CmpCommandOutputTitle: {
+				bgcolor: NewColorNumber(235),
+				fgcolor: NewColorNumber(37),
+			},
+			CmpCommandOutputNormal: {
+				bgcolor: NewColorNumber(235),
+				fgcolor: NewColorNumber(254),
+			},
+			CmpCommandOutputError: {
+				bgcolor: NewColorNumber(235),
+				fgcolor: NewColorNumber(160),
+			},
+			CmpCommandOutputSuccess: {
+				bgcolor: NewColorNumber(235),
+				fgcolor: NewColorNumber(64),
+			},
+			CmpCommandOutputFooter: {
 				bgcolor: NewColorNumber(235),
 				fgcolor: NewColorNumber(37),
 			},

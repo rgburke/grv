@@ -29,19 +29,20 @@ const (
 	cfConfirmCheckoutDefaultValue   = true
 	cfPromptHistorySizeDefaultValue = 1000
 
-	cfAllView         = "All"
-	cfMainView        = "MainView"
-	cfHistoryView     = "HistoryView"
-	cfStatusView      = "StatusView"
-	cfGRVStatusView   = "GRVStatusView"
-	cfRefView         = "RefView"
-	cfCommitView      = "CommitView"
-	cfDiffView        = "DiffView"
-	cfStatusBarView   = "StatusBarView"
-	cfHelpBarView     = "HelpBarView"
-	cfErrorView       = "ErrorView"
-	cfGitStatusView   = "GitStatusView"
-	cfContextMenuView = "ContextMenuView"
+	cfAllView           = "All"
+	cfMainView          = "MainView"
+	cfHistoryView       = "HistoryView"
+	cfStatusView        = "StatusView"
+	cfGRVStatusView     = "GRVStatusView"
+	cfRefView           = "RefView"
+	cfCommitView        = "CommitView"
+	cfDiffView          = "DiffView"
+	cfStatusBarView     = "StatusBarView"
+	cfHelpBarView       = "HelpBarView"
+	cfErrorView         = "ErrorView"
+	cfGitStatusView     = "GitStatusView"
+	cfContextMenuView   = "ContextMenuView"
+	cfCommandOutputView = "CommandOutputView"
 )
 
 // ConfigVariable stores a config variable name
@@ -77,19 +78,20 @@ var systemColorValues = map[string]SystemColorValue{
 }
 
 var viewIDNames = map[string]ViewID{
-	cfAllView:         ViewAll,
-	cfMainView:        ViewMain,
-	cfHistoryView:     ViewHistory,
-	cfStatusView:      ViewStatus,
-	cfGRVStatusView:   ViewGRVStatus,
-	cfRefView:         ViewRef,
-	cfCommitView:      ViewCommit,
-	cfDiffView:        ViewDiff,
-	cfStatusBarView:   ViewStatusBar,
-	cfHelpBarView:     ViewHelpBar,
-	cfErrorView:       ViewError,
-	cfGitStatusView:   ViewGitStatus,
-	cfContextMenuView: ViewContextMenu,
+	cfAllView:           ViewAll,
+	cfMainView:          ViewMain,
+	cfHistoryView:       ViewHistory,
+	cfStatusView:        ViewStatus,
+	cfGRVStatusView:     ViewGRVStatus,
+	cfRefView:           ViewRef,
+	cfCommitView:        ViewCommit,
+	cfDiffView:          ViewDiff,
+	cfStatusBarView:     ViewStatusBar,
+	cfHelpBarView:       ViewHelpBar,
+	cfErrorView:         ViewError,
+	cfGitStatusView:     ViewGitStatus,
+	cfContextMenuView:   ViewContextMenu,
+	cfCommandOutputView: ViewCommandOutput,
 }
 
 var themeComponents = map[string]ThemeComponentID{
@@ -159,6 +161,12 @@ var themeComponents = map[string]ThemeComponentID{
 	cfContextMenuView + ".Title":   CmpContextMenuTitle,
 	cfContextMenuView + ".Content": CmpContextMenuContent,
 	cfContextMenuView + ".Footer":  CmpContextMenuFooter,
+
+	cfCommandOutputView + ".Title":   CmpCommandOutputTitle,
+	cfCommandOutputView + ".Normal":  CmpCommandOutputNormal,
+	cfCommandOutputView + ".Error":   CmpCommandOutputError,
+	cfCommandOutputView + ".Success": CmpCommandOutputSuccess,
+	cfCommandOutputView + ".Footer":  CmpCommandOutputFooter,
 }
 
 var colorNumberPattern = regexp.MustCompile(`[0-9]{1,3}`)
