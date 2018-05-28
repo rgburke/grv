@@ -22,6 +22,8 @@
      * [vsplit](#vsplit)
      * [hsplit](#hsplit)
      * [split](#split)
+     * [git](#git)
+     * [giti](#giti)
  - [Filter Query Language](#filter-query-language)
 
 ## Introduction
@@ -514,6 +516,33 @@ active view. The form of the command is:
 
 ```
 split view viewargs...
+```
+
+### git
+
+The git command is an alias to the `git` cli command. It allows a
+non-interactive git command to run without having to leave grv. A pop-up
+window displays the output of the command. For example, to run `git status`
+from within grv use the following key sequence:
+
+```
+:git status
+```
+
+Only non-interactive git commands (i.e. those that require no user input) can
+be run using the git command. For interactive git commands the [giti](#giti)
+command can be used.
+
+### giti
+
+The giti command is an alias to the `git` cli command. It allows an
+interactive git command (i.e. those that require user input) to be run
+without having to leave grv. The command is executed in the controlling
+terminal and grv is resumed on command completion. For example, to run
+`git rebase -i HEAD~2` use the following key sequence:
+
+```
+:giti rebase -i HEAD~2
 ```
 
 ## Filter Query Language
