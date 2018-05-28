@@ -203,7 +203,8 @@ func (splitViewCommandValues *SplitViewCommandValues) Equal(command ConfigComman
 }
 
 type GitCommandValues struct {
-	args []string
+	interactive bool
+	args        []string
 }
 
 func (gitCommandValues *GitCommandValues) Equal(command ConfigCommand) bool {
@@ -221,7 +222,8 @@ func (gitCommandValues *GitCommandValues) Equal(command ConfigCommand) bool {
 		otherArgs = append(otherArgs, arg.value)
 	}
 
-	return reflect.DeepEqual(gitCommandValues.args, otherArgs)
+	return gitCommandValues.interactive == other.interactive &&
+		reflect.DeepEqual(gitCommandValues.args, otherArgs)
 }
 
 func TestParseSingleCommand(t *testing.T) {
@@ -308,7 +310,15 @@ func TestParseSingleCommand(t *testing.T) {
 		{
 			input: "git status --show-stash",
 			expectedCommand: &GitCommandValues{
-				args: []string{"status", "--show-stash"},
+				interactive: false,
+				args:        []string{"status", "--show-stash"},
+			},
+		},
+		{
+			input: "giti rebase -i HEAD~2",
+			expectedCommand: &GitCommandValues{
+				interactive: true,
+				args:        []string{"rebase", "-i", "HEAD~2"},
 			},
 		},
 	}

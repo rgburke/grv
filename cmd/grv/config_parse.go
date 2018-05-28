@@ -8,18 +8,19 @@ import (
 )
 
 const (
-	setCommand       = "set"
-	themeCommand     = "theme"
-	mapCommand       = "map"
-	unmapCommand     = "unmap"
-	quitCommand      = "q"
-	addtabCommand    = "addtab"
-	removetabCommand = "rmtab"
-	addviewCommand   = "addview"
-	vsplitCommand    = "vsplit"
-	hsplitCommand    = "hsplit"
-	splitCommand     = "split"
-	gitCommand       = "git"
+	setCommand            = "set"
+	themeCommand          = "theme"
+	mapCommand            = "map"
+	unmapCommand          = "unmap"
+	quitCommand           = "q"
+	addtabCommand         = "addtab"
+	removetabCommand      = "rmtab"
+	addviewCommand        = "addview"
+	vsplitCommand         = "vsplit"
+	hsplitCommand         = "hsplit"
+	splitCommand          = "split"
+	gitCommand            = "git"
+	gitInteractiveCommand = "giti"
 )
 
 type commandConstructor func(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error)
@@ -102,7 +103,8 @@ func (splitViewCommand *SplitViewCommand) configCommand() {}
 
 // GitCommand represents a git command
 type GitCommand struct {
-	args []*ConfigToken
+	interactive bool
+	args        []*ConfigToken
 }
 
 func (gitCommand *GitCommand) configCommand() {}
@@ -157,6 +159,10 @@ var commandDescriptors = map[string]*commandDescriptor{
 		constructor: splitViewCommandConstructor,
 	},
 	gitCommand: {
+		varArgs:     true,
+		constructor: gitCommandConstructor,
+	},
+	gitInteractiveCommand: {
 		varArgs:     true,
 		constructor: gitCommandConstructor,
 	},
@@ -438,6 +444,7 @@ func splitViewCommandConstructor(parser *ConfigParser, commandToken *ConfigToken
 
 func gitCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
 	return &GitCommand{
-		args: tokens,
+		interactive: commandToken.value == gitInteractiveCommand,
+		args:        tokens,
 	}, nil
 }

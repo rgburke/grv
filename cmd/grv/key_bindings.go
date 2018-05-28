@@ -138,14 +138,15 @@ type ActionCreateCommandOutputViewArgs struct {
 // ActionRunCommandArgs contains arguments to run a command and process
 // the status and output
 type ActionRunCommandArgs struct {
-	command     string
-	interactive bool
-	stdin       io.Reader
-	stdout      io.Writer
-	stderr      io.Writer
-	beforeStart func(cmd *exec.Cmd)
-	onStart     func(cmd *exec.Cmd)
-	onComplete  func(err error, exitStatus int) error
+	command        string
+	interactive    bool
+	promptForInput bool
+	stdin          io.Reader
+	stdout         io.Writer
+	stderr         io.Writer
+	beforeStart    func(cmd *exec.Cmd)
+	onStart        func(cmd *exec.Cmd)
+	onComplete     func(err error, exitStatus int) error
 }
 
 var actionKeys = map[string]ActionType{

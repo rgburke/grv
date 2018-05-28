@@ -292,7 +292,7 @@ func (ui *NCursesUI) Resume() (err error) {
 
 	ui.stdscr.Refresh()
 	ui.suspended = false
-	ui.suspendedLock.Signal()
+	ui.suspendedLock.Broadcast()
 
 	return ui.resize()
 }
@@ -341,6 +341,9 @@ func (ui *NCursesUI) ViewDimension() ViewDimension {
 // Update draws the provided windows to the terminal display
 func (ui *NCursesUI) Update(wins []*Window) (err error) {
 	ui.lock.Lock()
+	for ui.suspended {
+		ui.suspendedLock.Wait()
+	}
 	defer ui.lock.Unlock()
 
 	log.Debug("Updating display")

@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -529,6 +530,11 @@ func (grv *GRV) runCommand(action Action) (err error) {
 	}
 
 	if arg.interactive {
+		if arg.promptForInput {
+			cmd.Stdout.Write([]byte("\nPress any key to continue"))
+			bufio.NewReader(cmd.Stdin).ReadByte()
+		}
+
 		if err = grv.ui.Resume(); err != nil {
 			return
 		}

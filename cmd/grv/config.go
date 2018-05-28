@@ -670,25 +670,50 @@ func (config *Configuration) processGitCommand(gitCommand *GitCommand, inputSour
 		buffer.WriteRune(' ')
 	}
 
+	buffer.Truncate(buffer.Len() - 1)
 	command := buffer.String()
 
-	config.channels.DoAction(Action{ActionType: ActionCreateCommandOutputView, Args: []interface{}{
-		ActionCreateCommandOutputViewArgs{
-			command: command,
-			viewDimension: ViewDimension{
-				cols: 80,
-				rows: 24,
+	if gitCommand.interactive {
+		config.channels.DoAction(Action{ActionType: ActionRunCommand, Args: []interface{}{
+			ActionRunCommandArgs{
+				command:        command,
+				interactive:    true,
+				promptForInput: true,
+				stdin:          os.Stdin,
+				stdout:         os.Stdout,
+				stderr:         os.Stderr,
+				onComplete: func(commandErr error, exitStatus int) (err error) {
+					if commandErr != nil {
+						return fmt.Errorf(`Command "%v" failed: %v"`, command, commandErr)
+					} else if exitStatus != 0 {
+						return fmt.Errorf(`Command "%v" exited with status %v`, command, exitStatus)
+					}
+
+					config.channels.ReportStatus(`Command "%v" exited with status %v`, command, exitStatus)
+
+					return
+				},
 			},
-			onCreation: func(commandOutputProcessor CommandOutputProcessor) {
-				config.runCommand(buffer.String(), commandOutputProcessor)
+		}})
+	} else {
+		config.channels.DoAction(Action{ActionType: ActionCreateCommandOutputView, Args: []interface{}{
+			ActionCreateCommandOutputViewArgs{
+				command: command,
+				viewDimension: ViewDimension{
+					cols: 80,
+					rows: 24,
+				},
+				onCreation: func(commandOutputProcessor CommandOutputProcessor) {
+					config.runNonInteractiveCommand(command, commandOutputProcessor)
+				},
 			},
-		},
-	}})
+		}})
+	}
 
 	return
 }
 
-func (config *Configuration) runCommand(command string, commandOutputProcessor CommandOutputProcessor) {
+func (config *Configuration) runNonInteractiveCommand(command string, commandOutputProcessor CommandOutputProcessor) {
 	var scanner *bufio.Scanner
 
 	config.channels.DoAction(Action{ActionType: ActionRunCommand, Args: []interface{}{
