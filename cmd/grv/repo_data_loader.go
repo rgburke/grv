@@ -611,6 +611,11 @@ func (repoDataLoader *RepoDataLoader) Path() string {
 	return repoDataLoader.repo.Path()
 }
 
+// Workdir returns working directory file path for the repository
+func (repoDataLoader *RepoDataLoader) Workdir() string {
+	return repoDataLoader.repo.Workdir()
+}
+
 // Head loads the current HEAD ref
 func (repoDataLoader *RepoDataLoader) Head() (ref Ref, err error) {
 	log.Debug("Loading HEAD")

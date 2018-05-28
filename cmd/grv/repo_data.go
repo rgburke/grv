@@ -52,6 +52,7 @@ type RefStateListener interface {
 type RepoData interface {
 	EventListener
 	Path() string
+	Workdir() string
 	UserEditor() (string, error)
 	LoadHead() error
 	LoadRefs(OnRefsLoaded)
@@ -1022,6 +1023,11 @@ func (repoData *RepositoryData) Initialise(repoSupplier RepoSupplier) (err error
 // Path returns the file patch location of the repository
 func (repoData *RepositoryData) Path() string {
 	return repoData.repoDataLoader.Path()
+}
+
+// Workdir returns working directory file path for the repository
+func (repoData *RepositoryData) Workdir() string {
+	return repoData.repoDataLoader.Workdir()
 }
 
 // UserEditor returns the editor git is configured to use

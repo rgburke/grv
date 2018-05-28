@@ -511,6 +511,20 @@ func (grv *GRV) runCommand(action Action) (err error) {
 		cmd.Stderr = arg.stderr
 	}
 
+	env := os.Environ()
+
+	gitDir := grv.repoData.Path()
+	if gitDir != "" {
+		env = append(env, fmt.Sprintf("GIT_DIR=%v", gitDir))
+	}
+
+	workdir := grv.repoData.Workdir()
+	if workdir != "" {
+		env = append(env, fmt.Sprintf("GIT_WORK_TREE=%v", workdir))
+	}
+
+	cmd.Env = env
+
 	if arg.interactive {
 		grv.ui.Suspend()
 	}
