@@ -31,6 +31,7 @@ const (
 	ViewGitStatus
 	ViewContextMenu
 	ViewCommandOutput
+	ViewHelp
 )
 
 // HelpRenderer renders help information

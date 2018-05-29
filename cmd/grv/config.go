@@ -47,6 +47,7 @@ const (
 	cfGitStatusView     = "GitStatusView"
 	cfContextMenuView   = "ContextMenuView"
 	cfCommandOutputView = "CommandOutputView"
+	cfHelpView          = "HelpView"
 )
 
 // ConfigVariable stores a config variable name
@@ -96,6 +97,7 @@ var viewIDNames = map[string]ViewID{
 	cfGitStatusView:     ViewGitStatus,
 	cfContextMenuView:   ViewContextMenu,
 	cfCommandOutputView: ViewCommandOutput,
+	cfHelpView:          ViewHelp,
 }
 
 var themeComponents = map[string]ThemeComponentID{
