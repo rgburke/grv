@@ -592,54 +592,73 @@ func NewColdTheme() MutableTheme {
 	}
 }
 
+const (
+	solarizedBrightBlack   = 234
+	solarizedBlack         = 235
+	solarizedBrightGreen   = 240
+	solarizedBrightYellow  = 241
+	solarizedBrightBlue    = 244
+	solarizedBrightCyan    = 245
+	solarizedWhite         = 254
+	solarizedBrightWhite   = 230
+	solarizedYellow        = 136
+	solarizedBrightRed     = 166
+	solarizedRed           = 160
+	solarizedMagenta       = 125
+	solarizedBrightMagenta = 61
+	solarizedBlue          = 33
+	solarizedCyan          = 37
+	solarizedGreen         = 64
+)
+
 // NewSolarizedTheme creates the solarized theme of grv
 // Solarized color codes Copyright (c) 2011 Ethan Schoonover
 func NewSolarizedTheme() MutableTheme {
 	return &ThemeComponents{
 		components: map[ThemeComponentID]*ThemeComponent{
 			CmpAllviewDefault: {
-				bgcolor: NewColorNumber(234),
-				fgcolor: NewColorNumber(244),
+				bgcolor: NewColorNumber(solarizedBrightBlack),
+				fgcolor: NewColorNumber(solarizedBrightBlue),
 			},
 			CmpAllviewSearchMatch: {
-				bgcolor: NewColorNumber(136),
-				fgcolor: NewColorNumber(254),
+				bgcolor: NewColorNumber(solarizedYellow),
+				fgcolor: NewColorNumber(solarizedWhite),
 			},
 			CmpAllviewActiveViewSelectedRow: {
-				bgcolor: NewColorNumber(234),
-				fgcolor: NewColorNumber(254),
+				bgcolor: NewColorNumber(solarizedBrightBlack),
+				fgcolor: NewColorNumber(solarizedWhite),
 			},
 			CmpAllviewInactiveViewSelectedRow: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(245),
+				fgcolor: NewColorNumber(solarizedBrightCyan),
 			},
 			CmpMainviewActiveView: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(254),
+				fgcolor: NewColorNumber(solarizedWhite),
 			},
 			CmpMainviewNormalView: {
-				bgcolor: NewColorNumber(235),
+				bgcolor: NewColorNumber(solarizedBlack),
 				fgcolor: NewSystemColor(ColorNone),
 			},
 			CmpCommitviewTitle: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(37),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpCommitviewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(37),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpCommitviewShortOid: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(136),
+				fgcolor: NewColorNumber(solarizedYellow),
 			},
 			CmpCommitviewDate: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(33),
+				fgcolor: NewColorNumber(solarizedBlue),
 			},
 			CmpCommitviewAuthor: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(64),
+				fgcolor: NewColorNumber(solarizedGreen),
 			},
 			CmpCommitviewSummary: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -647,59 +666,59 @@ func NewSolarizedTheme() MutableTheme {
 			},
 			CmpCommitviewTag: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(160),
+				fgcolor: NewColorNumber(solarizedRed),
 			},
 			CmpCommitviewLocalBranch: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(37),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpCommitviewRemoteBranch: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(125),
+				fgcolor: NewColorNumber(solarizedMagenta),
 			},
 			CmpCommitviewGraphCommit: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(33),
+				fgcolor: NewColorNumber(solarizedBlue),
 			},
 			CmpCommitviewGraphMergeCommit: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(33),
+				fgcolor: NewColorNumber(solarizedBlue),
 			},
 			CmpCommitviewGraphBranch1: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(136),
+				fgcolor: NewColorNumber(solarizedYellow),
 			},
 			CmpCommitviewGraphBranch2: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(160),
+				fgcolor: NewColorNumber(solarizedRed),
 			},
 			CmpCommitviewGraphBranch3: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(64),
+				fgcolor: NewColorNumber(solarizedGreen),
 			},
 			CmpCommitviewGraphBranch4: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(125),
+				fgcolor: NewColorNumber(solarizedMagenta),
 			},
 			CmpCommitviewGraphBranch5: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(37),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpCommitviewGraphBranch6: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(33),
+				fgcolor: NewColorNumber(solarizedBlue),
 			},
 			CmpCommitviewGraphBranch7: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(254),
+				fgcolor: NewColorNumber(solarizedWhite),
 			},
 			CmpDiffviewTitle: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(37),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpDiffviewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(37),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpDiffviewDifflineNormal: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -707,19 +726,19 @@ func NewSolarizedTheme() MutableTheme {
 			},
 			CmpDiffviewDifflineDiffCommitAuthor: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(61),
+				fgcolor: NewColorNumber(solarizedBrightMagenta),
 			},
 			CmpDiffviewDifflineDiffCommitAuthorDate: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(136),
+				fgcolor: NewColorNumber(solarizedYellow),
 			},
 			CmpDiffviewDifflineDiffCommitCommitter: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(125),
+				fgcolor: NewColorNumber(solarizedMagenta),
 			},
 			CmpDiffviewDifflineDiffCommitCommitterDate: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(136),
+				fgcolor: NewColorNumber(solarizedYellow),
 			},
 			CmpDiffviewDifflineDiffCommitMessage: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -727,51 +746,51 @@ func NewSolarizedTheme() MutableTheme {
 			},
 			CmpDiffviewDifflineDiffStatsFile: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(33),
+				fgcolor: NewColorNumber(solarizedBlue),
 			},
 			CmpDiffviewDifflineGitDiffHeader: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(136),
+				fgcolor: NewColorNumber(solarizedYellow),
 			},
 			CmpDiffviewDifflineGitDiffExtendedHeader: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(33),
+				fgcolor: NewColorNumber(solarizedBlue),
 			},
 			CmpDiffviewDifflineUnifiedDiffHeader: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(136),
+				fgcolor: NewColorNumber(solarizedYellow),
 			},
 			CmpDiffviewDifflineHunkStart: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(37),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpDiffviewDifflineHunkHeader: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(33),
+				fgcolor: NewColorNumber(solarizedBlue),
 			},
 			CmpDiffviewDifflineLineAdded: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(64),
+				fgcolor: NewColorNumber(solarizedGreen),
 			},
 			CmpDiffviewDifflineLineRemoved: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(160),
+				fgcolor: NewColorNumber(solarizedRed),
 			},
 			CmpRefviewTitle: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(37),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpRefviewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(37),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpRefviewLocalBranchesHeader: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(125),
+				fgcolor: NewColorNumber(solarizedMagenta),
 			},
 			CmpRefviewRemoteBranchesHeader: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(125),
+				fgcolor: NewColorNumber(solarizedMagenta),
 			},
 			CmpRefviewLocalBranch: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -779,7 +798,7 @@ func NewSolarizedTheme() MutableTheme {
 			},
 			CmpRefviewHead: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(64),
+				fgcolor: NewColorNumber(solarizedGreen),
 			},
 			CmpRefviewRemoteBranch: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -787,19 +806,19 @@ func NewSolarizedTheme() MutableTheme {
 			},
 			CmpRefviewTagsHeader: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(125),
+				fgcolor: NewColorNumber(solarizedMagenta),
 			},
 			CmpRefviewTag: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},
 			CmpStatusbarviewNormal: {
-				bgcolor: NewColorNumber(235),
-				fgcolor: NewColorNumber(136),
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedYellow),
 			},
 			CmpHelpbarviewSpecial: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(125),
+				fgcolor: NewColorNumber(solarizedMagenta),
 			},
 			CmpHelpbarviewNormal: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -807,83 +826,83 @@ func NewSolarizedTheme() MutableTheme {
 			},
 			CmpErrorViewTitle: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(37),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpErrorViewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(37),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpErrorViewErrors: {
-				bgcolor: NewColorNumber(160),
-				fgcolor: NewColorNumber(245),
+				bgcolor: NewColorNumber(solarizedRed),
+				fgcolor: NewColorNumber(solarizedBrightCyan),
 			},
 			CmpGitStatusStagedTitle: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(61),
+				fgcolor: NewColorNumber(solarizedBrightMagenta),
 			},
 			CmpGitStatusUnstagedTitle: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(61),
+				fgcolor: NewColorNumber(solarizedBrightMagenta),
 			},
 			CmpGitStatusUntrackedTitle: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(61),
+				fgcolor: NewColorNumber(solarizedBrightMagenta),
 			},
 			CmpGitStatusConflictedTitle: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(61),
+				fgcolor: NewColorNumber(solarizedBrightMagenta),
 			},
 			CmpGitStatusStagedFile: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(64),
+				fgcolor: NewColorNumber(solarizedGreen),
 			},
 			CmpGitStatusUnstagedFile: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(160),
+				fgcolor: NewColorNumber(solarizedRed),
 			},
 			CmpGitStatusUntrackedFile: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(160),
+				fgcolor: NewColorNumber(solarizedRed),
 			},
 			CmpGitStatusConflictedFile: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewColorNumber(160),
+				fgcolor: NewColorNumber(solarizedRed),
 			},
 			CmpContextMenuTitle: {
-				bgcolor: NewColorNumber(235),
-				fgcolor: NewColorNumber(37),
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpContextMenuContent: {
-				bgcolor: NewColorNumber(235),
-				fgcolor: NewColorNumber(254),
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedWhite),
 			},
 			CmpContextMenuFooter: {
-				bgcolor: NewColorNumber(235),
-				fgcolor: NewColorNumber(37),
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpCommandOutputTitle: {
-				bgcolor: NewColorNumber(235),
-				fgcolor: NewColorNumber(37),
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpCommandOutputCommand: {
-				bgcolor: NewColorNumber(235),
-				fgcolor: NewColorNumber(136),
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedYellow),
 			},
 			CmpCommandOutputNormal: {
-				bgcolor: NewColorNumber(235),
-				fgcolor: NewColorNumber(254),
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedWhite),
 			},
 			CmpCommandOutputError: {
-				bgcolor: NewColorNumber(235),
-				fgcolor: NewColorNumber(160),
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedRed),
 			},
 			CmpCommandOutputSuccess: {
-				bgcolor: NewColorNumber(235),
-				fgcolor: NewColorNumber(64),
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedGreen),
 			},
 			CmpCommandOutputFooter: {
-				bgcolor: NewColorNumber(235),
-				fgcolor: NewColorNumber(37),
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 		},
 	}
