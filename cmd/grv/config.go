@@ -397,6 +397,8 @@ func (config *Configuration) processCommand(command ConfigCommand, inputSource s
 		err = config.processSplitViewCommand(command, inputSource)
 	case *GitCommand:
 		err = config.processGitCommand(command, inputSource)
+	case *HelpCommand:
+		config.processHelpCommand()
 	default:
 		log.Errorf("Unknown command type %T", command)
 	}
@@ -753,6 +755,10 @@ func (config *Configuration) runNonInteractiveCommand(command string, commandOut
 			},
 		},
 	}})
+}
+
+func (config *Configuration) processHelpCommand() {
+	config.channels.DoAction(Action{ActionType: ActionShowHelpView})
 }
 
 // AddOnChangeListener adds a listener to be notified when a configuration variable changes value

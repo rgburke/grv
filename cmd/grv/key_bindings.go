@@ -82,6 +82,7 @@ const (
 	ActionStageFile
 	ActionUnstageFile
 	ActionCommit
+	ActionShowHelpView
 )
 
 // Action represents a type of actions and its arguments to be executed
@@ -205,6 +206,7 @@ var actionKeys = map[string]ActionType{
 	"<grv-stage-file>":             ActionStageFile,
 	"<grv-unstage-file>":           ActionUnstageFile,
 	"<grv-action-commit>":          ActionCommit,
+	"<grv-show-help-view>":         ActionShowHelpView,
 }
 
 var promptActions = map[ActionType]bool{

@@ -21,6 +21,7 @@ const (
 	splitCommand          = "split"
 	gitCommand            = "git"
 	gitInteractiveCommand = "giti"
+	helpCommand           = "help"
 )
 
 type commandConstructor func(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error)
@@ -109,6 +110,11 @@ type GitCommand struct {
 
 func (gitCommand *GitCommand) configCommand() {}
 
+// HelpCommand represents the command to show the help view
+type HelpCommand struct{}
+
+func (helpCommand *HelpCommand) configCommand() {}
+
 type commandDescriptor struct {
 	tokenTypes  []ConfigTokenType
 	varArgs     bool
@@ -165,6 +171,9 @@ var commandDescriptors = map[string]*commandDescriptor{
 	gitInteractiveCommand: {
 		varArgs:     true,
 		constructor: gitCommandConstructor,
+	},
+	helpCommand: {
+		constructor: helpCommandConstructor,
 	},
 }
 
@@ -447,4 +456,8 @@ func gitCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, toke
 		interactive: commandToken.value == gitInteractiveCommand,
 		args:        tokens,
 	}, nil
+}
+
+func helpCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
+	return &HelpCommand{}, nil
 }

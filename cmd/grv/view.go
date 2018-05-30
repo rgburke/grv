@@ -9,6 +9,7 @@ import (
 
 const (
 	viewMinActiveViewRows = 6
+	viewHelpViewTitle     = "Help View"
 )
 
 // ViewID is an ID assigned to each view in grv
@@ -455,6 +456,12 @@ func (view *View) HandleAction(action Action) (err error) {
 		defer view.lock.Unlock()
 
 		return view.createCommandOutputView(action)
+	case ActionShowHelpView:
+		view.lock.Lock()
+		defer view.lock.Unlock()
+
+		view.showHelpView()
+		return
 	}
 
 	return view.ActiveView().HandleAction(action)
@@ -594,14 +601,20 @@ func (view *View) newTab(action Action) (err error) {
 	} else if tabName, ok := action.Args[0].(string); !ok {
 		err = fmt.Errorf("Expected tab name argument to be of type string, but got %T", action.Args[0])
 	} else {
-		containerView := NewContainerView(view.channels, view.config)
-		containerView.SetTitle(tabName)
-		view.views = append(view.views, containerView)
-		view.activeViewPos = uint(len(view.views) - 1)
-		view.channels.UpdateDisplay()
+		view.addTab(tabName)
 	}
 
 	return
+}
+
+func (view *View) addTab(tabName string) *ContainerView {
+	containerView := NewContainerView(view.channels, view.config)
+	containerView.SetTitle(tabName)
+	view.views = append(view.views, containerView)
+	view.activeViewPos = uint(len(view.views) - 1)
+	view.channels.UpdateDisplay()
+
+	return containerView
 }
 
 func (view *View) removeTab() {
@@ -841,4 +854,18 @@ func (view *View) handlePopupViewAction(action Action) (err error) {
 	}
 
 	return view.activeView().HandleAction(action)
+}
+
+func (view *View) showHelpView() {
+	for childViewIndex, childView := range view.views {
+		if childView.Title() == viewHelpViewTitle {
+			view.activeViewPos = uint(childViewIndex)
+			view.onActiveChange(true)
+			view.channels.UpdateDisplay()
+			return
+		}
+	}
+
+	helpView := NewHelpView(view.channels, view.config)
+	view.addTab(viewHelpViewTitle).AddChildViews(helpView)
 }

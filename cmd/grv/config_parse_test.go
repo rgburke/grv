@@ -226,6 +226,17 @@ func (gitCommandValues *GitCommandValues) Equal(command ConfigCommand) bool {
 		reflect.DeepEqual(gitCommandValues.args, otherArgs)
 }
 
+type HelpCommandValues struct{}
+
+func (helpCommandValues *HelpCommandValues) Equal(command ConfigCommand) bool {
+	if command == nil {
+		return false
+	}
+
+	_, ok := command.(*HelpCommand)
+	return ok
+}
+
 func TestParseSingleCommand(t *testing.T) {
 	var singleCommandTests = []struct {
 		input           string
@@ -320,6 +331,10 @@ func TestParseSingleCommand(t *testing.T) {
 				interactive: true,
 				args:        []string{"rebase", "-i", "HEAD~2"},
 			},
+		},
+		{
+			input:           "help",
+			expectedCommand: &HelpCommandValues{},
 		},
 	}
 
