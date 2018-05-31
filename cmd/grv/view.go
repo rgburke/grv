@@ -460,8 +460,7 @@ func (view *View) HandleAction(action Action) (err error) {
 		view.lock.Lock()
 		defer view.lock.Unlock()
 
-		view.showHelpView()
-		return
+		return view.showHelpView()
 	}
 
 	return view.ActiveView().HandleAction(action)
@@ -856,7 +855,7 @@ func (view *View) handlePopupViewAction(action Action) (err error) {
 	return view.activeView().HandleAction(action)
 }
 
-func (view *View) showHelpView() {
+func (view *View) showHelpView() (err error) {
 	for childViewIndex, childView := range view.views {
 		if childView.Title() == viewHelpViewTitle {
 			view.activeViewPos = uint(childViewIndex)
@@ -867,5 +866,11 @@ func (view *View) showHelpView() {
 	}
 
 	helpView := NewHelpView(view.channels, view.config)
+	if err = helpView.Initialise(); err != nil {
+		return
+	}
+
 	view.addTab(viewHelpViewTitle).AddChildViews(helpView)
+
+	return
 }

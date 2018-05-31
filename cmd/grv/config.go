@@ -189,6 +189,7 @@ type Config interface {
 	AddOnChangeListener(ConfigVariable, ConfigVariableOnChangeListener)
 	ConfigDir() string
 	KeyStrings(ActionType, ViewHierarchy) []BoundKeyString
+	GenerateHelpTables() []*HelpTable
 }
 
 // ConfigSetter extends the config interface and exposes the ability to set config values
@@ -209,6 +210,7 @@ type ConfigVariableOnChangeListener interface {
 
 // ConfigurationVariable represents a config variable
 type ConfigurationVariable struct {
+	defaultValue      interface{}
 	value             interface{}
 	validator         ConfigVariableValidator
 	onChangeListeners []ConfigVariableOnChangeListener
@@ -237,41 +239,45 @@ func NewConfiguration(keyBindings KeyBindings, channels Channels) *Configuration
 
 	config.variables = map[ConfigVariable]*ConfigurationVariable{
 		CfTabWidth: {
-			value:     cfTabWidthDefaultValue,
-			validator: tabWidithValidator{},
+			defaultValue: cfTabWidthDefaultValue,
+			validator:    tabWidithValidator{},
 		},
 		CfTheme: {
-			value: cfSolarizedThemeName,
+			defaultValue: cfSolarizedThemeName,
 			validator: themeValidator{
 				config: config,
 			},
 		},
 		CfMouse: {
-			value: cfMouseDefaultValue,
+			defaultValue: cfMouseDefaultValue,
 			validator: booleanValueValidator{
 				variableName: string(CfMouse),
 			},
 		},
 		CfMouseScrollRows: {
-			value:     cfMouseScrollRowsDefaultValue,
-			validator: mouseScrollRowsValidator{},
+			defaultValue: cfMouseScrollRowsDefaultValue,
+			validator:    mouseScrollRowsValidator{},
 		},
 		CfCommitGraph: {
-			value: cfCommitGraphDefaultValue,
+			defaultValue: cfCommitGraphDefaultValue,
 			validator: booleanValueValidator{
 				variableName: string(CfCommitGraph),
 			},
 		},
 		CfConfirmCheckout: {
-			value: cfConfirmCheckoutDefaultValue,
+			defaultValue: cfConfirmCheckoutDefaultValue,
 			validator: booleanValueValidator{
 				variableName: string(CfConfirmCheckout),
 			},
 		},
 		CfPromptHistorySize: {
-			value:     cfPromptHistorySizeDefaultValue,
-			validator: promptHistorySizeValidator{},
+			defaultValue: cfPromptHistorySizeDefaultValue,
+			validator:    promptHistorySizeValidator{},
 		},
+	}
+
+	for _, configVariable := range config.variables {
+		configVariable.value = configVariable.defaultValue
 	}
 
 	return config
@@ -830,6 +836,41 @@ func (config *Configuration) KeyStrings(actionType ActionType, viewHierarchy Vie
 	}))
 
 	return
+}
+
+// GenerateHelpTables generates all help tables related to configuration
+func (config *Configuration) GenerateHelpTables() []*HelpTable {
+	return []*HelpTable{
+		config.generateConfigVariableHelpTable(),
+	}
+}
+
+func (config *Configuration) generateConfigVariableHelpTable() (helpTable *HelpTable) {
+	tableFormatter := NewTableFormatter(4, config)
+
+	configVariableNames := []ConfigVariable{}
+	for configVariableName := range config.variables {
+		configVariableNames = append(configVariableNames, configVariableName)
+	}
+
+	slice.Sort(configVariableNames, func(i, j int) bool {
+		return configVariableNames[i] < configVariableNames[j]
+	})
+
+	tableFormatter.Resize(uint(len(configVariableNames)))
+
+	for rowIndex, configVariableName := range configVariableNames {
+		configVariable := config.variables[configVariableName]
+
+		tableFormatter.SetCell(uint(rowIndex), 0, "%v", configVariableName)
+		tableFormatter.SetCell(uint(rowIndex), 1, "%v", reflect.TypeOf(configVariable.defaultValue))
+		tableFormatter.SetCell(uint(rowIndex), 2, "%v", configVariable.defaultValue)
+	}
+
+	return &HelpTable{
+		title:          "Configuration Variables",
+		tableFormatter: tableFormatter,
+	}
 }
 
 type tabWidithValidator struct{}

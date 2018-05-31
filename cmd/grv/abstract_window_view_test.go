@@ -218,6 +218,11 @@ func (config *MockConfig) KeyStrings(actionType ActionType, viewHierarchy ViewHi
 	return args.Get(0).([]BoundKeyString)
 }
 
+func (config *MockConfig) GenerateHelpTables() []*HelpTable {
+	args := config.Called()
+	return args.Get(0).([]*HelpTable)
+}
+
 type abstractWindowViewMocks struct {
 	viewPos  *MockViewPos
 	child    *MockChildWindowView

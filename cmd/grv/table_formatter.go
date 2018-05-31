@@ -169,59 +169,67 @@ func (tableFormatter *TableFormatter) Render(win RenderWindow, viewStartColumn u
 		return
 	}
 
-	var lineBuilder *LineBuilder
-
 	for rowIndex := range tableFormatter.cells {
-		adjustedRowIndex := uint(rowIndex)
-		if border {
-			adjustedRowIndex++
+		if err = tableFormatter.RenderRow(win, uint(rowIndex), viewStartColumn, border); err != nil {
+			return
 		}
+	}
 
-		if lineBuilder, err = win.LineBuilder(adjustedRowIndex, viewStartColumn); err != nil {
+	return
+}
+
+// RenderRow renders the specified row of the table to the provided window
+func (tableFormatter *TableFormatter) RenderRow(win RenderWindow, rowIndex, viewStartColumn uint, border bool) (err error) {
+	adjustedRowIndex := rowIndex
+	if border {
+		adjustedRowIndex++
+	}
+
+	lineBuilder, err := win.LineBuilder(adjustedRowIndex, viewStartColumn)
+	if err != nil {
+		return
+	}
+
+	if border {
+		lineBuilder.Append(" ")
+	}
+
+	for colIndex := range tableFormatter.cells[rowIndex] {
+		tableCell := &tableFormatter.cells[rowIndex][colIndex]
+
+		if err = tableFormatter.firePreCellRenderListener(rowIndex, uint(colIndex), lineBuilder, tableCell); err != nil {
 			return
 		}
 
-		if border {
-			lineBuilder.Append(" ")
+		for _, textEntry := range tableCell.textEntries {
+			lineBuilder.AppendWithStyle(textEntry.themeComponentID, "%v", textEntry.text)
 		}
 
-		for colIndex := range tableFormatter.cells[rowIndex] {
-			tableCell := &tableFormatter.cells[rowIndex][colIndex]
-
-			if err = tableFormatter.firePreCellRenderListener(rowIndex, colIndex, lineBuilder, tableCell); err != nil {
-				return
-			}
-
-			for _, textEntry := range tableCell.textEntries {
-				lineBuilder.AppendWithStyle(textEntry.themeComponentID, "%v", textEntry.text)
-			}
-
-			if err = tableFormatter.firePostCellRenderListener(rowIndex, colIndex, lineBuilder, tableCell); err != nil {
-				return
-			}
-
-			lineBuilder.Append(tfSeparator)
+		if err = tableFormatter.firePostCellRenderListener(rowIndex, uint(colIndex), lineBuilder, tableCell); err != nil {
+			return
 		}
+
+		lineBuilder.Append(tfSeparator)
 	}
 
 	return
 }
 
-func (tableFormatter *TableFormatter) firePreCellRenderListener(rowIndex, colIndex int, lineBuilder *LineBuilder, tableCell *TableCell) (err error) {
-	cellRendererListener, exists := tableFormatter.cellRendererListeners[uint(colIndex)]
+func (tableFormatter *TableFormatter) firePreCellRenderListener(rowIndex, colIndex uint, lineBuilder *LineBuilder, tableCell *TableCell) (err error) {
+	cellRendererListener, exists := tableFormatter.cellRendererListeners[colIndex]
 
 	if exists {
-		err = cellRendererListener.preRenderCell(uint(rowIndex), uint(colIndex), lineBuilder, tableCell)
+		err = cellRendererListener.preRenderCell(rowIndex, colIndex, lineBuilder, tableCell)
 	}
 
 	return
 }
 
-func (tableFormatter *TableFormatter) firePostCellRenderListener(rowIndex, colIndex int, lineBuilder *LineBuilder, tableCell *TableCell) (err error) {
-	cellRendererListener, exists := tableFormatter.cellRendererListeners[uint(colIndex)]
+func (tableFormatter *TableFormatter) firePostCellRenderListener(rowIndex, colIndex uint, lineBuilder *LineBuilder, tableCell *TableCell) (err error) {
+	cellRendererListener, exists := tableFormatter.cellRendererListeners[colIndex]
 
 	if exists {
-		err = cellRendererListener.postRenderCell(uint(rowIndex), uint(colIndex), lineBuilder, tableCell)
+		err = cellRendererListener.postRenderCell(rowIndex, colIndex, lineBuilder, tableCell)
 	}
 
 	return
