@@ -213,6 +213,7 @@ type ConfigurationVariable struct {
 	defaultValue      interface{}
 	value             interface{}
 	validator         ConfigVariableValidator
+	description       string
 	onChangeListeners []ConfigVariableOnChangeListener
 }
 
@@ -241,38 +242,45 @@ func NewConfiguration(keyBindings KeyBindings, channels Channels) *Configuration
 		CfTabWidth: {
 			defaultValue: cfTabWidthDefaultValue,
 			validator:    tabWidithValidator{},
+			description:  fmt.Sprintf("Tab character screen width (minimum value: %v)", cfTabWidthMinValue),
 		},
 		CfTheme: {
 			defaultValue: cfSolarizedThemeName,
 			validator: themeValidator{
 				config: config,
 			},
+			description: "The currently active theme",
 		},
 		CfMouse: {
 			defaultValue: cfMouseDefaultValue,
 			validator: booleanValueValidator{
 				variableName: string(CfMouse),
 			},
+			description: "Mouse support enabled",
 		},
 		CfMouseScrollRows: {
 			defaultValue: cfMouseScrollRowsDefaultValue,
 			validator:    mouseScrollRowsValidator{},
+			description:  "Number of rows scrolled for each mouse event",
 		},
 		CfCommitGraph: {
 			defaultValue: cfCommitGraphDefaultValue,
 			validator: booleanValueValidator{
 				variableName: string(CfCommitGraph),
 			},
+			description: "Commit graph visible",
 		},
 		CfConfirmCheckout: {
 			defaultValue: cfConfirmCheckoutDefaultValue,
 			validator: booleanValueValidator{
 				variableName: string(CfConfirmCheckout),
 			},
+			description: "Confirm before performing git checkout",
 		},
 		CfPromptHistorySize: {
 			defaultValue: cfPromptHistorySizeDefaultValue,
 			validator:    promptHistorySizeValidator{},
+			description:  "Maximum number of prompt entries retained",
 		},
 	}
 
@@ -846,7 +854,7 @@ func (config *Configuration) GenerateHelpTables() []*HelpTable {
 }
 
 func (config *Configuration) generateConfigVariableHelpTable() (helpTable *HelpTable) {
-	headers := []string{"Config Variable", "Type", "Default Value"}
+	headers := []string{"Configuration Variable", "Type", "Default Value", "Description"}
 
 	tableFormatter := NewTableFormatterWithHeaders(headers, config)
 	tableFormatter.SetGridLines(true)
@@ -868,6 +876,7 @@ func (config *Configuration) generateConfigVariableHelpTable() (helpTable *HelpT
 		tableFormatter.SetCell(uint(rowIndex), 0, "%v", configVariableName)
 		tableFormatter.SetCell(uint(rowIndex), 1, "%v", reflect.TypeOf(configVariable.defaultValue))
 		tableFormatter.SetCell(uint(rowIndex), 2, "%v", configVariable.defaultValue)
+		tableFormatter.SetCell(uint(rowIndex), 3, "%v", configVariable.description)
 	}
 
 	return &HelpTable{
