@@ -870,8 +870,6 @@ func (config *Configuration) generateConfigVariableHelpTable() (helpTable *HelpT
 		tableFormatter.SetCell(uint(rowIndex), 2, "%v", configVariable.defaultValue)
 	}
 
-	tableFormatter.PadCells(true)
-
 	return &HelpTable{
 		title:          "Configuration Variables",
 		tableFormatter: tableFormatter,

@@ -43,6 +43,11 @@ func (helpView *HelpView) Initialise() (err error) {
 	helpView.helpTables = helpView.config.GenerateHelpTables()
 
 	for _, helpTable := range helpView.helpTables {
+		helpTable.tableFormatter.SetBorderColumnWidth(2)
+		if err = helpTable.tableFormatter.PadCells(true); err != nil {
+			return
+		}
+
 		helpView.totalRows += helpTable.rows()
 	}
 

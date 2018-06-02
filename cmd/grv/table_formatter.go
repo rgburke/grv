@@ -35,6 +35,7 @@ type TableFormatter struct {
 	maxColWidths          []uint
 	headers               []string
 	gridLines             bool
+	borderColWidth        uint
 	cells                 [][]TableCell
 	cellRendererListeners map[uint]CellRendererListener
 }
@@ -44,6 +45,7 @@ func NewTableFormatter(cols uint, config Config) *TableFormatter {
 	return &TableFormatter{
 		maxColWidths:          make([]uint, cols),
 		cellRendererListeners: make(map[uint]CellRendererListener),
+		borderColWidth:        1,
 		config:                config,
 	}
 }
@@ -120,6 +122,11 @@ func (tableFormatter *TableFormatter) hasHeaders() bool {
 // SetGridLines sets whether gridlines should be rendered
 func (tableFormatter *TableFormatter) SetGridLines(gridLines bool) {
 	tableFormatter.gridLines = gridLines
+}
+
+// SetBorderColumnWidth sets the number of spaces padded to the left of the table
+func (tableFormatter *TableFormatter) SetBorderColumnWidth(width uint) {
+	tableFormatter.borderColWidth = width
 }
 
 // Resize updates the number of rows the tableformatter can store
@@ -244,7 +251,7 @@ func (tableFormatter *TableFormatter) RenderRow(win RenderWindow, winStartRowInd
 	}
 
 	if border {
-		lineBuilder.Append(" ")
+		lineBuilder.Append(strings.Repeat(" ", int(tableFormatter.borderColWidth)))
 	}
 
 	rowIndex := renderedRowIndex
@@ -334,7 +341,7 @@ func (tableFormatter *TableFormatter) PadCells(border bool) (err error) {
 
 	for colIndex, header := range tableFormatter.headers {
 		if border {
-			column++
+			column += tableFormatter.borderColWidth
 		}
 
 		width := tableFormatter.textWidth(header, column)
@@ -351,7 +358,7 @@ func (tableFormatter *TableFormatter) PadCells(border bool) (err error) {
 		column = uint(1)
 
 		if border {
-			column++
+			column += tableFormatter.borderColWidth
 		}
 
 		for colIndex := range tableFormatter.cells[rowIndex] {
@@ -376,7 +383,7 @@ func (tableFormatter *TableFormatter) determineMaxColWidths(border bool) {
 		column := uint(1)
 
 		if border {
-			column++
+			column += tableFormatter.borderColWidth
 		}
 
 		for doneColIndex := uint(0); doneColIndex < colIndex; doneColIndex++ {
