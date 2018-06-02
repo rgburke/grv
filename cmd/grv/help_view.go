@@ -7,6 +7,10 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+const (
+	hvTitleRows = 3
+)
+
 // HelpTable contains help information in a tabular format
 type HelpTable struct {
 	title          string
@@ -14,7 +18,24 @@ type HelpTable struct {
 }
 
 func (helpTable *HelpTable) rows() uint {
-	return helpTable.tableFormatter.RenderedRows()
+	return hvTitleRows + helpTable.tableFormatter.RenderedRows()
+}
+
+func (helpTable *HelpTable) renderRow(win RenderWindow, winStartRowIndex, helpTableRowIndex, startColumn uint) (err error) {
+	if helpTableRowIndex < hvTitleRows {
+		if helpTableRowIndex == 1 {
+			var lineBuilder *LineBuilder
+			if lineBuilder, err = win.LineBuilder(winStartRowIndex+helpTableRowIndex, startColumn); err != nil {
+				return
+			}
+
+			lineBuilder.AppendWithStyle(CmpNone, "  %v", helpTable.title)
+		}
+
+		return
+	}
+
+	return helpTable.tableFormatter.RenderRow(win, winStartRowIndex+hvTitleRows, helpTableRowIndex-hvTitleRows, startColumn, true)
 }
 
 // HelpView displays help information
@@ -112,7 +133,7 @@ func (helpView *HelpView) renderRow(win RenderWindow, viewStartRowIndex, rowInde
 			tableRowIndex := rowIndex - prevRows
 			winStartRowIndex := (prevRows - viewStartRowIndex) + 1
 
-			return helpTable.tableFormatter.RenderRow(win, winStartRowIndex, tableRowIndex, startColumn, true)
+			return helpTable.renderRow(win, winStartRowIndex, tableRowIndex, startColumn)
 		}
 
 		prevRows = rows

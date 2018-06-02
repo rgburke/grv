@@ -854,7 +854,7 @@ func (config *Configuration) GenerateHelpTables() []*HelpTable {
 }
 
 func (config *Configuration) generateConfigVariableHelpTable() (helpTable *HelpTable) {
-	headers := []string{"Configuration Variable", "Type", "Default Value", "Description"}
+	headers := []string{"Variable", "Type", "Default Value", "Description"}
 
 	tableFormatter := NewTableFormatterWithHeaders(headers, config)
 	tableFormatter.SetGridLines(true)
