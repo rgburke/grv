@@ -14,7 +14,7 @@ type HelpTable struct {
 }
 
 func (helpTable *HelpTable) rows() uint {
-	return helpTable.tableFormatter.Rows()
+	return helpTable.tableFormatter.RenderedRows()
 }
 
 // HelpView displays help information
@@ -23,6 +23,7 @@ type HelpView struct {
 	activeViewPos     ViewPos
 	lastViewDimension ViewDimension
 	helpTables        []*HelpTable
+	totalRows         uint
 	lock              sync.Mutex
 }
 
@@ -42,9 +43,7 @@ func (helpView *HelpView) Initialise() (err error) {
 	helpView.helpTables = helpView.config.GenerateHelpTables()
 
 	for _, helpTable := range helpView.helpTables {
-		if err = helpTable.tableFormatter.PadCells(true); err != nil {
-			return
-		}
+		helpView.totalRows += helpTable.rows()
 	}
 
 	return
@@ -68,11 +67,12 @@ func (helpView *HelpView) Render(win RenderWindow) (err error) {
 	viewRows := helpView.rows()
 	viewPos.DetermineViewStartRow(winRows, viewRows)
 
-	viewRowIndex := viewPos.ViewStartRowIndex()
+	viewStartRowIndex := viewPos.ViewStartRowIndex()
+	viewRowIndex := viewStartRowIndex
 	startColumn := viewPos.ViewStartColumn()
 
 	for rowIndex := uint(0); rowIndex < winRows && viewRowIndex < viewRows; rowIndex++ {
-		if err = helpView.renderRow(win, viewRowIndex, startColumn); err != nil {
+		if err = helpView.renderRow(win, viewStartRowIndex, viewRowIndex, startColumn); err != nil {
 			return
 		}
 
@@ -96,15 +96,21 @@ func (helpView *HelpView) Render(win RenderWindow) (err error) {
 	return
 }
 
-func (helpView *HelpView) renderRow(win RenderWindow, rowIndex, startColumn uint) (err error) {
+func (helpView *HelpView) renderRow(win RenderWindow, viewStartRowIndex, rowIndex, startColumn uint) (err error) {
 	rows := uint(0)
+	prevRows := uint(0)
 
 	for _, helpTable := range helpView.helpTables {
 		rows += helpTable.rows()
 
 		if rowIndex < rows {
-			return helpTable.tableFormatter.RenderRow(win, rowIndex, startColumn, true)
+			tableRowIndex := rowIndex - prevRows
+			winStartRowIndex := (prevRows - viewStartRowIndex) + 1
+
+			return helpTable.tableFormatter.RenderRow(win, winStartRowIndex, tableRowIndex, startColumn, true)
 		}
+
+		prevRows = rows
 	}
 
 	return fmt.Errorf("Unable to render row with index: %v", rowIndex)
@@ -115,13 +121,7 @@ func (helpView *HelpView) viewPos() ViewPos {
 }
 
 func (helpView *HelpView) rows() uint {
-	rows := uint(0)
-
-	for _, helpTable := range helpView.helpTables {
-		rows += helpTable.rows()
-	}
-
-	return rows
+	return helpView.totalRows
 }
 
 func (helpView *HelpView) viewDimension() ViewDimension {

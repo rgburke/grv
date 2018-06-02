@@ -846,7 +846,10 @@ func (config *Configuration) GenerateHelpTables() []*HelpTable {
 }
 
 func (config *Configuration) generateConfigVariableHelpTable() (helpTable *HelpTable) {
-	tableFormatter := NewTableFormatter(4, config)
+	headers := []string{"Config Variable", "Type", "Default Value"}
+
+	tableFormatter := NewTableFormatterWithHeaders(headers, config)
+	tableFormatter.SetGridLines(true)
 
 	configVariableNames := []ConfigVariable{}
 	for configVariableName := range config.variables {
@@ -866,6 +869,8 @@ func (config *Configuration) generateConfigVariableHelpTable() (helpTable *HelpT
 		tableFormatter.SetCell(uint(rowIndex), 1, "%v", reflect.TypeOf(configVariable.defaultValue))
 		tableFormatter.SetCell(uint(rowIndex), 2, "%v", configVariable.defaultValue)
 	}
+
+	tableFormatter.PadCells(true)
 
 	return &HelpTable{
 		title:          "Configuration Variables",

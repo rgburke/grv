@@ -33,6 +33,8 @@ type CellRendererListener interface {
 type TableFormatter struct {
 	config                Config
 	maxColWidths          []uint
+	headers               []string
+	gridLines             bool
 	cells                 [][]TableCell
 	cellRendererListeners map[uint]CellRendererListener
 }
@@ -46,9 +48,16 @@ func NewTableFormatter(cols uint, config Config) *TableFormatter {
 	}
 }
 
+// NewTableFormatterWithHeaders creates a new instance of the table formatter using the provided headers
+func NewTableFormatterWithHeaders(headers []string, config Config) *TableFormatter {
+	tableFormatter := NewTableFormatter(uint(len(headers)), config)
+	tableFormatter.SetHeaders(headers)
+	return tableFormatter
+}
+
 // SetCellRendererListener sets the CellRendererListener for a column
 func (tableFormatter *TableFormatter) SetCellRendererListener(colIndex uint, cellRendererListener CellRendererListener) (err error) {
-	if colIndex >= uint(len(tableFormatter.maxColWidths)) {
+	if colIndex >= tableFormatter.cols() {
 		return fmt.Errorf("Cannot register CellRendererListener on column with index: %v", colIndex)
 	}
 
@@ -62,6 +71,21 @@ func (tableFormatter *TableFormatter) Rows() uint {
 	return uint(len(tableFormatter.cells))
 }
 
+// RenderedRows returns the number of rows that will actually be rendered
+func (tableFormatter *TableFormatter) RenderedRows() uint {
+	rows := tableFormatter.Rows()
+
+	if tableFormatter.hasHeaders() {
+		rows++
+
+		if tableFormatter.gridLines {
+			rows++
+		}
+	}
+
+	return rows
+}
+
 // Cols returns the number of cols in the table formatter
 func (tableFormatter *TableFormatter) Cols() uint {
 	if tableFormatter.Rows() > 0 {
@@ -69,6 +93,33 @@ func (tableFormatter *TableFormatter) Cols() uint {
 	}
 
 	return 0
+}
+
+func (tableFormatter *TableFormatter) cols() uint {
+	return uint(len(tableFormatter.maxColWidths))
+}
+
+// SetHeaders sets the column headers
+func (tableFormatter *TableFormatter) SetHeaders(headers []string) (err error) {
+	headersCols := uint(len(headers))
+	tableCols := tableFormatter.cols()
+
+	if headersCols != tableCols {
+		return fmt.Errorf("Headers is invalid size. Allowed %v but found %v", tableCols, headersCols)
+	}
+
+	tableFormatter.headers = headers
+
+	return
+}
+
+func (tableFormatter *TableFormatter) hasHeaders() bool {
+	return len(tableFormatter.headers) > 0
+}
+
+// SetGridLines sets whether gridlines should be rendered
+func (tableFormatter *TableFormatter) SetGridLines(gridLines bool) {
+	tableFormatter.gridLines = gridLines
 }
 
 // Resize updates the number of rows the tableformatter can store
@@ -79,7 +130,7 @@ func (tableFormatter *TableFormatter) Resize(newRows uint) {
 		return
 	}
 
-	cols := len(tableFormatter.maxColWidths)
+	cols := tableFormatter.cols()
 
 	tableFormatter.cells = make([][]TableCell, newRows)
 	for rowIndex := range tableFormatter.cells {
@@ -169,8 +220,13 @@ func (tableFormatter *TableFormatter) Render(win RenderWindow, viewStartColumn u
 		return
 	}
 
-	for rowIndex := range tableFormatter.cells {
-		if err = tableFormatter.RenderRow(win, uint(rowIndex), viewStartColumn, border); err != nil {
+	winStartRowIndex := uint(0)
+	if border {
+		winStartRowIndex++
+	}
+
+	for rowIndex := uint(0); rowIndex < tableFormatter.RenderedRows(); rowIndex++ {
+		if err = tableFormatter.RenderRow(win, winStartRowIndex, rowIndex, viewStartColumn, border); err != nil {
 			return
 		}
 	}
@@ -179,19 +235,34 @@ func (tableFormatter *TableFormatter) Render(win RenderWindow, viewStartColumn u
 }
 
 // RenderRow renders the specified row of the table to the provided window
-func (tableFormatter *TableFormatter) RenderRow(win RenderWindow, rowIndex, viewStartColumn uint, border bool) (err error) {
-	adjustedRowIndex := rowIndex
-	if border {
-		adjustedRowIndex++
-	}
+func (tableFormatter *TableFormatter) RenderRow(win RenderWindow, winStartRowIndex, renderedRowIndex, viewStartColumn uint, border bool) (err error) {
+	lineIndex := renderedRowIndex + winStartRowIndex
 
-	lineBuilder, err := win.LineBuilder(adjustedRowIndex, viewStartColumn)
+	lineBuilder, err := win.LineBuilder(lineIndex, viewStartColumn)
 	if err != nil {
 		return
 	}
 
 	if border {
 		lineBuilder.Append(" ")
+	}
+
+	rowIndex := renderedRowIndex
+
+	if tableFormatter.hasHeaders() {
+		if renderedRowIndex == 0 {
+			tableFormatter.renderHeaders(lineBuilder)
+			return
+		} else if tableFormatter.gridLines && renderedRowIndex == 1 {
+			tableFormatter.renderHeaderGridLines(lineBuilder)
+			return
+		} else {
+			rowIndex--
+
+			if tableFormatter.gridLines {
+				rowIndex--
+			}
+		}
 	}
 
 	for colIndex := range tableFormatter.cells[rowIndex] {
@@ -209,7 +280,7 @@ func (tableFormatter *TableFormatter) RenderRow(win RenderWindow, rowIndex, view
 			return
 		}
 
-		lineBuilder.Append(tfSeparator)
+		tableFormatter.appendSeparator(lineBuilder, uint(colIndex))
 	}
 
 	return
@@ -235,19 +306,56 @@ func (tableFormatter *TableFormatter) firePostCellRenderListener(rowIndex, colIn
 	return
 }
 
+func (tableFormatter *TableFormatter) renderHeaders(lineBuilder *LineBuilder) {
+	for colIndex, header := range tableFormatter.headers {
+		lineBuilder.AppendWithStyle(CmpNone, "%v", header)
+		tableFormatter.appendSeparator(lineBuilder, uint(colIndex))
+	}
+}
+
+func (tableFormatter *TableFormatter) renderHeaderGridLines(lineBuilder *LineBuilder) {
+	for maxColIndex, maxColWidth := range tableFormatter.maxColWidths {
+		for i := uint(0); i < maxColWidth+1; i++ {
+			lineBuilder.AppendACSChar(AcsHline, CmpNone)
+		}
+
+		if uint(maxColIndex) != tableFormatter.cols()-1 {
+			lineBuilder.AppendACSChar(AcsPlus, CmpNone)
+			lineBuilder.AppendACSChar(AcsHline, CmpNone)
+		}
+	}
+}
+
 // PadCells pads each cell with whitespace so that the text in each column is of uniform width
 func (tableFormatter *TableFormatter) PadCells(border bool) (err error) {
 	tableFormatter.determineMaxColWidths(border)
 
+	column := uint(1)
+
+	for colIndex, header := range tableFormatter.headers {
+		if border {
+			column++
+		}
+
+		width := tableFormatter.textWidth(header, column)
+		maxColWidth := tableFormatter.maxColWidths[colIndex]
+
+		if width < maxColWidth {
+			tableFormatter.headers[colIndex] = header + strings.Repeat(" ", int(maxColWidth-width))
+		}
+
+		column += maxColWidth + uint(len(tfSeparator))
+	}
+
 	for rowIndex := range tableFormatter.cells {
-		column := uint(1)
+		column = uint(1)
 
 		if border {
 			column++
 		}
 
 		for colIndex := range tableFormatter.cells[rowIndex] {
-			width := tableFormatter.textWidth(rowIndex, colIndex, column)
+			width := tableFormatter.cellTextWidth(uint(rowIndex), uint(colIndex), column)
 			maxColWidth := tableFormatter.maxColWidths[colIndex]
 
 			if width < maxColWidth {
@@ -256,7 +364,7 @@ func (tableFormatter *TableFormatter) PadCells(border bool) (err error) {
 				}
 			}
 
-			column += maxColWidth + uint(len(tfSeparator))
+			column += maxColWidth + tableFormatter.separatorWidth()
 		}
 	}
 
@@ -264,20 +372,28 @@ func (tableFormatter *TableFormatter) PadCells(border bool) (err error) {
 }
 
 func (tableFormatter *TableFormatter) determineMaxColWidths(border bool) {
-	for colIndex := 0; colIndex < len(tableFormatter.maxColWidths); colIndex++ {
+	for colIndex := uint(0); colIndex < tableFormatter.cols(); colIndex++ {
 		column := uint(1)
 
 		if border {
 			column++
 		}
 
-		for doneColIndex := 0; doneColIndex < colIndex; doneColIndex++ {
+		for doneColIndex := uint(0); doneColIndex < colIndex; doneColIndex++ {
 			column += tableFormatter.maxColWidths[doneColIndex]
-			column += uint(len(tfSeparator))
+			column += tableFormatter.separatorWidth()
+		}
+
+		if tableFormatter.hasHeaders() {
+			width := tableFormatter.textWidth(tableFormatter.headers[colIndex], column)
+
+			if width > tableFormatter.maxColWidths[colIndex] {
+				tableFormatter.maxColWidths[colIndex] = width
+			}
 		}
 
 		for rowIndex := range tableFormatter.cells {
-			width := tableFormatter.textWidth(rowIndex, colIndex, column)
+			width := tableFormatter.cellTextWidth(uint(rowIndex), colIndex, column)
 
 			if width > tableFormatter.maxColWidths[colIndex] {
 				tableFormatter.maxColWidths[colIndex] = width
@@ -287,19 +403,47 @@ func (tableFormatter *TableFormatter) determineMaxColWidths(border bool) {
 
 }
 
-func (tableFormatter *TableFormatter) textWidth(rowIndex, colIndex int, column uint) (width uint) {
+func (tableFormatter *TableFormatter) cellTextWidth(rowIndex, colIndex uint, column uint) (width uint) {
 	textEntries := tableFormatter.cells[rowIndex][colIndex].textEntries
 
 	for _, textEntry := range textEntries {
-		for _, codePoint := range textEntry.text {
-			renderedCodePoints := DetermineRenderedCodePoint(codePoint, column, tableFormatter.config)
+		textWidth := tableFormatter.textWidth(textEntry.text, column)
+		width += textWidth
+		column += textWidth
+	}
 
-			for _, renderedCodePoint := range renderedCodePoints {
-				width += renderedCodePoint.width
-				column += renderedCodePoint.width
-			}
+	return
+}
+
+func (tableFormatter *TableFormatter) textWidth(text string, column uint) (width uint) {
+	for _, codePoint := range text {
+		renderedCodePoints := DetermineRenderedCodePoint(codePoint, column, tableFormatter.config)
+
+		for _, renderedCodePoint := range renderedCodePoints {
+			width += renderedCodePoint.width
+			column += renderedCodePoint.width
 		}
 	}
 
 	return
+}
+
+func (tableFormatter *TableFormatter) separatorWidth() uint {
+	width := uint(len(tfSeparator))
+
+	if tableFormatter.gridLines {
+		width *= 2
+		width++
+	}
+
+	return width
+}
+
+func (tableFormatter *TableFormatter) appendSeparator(lineBuilder *LineBuilder, colIndex uint) {
+	lineBuilder.Append(tfSeparator)
+
+	if tableFormatter.gridLines && colIndex != tableFormatter.cols()-1 {
+		lineBuilder.AppendACSChar(AcsVline, CmpNone)
+		lineBuilder.Append(tfSeparator)
+	}
 }
