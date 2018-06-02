@@ -157,6 +157,7 @@ type NCursesUI struct {
 	windows       map[*Window]*nCursesWindow
 	lock          sync.Mutex
 	stdscr        *nCursesWindow
+	channels      Channels
 	config        Config
 	pipe          signalPipe
 	maxColors     int
@@ -167,9 +168,10 @@ type NCursesUI struct {
 }
 
 // NewNCursesDisplay creates a new NCursesUI instance
-func NewNCursesDisplay(config Config) *NCursesUI {
+func NewNCursesDisplay(channels Channels, config Config) *NCursesUI {
 	ui := &NCursesUI{
 		windows:   make(map[*Window]*nCursesWindow),
+		channels:  channels,
 		config:    config,
 		mouseMask: gc.M_ALL,
 	}
@@ -643,12 +645,12 @@ func (ui *NCursesUI) initialiseColorPairsFromTheme(theme Theme) {
 	defaultComponent := theme.GetComponent(CmpAllviewDefault)
 	fgDefault := ui.getNCursesColor(defaultComponent.fgcolor)
 	bgDefault := ui.getNCursesColor(defaultComponent.bgcolor)
+	failed := false
 
 	for themeComponentID, themeComponent := range theme.GetAllComponents() {
 		if int(themeComponentID) >= ui.maxColorPairs {
-			log.Errorf("Not enough color pairs for theme. Required: %v, Actual: %v",
-				len(theme.GetAllComponents()), ui.maxColorPairs)
-			break
+			failed = true
+			continue
 		}
 
 		fgcolor := ui.getNCursesColor(themeComponent.fgcolor)
@@ -666,6 +668,13 @@ func (ui *NCursesUI) initialiseColorPairsFromTheme(theme Theme) {
 		if err := gc.InitPair(int16(themeComponentID), fgcolor, bgcolor); err != nil {
 			log.Errorf("Ncurses InitPair failed. Error when seting color pair %v:%v - %v", fgcolor, bgcolor, err)
 		}
+	}
+
+	if failed {
+		ui.channels.ReportError(
+			fmt.Errorf("Not enough color pairs for theme. Required: %v, Actual: %v - GRV may not display correctly",
+				len(theme.GetAllComponents()), ui.maxColorPairs),
+		)
 	}
 }
 

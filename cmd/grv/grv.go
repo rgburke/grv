@@ -187,7 +187,7 @@ func NewGRV(readOnly bool) *GRV {
 
 	keyBindings := NewKeyBindingManager()
 	config := NewConfiguration(keyBindings, channels)
-	ui := NewNCursesDisplay(config)
+	ui := NewNCursesDisplay(channels, config)
 	view := NewView(repoData, repoController, channels, config)
 
 	return &GRV{
