@@ -892,7 +892,11 @@ func (config *Configuration) generateConfigVariableHelpTable() (helpTable *HelpT
 	}
 
 	return &HelpTable{
-		title:          "Configuration Variables",
+		title: "Configuration Variables",
+		description: []string{
+			"Configuration variables allow features to be enabled, disabled and configured.",
+			"They are specified using the set command in the grvrc file or at the command prompt",
+		},
 		tableFormatter: tableFormatter,
 	}
 }

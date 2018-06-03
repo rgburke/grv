@@ -14,28 +14,64 @@ const (
 // HelpTable contains help information in a tabular format
 type HelpTable struct {
 	title          string
+	description    []string
 	tableFormatter *TableFormatter
 }
 
 func (helpTable *HelpTable) rows() uint {
-	return hvTitleRows + helpTable.tableFormatter.RenderedRows()
+	return hvTitleRows + helpTable.descriptionRows() + helpTable.tableFormatter.RenderedRows()
+}
+
+func (helpTable *HelpTable) descriptionRows() uint {
+	rows := uint(len(helpTable.description))
+
+	if rows > 0 {
+		rows++
+	}
+
+	return rows
+}
+
+func (helpTable *HelpTable) renderTitle(win RenderWindow, winStartRowIndex, helpTableRowIndex, startColumn uint) (err error) {
+	if helpTableRowIndex == 1 {
+		var lineBuilder *LineBuilder
+		if lineBuilder, err = win.LineBuilder(winStartRowIndex+helpTableRowIndex, startColumn); err != nil {
+			return
+		}
+
+		lineBuilder.Append("  ").AppendWithStyle(CmpHelpViewTableTitle, "%v", helpTable.title)
+	}
+
+	return
+}
+
+func (helpTable *HelpTable) renderDescription(win RenderWindow, winStartRowIndex, helpTableRowIndex, startColumn uint) (err error) {
+	rowIndex := helpTableRowIndex - hvTitleRows
+
+	if rowIndex < helpTable.descriptionRows()-1 {
+		var lineBuilder *LineBuilder
+		if lineBuilder, err = win.LineBuilder(winStartRowIndex+helpTableRowIndex, startColumn); err != nil {
+			return
+		}
+
+		lineBuilder.Append("  ").AppendWithStyle(CmpHelpViewTableDescription, "%v", helpTable.description[rowIndex])
+	}
+
+	return
 }
 
 func (helpTable *HelpTable) renderRow(win RenderWindow, winStartRowIndex, helpTableRowIndex, startColumn uint) (err error) {
 	if helpTableRowIndex < hvTitleRows {
-		if helpTableRowIndex == 1 {
-			var lineBuilder *LineBuilder
-			if lineBuilder, err = win.LineBuilder(winStartRowIndex+helpTableRowIndex, startColumn); err != nil {
-				return
-			}
-
-			lineBuilder.Append("  ").AppendWithStyle(CmpHelpViewTableTitle, "%v", helpTable.title)
-		}
-
-		return
+		return helpTable.renderTitle(win, winStartRowIndex, helpTableRowIndex, startColumn)
+	} else if helpTableRowIndex < hvTitleRows+helpTable.descriptionRows() {
+		return helpTable.renderDescription(win, winStartRowIndex, helpTableRowIndex, startColumn)
 	}
 
-	return helpTable.tableFormatter.RenderRow(win, winStartRowIndex+hvTitleRows, helpTableRowIndex-hvTitleRows, startColumn, true)
+	tableOffset := hvTitleRows + helpTable.descriptionRows()
+	winStartRowIndex += tableOffset
+	helpTableRowIndex -= tableOffset
+
+	return helpTable.tableFormatter.RenderRow(win, winStartRowIndex, helpTableRowIndex, startColumn, true)
 }
 
 // HelpView displays help information
