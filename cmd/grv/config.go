@@ -155,12 +155,12 @@ var themeComponents = map[string]ThemeComponentID{
 	cfGitStatusView + ".UntrackedFile":   CmpGitStatusUntrackedFile,
 	cfGitStatusView + ".ConflictedFile":  CmpGitStatusConflictedFile,
 
-	cfHelpView + ".Title":            CmpHelpViewTitle,
-	cfHelpView + ".TableTitle":       CmpHelpViewTableTitle,
-	cfHelpView + ".TableDescription": CmpHelpViewTableDescription,
-	cfHelpView + ".TableHeader":      CmpHelpViewTableHeader,
-	cfHelpView + ".TableRow":         CmpHelpViewTableRow,
-	cfHelpView + ".Footer":           CmpHelpViewFooter,
+	cfHelpView + ".Title":              CmpHelpViewTitle,
+	cfHelpView + ".SectionTitle":       CmpHelpViewSectionTitle,
+	cfHelpView + ".SectionDescription": CmpHelpViewSectionDescription,
+	cfHelpView + ".SectionTableHeader": CmpHelpViewSectionTableHeader,
+	cfHelpView + ".SectionTableRow":    CmpHelpViewSectionTableRow,
+	cfHelpView + ".Footer":             CmpHelpViewFooter,
 
 	cfStatusBarView + ".Normal": CmpStatusbarviewNormal,
 
@@ -196,7 +196,7 @@ type Config interface {
 	AddOnChangeListener(ConfigVariable, ConfigVariableOnChangeListener)
 	ConfigDir() string
 	KeyStrings(ActionType, ViewHierarchy) []BoundKeyString
-	GenerateHelpTables() []*HelpTable
+	GenerateHelpSections() []*HelpSection
 }
 
 // ConfigSetter extends the config interface and exposes the ability to set config values
@@ -853,19 +853,19 @@ func (config *Configuration) KeyStrings(actionType ActionType, viewHierarchy Vie
 	return
 }
 
-// GenerateHelpTables generates all help tables related to configuration
-func (config *Configuration) GenerateHelpTables() []*HelpTable {
-	return []*HelpTable{
-		config.generateConfigVariableHelpTable(),
+// GenerateHelpSections generates all help tables related to configuration
+func (config *Configuration) GenerateHelpSections() []*HelpSection {
+	return []*HelpSection{
+		config.generateConfigVariableHelpSection(),
 	}
 }
 
-func (config *Configuration) generateConfigVariableHelpTable() (helpTable *HelpTable) {
+func (config *Configuration) generateConfigVariableHelpSection() (helpSection *HelpSection) {
 	headers := []TableHeader{
-		TableHeader{text: "Variable", themeComponentID: CmpHelpViewTableHeader},
-		TableHeader{text: "Type", themeComponentID: CmpHelpViewTableHeader},
-		TableHeader{text: "Default Value", themeComponentID: CmpHelpViewTableHeader},
-		TableHeader{text: "Description", themeComponentID: CmpHelpViewTableHeader},
+		TableHeader{text: "Variable", themeComponentID: CmpHelpViewSectionTableHeader},
+		TableHeader{text: "Type", themeComponentID: CmpHelpViewSectionTableHeader},
+		TableHeader{text: "Default Value", themeComponentID: CmpHelpViewSectionTableHeader},
+		TableHeader{text: "Description", themeComponentID: CmpHelpViewSectionTableHeader},
 	}
 
 	tableFormatter := NewTableFormatterWithHeaders(headers, config)
@@ -885,13 +885,13 @@ func (config *Configuration) generateConfigVariableHelpTable() (helpTable *HelpT
 	for rowIndex, configVariableName := range configVariableNames {
 		configVariable := config.variables[configVariableName]
 
-		tableFormatter.SetCellWithStyle(uint(rowIndex), 0, CmpHelpViewTableRow, "%v", configVariableName)
-		tableFormatter.SetCellWithStyle(uint(rowIndex), 1, CmpHelpViewTableRow, "%v", reflect.TypeOf(configVariable.defaultValue))
-		tableFormatter.SetCellWithStyle(uint(rowIndex), 2, CmpHelpViewTableRow, "%v", configVariable.defaultValue)
-		tableFormatter.SetCellWithStyle(uint(rowIndex), 3, CmpHelpViewTableRow, "%v", configVariable.description)
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 0, CmpHelpViewSectionTableRow, "%v", configVariableName)
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 1, CmpHelpViewSectionTableRow, "%v", reflect.TypeOf(configVariable.defaultValue))
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 2, CmpHelpViewSectionTableRow, "%v", configVariable.defaultValue)
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 3, CmpHelpViewSectionTableRow, "%v", configVariable.description)
 	}
 
-	return &HelpTable{
+	return &HelpSection{
 		title: "Configuration Variables",
 		description: []string{
 			"Configuration variables allow features to be enabled, disabled and configured.",

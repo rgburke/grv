@@ -72,10 +72,10 @@ const (
 	CmpGitStatusConflictedFile
 
 	CmpHelpViewTitle
-	CmpHelpViewTableTitle
-	CmpHelpViewTableDescription
-	CmpHelpViewTableHeader
-	CmpHelpViewTableRow
+	CmpHelpViewSectionTitle
+	CmpHelpViewSectionDescription
+	CmpHelpViewSectionTableHeader
+	CmpHelpViewSectionTableRow
 	CmpHelpViewFooter
 
 	CmpStatusbarviewNormal

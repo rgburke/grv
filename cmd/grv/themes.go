@@ -296,20 +296,20 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
 			},
-			CmpHelpViewTableTitle: {
+			CmpHelpViewSectionTitle: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
 				style:   ThemeStyle{styleTypes: TstBold | TstUnderline},
 			},
-			CmpHelpViewTableDescription: {
+			CmpHelpViewSectionDescription: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},
-			CmpHelpViewTableHeader: {
+			CmpHelpViewSectionTableHeader: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorBlue),
 			},
-			CmpHelpViewTableRow: {
+			CmpHelpViewSectionTableRow: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},
@@ -617,20 +617,20 @@ func NewColdTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
 			},
-			CmpHelpViewTableTitle: {
+			CmpHelpViewSectionTitle: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
 				style:   ThemeStyle{styleTypes: TstBold | TstUnderline},
 			},
-			CmpHelpViewTableDescription: {
+			CmpHelpViewSectionDescription: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},
-			CmpHelpViewTableHeader: {
+			CmpHelpViewSectionTableHeader: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorBlue),
 			},
-			CmpHelpViewTableRow: {
+			CmpHelpViewSectionTableRow: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},
@@ -958,20 +958,20 @@ func NewSolarizedTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(solarizedCyan),
 			},
-			CmpHelpViewTableTitle: {
+			CmpHelpViewSectionTitle: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(solarizedBrightMagenta),
 				style:   ThemeStyle{styleTypes: TstBold | TstUnderline},
 			},
-			CmpHelpViewTableDescription: {
+			CmpHelpViewSectionDescription: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},
-			CmpHelpViewTableHeader: {
+			CmpHelpViewSectionTableHeader: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(solarizedBlue),
 			},
-			CmpHelpViewTableRow: {
+			CmpHelpViewSectionTableRow: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(solarizedWhite),
 			},
