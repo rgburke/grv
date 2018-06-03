@@ -292,6 +292,31 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
 			},
+			CmpHelpViewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpHelpViewTableTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+				style:   ThemeStyle{styleTypes: TstBold | TstUnderline},
+			},
+			CmpHelpViewTableDescription: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpHelpViewTableHeader: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpHelpViewTableRow: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpHelpViewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
 		},
 	}
 }
@@ -587,6 +612,31 @@ func NewColdTheme() MutableTheme {
 			CmpCommandOutputFooter: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpHelpViewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpHelpViewTableTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+				style:   ThemeStyle{styleTypes: TstBold | TstUnderline},
+			},
+			CmpHelpViewTableDescription: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpHelpViewTableHeader: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpHelpViewTableRow: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpHelpViewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
 			},
 		},
 	}
@@ -902,6 +952,31 @@ func NewSolarizedTheme() MutableTheme {
 			},
 			CmpCommandOutputFooter: {
 				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedCyan),
+			},
+			CmpHelpViewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedCyan),
+			},
+			CmpHelpViewTableTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedBrightMagenta),
+				style:   ThemeStyle{styleTypes: TstBold | TstUnderline},
+			},
+			CmpHelpViewTableDescription: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpHelpViewTableHeader: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedBlue),
+			},
+			CmpHelpViewTableRow: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedWhite),
+			},
+			CmpHelpViewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(solarizedCyan),
 			},
 		},

@@ -22,6 +22,12 @@ type TableCell struct {
 	textEntries []TableCellText
 }
 
+// TableHeader represents a column header
+type TableHeader struct {
+	text             string
+	themeComponentID ThemeComponentID
+}
+
 // CellRendererListener is notified before and after a cell is rendered
 // It has the option to modify the way the cell is rendered
 type CellRendererListener interface {
@@ -33,7 +39,7 @@ type CellRendererListener interface {
 type TableFormatter struct {
 	config                Config
 	maxColWidths          []uint
-	headers               []string
+	headers               []TableHeader
 	gridLines             bool
 	borderColWidth        uint
 	cells                 [][]TableCell
@@ -51,7 +57,7 @@ func NewTableFormatter(cols uint, config Config) *TableFormatter {
 }
 
 // NewTableFormatterWithHeaders creates a new instance of the table formatter using the provided headers
-func NewTableFormatterWithHeaders(headers []string, config Config) *TableFormatter {
+func NewTableFormatterWithHeaders(headers []TableHeader, config Config) *TableFormatter {
 	tableFormatter := NewTableFormatter(uint(len(headers)), config)
 	tableFormatter.SetHeaders(headers)
 	return tableFormatter
@@ -102,7 +108,7 @@ func (tableFormatter *TableFormatter) cols() uint {
 }
 
 // SetHeaders sets the column headers
-func (tableFormatter *TableFormatter) SetHeaders(headers []string) (err error) {
+func (tableFormatter *TableFormatter) SetHeaders(headers []TableHeader) (err error) {
 	headersCols := uint(len(headers))
 	tableCols := tableFormatter.cols()
 
@@ -315,7 +321,7 @@ func (tableFormatter *TableFormatter) firePostCellRenderListener(rowIndex, colIn
 
 func (tableFormatter *TableFormatter) renderHeaders(lineBuilder *LineBuilder) {
 	for colIndex, header := range tableFormatter.headers {
-		lineBuilder.AppendWithStyle(CmpNone, "%v", header)
+		lineBuilder.AppendWithStyle(header.themeComponentID, "%v", header.text)
 		tableFormatter.appendSeparator(lineBuilder, uint(colIndex))
 	}
 }
@@ -344,11 +350,11 @@ func (tableFormatter *TableFormatter) PadCells(border bool) (err error) {
 			column += tableFormatter.borderColWidth
 		}
 
-		width := tableFormatter.textWidth(header, column)
+		width := tableFormatter.textWidth(header.text, column)
 		maxColWidth := tableFormatter.maxColWidths[colIndex]
 
 		if width < maxColWidth {
-			tableFormatter.headers[colIndex] = header + strings.Repeat(" ", int(maxColWidth-width))
+			tableFormatter.headers[colIndex].text = header.text + strings.Repeat(" ", int(maxColWidth-width))
 		}
 
 		column += maxColWidth + uint(len(tfSeparator))
@@ -392,7 +398,7 @@ func (tableFormatter *TableFormatter) determineMaxColWidths(border bool) {
 		}
 
 		if tableFormatter.hasHeaders() {
-			width := tableFormatter.textWidth(tableFormatter.headers[colIndex], column)
+			width := tableFormatter.textWidth(tableFormatter.headers[colIndex].text, column)
 
 			if width > tableFormatter.maxColWidths[colIndex] {
 				tableFormatter.maxColWidths[colIndex] = width

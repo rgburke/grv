@@ -71,6 +71,13 @@ const (
 	CmpGitStatusUntrackedFile
 	CmpGitStatusConflictedFile
 
+	CmpHelpViewTitle
+	CmpHelpViewTableTitle
+	CmpHelpViewTableDescription
+	CmpHelpViewTableHeader
+	CmpHelpViewTableRow
+	CmpHelpViewFooter
+
 	CmpStatusbarviewNormal
 
 	CmpHelpbarviewSpecial

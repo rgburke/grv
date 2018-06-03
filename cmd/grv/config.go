@@ -155,6 +155,13 @@ var themeComponents = map[string]ThemeComponentID{
 	cfGitStatusView + ".UntrackedFile":   CmpGitStatusUntrackedFile,
 	cfGitStatusView + ".ConflictedFile":  CmpGitStatusConflictedFile,
 
+	cfHelpView + ".Title":            CmpHelpViewTitle,
+	cfHelpView + ".TableTitle":       CmpHelpViewTableTitle,
+	cfHelpView + ".TableDescription": CmpHelpViewTableDescription,
+	cfHelpView + ".TableHeader":      CmpHelpViewTableHeader,
+	cfHelpView + ".TableRow":         CmpHelpViewTableRow,
+	cfHelpView + ".Footer":           CmpHelpViewFooter,
+
 	cfStatusBarView + ".Normal": CmpStatusbarviewNormal,
 
 	cfHelpBarView + ".Special": CmpHelpbarviewSpecial,
@@ -854,7 +861,12 @@ func (config *Configuration) GenerateHelpTables() []*HelpTable {
 }
 
 func (config *Configuration) generateConfigVariableHelpTable() (helpTable *HelpTable) {
-	headers := []string{"Variable", "Type", "Default Value", "Description"}
+	headers := []TableHeader{
+		TableHeader{text: "Variable", themeComponentID: CmpHelpViewTableHeader},
+		TableHeader{text: "Type", themeComponentID: CmpHelpViewTableHeader},
+		TableHeader{text: "Default Value", themeComponentID: CmpHelpViewTableHeader},
+		TableHeader{text: "Description", themeComponentID: CmpHelpViewTableHeader},
+	}
 
 	tableFormatter := NewTableFormatterWithHeaders(headers, config)
 	tableFormatter.SetGridLines(true)
@@ -873,10 +885,10 @@ func (config *Configuration) generateConfigVariableHelpTable() (helpTable *HelpT
 	for rowIndex, configVariableName := range configVariableNames {
 		configVariable := config.variables[configVariableName]
 
-		tableFormatter.SetCell(uint(rowIndex), 0, "%v", configVariableName)
-		tableFormatter.SetCell(uint(rowIndex), 1, "%v", reflect.TypeOf(configVariable.defaultValue))
-		tableFormatter.SetCell(uint(rowIndex), 2, "%v", configVariable.defaultValue)
-		tableFormatter.SetCell(uint(rowIndex), 3, "%v", configVariable.description)
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 0, CmpHelpViewTableRow, "%v", configVariableName)
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 1, CmpHelpViewTableRow, "%v", reflect.TypeOf(configVariable.defaultValue))
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 2, CmpHelpViewTableRow, "%v", configVariable.defaultValue)
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 3, CmpHelpViewTableRow, "%v", configVariable.description)
 	}
 
 	return &HelpTable{

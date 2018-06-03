@@ -29,7 +29,7 @@ func (helpTable *HelpTable) renderRow(win RenderWindow, winStartRowIndex, helpTa
 				return
 			}
 
-			lineBuilder.AppendWithStyle(CmpNone, "  %v", helpTable.title)
+			lineBuilder.Append("  ").AppendWithStyle(CmpHelpViewTableTitle, "%v", helpTable.title)
 		}
 
 		return
