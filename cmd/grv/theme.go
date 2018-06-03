@@ -76,6 +76,7 @@ const (
 	CmpHelpViewSectionDescription
 	CmpHelpViewSectionTableHeader
 	CmpHelpViewSectionTableRow
+	CmpHelpViewSectionTableRowHighlighted
 	CmpHelpViewFooter
 
 	CmpStatusbarviewNormal

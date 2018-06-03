@@ -155,12 +155,13 @@ var themeComponents = map[string]ThemeComponentID{
 	cfGitStatusView + ".UntrackedFile":   CmpGitStatusUntrackedFile,
 	cfGitStatusView + ".ConflictedFile":  CmpGitStatusConflictedFile,
 
-	cfHelpView + ".Title":              CmpHelpViewTitle,
-	cfHelpView + ".SectionTitle":       CmpHelpViewSectionTitle,
-	cfHelpView + ".SectionDescription": CmpHelpViewSectionDescription,
-	cfHelpView + ".SectionTableHeader": CmpHelpViewSectionTableHeader,
-	cfHelpView + ".SectionTableRow":    CmpHelpViewSectionTableRow,
-	cfHelpView + ".Footer":             CmpHelpViewFooter,
+	cfHelpView + ".Title":                      CmpHelpViewTitle,
+	cfHelpView + ".SectionTitle":               CmpHelpViewSectionTitle,
+	cfHelpView + ".SectionDescription":         CmpHelpViewSectionDescription,
+	cfHelpView + ".SectionTableHeader":         CmpHelpViewSectionTableHeader,
+	cfHelpView + ".SectionTableRow":            CmpHelpViewSectionTableRow,
+	cfHelpView + ".SectionTableRowHighlighted": CmpHelpViewSectionTableRowHighlighted,
+	cfHelpView + ".Footer":                     CmpHelpViewFooter,
 
 	cfStatusBarView + ".Normal": CmpStatusbarviewNormal,
 
@@ -865,6 +866,7 @@ func (config *Configuration) generateConfigVariableHelpSection() (helpSection *H
 		TableHeader{text: "Variable", themeComponentID: CmpHelpViewSectionTableHeader},
 		TableHeader{text: "Type", themeComponentID: CmpHelpViewSectionTableHeader},
 		TableHeader{text: "Default Value", themeComponentID: CmpHelpViewSectionTableHeader},
+		TableHeader{text: "Current Value", themeComponentID: CmpHelpViewSectionTableHeader},
 		TableHeader{text: "Description", themeComponentID: CmpHelpViewSectionTableHeader},
 	}
 
@@ -888,7 +890,14 @@ func (config *Configuration) generateConfigVariableHelpSection() (helpSection *H
 		tableFormatter.SetCellWithStyle(uint(rowIndex), 0, CmpHelpViewSectionTableRow, "%v", configVariableName)
 		tableFormatter.SetCellWithStyle(uint(rowIndex), 1, CmpHelpViewSectionTableRow, "%v", reflect.TypeOf(configVariable.defaultValue))
 		tableFormatter.SetCellWithStyle(uint(rowIndex), 2, CmpHelpViewSectionTableRow, "%v", configVariable.defaultValue)
-		tableFormatter.SetCellWithStyle(uint(rowIndex), 3, CmpHelpViewSectionTableRow, "%v", configVariable.description)
+
+		currentValueThemeComponentID := CmpHelpViewSectionTableRow
+		if configVariable.defaultValue != configVariable.value {
+			currentValueThemeComponentID = CmpHelpViewSectionTableRowHighlighted
+		}
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 3, currentValueThemeComponentID, "%v", configVariable.value)
+
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 4, CmpHelpViewSectionTableRow, "%v", configVariable.description)
 	}
 
 	return &HelpSection{

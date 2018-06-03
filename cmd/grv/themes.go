@@ -313,6 +313,11 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},
+			CmpHelpViewSectionTableRowHighlighted: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorYellow),
+				style:   ThemeStyle{styleTypes: TstBold},
+			},
 			CmpHelpViewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
@@ -633,6 +638,11 @@ func NewColdTheme() MutableTheme {
 			CmpHelpViewSectionTableRow: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpHelpViewSectionTableRowHighlighted: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorMagenta),
+				style:   ThemeStyle{styleTypes: TstBold},
 			},
 			CmpHelpViewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -974,6 +984,11 @@ func NewSolarizedTheme() MutableTheme {
 			CmpHelpViewSectionTableRow: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(solarizedWhite),
+			},
+			CmpHelpViewSectionTableRowHighlighted: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedYellow),
+				style:   ThemeStyle{styleTypes: TstBold},
 			},
 			CmpHelpViewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
