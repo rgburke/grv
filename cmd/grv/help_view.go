@@ -18,8 +18,23 @@ type HelpSection struct {
 	tableFormatter *TableFormatter
 }
 
+func (helpSection *HelpSection) initialise() (err error) {
+	if helpSection.tableFormatter != nil {
+		helpSection.tableFormatter.SetBorderColumnWidth(2)
+		err = helpSection.tableFormatter.PadCells(true)
+	}
+
+	return
+}
+
 func (helpSection *HelpSection) rows() uint {
-	return hvTitleRows + helpSection.descriptionRows() + helpSection.tableFormatter.RenderedRows()
+	rows := hvTitleRows + helpSection.descriptionRows()
+
+	if helpSection.tableFormatter != nil {
+		rows += helpSection.tableFormatter.RenderedRows()
+	}
+
+	return rows
 }
 
 func (helpSection *HelpSection) descriptionRows() uint {
@@ -65,13 +80,15 @@ func (helpSection *HelpSection) renderRow(win RenderWindow, winStartRowIndex, he
 		return helpSection.renderTitle(win, winStartRowIndex, helpSectionRowIndex, startColumn)
 	} else if helpSectionRowIndex < hvTitleRows+helpSection.descriptionRows() {
 		return helpSection.renderDescription(win, winStartRowIndex, helpSectionRowIndex, startColumn)
+	} else if helpSection.tableFormatter != nil {
+		tableOffset := hvTitleRows + helpSection.descriptionRows()
+		winStartRowIndex += tableOffset
+		helpSectionRowIndex -= tableOffset
+
+		return helpSection.tableFormatter.RenderRow(win, winStartRowIndex, helpSectionRowIndex, startColumn, true)
 	}
 
-	tableOffset := hvTitleRows + helpSection.descriptionRows()
-	winStartRowIndex += tableOffset
-	helpSectionRowIndex -= tableOffset
-
-	return helpSection.tableFormatter.RenderRow(win, winStartRowIndex, helpSectionRowIndex, startColumn, true)
+	return
 }
 
 // HelpView displays help information
@@ -97,16 +114,18 @@ func NewHelpView(channels Channels, config Config) *HelpView {
 
 // Initialise does nothing
 func (helpView *HelpView) Initialise() (err error) {
-	helpView.helpSections = helpView.config.GenerateHelpSections()
+	helpSections := []*HelpSection{helpView.introductionHelpSection()}
+	helpSections = append(helpSections, helpView.config.GenerateHelpSections()...)
 
-	for _, helpSection := range helpView.helpSections {
-		helpSection.tableFormatter.SetBorderColumnWidth(2)
-		if err = helpSection.tableFormatter.PadCells(true); err != nil {
+	for _, helpSection := range helpSections {
+		if err = helpSection.initialise(); err != nil {
 			return
 		}
 
 		helpView.totalRows += helpSection.rows()
 	}
+
+	helpView.helpSections = helpSections
 
 	return
 }
@@ -147,11 +166,11 @@ func (helpView *HelpView) Render(win RenderWindow) (err error) {
 
 	win.DrawBorder()
 
-	if err = win.SetTitle(CmpCommandOutputTitle, "Help"); err != nil {
+	if err = win.SetTitle(CmpHelpViewTitle, "Help"); err != nil {
 		return
 	}
 
-	if err = win.SetFooter(CmpCommandOutputFooter, "Line %v of %v", viewPos.SelectedRowIndex()+1, viewRows); err != nil {
+	if err = win.SetFooter(CmpHelpViewFooter, "Line %v of %v", viewPos.SelectedRowIndex()+1, viewRows); err != nil {
 		return
 	}
 
@@ -207,4 +226,15 @@ func (helpView *HelpView) HandleAction(action Action) (err error) {
 	}
 
 	return
+}
+
+func (helpView *HelpView) introductionHelpSection() *HelpSection {
+	return &HelpSection{
+		title: "Introduction",
+		description: []string{
+			"GRV - Git Repository Viewer - is a TUI for viewing and modifying git repositories.",
+			"The sections below provide a brief overview of the ways to configure and interact with GRV.",
+			"For full documentation please visit: https://github.com/rgburke/grv/blob/master/doc/documentation.md",
+		},
+	}
 }
