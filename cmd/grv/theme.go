@@ -161,10 +161,34 @@ func NewRGBColor(red, green, blue byte) ThemeColor {
 
 func (rgbColor *RGBColor) themeColor() {}
 
+// ThemeStyleType represents a type of styling applied to text
+type ThemeStyleType int
+
+// The set of supported text styles
+const (
+	TstNormal   ThemeStyleType = 0
+	TstStandout ThemeStyleType = 1 << (iota - 1)
+	TstUnderline
+	TstReverse
+	TstBlink
+	TstDim
+	TstBold
+	TstProtect
+	TstInvis
+	TstAltcharset
+	TstChartext
+)
+
+// ThemeStyle contains styles that should be applied to text
+type ThemeStyle struct {
+	styleTypes ThemeStyleType
+}
+
 // ThemeComponent stores the color information for a theme component
 type ThemeComponent struct {
 	bgcolor ThemeColor
 	fgcolor ThemeColor
+	style   ThemeStyle
 }
 
 // Theme provides read only access to the style information of a theme

@@ -49,6 +49,38 @@ const (
 	AcsSterling         = AcsChar(gc.ACS_STERLING)
 )
 
+// AChar represents a video attribute
+type AChar gc.Char
+
+// The set of supported video attributes
+const (
+	Anormal     = AChar(gc.A_NORMAL)
+	Astandout   = AChar(gc.A_STANDOUT)
+	Aunderline  = AChar(gc.A_UNDERLINE)
+	Areverse    = AChar(gc.A_REVERSE)
+	Ablink      = AChar(gc.A_BLINK)
+	Adim        = AChar(gc.A_DIM)
+	Abold       = AChar(gc.A_BOLD)
+	Aprotect    = AChar(gc.A_PROTECT)
+	Ainvis      = AChar(gc.A_INVIS)
+	Aaltcharset = AChar(gc.A_ALTCHARSET)
+	Achartext   = AChar(gc.A_CHARTEXT)
+)
+
+var themeStyleMap = map[ThemeStyleType]AChar{
+	TstNormal:     Anormal,
+	TstStandout:   Astandout,
+	TstUnderline:  Aunderline,
+	TstReverse:    Areverse,
+	TstBlink:      Ablink,
+	TstDim:        Adim,
+	TstBold:       Abold,
+	TstProtect:    Aprotect,
+	TstInvis:      Ainvis,
+	TstAltcharset: Aaltcharset,
+	TstChartext:   Achartext,
+}
+
 // RenderWindow represents a window that will be drawn to the display
 type RenderWindow interface {
 	ID() string
@@ -194,6 +226,7 @@ func (lineBuilder *LineBuilder) AppendACSChar(acsChar AcsChar, themeComponentID 
 			cell.codePoints.Reset()
 			cell.style.themeComponentID = themeComponentID
 			cell.style.acsChar = gc.Char(acsChar)
+			lineBuilder.applyStyle(cell, themeComponentID)
 			lineBuilder.cellIndex++
 		}
 
@@ -213,10 +246,26 @@ func (lineBuilder *LineBuilder) setCellAndAdvanceIndex(codePoint rune, width uin
 			cell.codePoints.WriteRune(codePoint)
 			cell.style.themeComponentID = themeComponentID
 			cell.style.acsChar = 0
+			lineBuilder.applyStyle(cell, themeComponentID)
 			lineBuilder.cellIndex++
 		}
 
 		lineBuilder.column += width
+	}
+}
+
+func (lineBuilder *LineBuilder) applyStyle(cell *cell, themeComponentID ThemeComponentID) {
+	theme := lineBuilder.config.GetTheme()
+	themeComponent := theme.GetComponent(themeComponentID)
+
+	if themeComponent.style.styleTypes == TstNormal {
+		return
+	}
+
+	for styleType, aChar := range themeStyleMap {
+		if themeComponent.style.styleTypes&styleType != TstNormal {
+			cell.style.attr |= gc.Char(aChar)
+		}
 	}
 }
 
