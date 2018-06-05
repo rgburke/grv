@@ -78,7 +78,7 @@ static: build-libgit2
 .PHONY: test
 test: $(BINARY) update-test
 	$(GOCMD) test $(GRV_BUILD_FLAGS) $(GRV_SOURCE_DIR)
-	$(GOCMD) vet $(GRV_SOURCE_DIR)
+	# $(GOCMD) vet $(GRV_SOURCE_DIR)
 	$(GOLINT) -set_exit_status $(GRV_SOURCE_DIR)
 
 .PHONY: clean
