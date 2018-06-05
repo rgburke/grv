@@ -55,6 +55,9 @@ const (
 	ActionPrevView
 	ActionFullScreenView
 	ActionToggleViewLayout
+	ActionNextTab
+	ActionPrevTab
+	ActionRemoveView
 	ActionAddFilter
 	ActionRemoveFilter
 	ActionCenterView
@@ -63,13 +66,10 @@ const (
 	ActionCursorTopView
 	ActionCursorMiddleView
 	ActionCursorBottomView
-	ActionNextTab
-	ActionPrevTab
 	ActionNewTab
 	ActionRemoveTab
 	ActionAddView
 	ActionSplitView
-	ActionRemoveView
 	ActionMouseSelect
 	ActionMouseScrollDown
 	ActionMouseScrollUp
@@ -84,6 +84,445 @@ const (
 	ActionCommit
 	ActionShowHelpView
 )
+
+// ActionCategory defines the type of an action
+type ActionCategory int
+
+// The set of ActionCategory values
+const (
+	ActionCategoryNone ActionCategory = iota
+	ActionCategoryMovement
+	ActionCategorySearch
+	ActionCategoryViewNavigation
+	ActionCategoryGeneral
+	ActionCategoryViewSpecific
+)
+
+// ActionDescriptor describes an action
+type ActionDescriptor struct {
+	actionKey      string
+	actionCategory ActionCategory
+	promptAction   bool
+	description    string
+	keyBindings    map[ViewID][]string
+}
+
+var actionDescriptors = map[ActionType]ActionDescriptor{
+	ActionNone: ActionDescriptor{
+		description: "Perform no action (NOP)",
+	},
+	ActionExit: ActionDescriptor{
+		actionKey:      "<grv-exit>",
+		actionCategory: ActionCategoryGeneral,
+		description:    "Exit GRV",
+	},
+	ActionSuspend: ActionDescriptor{
+		actionKey:      "<grv-suspend>",
+		actionCategory: ActionCategoryGeneral,
+		description:    "Suspend GRV",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<C-z>"},
+		},
+	},
+	ActionRunCommand: ActionDescriptor{
+		actionKey:      "<grv-run-command>",
+		actionCategory: ActionCategoryGeneral,
+		description:    "Run a shell command",
+	},
+	ActionPrompt: ActionDescriptor{
+		actionKey:      "<grv-prompt>",
+		actionCategory: ActionCategoryGeneral,
+		promptAction:   true,
+		description:    "GRV Command prompt",
+		keyBindings: map[ViewID][]string{
+			ViewMain: {PromptText},
+		},
+	},
+	ActionSearchPrompt: ActionDescriptor{
+		actionKey:      "<grv-search-prompt>",
+		actionCategory: ActionCategorySearch,
+		promptAction:   true,
+		description:    "Search forwards",
+		keyBindings: map[ViewID][]string{
+			ViewMain: {SearchPromptText},
+		},
+	},
+	ActionReverseSearchPrompt: ActionDescriptor{
+		actionKey:      "<grv-reverse-search-prompt>",
+		actionCategory: ActionCategorySearch,
+		promptAction:   true,
+		description:    "Search backwards",
+		keyBindings: map[ViewID][]string{
+			ViewMain: {ReverseSearchPromptText},
+		},
+	},
+	ActionFilterPrompt: ActionDescriptor{
+		actionKey:      "<grv-filter-prompt>",
+		actionCategory: ActionCategoryViewSpecific,
+		promptAction:   true,
+		description:    "Add filter",
+		keyBindings: map[ViewID][]string{
+			ViewCommit: {"<C-q>"},
+			ViewRef:    {"<C-q>"},
+		},
+	},
+	ActionQuestionPrompt: ActionDescriptor{
+		actionCategory: ActionCategoryGeneral,
+		promptAction:   true,
+		description:    "Prompt the user with a question",
+	},
+	ActionBranchNamePrompt: ActionDescriptor{
+		actionKey:      "<grv-branch-name-prompt>",
+		actionCategory: ActionCategoryGeneral,
+		promptAction:   true,
+		description:    "Create a new branch",
+		keyBindings: map[ViewID][]string{
+			ViewRef:    {"b"},
+			ViewCommit: {"b"},
+		},
+	},
+	ActionSearch: ActionDescriptor{
+		actionCategory: ActionCategorySearch,
+		description:    "Perform search forwards",
+	},
+	ActionReverseSearch: ActionDescriptor{
+		actionCategory: ActionCategorySearch,
+		description:    "Perform search backwards",
+	},
+	ActionSearchFindNext: ActionDescriptor{
+		actionKey:      "<grv-search-find-next>",
+		actionCategory: ActionCategorySearch,
+		description:    "Move to next search match",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"n"},
+		},
+	},
+	ActionSearchFindPrev: ActionDescriptor{
+		actionKey:      "<grv-search-find-prev>",
+		actionCategory: ActionCategorySearch,
+		description:    "Move to previous search match",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"N"},
+		},
+	},
+	ActionClearSearch: ActionDescriptor{
+		actionKey:      "<grv-clear-search>",
+		actionCategory: ActionCategorySearch,
+		description:    "Clear search",
+	},
+	ActionShowStatus: ActionDescriptor{
+		actionCategory: ActionCategoryGeneral,
+		description:    "Display message in status bar",
+	},
+	ActionNextLine: ActionDescriptor{
+		actionKey:      "<grv-next-line>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Move down one line",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<Down>", "j"},
+		},
+	},
+	ActionPrevLine: ActionDescriptor{
+		actionKey:      "<grv-prev-line>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Move up one line",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<Up>", "k"},
+		},
+	},
+	ActionNextPage: ActionDescriptor{
+		actionKey:      "<grv-next-page>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Move one page down",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<PageDown>", "<C-f>"},
+		},
+	},
+	ActionPrevPage: ActionDescriptor{
+		actionKey:      "<grv-prev-page>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Move one page up",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<PageUp>", "<C-b>"},
+		},
+	},
+	ActionNextHalfPage: ActionDescriptor{
+		actionKey:      "<grv-next-half-page>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Move half page down",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<C-d>"},
+		},
+	},
+	ActionPrevHalfPage: ActionDescriptor{
+		actionKey:      "<grv-prev-half-page>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Move half page up",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<C-u>"},
+		},
+	},
+	ActionScrollRight: ActionDescriptor{
+		actionKey:      "<grv-scroll-right>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Scroll right",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<Right>", "l"},
+		},
+	},
+	ActionScrollLeft: ActionDescriptor{
+		actionKey:      "<grv-scroll-left>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Scroll left",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<Left>", "h"},
+		},
+	},
+	ActionFirstLine: ActionDescriptor{
+		actionKey:      "<grv-first-line>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Move to first line",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"gg"},
+		},
+	},
+	ActionLastLine: ActionDescriptor{
+		actionKey:      "<grv-last-line>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Move to last line",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"G"},
+		},
+	},
+	ActionSelect: ActionDescriptor{
+		actionKey:      "<grv-select>",
+		actionCategory: ActionCategoryGeneral,
+		description:    "Select item (opens listener view if none exists)",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<Enter>"},
+		},
+	},
+	ActionNextView: ActionDescriptor{
+		actionKey:      "<grv-next-view>",
+		actionCategory: ActionCategoryViewNavigation,
+		description:    "Move to next view",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<C-w>w", "<C-w><C-w>", "<Tab>"},
+		},
+	},
+	ActionPrevView: ActionDescriptor{
+		actionKey:      "<grv-prev-view>",
+		actionCategory: ActionCategoryViewNavigation,
+		description:    "Move to previous view",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<C-w>W", "<S-Tab>"},
+		},
+	},
+	ActionFullScreenView: ActionDescriptor{
+		actionKey:      "<grv-full-screen-view>",
+		actionCategory: ActionCategoryViewNavigation,
+		description:    "Toggle current view full screen",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<C-w>o", "<C-w><C-o>", "f"},
+		},
+	},
+	ActionToggleViewLayout: ActionDescriptor{
+		actionKey:      "<grv-toggle-view-layout>",
+		actionCategory: ActionCategoryViewNavigation,
+		description:    "Toggle view layout",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<C-w>t"},
+		},
+	},
+	ActionNextTab: ActionDescriptor{
+		actionKey:      "<grv-next-tab>",
+		actionCategory: ActionCategoryViewNavigation,
+		description:    "Move to next tab",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"gt"},
+		},
+	},
+	ActionPrevTab: ActionDescriptor{
+		actionKey:      "<grv-prev-tab>",
+		actionCategory: ActionCategoryViewNavigation,
+		description:    "Move to previous tab",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"gT"},
+		},
+	},
+	ActionRemoveView: ActionDescriptor{
+		actionKey:      "<grv-remove-view>",
+		actionCategory: ActionCategoryViewNavigation,
+		description:    "Close view (or close tab if empty)",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"q"},
+		},
+	},
+	ActionAddFilter: ActionDescriptor{
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Add filter",
+	},
+	ActionRemoveFilter: ActionDescriptor{
+		actionKey:      "<grv-remove-filter>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Remove filter",
+		keyBindings: map[ViewID][]string{
+			ViewCommit: {"<C-r>"},
+			ViewRef:    {"<C-r>"},
+		},
+	},
+	ActionCenterView: ActionDescriptor{
+		actionKey:      "<grv-center-view>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Center view",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"z.", "zz"},
+		},
+	},
+	ActionScrollCursorTop: ActionDescriptor{
+		actionKey:      "<grv-scroll-cursor-top>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Scroll the screen so cursor is at the top",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"zt"},
+		},
+	},
+	ActionScrollCursorBottom: ActionDescriptor{
+		actionKey:      "<grv-scroll-cursor-bottom>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Scroll the screen so cursor is at the bottom",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"zb"},
+		},
+	},
+	ActionCursorTopView: ActionDescriptor{
+		actionKey:      "<grv-cursor-top-view>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Move to the first line of the page",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"H"},
+		},
+	},
+	ActionCursorMiddleView: ActionDescriptor{
+		actionKey:      "<grv-cursor-middle-view>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Move to the middle line of the page",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"M"},
+		},
+	},
+	ActionCursorBottomView: ActionDescriptor{
+		actionKey:      "<grv-cursor-bottom-view>",
+		actionCategory: ActionCategoryMovement,
+		description:    "Move to the last line of the page",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"L"},
+		},
+	},
+	ActionNewTab: ActionDescriptor{
+		actionCategory: ActionCategoryGeneral,
+		description:    "Add a new tab",
+	},
+	ActionRemoveTab: ActionDescriptor{
+		actionCategory: ActionCategoryGeneral,
+		description:    "Remove the active tab",
+	},
+	ActionAddView: ActionDescriptor{
+		actionCategory: ActionCategoryGeneral,
+		description:    "Add a new view",
+	},
+	ActionSplitView: ActionDescriptor{
+		actionCategory: ActionCategoryGeneral,
+		description:    "Split the current view with a new view",
+	},
+	ActionMouseSelect: ActionDescriptor{
+		actionCategory: ActionCategoryGeneral,
+		description:    "Mouse select",
+	},
+	ActionMouseScrollDown: ActionDescriptor{
+		actionCategory: ActionCategoryGeneral,
+		description:    "Mouse scroll down",
+	},
+	ActionMouseScrollUp: ActionDescriptor{
+		actionCategory: ActionCategoryGeneral,
+		description:    "Mouse scroll up",
+	},
+	ActionCheckoutRef: ActionDescriptor{
+		actionKey:      "<grv-checkout-ref>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Checkout ref",
+		keyBindings: map[ViewID][]string{
+			ViewRef: {"c"},
+		},
+	},
+	ActionCheckoutCommit: ActionDescriptor{
+		actionKey:      "<grv-checkout-commit>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Checkout commit",
+		keyBindings: map[ViewID][]string{
+			ViewCommit: {"c"},
+		},
+	},
+	ActionCreateBranch: ActionDescriptor{
+		actionCategory: ActionCategoryGeneral,
+		description:    "Create a branch",
+	},
+	ActionCreateContextMenu: ActionDescriptor{
+		actionCategory: ActionCategoryGeneral,
+		description:    "Create a context menu",
+	},
+	ActionCreateCommandOutputView: ActionDescriptor{
+		actionCategory: ActionCategoryGeneral,
+		description:    "Create a command output view",
+	},
+	ActionShowAvailableActions: ActionDescriptor{
+		actionKey:      "<grv-show-available-actions>",
+		actionCategory: ActionCategoryGeneral,
+		description:    "Show available actions for the selected row",
+		keyBindings: map[ViewID][]string{
+			ViewAll: {"<C-a>"},
+		},
+	},
+	ActionStageFile: ActionDescriptor{
+		actionKey:      "<grv-stage-file>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Stage",
+		keyBindings: map[ViewID][]string{
+			ViewGitStatus: {"a"},
+		},
+	},
+	ActionUnstageFile: ActionDescriptor{
+		actionKey:      "<grv-unstage-file>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Unstage",
+		keyBindings: map[ViewID][]string{
+			ViewGitStatus: {"u"},
+		},
+	},
+	ActionCommit: ActionDescriptor{
+		actionKey:      "<grv-action-commit>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Commit",
+		keyBindings: map[ViewID][]string{
+			ViewGitStatus: {"c"},
+		},
+	},
+	ActionShowHelpView: ActionDescriptor{
+		actionKey:      "<grv-show-help>",
+		actionCategory: ActionCategoryGeneral,
+		description:    "Show the help view",
+	},
+}
+
+var actionKeys = map[string]ActionType{}
+
+func init() {
+	for actionType, actionDescriptor := range actionDescriptors {
+		if actionDescriptor.actionKey != "" {
+			actionKeys[actionDescriptor.actionKey] = actionType
+		}
+	}
+}
 
 // Action represents a type of actions and its arguments to be executed
 type Action struct {
@@ -148,197 +587,6 @@ type ActionRunCommandArgs struct {
 	beforeStart    func(cmd *exec.Cmd)
 	onStart        func(cmd *exec.Cmd)
 	onComplete     func(err error, exitStatus int) error
-}
-
-var actionKeys = map[string]ActionType{
-	"<grv-nop>":                    ActionNone,
-	"<grv-exit>":                   ActionExit,
-	"<grv-suspend>":                ActionSuspend,
-	"<grv-run-command>":            ActionRunCommand,
-	"<grv-prompt>":                 ActionPrompt,
-	"<grv-search-prompt>":          ActionSearchPrompt,
-	"<grv-reverse-search-prompt>":  ActionReverseSearchPrompt,
-	"<grv-filter-prompt>":          ActionFilterPrompt,
-	"<grv-question-prompt>":        ActionQuestionPrompt,
-	"<grv-branch-name-prompt>":     ActionBranchNamePrompt,
-	"<grv-search>":                 ActionSearch,
-	"<grv-reverse-search>":         ActionReverseSearch,
-	"<grv-search-find-next>":       ActionSearchFindNext,
-	"<grv-search-find-prev>":       ActionSearchFindPrev,
-	"<grv-clear-search>":           ActionClearSearch,
-	"<grv-show-status>":            ActionShowStatus,
-	"<grv-next-line>":              ActionNextLine,
-	"<grv-prev-line>":              ActionPrevLine,
-	"<grv-next-page>":              ActionNextPage,
-	"<grv-prev-page>":              ActionPrevPage,
-	"<grv-next-half-page>":         ActionNextHalfPage,
-	"<grv-prev-half-page>":         ActionPrevHalfPage,
-	"<grv-scroll-right>":           ActionScrollRight,
-	"<grv-scroll-left>":            ActionScrollLeft,
-	"<grv-first-line>":             ActionFirstLine,
-	"<grv-last-line>":              ActionLastLine,
-	"<grv-select>":                 ActionSelect,
-	"<grv-next-view>":              ActionNextView,
-	"<grv-prev-view>":              ActionPrevView,
-	"<grv-full-screen-view>":       ActionFullScreenView,
-	"<grv-toggle-view-layout>":     ActionToggleViewLayout,
-	"<grv-add-filter>":             ActionAddFilter,
-	"<grv-remove-filter>":          ActionRemoveFilter,
-	"<grv-center-view>":            ActionCenterView,
-	"<grv-scroll-cursor-top>":      ActionScrollCursorTop,
-	"<grv-scroll-cursor-bottom>":   ActionScrollCursorBottom,
-	"<grv-cursor-top-view>":        ActionCursorTopView,
-	"<grv-cursor-middle-view>":     ActionCursorMiddleView,
-	"<grv-cursor-bottom-view>":     ActionCursorBottomView,
-	"<grv-next-tab>":               ActionNextTab,
-	"<grv-prev-tab>":               ActionPrevTab,
-	"<grv-add-tab>":                ActionNewTab,
-	"<grv-remove-tab>":             ActionRemoveTab,
-	"<grv-add-view>":               ActionAddView,
-	"<grv-split-view>":             ActionSplitView,
-	"<grv-remove-view>":            ActionRemoveView,
-	"<grv-mouse-select>":           ActionMouseSelect,
-	"<grv-checkout-ref>":           ActionCheckoutRef,
-	"<grv-checkout-commit>":        ActionCheckoutCommit,
-	"<grv-create-branch>":          ActionCreateBranch,
-	"<grv-create-context-menu>":    ActionCreateContextMenu,
-	"<grv-show-available-actions>": ActionShowAvailableActions,
-	"<grv-stage-file>":             ActionStageFile,
-	"<grv-unstage-file>":           ActionUnstageFile,
-	"<grv-action-commit>":          ActionCommit,
-	"<grv-show-help-view>":         ActionShowHelpView,
-}
-
-var promptActions = map[ActionType]bool{
-	ActionPrompt:              true,
-	ActionSearchPrompt:        true,
-	ActionReverseSearchPrompt: true,
-	ActionFilterPrompt:        true,
-	ActionQuestionPrompt:      true,
-	ActionBranchNamePrompt:    true,
-}
-
-var defaultKeyBindings = map[ActionType]map[ViewID][]string{
-	ActionPrompt: {
-		ViewMain: {PromptText},
-	},
-	ActionSearchPrompt: {
-		ViewMain: {SearchPromptText},
-	},
-	ActionReverseSearchPrompt: {
-		ViewMain: {ReverseSearchPromptText},
-	},
-	ActionSuspend: {
-		ViewAll: {"<C-z>"},
-	},
-	ActionSearchFindNext: {
-		ViewAll: {"n"},
-	},
-	ActionSearchFindPrev: {
-		ViewAll: {"N"},
-	},
-	ActionNextLine: {
-		ViewAll: {"<Down>", "j"},
-	},
-	ActionPrevLine: {
-		ViewAll: {"<Up>", "k"},
-	},
-	ActionNextPage: {
-		ViewAll: {"<PageDown>", "<C-f>"},
-	},
-	ActionPrevPage: {
-		ViewAll: {"<PageUp>", "<C-b>"},
-	},
-	ActionNextHalfPage: {
-		ViewAll: {"<C-d>"},
-	},
-	ActionPrevHalfPage: {
-		ViewAll: {"<C-u>"},
-	},
-	ActionScrollRight: {
-		ViewAll: {"<Right>", "l"},
-	},
-	ActionScrollLeft: {
-		ViewAll: {"<Left>", "h"},
-	},
-	ActionFirstLine: {
-		ViewAll: {"gg"},
-	},
-	ActionLastLine: {
-		ViewAll: {"G"},
-	},
-	ActionNextView: {
-		ViewAll: {"<C-w>w", "<C-w><C-w>", "<Tab>"},
-	},
-	ActionPrevView: {
-		ViewAll: {"<C-w>W", "<S-Tab>"},
-	},
-	ActionFullScreenView: {
-		ViewAll: {"<C-w>o", "<C-w><C-o>", "f"},
-	},
-	ActionToggleViewLayout: {
-		ViewAll: {"<C-w>t"},
-	},
-	ActionSelect: {
-		ViewAll: {"<Enter>"},
-	},
-	ActionFilterPrompt: {
-		ViewCommit: {"<C-q>"},
-		ViewRef:    {"<C-q>"},
-	},
-	ActionRemoveFilter: {
-		ViewCommit: {"<C-r>"},
-		ViewRef:    {"<C-r>"},
-	},
-	ActionCenterView: {
-		ViewAll: {"z.", "zz"},
-	},
-	ActionScrollCursorTop: {
-		ViewAll: {"zt"},
-	},
-	ActionScrollCursorBottom: {
-		ViewAll: {"zb"},
-	},
-	ActionCursorTopView: {
-		ViewAll: {"H"},
-	},
-	ActionCursorMiddleView: {
-		ViewAll: {"M"},
-	},
-	ActionCursorBottomView: {
-		ViewAll: {"L"},
-	},
-	ActionNextTab: {
-		ViewAll: {"gt"},
-	},
-	ActionPrevTab: {
-		ViewAll: {"gT"},
-	},
-	ActionRemoveView: {
-		ViewAll: {"q"},
-	},
-	ActionCheckoutRef: {
-		ViewRef: {"c"},
-	},
-	ActionCheckoutCommit: {
-		ViewCommit: {"c"},
-	},
-	ActionBranchNamePrompt: {
-		ViewRef:    {"b"},
-		ViewCommit: {"b"},
-	},
-	ActionShowAvailableActions: {
-		ViewAll: {"<C-a>"},
-	},
-	ActionStageFile: {
-		ViewGitStatus: {"a"},
-	},
-	ActionUnstageFile: {
-		ViewGitStatus: {"u"},
-	},
-	ActionCommit: {
-		ViewGitStatus: {"c"},
-	},
 }
 
 // ViewHierarchy is a list of views parent to child
@@ -543,8 +791,8 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 		keyBindingManager.SetActionBinding(ViewAll, actionKey, actionType)
 	}
 
-	for actionType, viewKeys := range defaultKeyBindings {
-		for viewID, keys := range viewKeys {
+	for actionType, actionDescriptor := range actionDescriptors {
+		for viewID, keys := range actionDescriptor.keyBindings {
 			for _, key := range keys {
 				keyBindingManager.SetActionBinding(viewID, key, actionType)
 			}
@@ -559,8 +807,11 @@ func isValidAction(action string) bool {
 
 // IsPromptAction returns true if the action presents a prompt
 func IsPromptAction(actionType ActionType) bool {
-	_, isPrompt := promptActions[actionType]
-	return isPrompt
+	if actionDescriptor, exists := actionDescriptors[actionType]; exists {
+		return actionDescriptor.promptAction
+	}
+
+	return false
 }
 
 // MouseEventAction maps a mouse event to an action
