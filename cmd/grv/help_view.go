@@ -7,10 +7,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-const (
-	hvTitleRows = 3
-)
-
 // HelpSection contains help information about a specific topic
 type HelpSection struct {
 	title          string
@@ -28,13 +24,21 @@ func (helpSection *HelpSection) initialise() (err error) {
 }
 
 func (helpSection *HelpSection) rows() uint {
-	rows := hvTitleRows + helpSection.descriptionRows()
+	rows := helpSection.titleRows() + helpSection.descriptionRows()
 
 	if helpSection.tableFormatter != nil {
-		rows += helpSection.tableFormatter.RenderedRows()
+		rows += helpSection.tableFormatter.RenderedRows() + 1
 	}
 
 	return rows
+}
+
+func (helpSection *HelpSection) titleRows() uint {
+	if helpSection.title != "" {
+		return 3
+	}
+
+	return 0
 }
 
 func (helpSection *HelpSection) descriptionRows() uint {
@@ -61,7 +65,7 @@ func (helpSection *HelpSection) renderTitle(win RenderWindow, winStartRowIndex, 
 }
 
 func (helpSection *HelpSection) renderDescription(win RenderWindow, winStartRowIndex, helpSectionRowIndex, startColumn uint) (err error) {
-	rowIndex := helpSectionRowIndex - hvTitleRows
+	rowIndex := helpSectionRowIndex - helpSection.titleRows()
 
 	if rowIndex < helpSection.descriptionRows()-1 {
 		var lineBuilder *LineBuilder
@@ -76,16 +80,18 @@ func (helpSection *HelpSection) renderDescription(win RenderWindow, winStartRowI
 }
 
 func (helpSection *HelpSection) renderRow(win RenderWindow, winStartRowIndex, helpSectionRowIndex, startColumn uint) (err error) {
-	if helpSectionRowIndex < hvTitleRows {
+	if helpSectionRowIndex < helpSection.titleRows() {
 		return helpSection.renderTitle(win, winStartRowIndex, helpSectionRowIndex, startColumn)
-	} else if helpSectionRowIndex < hvTitleRows+helpSection.descriptionRows() {
+	} else if helpSectionRowIndex < helpSection.titleRows()+helpSection.descriptionRows() {
 		return helpSection.renderDescription(win, winStartRowIndex, helpSectionRowIndex, startColumn)
 	} else if helpSection.tableFormatter != nil {
-		tableOffset := hvTitleRows + helpSection.descriptionRows()
+		tableOffset := helpSection.titleRows() + helpSection.descriptionRows()
 		winStartRowIndex += tableOffset
 		helpSectionRowIndex -= tableOffset
 
-		return helpSection.tableFormatter.RenderRow(win, winStartRowIndex, helpSectionRowIndex, startColumn, true)
+		if helpSectionRowIndex < helpSection.tableFormatter.RenderedRows() {
+			return helpSection.tableFormatter.RenderRow(win, winStartRowIndex, helpSectionRowIndex, startColumn, true)
+		}
 	}
 
 	return
