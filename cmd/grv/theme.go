@@ -73,10 +73,12 @@ const (
 
 	CmpHelpViewTitle
 	CmpHelpViewSectionTitle
+	CmpHelpViewSectionSubTitle
 	CmpHelpViewSectionDescription
 	CmpHelpViewSectionTableHeader
 	CmpHelpViewSectionTableRow
 	CmpHelpViewSectionTableRowHighlighted
+	CmpHelpViewSectionTableCellSeparator
 	CmpHelpViewFooter
 
 	CmpStatusbarviewNormal

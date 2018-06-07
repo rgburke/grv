@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	slice "github.com/bradfitz/slice"
 	pt "github.com/tchap/go-patricia/patricia"
 )
 
@@ -125,7 +126,6 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		},
 	},
 	ActionRunCommand: ActionDescriptor{
-		actionKey:      "<grv-run-command>",
 		actionCategory: ActionCategoryGeneral,
 		description:    "Run a shell command",
 	},
@@ -631,6 +631,7 @@ type KeyBindings interface {
 	SetKeystringBinding(viewID ViewID, keystring, mappedKeystring string)
 	RemoveBinding(viewID ViewID, keystring string) (removed bool)
 	KeyStrings(actionType ActionType, viewID ViewID) (keystrings []BoundKeyString)
+	GenerateHelpSections(Config) []*HelpSection
 }
 
 // BoundKeyString is a keystring bound to an action
@@ -798,6 +799,132 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 			}
 		}
 	}
+}
+
+// GenerateHelpSections generates key binding help sections
+func (keyBindingManager *KeyBindingManager) GenerateHelpSections(config Config) []*HelpSection {
+	helpSections := []*HelpSection{
+		&HelpSection{
+			title: HelpSectionText{text: "Key Bindings"},
+			description: []HelpSectionText{
+				HelpSectionText{text: "The following tables contain default and user configured key bindings"},
+			},
+		},
+	}
+
+	type KeyBindingSection struct {
+		title        string
+		actionFilter actionFilter
+	}
+
+	keyBindingSections := []KeyBindingSection{
+		KeyBindingSection{
+			title: "Movement",
+			actionFilter: func(actionDescriptor ActionDescriptor) bool {
+				return actionDescriptor.actionCategory == ActionCategoryMovement
+			},
+		},
+		KeyBindingSection{
+			title: "Search",
+			actionFilter: func(actionDescriptor ActionDescriptor) bool {
+				return actionDescriptor.actionCategory == ActionCategorySearch
+			},
+		},
+		KeyBindingSection{
+			title: "View Navigation",
+			actionFilter: func(actionDescriptor ActionDescriptor) bool {
+				return actionDescriptor.actionCategory == ActionCategoryViewNavigation
+			},
+		},
+		KeyBindingSection{
+			title: "General",
+			actionFilter: func(actionDescriptor ActionDescriptor) bool {
+				return actionDescriptor.actionCategory == ActionCategoryGeneral
+			},
+		},
+	}
+
+	for _, KeyBindingSection := range keyBindingSections {
+		helpSections = append(helpSections, &HelpSection{
+			description: []HelpSectionText{
+				HelpSectionText{text: KeyBindingSection.title, themeComponentID: CmpHelpViewSectionSubTitle},
+			},
+			tableFormatter: keyBindingManager.generateKeyBindingsTable(config, KeyBindingSection.actionFilter),
+		})
+	}
+
+	return helpSections
+}
+
+type actionFilter func(ActionDescriptor) bool
+
+func (keyBindingManager *KeyBindingManager) generateKeyBindingsTable(config Config, filter actionFilter) *TableFormatter {
+	headers := []TableHeader{
+		TableHeader{text: "Key Bindings", themeComponentID: CmpHelpViewSectionTableHeader},
+		TableHeader{text: "Action", themeComponentID: CmpHelpViewSectionTableHeader},
+		TableHeader{text: "Description", themeComponentID: CmpHelpViewSectionTableHeader},
+	}
+
+	tableFormatter := NewTableFormatterWithHeaders(headers, config)
+	tableFormatter.SetGridLines(true)
+
+	type matchingActionDescriptor struct {
+		actionType       ActionType
+		actionDescriptor ActionDescriptor
+	}
+
+	matchingActionDescriptors := []matchingActionDescriptor{}
+
+	for actionType, actionDescriptor := range actionDescriptors {
+		if actionDescriptor.actionKey != "" && filter(actionDescriptor) {
+			matchingActionDescriptors = append(matchingActionDescriptors, matchingActionDescriptor{
+				actionType:       actionType,
+				actionDescriptor: actionDescriptor,
+			})
+		}
+	}
+
+	slice.Sort(matchingActionDescriptors, func(i, j int) bool {
+		return matchingActionDescriptors[i].actionDescriptor.actionKey < matchingActionDescriptors[j].actionDescriptor.actionKey
+	})
+
+	tableFormatter.Resize(uint(len(matchingActionDescriptors)))
+
+	for rowIndex, matchingActionDescriptor := range matchingActionDescriptors {
+		seenKeyBindings := map[string]bool{}
+		keyBindings := []BoundKeyString{}
+
+		for viewID := range matchingActionDescriptor.actionDescriptor.keyBindings {
+			for _, keyBinding := range keyBindingManager.KeyStrings(matchingActionDescriptor.actionType, viewID) {
+				if _, exists := seenKeyBindings[keyBinding.keystring]; !exists {
+					keyBindings = append(keyBindings, keyBinding)
+					seenKeyBindings[keyBinding.keystring] = true
+				}
+			}
+		}
+
+		if len(keyBindings) == 0 {
+			tableFormatter.SetCellWithStyle(uint(rowIndex), 0, CmpHelpViewSectionTableCellSeparator, "%v", "None")
+		} else {
+			for bindingIndex, keyBinding := range keyBindings {
+				themeComponentID := CmpHelpViewSectionTableRow
+				if keyBinding.userDefinedBinding {
+					themeComponentID = CmpHelpViewSectionTableRowHighlighted
+				}
+
+				tableFormatter.AppendToCellWithStyle(uint(rowIndex), 0, themeComponentID, "%v", keyBinding.keystring)
+
+				if bindingIndex != len(keyBindings)-1 {
+					tableFormatter.AppendToCellWithStyle(uint(rowIndex), 0, CmpHelpViewSectionTableCellSeparator, "%v", ", ")
+				}
+			}
+		}
+
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 1, CmpHelpViewSectionTableRow, "%v", matchingActionDescriptor.actionDescriptor.actionKey)
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 2, CmpHelpViewSectionTableRow, "%v", matchingActionDescriptor.actionDescriptor.description)
+	}
+
+	return tableFormatter
 }
 
 func isValidAction(action string) bool {

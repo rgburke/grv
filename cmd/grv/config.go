@@ -856,9 +856,13 @@ func (config *Configuration) KeyStrings(actionType ActionType, viewHierarchy Vie
 
 // GenerateHelpSections generates all help tables related to configuration
 func (config *Configuration) GenerateHelpSections() []*HelpSection {
-	return []*HelpSection{
+	helpSections := []*HelpSection{
 		config.generateConfigVariableHelpSection(),
 	}
+
+	helpSections = append(helpSections, config.keyBindings.GenerateHelpSections(config)...)
+
+	return helpSections
 }
 
 func (config *Configuration) generateConfigVariableHelpSection() (helpSection *HelpSection) {
@@ -901,10 +905,10 @@ func (config *Configuration) generateConfigVariableHelpSection() (helpSection *H
 	}
 
 	return &HelpSection{
-		title: "Configuration Variables",
-		description: []string{
-			"Configuration variables allow features to be enabled, disabled and configured.",
-			"They are specified using the set command in the grvrc file or at the command prompt",
+		title: HelpSectionText{text: "Configuration Variables"},
+		description: []HelpSectionText{
+			HelpSectionText{text: "Configuration variables allow features to be enabled, disabled and configured."},
+			HelpSectionText{text: "They are specified using the set command in the grvrc file or at the command prompt"},
 		},
 		tableFormatter: tableFormatter,
 	}

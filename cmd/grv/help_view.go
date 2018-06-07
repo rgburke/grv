@@ -7,10 +7,16 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+// HelpSectionText specifies help section text and its style
+type HelpSectionText struct {
+	text             string
+	themeComponentID ThemeComponentID
+}
+
 // HelpSection contains help information about a specific topic
 type HelpSection struct {
-	title          string
-	description    []string
+	title          HelpSectionText
+	description    []HelpSectionText
 	tableFormatter *TableFormatter
 }
 
@@ -34,7 +40,7 @@ func (helpSection *HelpSection) rows() uint {
 }
 
 func (helpSection *HelpSection) titleRows() uint {
-	if helpSection.title != "" {
+	if helpSection.title.text != "" {
 		return 3
 	}
 
@@ -58,7 +64,12 @@ func (helpSection *HelpSection) renderTitle(win RenderWindow, winStartRowIndex, 
 			return
 		}
 
-		lineBuilder.Append("  ").AppendWithStyle(CmpHelpViewSectionTitle, "%v", helpSection.title)
+		themeComponentID := CmpHelpViewSectionTitle
+		if helpSection.title.themeComponentID != CmpNone {
+			themeComponentID = helpSection.title.themeComponentID
+		}
+
+		lineBuilder.Append("  ").AppendWithStyle(themeComponentID, "%v", helpSection.title.text)
 	}
 
 	return
@@ -73,7 +84,14 @@ func (helpSection *HelpSection) renderDescription(win RenderWindow, winStartRowI
 			return
 		}
 
-		lineBuilder.Append("  ").AppendWithStyle(CmpHelpViewSectionDescription, "%v", helpSection.description[rowIndex])
+		descriptionLine := helpSection.description[rowIndex]
+
+		themeComponentID := CmpHelpViewSectionDescription
+		if descriptionLine.themeComponentID != CmpNone {
+			themeComponentID = descriptionLine.themeComponentID
+		}
+
+		lineBuilder.Append("  ").AppendWithStyle(themeComponentID, "%v", descriptionLine.text)
 	}
 
 	return
@@ -236,11 +254,11 @@ func (helpView *HelpView) HandleAction(action Action) (err error) {
 
 func (helpView *HelpView) introductionHelpSection() *HelpSection {
 	return &HelpSection{
-		title: "Introduction",
-		description: []string{
-			"GRV - Git Repository Viewer - is a TUI for viewing and modifying git repositories.",
-			"The sections below provide a brief overview of the ways to configure and interact with GRV.",
-			"For full documentation please visit: https://github.com/rgburke/grv/blob/master/doc/documentation.md",
+		title: HelpSectionText{text: "Introduction"},
+		description: []HelpSectionText{
+			HelpSectionText{text: "GRV - Git Repository Viewer - is a TUI for viewing and modifying git repositories."},
+			HelpSectionText{text: "The sections below provide a brief overview of the ways to configure and interact with GRV."},
+			HelpSectionText{text: "For full documentation please visit: https://github.com/rgburke/grv/blob/master/doc/documentation.md"},
 		},
 	}
 }

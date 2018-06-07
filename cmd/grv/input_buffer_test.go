@@ -34,6 +34,11 @@ func (keyBindings *MockKeyBindings) KeyStrings(actionType ActionType, viewID Vie
 	return args.Get(0).([]BoundKeyString)
 }
 
+func (keyBindings *MockKeyBindings) GenerateHelpSections(config Config) []*HelpSection {
+	args := keyBindings.Called(config)
+	return args.Get(0).([]*HelpSection)
+}
+
 func checkProcessResult(expectedAction Action, expectedKeystring string, actualAction Action, actualKeystring string, t *testing.T) {
 	if !reflect.DeepEqual(expectedAction, actualAction) {
 		t.Errorf("Returned action does not match expected value. Expected: %v, Actual: %v", expectedAction, actualAction)

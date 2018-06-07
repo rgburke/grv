@@ -301,6 +301,11 @@ func NewClassicTheme() MutableTheme {
 				fgcolor: NewSystemColor(ColorCyan),
 				style:   ThemeStyle{styleTypes: TstBold | TstUnderline},
 			},
+			CmpHelpViewSectionSubTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorMagenta),
+				style:   ThemeStyle{styleTypes: TstUnderline},
+			},
 			CmpHelpViewSectionDescription: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
@@ -317,6 +322,10 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorYellow),
 				style:   ThemeStyle{styleTypes: TstBold},
+			},
+			CmpHelpViewSectionTableCellSeparator: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
 			},
 			CmpHelpViewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -627,6 +636,11 @@ func NewColdTheme() MutableTheme {
 				fgcolor: NewSystemColor(ColorCyan),
 				style:   ThemeStyle{styleTypes: TstBold | TstUnderline},
 			},
+			CmpHelpViewSectionSubTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorMagenta),
+				style:   ThemeStyle{styleTypes: TstUnderline},
+			},
 			CmpHelpViewSectionDescription: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
@@ -641,8 +655,12 @@ func NewColdTheme() MutableTheme {
 			},
 			CmpHelpViewSectionTableRowHighlighted: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewSystemColor(ColorMagenta),
+				fgcolor: NewSystemColor(ColorYellow),
 				style:   ThemeStyle{styleTypes: TstBold},
+			},
+			CmpHelpViewSectionTableCellSeparator: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
 			},
 			CmpHelpViewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -973,6 +991,11 @@ func NewSolarizedTheme() MutableTheme {
 				fgcolor: NewColorNumber(solarizedBrightMagenta),
 				style:   ThemeStyle{styleTypes: TstBold | TstUnderline},
 			},
+			CmpHelpViewSectionSubTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedMagenta),
+				style:   ThemeStyle{styleTypes: TstUnderline},
+			},
 			CmpHelpViewSectionDescription: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
@@ -989,6 +1012,10 @@ func NewSolarizedTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(solarizedYellow),
 				style:   ThemeStyle{styleTypes: TstBold},
+			},
+			CmpHelpViewSectionTableCellSeparator: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 			CmpHelpViewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
