@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	slice "github.com/bradfitz/slice"
@@ -514,6 +515,8 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 	},
 }
 
+var whitespaceBindingRegex = regexp.MustCompile(`^(.*\s+.*)+$`)
+
 var actionKeys = map[string]ActionType{}
 
 func init() {
@@ -688,6 +691,8 @@ func (keyBindingManager *KeyBindingManager) SetActionBinding(viewID ViewID, keys
 
 // SetKeystringBinding allows a key sequence to be bound to the provided key sequence and view
 func (keyBindingManager *KeyBindingManager) SetKeystringBinding(viewID ViewID, keystring, mappedKeystring string) {
+	keyBindingManager.RemoveBinding(viewID, keystring)
+
 	viewBindings := keyBindingManager.getOrCreateViewBindings(viewID)
 	viewBindings.Set(pt.Prefix(keystring), newKeystringBinding(mappedKeystring))
 
@@ -894,7 +899,16 @@ func (keyBindingManager *KeyBindingManager) generateKeyBindingsTable(config Conf
 		seenKeyBindings := map[string]bool{}
 		keyBindings := []BoundKeyString{}
 
-		for viewID := range matchingActionDescriptor.actionDescriptor.keyBindings {
+		viewIDs := []ViewID{}
+		if len(matchingActionDescriptor.actionDescriptor.keyBindings) == 0 {
+			viewIDs = append(viewIDs, ViewAll)
+		} else {
+			for viewID := range matchingActionDescriptor.actionDescriptor.keyBindings {
+				viewIDs = append(viewIDs, viewID)
+			}
+		}
+
+		for _, viewID := range viewIDs {
 			for _, keyBinding := range keyBindingManager.KeyStrings(matchingActionDescriptor.actionType, viewID) {
 				if _, exists := seenKeyBindings[keyBinding.keystring]; !exists {
 					keyBindings = append(keyBindings, keyBinding)
@@ -912,7 +926,17 @@ func (keyBindingManager *KeyBindingManager) generateKeyBindingsTable(config Conf
 					themeComponentID = CmpHelpViewSectionTableRowHighlighted
 				}
 
+				keystringContainsWhitespace := whitespaceBindingRegex.MatchString(keyBinding.keystring)
+
+				if keystringContainsWhitespace {
+					tableFormatter.AppendToCellWithStyle(uint(rowIndex), 0, themeComponentID, `"`)
+				}
+
 				tableFormatter.AppendToCellWithStyle(uint(rowIndex), 0, themeComponentID, "%v", keyBinding.keystring)
+
+				if keystringContainsWhitespace {
+					tableFormatter.AppendToCellWithStyle(uint(rowIndex), 0, themeComponentID, `"`)
+				}
 
 				if bindingIndex != len(keyBindings)-1 {
 					tableFormatter.AppendToCellWithStyle(uint(rowIndex), 0, CmpHelpViewSectionTableCellSeparator, "%v", ", ")
