@@ -136,7 +136,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		promptAction:   true,
 		description:    "GRV Command prompt",
 		keyBindings: map[ViewID][]string{
-			ViewMain: {PromptText},
+			ViewAll: {PromptText},
 		},
 	},
 	ActionSearchPrompt: ActionDescriptor{
@@ -145,7 +145,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		promptAction:   true,
 		description:    "Search forwards",
 		keyBindings: map[ViewID][]string{
-			ViewMain: {SearchPromptText},
+			ViewAll: {SearchPromptText},
 		},
 	},
 	ActionReverseSearchPrompt: ActionDescriptor{
@@ -154,7 +154,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		promptAction:   true,
 		description:    "Search backwards",
 		keyBindings: map[ViewID][]string{
-			ViewMain: {ReverseSearchPromptText},
+			ViewAll: {ReverseSearchPromptText},
 		},
 	},
 	ActionFilterPrompt: ActionDescriptor{
@@ -174,7 +174,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 	},
 	ActionBranchNamePrompt: ActionDescriptor{
 		actionKey:      "<grv-branch-name-prompt>",
-		actionCategory: ActionCategoryGeneral,
+		actionCategory: ActionCategoryViewSpecific,
 		promptAction:   true,
 		description:    "Create a new branch",
 		keyBindings: map[ViewID][]string{
@@ -854,16 +854,60 @@ func (keyBindingManager *KeyBindingManager) GenerateHelpSections(config Config) 
 			description: []HelpSectionText{
 				HelpSectionText{text: KeyBindingSection.title, themeComponentID: CmpHelpViewSectionSubTitle},
 			},
-			tableFormatter: keyBindingManager.generateKeyBindingsTable(config, KeyBindingSection.actionFilter),
+			tableFormatter: keyBindingManager.generateKeyBindingsTable(config, KeyBindingSection.actionFilter, ViewAll),
 		})
 	}
+
+	helpSections = append(helpSections, keyBindingManager.generateViewSpecificKeyBindingHelpSections(config)...)
 
 	return helpSections
 }
 
+func (keyBindingManager *KeyBindingManager) generateViewSpecificKeyBindingHelpSections(config Config) (helpSections []*HelpSection) {
+	viewSpecificIDMap := map[ViewID]bool{}
+
+	for _, actionDescriptor := range actionDescriptors {
+		if actionDescriptor.actionCategory == ActionCategoryViewSpecific {
+			for viewID := range actionDescriptor.keyBindings {
+				viewSpecificIDMap[viewID] = true
+			}
+		}
+	}
+
+	viewSpecificIDs := []ViewID{}
+	for viewID := range viewSpecificIDMap {
+		viewSpecificIDs = append(viewSpecificIDs, viewID)
+	}
+
+	slice.Sort(viewSpecificIDs, func(i, j int) bool {
+		return viewSpecificIDs[i] < viewSpecificIDs[j]
+	})
+
+	for _, viewID := range viewSpecificIDs {
+		helpSections = append(helpSections, &HelpSection{
+			description: []HelpSectionText{
+				HelpSectionText{text: fmt.Sprintf("%v Specific", ViewName(viewID)), themeComponentID: CmpHelpViewSectionSubTitle},
+			},
+			tableFormatter: keyBindingManager.generateKeyBindingsTable(config, func(actionDescriptor ActionDescriptor) bool {
+				if actionDescriptor.actionCategory == ActionCategoryViewSpecific {
+					if actionDescriptor.keyBindings != nil {
+						if _, ok := actionDescriptor.keyBindings[viewID]; ok {
+							return true
+						}
+					}
+				}
+
+				return false
+			}, viewID),
+		})
+	}
+
+	return
+}
+
 type actionFilter func(ActionDescriptor) bool
 
-func (keyBindingManager *KeyBindingManager) generateKeyBindingsTable(config Config, filter actionFilter) *TableFormatter {
+func (keyBindingManager *KeyBindingManager) generateKeyBindingsTable(config Config, filter actionFilter, viewID ViewID) *TableFormatter {
 	headers := []TableHeader{
 		TableHeader{text: "Key Bindings", themeComponentID: CmpHelpViewSectionTableHeader},
 		TableHeader{text: "Action", themeComponentID: CmpHelpViewSectionTableHeader},
@@ -903,8 +947,10 @@ func (keyBindingManager *KeyBindingManager) generateKeyBindingsTable(config Conf
 		if len(matchingActionDescriptor.actionDescriptor.keyBindings) == 0 {
 			viewIDs = append(viewIDs, ViewAll)
 		} else {
-			for viewID := range matchingActionDescriptor.actionDescriptor.keyBindings {
-				viewIDs = append(viewIDs, viewID)
+			viewIDs = append(viewIDs, viewID)
+
+			if viewID != ViewAll {
+				viewIDs = append(viewIDs, ViewAll)
 			}
 		}
 

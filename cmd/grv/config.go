@@ -187,6 +187,20 @@ var colorNumberPattern = regexp.MustCompile(`[0-9]{1,3}`)
 var hexColorPattern = regexp.MustCompile(`[a-fA-F0-9]{6}`)
 var systemColorPattern = regexp.MustCompile(`[a-zA-Z]+`)
 
+var viewNames = map[ViewID]string{}
+
+func init() {
+	for viewName, viewID := range viewIDNames {
+		viewNames[viewID] = viewName
+	}
+}
+
+// ViewName returns the name of the view with the provided ID
+func ViewName(viewID ViewID) (viewName string) {
+	viewName, _ = viewNames[viewID]
+	return
+}
+
 // Config exposes a read only interface for configuration
 type Config interface {
 	GetBool(ConfigVariable) bool
