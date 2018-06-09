@@ -194,7 +194,7 @@ func (helpView *HelpView) Render(win RenderWindow) (err error) {
 		return
 	}
 
-	if err = win.SetFooter(CmpHelpViewFooter, "Line %v of %v", viewPos.SelectedRowIndex()+1, viewRows); err != nil {
+	if err = win.SetFooter(CmpHelpViewFooter, "Line %v of %v", viewPos.ActiveRowIndex()+1, viewRows); err != nil {
 		return
 	}
 
