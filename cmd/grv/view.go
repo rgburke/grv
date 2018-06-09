@@ -430,13 +430,16 @@ func (view *View) HandleAction(action Action) (err error) {
 			return
 		}
 	case ActionRemoveView:
-		view.lock.Lock()
-		tabRemoved := view.removeTabIfEmpty()
-		view.lock.Unlock()
-
-		if tabRemoved {
+		if err = view.ActiveView().HandleAction(action); err != nil {
 			return
 		}
+
+		view.lock.Lock()
+		defer view.lock.Unlock()
+
+		view.removeTabIfEmpty()
+
+		return
 	case ActionMouseSelect:
 		view.lock.Lock()
 		var handled bool
@@ -636,13 +639,10 @@ func (view *View) removeTab() {
 	return
 }
 
-func (view *View) removeTabIfEmpty() bool {
+func (view *View) removeTabIfEmpty() {
 	if containerView, isContainerView := view.activeView().(*ContainerView); isContainerView && containerView.IsEmpty() {
 		view.removeTab()
-		return true
 	}
-
-	return false
 }
 
 func (view *View) createView(createViewArgs CreateViewArgs) (windowView WindowView, err error) {
