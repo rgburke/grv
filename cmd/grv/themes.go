@@ -310,6 +310,10 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},
+			CmpHelpViewSectionCodeBlock: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
 			CmpHelpViewSectionTableHeader: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorBlue),
@@ -644,6 +648,10 @@ func NewColdTheme() MutableTheme {
 			CmpHelpViewSectionDescription: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpHelpViewSectionCodeBlock: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
 			},
 			CmpHelpViewSectionTableHeader: {
 				bgcolor: NewSystemColor(ColorNone),
