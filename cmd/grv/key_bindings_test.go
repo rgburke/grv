@@ -242,3 +242,14 @@ func TestGetMouseEventReturnsErrorsForInvalidActions(t *testing.T) {
 		t.Errorf("Expected GetMouseEventFromAction to return error for action with invalid Args")
 	}
 }
+
+func TestActionDescriptorsHaveADescription(t *testing.T) {
+	for actionType, actionDescriptor := range actionDescriptors {
+		if actionDescriptor.actionCategory == ActionCategoryNone {
+			t.Errorf("ActionDescriptor for ActionType %v and ActionKey %v has no category specified", actionType, actionDescriptor.actionKey)
+		}
+		if actionDescriptor.description == "" {
+			t.Errorf("ActionDescriptor for ActionType %v and ActionKey %v has no description", actionType, actionDescriptor.actionKey)
+		}
+	}
+}

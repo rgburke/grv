@@ -546,3 +546,14 @@ func TestInvalidCommandsAreDiscardedAndParsingContinuesOnNextLine(t *testing.T) 
 		}
 	}
 }
+
+func TestCommandDescriptorsHaveRequiredFieldsSet(t *testing.T) {
+	for command, commandDescriptor := range commandDescriptors {
+		if commandDescriptor.constructor == nil {
+			t.Errorf("Command \"%v\" has no constructor specified", command)
+		}
+		if commandDescriptor.commandHelpGenerator == nil {
+			t.Errorf("Command \"%v\" has no help generator specified", command)
+		}
+	}
+}

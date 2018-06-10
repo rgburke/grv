@@ -91,7 +91,12 @@ func (helpSection *HelpSection) renderDescription(win RenderWindow, winStartRowI
 			themeComponentID = descriptionLine.themeComponentID
 		}
 
-		lineBuilder.Append("  ").AppendWithStyle(themeComponentID, "%v", descriptionLine.text)
+		spacing := "  "
+		if themeComponentID == CmpHelpViewSectionCodeBlock {
+			spacing += "  "
+		}
+
+		lineBuilder.Append(spacing).AppendWithStyle(themeComponentID, "%v", descriptionLine.text)
 	}
 
 	return

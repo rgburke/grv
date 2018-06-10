@@ -75,6 +75,7 @@ const (
 	CmpHelpViewSectionTitle
 	CmpHelpViewSectionSubTitle
 	CmpHelpViewSectionDescription
+	CmpHelpViewSectionCodeBlock
 	CmpHelpViewSectionTableHeader
 	CmpHelpViewSectionTableRow
 	CmpHelpViewSectionTableRowHighlighted

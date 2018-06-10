@@ -1000,6 +1000,10 @@ func NewSolarizedTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},
+			CmpHelpViewSectionCodeBlock: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedCyan),
+			},
 			CmpHelpViewSectionTableHeader: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(solarizedBlue),

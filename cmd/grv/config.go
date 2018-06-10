@@ -201,6 +201,19 @@ func ViewName(viewID ViewID) (viewName string) {
 	return
 }
 
+// ThemeComponentNames returns the names of all theme components
+func ThemeComponentNames() (themeComponentNames []string) {
+	for themeComponent := range themeComponents {
+		themeComponentNames = append(themeComponentNames, themeComponent)
+	}
+
+	slice.Sort(themeComponentNames, func(i, j int) bool {
+		return themeComponentNames[i] < themeComponentNames[j]
+	})
+
+	return
+}
+
 // Config exposes a read only interface for configuration
 type Config interface {
 	GetBool(ConfigVariable) bool
@@ -869,12 +882,12 @@ func (config *Configuration) KeyStrings(actionType ActionType, viewHierarchy Vie
 }
 
 // GenerateHelpSections generates all help tables related to configuration
-func (config *Configuration) GenerateHelpSections() []*HelpSection {
-	helpSections := []*HelpSection{
-		config.generateConfigVariableHelpSection(),
-	}
-
+func (config *Configuration) GenerateHelpSections() (helpSections []*HelpSection) {
 	helpSections = append(helpSections, config.keyBindings.GenerateHelpSections(config)...)
+
+	helpSections = append(helpSections, config.generateConfigVariableHelpSection())
+
+	helpSections = append(helpSections, GenerateConfigCommandHelpSections(config)...)
 
 	return helpSections
 }

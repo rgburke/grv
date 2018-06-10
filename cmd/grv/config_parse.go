@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	slice "github.com/bradfitz/slice"
 )
 
 const (
@@ -115,66 +117,120 @@ type HelpCommand struct{}
 
 func (helpCommand *HelpCommand) configCommand() {}
 
+type commandHelpGenerator func(config Config) []*HelpSection
+
 type commandDescriptor struct {
-	tokenTypes  []ConfigTokenType
-	varArgs     bool
-	constructor commandConstructor
+	tokenTypes           []ConfigTokenType
+	varArgs              bool
+	constructor          commandConstructor
+	commandHelpGenerator commandHelpGenerator
 }
 
 var commandDescriptors = map[string]*commandDescriptor{
 	setCommand: {
-		tokenTypes:  []ConfigTokenType{CtkWord, CtkWord},
-		constructor: setCommandConstructor,
+		tokenTypes:           []ConfigTokenType{CtkWord, CtkWord},
+		constructor:          setCommandConstructor,
+		commandHelpGenerator: GenerateSetCommandHelpSections,
 	},
 	themeCommand: {
-		tokenTypes:  []ConfigTokenType{CtkOption, CtkWord, CtkOption, CtkWord, CtkOption, CtkWord, CtkOption, CtkWord},
-		constructor: themeCommandConstructor,
+		tokenTypes:           []ConfigTokenType{CtkOption, CtkWord, CtkOption, CtkWord, CtkOption, CtkWord, CtkOption, CtkWord},
+		constructor:          themeCommandConstructor,
+		commandHelpGenerator: GenerateThemeCommandHelpSections,
 	},
 	mapCommand: {
-		tokenTypes:  []ConfigTokenType{CtkWord, CtkWord, CtkWord},
-		constructor: mapCommandConstructor,
+		tokenTypes:           []ConfigTokenType{CtkWord, CtkWord, CtkWord},
+		constructor:          mapCommandConstructor,
+		commandHelpGenerator: GenerateMapCommandHelpSections,
 	},
 	unmapCommand: {
-		tokenTypes:  []ConfigTokenType{CtkWord, CtkWord},
-		constructor: unmapCommandConstructor,
+		tokenTypes:           []ConfigTokenType{CtkWord, CtkWord},
+		constructor:          unmapCommandConstructor,
+		commandHelpGenerator: GenerateUnmapCommandHelpSections,
 	},
 	quitCommand: {
-		constructor: quitCommandConstructor,
+		constructor:          quitCommandConstructor,
+		commandHelpGenerator: GenerateQuitCommandHelpSections,
 	},
 	addtabCommand: {
-		tokenTypes:  []ConfigTokenType{CtkWord},
-		constructor: newTabCommandConstructor,
+		tokenTypes:           []ConfigTokenType{CtkWord},
+		constructor:          newTabCommandConstructor,
+		commandHelpGenerator: GenerateAddTabCommandHelpSections,
 	},
 	removetabCommand: {
-		constructor: newRemoveTabCommandConstructor,
+		constructor:          newRemoveTabCommandConstructor,
+		commandHelpGenerator: GenerateRmTabCommandHelpSections,
 	},
 	addviewCommand: {
-		varArgs:     true,
-		constructor: addViewCommandConstructor,
+		varArgs:              true,
+		constructor:          addViewCommandConstructor,
+		commandHelpGenerator: GenerateAddViewCommandHelpSections,
 	},
 	vsplitCommand: {
-		varArgs:     true,
-		constructor: splitViewCommandConstructor,
+		varArgs:              true,
+		constructor:          splitViewCommandConstructor,
+		commandHelpGenerator: GenerateVSplitCommandHelpSections,
 	},
 	hsplitCommand: {
-		varArgs:     true,
-		constructor: splitViewCommandConstructor,
+		varArgs:              true,
+		constructor:          splitViewCommandConstructor,
+		commandHelpGenerator: GenerateHSplitCommandHelpSections,
 	},
 	splitCommand: {
-		varArgs:     true,
-		constructor: splitViewCommandConstructor,
+		varArgs:              true,
+		constructor:          splitViewCommandConstructor,
+		commandHelpGenerator: GenerateSplitCommandHelpSections,
 	},
 	gitCommand: {
-		varArgs:     true,
-		constructor: gitCommandConstructor,
+		varArgs:              true,
+		constructor:          gitCommandConstructor,
+		commandHelpGenerator: GenerateGitCommandHelpSections,
 	},
 	gitInteractiveCommand: {
-		varArgs:     true,
-		constructor: gitCommandConstructor,
+		varArgs:              true,
+		constructor:          gitCommandConstructor,
+		commandHelpGenerator: GenerateGitiCommandHelpSections,
 	},
 	helpCommand: {
-		constructor: helpCommandConstructor,
+		constructor:          helpCommandConstructor,
+		commandHelpGenerator: GenerateHelpCommandHelpSections,
 	},
+}
+
+// GenerateConfigCommandHelpSections generates help documentation for all configuration commands
+func GenerateConfigCommandHelpSections(config Config) (helpSections []*HelpSection) {
+	helpSections = append(helpSections, &HelpSection{
+		title: HelpSectionText{text: "Configuration Commands"},
+		description: []HelpSectionText{
+			HelpSectionText{text: "The behaviour of GRV can be customised through the use of commands specified in a configuration file"},
+			HelpSectionText{text: "GRV will look for the following configuration files on start up:"},
+			HelpSectionText{},
+			HelpSectionText{text: " - $XDG_CONFIG_HOME/grv/grvrc"},
+			HelpSectionText{text: " - $HOME/.config/grv/grvrc"},
+			HelpSectionText{},
+			HelpSectionText{text: "GRV will attempt to process the first file which exists."},
+			HelpSectionText{text: "Commands can also be specified within GRV using the command prompt :"},
+			HelpSectionText{},
+			HelpSectionText{text: "Below are the set of configuration commands supported:"},
+		},
+	})
+
+	commands := []string{}
+	for command := range commandDescriptors {
+		commands = append(commands, command)
+	}
+
+	slice.Sort(commands, func(i, j int) bool {
+		return commands[i] < commands[j]
+	})
+
+	for _, command := range commands {
+		commandDescriptor := commandDescriptors[command]
+		if commandDescriptor.commandHelpGenerator != nil {
+			helpSections = append(helpSections, commandDescriptor.commandHelpGenerator(config)...)
+		}
+	}
+
+	return
 }
 
 // ConfigParser is a component capable of parsing config into commands

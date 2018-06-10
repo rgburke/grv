@@ -140,3 +140,49 @@ func (windowViewFactory *WindowViewFactory) getRef(args []interface{}) (ref Ref,
 
 	return
 }
+
+// GenerateWindowViewFactoryHelpSection generates a help documentation table of supported views
+func GenerateWindowViewFactoryHelpSection(config Config) *HelpSection {
+	headers := []TableHeader{
+		TableHeader{text: "View", themeComponentID: CmpHelpViewSectionTableHeader},
+		TableHeader{text: "Args", themeComponentID: CmpHelpViewSectionTableHeader},
+	}
+
+	tableFormatter := NewTableFormatterWithHeaders(headers, config)
+	tableFormatter.SetGridLines(true)
+
+	type viewConstructor struct {
+		viewID ViewID
+		args   string
+	}
+
+	viewConstructors := []viewConstructor{
+		viewConstructor{
+			viewID: ViewCommit,
+			args:   "ref or oid",
+		},
+		viewConstructor{
+			viewID: ViewDiff,
+			args:   "oid",
+		},
+		viewConstructor{
+			viewID: ViewGitStatus,
+			args:   "none",
+		},
+		viewConstructor{
+			viewID: ViewRef,
+			args:   "none",
+		},
+	}
+
+	tableFormatter.Resize(uint(len(viewConstructors)))
+
+	for rowIndex, constructor := range viewConstructors {
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 0, CmpHelpViewSectionTableRow, "%v", ViewName(constructor.viewID))
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 1, CmpHelpViewSectionTableRow, "%v", constructor.args)
+	}
+
+	return &HelpSection{
+		tableFormatter: tableFormatter,
+	}
+}

@@ -111,7 +111,8 @@ type ActionDescriptor struct {
 
 var actionDescriptors = map[ActionType]ActionDescriptor{
 	ActionNone: ActionDescriptor{
-		description: "Perform no action (NOP)",
+		actionCategory: ActionCategoryGeneral,
+		description:    "Perform no action (NOP)",
 	},
 	ActionExit: ActionDescriptor{
 		actionKey:      "<grv-exit>",
@@ -425,6 +426,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		description:    "Add a new tab",
 	},
 	ActionRemoveTab: ActionDescriptor{
+		actionKey:      "<grv-remove-tab>",
 		actionCategory: ActionCategoryGeneral,
 		description:    "Remove the active tab",
 	},
