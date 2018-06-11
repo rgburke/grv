@@ -110,16 +110,16 @@ type ActionDescriptor struct {
 }
 
 var actionDescriptors = map[ActionType]ActionDescriptor{
-	ActionNone: ActionDescriptor{
+	ActionNone: {
 		actionCategory: ActionCategoryGeneral,
 		description:    "Perform no action (NOP)",
 	},
-	ActionExit: ActionDescriptor{
+	ActionExit: {
 		actionKey:      "<grv-exit>",
 		actionCategory: ActionCategoryGeneral,
 		description:    "Exit GRV",
 	},
-	ActionSuspend: ActionDescriptor{
+	ActionSuspend: {
 		actionKey:      "<grv-suspend>",
 		actionCategory: ActionCategoryGeneral,
 		description:    "Suspend GRV",
@@ -127,11 +127,11 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<C-z>"},
 		},
 	},
-	ActionRunCommand: ActionDescriptor{
+	ActionRunCommand: {
 		actionCategory: ActionCategoryGeneral,
 		description:    "Run a shell command",
 	},
-	ActionPrompt: ActionDescriptor{
+	ActionPrompt: {
 		actionKey:      "<grv-prompt>",
 		actionCategory: ActionCategoryGeneral,
 		promptAction:   true,
@@ -140,7 +140,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {PromptText},
 		},
 	},
-	ActionSearchPrompt: ActionDescriptor{
+	ActionSearchPrompt: {
 		actionKey:      "<grv-search-prompt>",
 		actionCategory: ActionCategorySearch,
 		promptAction:   true,
@@ -149,7 +149,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {SearchPromptText},
 		},
 	},
-	ActionReverseSearchPrompt: ActionDescriptor{
+	ActionReverseSearchPrompt: {
 		actionKey:      "<grv-reverse-search-prompt>",
 		actionCategory: ActionCategorySearch,
 		promptAction:   true,
@@ -158,7 +158,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {ReverseSearchPromptText},
 		},
 	},
-	ActionFilterPrompt: ActionDescriptor{
+	ActionFilterPrompt: {
 		actionKey:      "<grv-filter-prompt>",
 		actionCategory: ActionCategoryViewSpecific,
 		promptAction:   true,
@@ -168,12 +168,12 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewRef:    {"<C-q>"},
 		},
 	},
-	ActionQuestionPrompt: ActionDescriptor{
+	ActionQuestionPrompt: {
 		actionCategory: ActionCategoryGeneral,
 		promptAction:   true,
 		description:    "Prompt the user with a question",
 	},
-	ActionBranchNamePrompt: ActionDescriptor{
+	ActionBranchNamePrompt: {
 		actionKey:      "<grv-branch-name-prompt>",
 		actionCategory: ActionCategoryViewSpecific,
 		promptAction:   true,
@@ -183,15 +183,15 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewCommit: {"b"},
 		},
 	},
-	ActionSearch: ActionDescriptor{
+	ActionSearch: {
 		actionCategory: ActionCategorySearch,
 		description:    "Perform search forwards",
 	},
-	ActionReverseSearch: ActionDescriptor{
+	ActionReverseSearch: {
 		actionCategory: ActionCategorySearch,
 		description:    "Perform search backwards",
 	},
-	ActionSearchFindNext: ActionDescriptor{
+	ActionSearchFindNext: {
 		actionKey:      "<grv-search-find-next>",
 		actionCategory: ActionCategorySearch,
 		description:    "Move to next search match",
@@ -199,7 +199,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"n"},
 		},
 	},
-	ActionSearchFindPrev: ActionDescriptor{
+	ActionSearchFindPrev: {
 		actionKey:      "<grv-search-find-prev>",
 		actionCategory: ActionCategorySearch,
 		description:    "Move to previous search match",
@@ -207,16 +207,16 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"N"},
 		},
 	},
-	ActionClearSearch: ActionDescriptor{
+	ActionClearSearch: {
 		actionKey:      "<grv-clear-search>",
 		actionCategory: ActionCategorySearch,
 		description:    "Clear search",
 	},
-	ActionShowStatus: ActionDescriptor{
+	ActionShowStatus: {
 		actionCategory: ActionCategoryGeneral,
 		description:    "Display message in status bar",
 	},
-	ActionNextLine: ActionDescriptor{
+	ActionNextLine: {
 		actionKey:      "<grv-next-line>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Move down one line",
@@ -224,7 +224,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<Down>", "j"},
 		},
 	},
-	ActionPrevLine: ActionDescriptor{
+	ActionPrevLine: {
 		actionKey:      "<grv-prev-line>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Move up one line",
@@ -232,7 +232,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<Up>", "k"},
 		},
 	},
-	ActionNextPage: ActionDescriptor{
+	ActionNextPage: {
 		actionKey:      "<grv-next-page>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Move one page down",
@@ -240,7 +240,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<PageDown>", "<C-f>"},
 		},
 	},
-	ActionPrevPage: ActionDescriptor{
+	ActionPrevPage: {
 		actionKey:      "<grv-prev-page>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Move one page up",
@@ -248,7 +248,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<PageUp>", "<C-b>"},
 		},
 	},
-	ActionNextHalfPage: ActionDescriptor{
+	ActionNextHalfPage: {
 		actionKey:      "<grv-next-half-page>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Move half page down",
@@ -256,7 +256,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<C-d>"},
 		},
 	},
-	ActionPrevHalfPage: ActionDescriptor{
+	ActionPrevHalfPage: {
 		actionKey:      "<grv-prev-half-page>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Move half page up",
@@ -264,7 +264,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<C-u>"},
 		},
 	},
-	ActionScrollRight: ActionDescriptor{
+	ActionScrollRight: {
 		actionKey:      "<grv-scroll-right>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Scroll right",
@@ -272,7 +272,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<Right>", "l"},
 		},
 	},
-	ActionScrollLeft: ActionDescriptor{
+	ActionScrollLeft: {
 		actionKey:      "<grv-scroll-left>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Scroll left",
@@ -280,7 +280,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<Left>", "h"},
 		},
 	},
-	ActionFirstLine: ActionDescriptor{
+	ActionFirstLine: {
 		actionKey:      "<grv-first-line>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Move to first line",
@@ -288,7 +288,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"gg"},
 		},
 	},
-	ActionLastLine: ActionDescriptor{
+	ActionLastLine: {
 		actionKey:      "<grv-last-line>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Move to last line",
@@ -296,7 +296,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"G"},
 		},
 	},
-	ActionSelect: ActionDescriptor{
+	ActionSelect: {
 		actionKey:      "<grv-select>",
 		actionCategory: ActionCategoryGeneral,
 		description:    "Select item (opens listener view if none exists)",
@@ -304,7 +304,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<Enter>"},
 		},
 	},
-	ActionNextView: ActionDescriptor{
+	ActionNextView: {
 		actionKey:      "<grv-next-view>",
 		actionCategory: ActionCategoryViewNavigation,
 		description:    "Move to next view",
@@ -312,7 +312,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<C-w>w", "<C-w><C-w>", "<Tab>"},
 		},
 	},
-	ActionPrevView: ActionDescriptor{
+	ActionPrevView: {
 		actionKey:      "<grv-prev-view>",
 		actionCategory: ActionCategoryViewNavigation,
 		description:    "Move to previous view",
@@ -320,7 +320,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<C-w>W", "<S-Tab>"},
 		},
 	},
-	ActionFullScreenView: ActionDescriptor{
+	ActionFullScreenView: {
 		actionKey:      "<grv-full-screen-view>",
 		actionCategory: ActionCategoryViewNavigation,
 		description:    "Toggle current view full screen",
@@ -328,7 +328,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<C-w>o", "<C-w><C-o>", "f"},
 		},
 	},
-	ActionToggleViewLayout: ActionDescriptor{
+	ActionToggleViewLayout: {
 		actionKey:      "<grv-toggle-view-layout>",
 		actionCategory: ActionCategoryViewNavigation,
 		description:    "Toggle view layout",
@@ -336,7 +336,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<C-w>t"},
 		},
 	},
-	ActionNextTab: ActionDescriptor{
+	ActionNextTab: {
 		actionKey:      "<grv-next-tab>",
 		actionCategory: ActionCategoryViewNavigation,
 		description:    "Move to next tab",
@@ -344,7 +344,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"gt"},
 		},
 	},
-	ActionPrevTab: ActionDescriptor{
+	ActionPrevTab: {
 		actionKey:      "<grv-prev-tab>",
 		actionCategory: ActionCategoryViewNavigation,
 		description:    "Move to previous tab",
@@ -352,7 +352,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"gT"},
 		},
 	},
-	ActionRemoveView: ActionDescriptor{
+	ActionRemoveView: {
 		actionKey:      "<grv-remove-view>",
 		actionCategory: ActionCategoryViewNavigation,
 		description:    "Close view (or close tab if empty)",
@@ -360,11 +360,11 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"q"},
 		},
 	},
-	ActionAddFilter: ActionDescriptor{
+	ActionAddFilter: {
 		actionCategory: ActionCategoryViewSpecific,
 		description:    "Add filter",
 	},
-	ActionRemoveFilter: ActionDescriptor{
+	ActionRemoveFilter: {
 		actionKey:      "<grv-remove-filter>",
 		actionCategory: ActionCategoryViewSpecific,
 		description:    "Remove filter",
@@ -373,7 +373,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewRef:    {"<C-r>"},
 		},
 	},
-	ActionCenterView: ActionDescriptor{
+	ActionCenterView: {
 		actionKey:      "<grv-center-view>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Center view",
@@ -381,7 +381,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"z.", "zz"},
 		},
 	},
-	ActionScrollCursorTop: ActionDescriptor{
+	ActionScrollCursorTop: {
 		actionKey:      "<grv-scroll-cursor-top>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Scroll the screen so cursor is at the top",
@@ -389,7 +389,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"zt"},
 		},
 	},
-	ActionScrollCursorBottom: ActionDescriptor{
+	ActionScrollCursorBottom: {
 		actionKey:      "<grv-scroll-cursor-bottom>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Scroll the screen so cursor is at the bottom",
@@ -397,7 +397,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"zb"},
 		},
 	},
-	ActionCursorTopView: ActionDescriptor{
+	ActionCursorTopView: {
 		actionKey:      "<grv-cursor-top-view>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Move to the first line of the page",
@@ -405,7 +405,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"H"},
 		},
 	},
-	ActionCursorMiddleView: ActionDescriptor{
+	ActionCursorMiddleView: {
 		actionKey:      "<grv-cursor-middle-view>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Move to the middle line of the page",
@@ -413,7 +413,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"M"},
 		},
 	},
-	ActionCursorBottomView: ActionDescriptor{
+	ActionCursorBottomView: {
 		actionKey:      "<grv-cursor-bottom-view>",
 		actionCategory: ActionCategoryMovement,
 		description:    "Move to the last line of the page",
@@ -421,36 +421,36 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"L"},
 		},
 	},
-	ActionNewTab: ActionDescriptor{
+	ActionNewTab: {
 		actionCategory: ActionCategoryGeneral,
 		description:    "Add a new tab",
 	},
-	ActionRemoveTab: ActionDescriptor{
+	ActionRemoveTab: {
 		actionKey:      "<grv-remove-tab>",
 		actionCategory: ActionCategoryGeneral,
 		description:    "Remove the active tab",
 	},
-	ActionAddView: ActionDescriptor{
+	ActionAddView: {
 		actionCategory: ActionCategoryGeneral,
 		description:    "Add a new view",
 	},
-	ActionSplitView: ActionDescriptor{
+	ActionSplitView: {
 		actionCategory: ActionCategoryGeneral,
 		description:    "Split the current view with a new view",
 	},
-	ActionMouseSelect: ActionDescriptor{
+	ActionMouseSelect: {
 		actionCategory: ActionCategoryGeneral,
 		description:    "Mouse select",
 	},
-	ActionMouseScrollDown: ActionDescriptor{
+	ActionMouseScrollDown: {
 		actionCategory: ActionCategoryGeneral,
 		description:    "Mouse scroll down",
 	},
-	ActionMouseScrollUp: ActionDescriptor{
+	ActionMouseScrollUp: {
 		actionCategory: ActionCategoryGeneral,
 		description:    "Mouse scroll up",
 	},
-	ActionCheckoutRef: ActionDescriptor{
+	ActionCheckoutRef: {
 		actionKey:      "<grv-checkout-ref>",
 		actionCategory: ActionCategoryViewSpecific,
 		description:    "Checkout ref",
@@ -458,7 +458,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewRef: {"c"},
 		},
 	},
-	ActionCheckoutCommit: ActionDescriptor{
+	ActionCheckoutCommit: {
 		actionKey:      "<grv-checkout-commit>",
 		actionCategory: ActionCategoryViewSpecific,
 		description:    "Checkout commit",
@@ -466,19 +466,19 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewCommit: {"c"},
 		},
 	},
-	ActionCreateBranch: ActionDescriptor{
+	ActionCreateBranch: {
 		actionCategory: ActionCategoryGeneral,
 		description:    "Create a branch",
 	},
-	ActionCreateContextMenu: ActionDescriptor{
+	ActionCreateContextMenu: {
 		actionCategory: ActionCategoryGeneral,
 		description:    "Create a context menu",
 	},
-	ActionCreateCommandOutputView: ActionDescriptor{
+	ActionCreateCommandOutputView: {
 		actionCategory: ActionCategoryGeneral,
 		description:    "Create a command output view",
 	},
-	ActionShowAvailableActions: ActionDescriptor{
+	ActionShowAvailableActions: {
 		actionKey:      "<grv-show-available-actions>",
 		actionCategory: ActionCategoryGeneral,
 		description:    "Show available actions for the selected row",
@@ -486,7 +486,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewAll: {"<C-a>"},
 		},
 	},
-	ActionStageFile: ActionDescriptor{
+	ActionStageFile: {
 		actionKey:      "<grv-stage-file>",
 		actionCategory: ActionCategoryViewSpecific,
 		description:    "Stage",
@@ -494,7 +494,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewGitStatus: {"a"},
 		},
 	},
-	ActionUnstageFile: ActionDescriptor{
+	ActionUnstageFile: {
 		actionKey:      "<grv-unstage-file>",
 		actionCategory: ActionCategoryViewSpecific,
 		description:    "Unstage",
@@ -502,7 +502,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewGitStatus: {"u"},
 		},
 	},
-	ActionCommit: ActionDescriptor{
+	ActionCommit: {
 		actionKey:      "<grv-action-commit>",
 		actionCategory: ActionCategoryViewSpecific,
 		description:    "Commit",
@@ -510,7 +510,7 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewGitStatus: {"c"},
 		},
 	},
-	ActionShowHelpView: ActionDescriptor{
+	ActionShowHelpView: {
 		actionKey:      "<grv-show-help>",
 		actionCategory: ActionCategoryGeneral,
 		description:    "Show the help view",
@@ -811,10 +811,10 @@ func (keyBindingManager *KeyBindingManager) setDefaultKeyBindings() {
 // GenerateHelpSections generates key binding help sections
 func (keyBindingManager *KeyBindingManager) GenerateHelpSections(config Config) []*HelpSection {
 	helpSections := []*HelpSection{
-		&HelpSection{
+		{
 			title: HelpSectionText{text: "Key Bindings"},
 			description: []HelpSectionText{
-				HelpSectionText{text: "The following tables contain default and user configured key bindings"},
+				{text: "The following tables contain default and user configured key bindings"},
 			},
 		},
 	}
@@ -825,25 +825,25 @@ func (keyBindingManager *KeyBindingManager) GenerateHelpSections(config Config) 
 	}
 
 	keyBindingSections := []KeyBindingSection{
-		KeyBindingSection{
+		{
 			title: "Movement",
 			actionFilter: func(actionDescriptor ActionDescriptor) bool {
 				return actionDescriptor.actionCategory == ActionCategoryMovement
 			},
 		},
-		KeyBindingSection{
+		{
 			title: "Search",
 			actionFilter: func(actionDescriptor ActionDescriptor) bool {
 				return actionDescriptor.actionCategory == ActionCategorySearch
 			},
 		},
-		KeyBindingSection{
+		{
 			title: "View Navigation",
 			actionFilter: func(actionDescriptor ActionDescriptor) bool {
 				return actionDescriptor.actionCategory == ActionCategoryViewNavigation
 			},
 		},
-		KeyBindingSection{
+		{
 			title: "General",
 			actionFilter: func(actionDescriptor ActionDescriptor) bool {
 				return actionDescriptor.actionCategory == ActionCategoryGeneral
@@ -854,7 +854,7 @@ func (keyBindingManager *KeyBindingManager) GenerateHelpSections(config Config) 
 	for _, KeyBindingSection := range keyBindingSections {
 		helpSections = append(helpSections, &HelpSection{
 			description: []HelpSectionText{
-				HelpSectionText{text: KeyBindingSection.title, themeComponentID: CmpHelpViewSectionSubTitle},
+				{text: KeyBindingSection.title, themeComponentID: CmpHelpViewSectionSubTitle},
 			},
 			tableFormatter: keyBindingManager.generateKeyBindingsTable(config, KeyBindingSection.actionFilter, ViewAll),
 		})
@@ -888,7 +888,7 @@ func (keyBindingManager *KeyBindingManager) generateViewSpecificKeyBindingHelpSe
 	for _, viewID := range viewSpecificIDs {
 		helpSections = append(helpSections, &HelpSection{
 			description: []HelpSectionText{
-				HelpSectionText{text: fmt.Sprintf("%v Specific", ViewName(viewID)), themeComponentID: CmpHelpViewSectionSubTitle},
+				{text: fmt.Sprintf("%v Specific", ViewName(viewID)), themeComponentID: CmpHelpViewSectionSubTitle},
 			},
 			tableFormatter: keyBindingManager.generateKeyBindingsTable(config, func(actionDescriptor ActionDescriptor) bool {
 				if actionDescriptor.actionCategory == ActionCategoryViewSpecific {
@@ -911,9 +911,9 @@ type actionFilter func(ActionDescriptor) bool
 
 func (keyBindingManager *KeyBindingManager) generateKeyBindingsTable(config Config, filter actionFilter, viewID ViewID) *TableFormatter {
 	headers := []TableHeader{
-		TableHeader{text: "Key Bindings", themeComponentID: CmpHelpViewSectionTableHeader},
-		TableHeader{text: "Action", themeComponentID: CmpHelpViewSectionTableHeader},
-		TableHeader{text: "Description", themeComponentID: CmpHelpViewSectionTableHeader},
+		{text: "Key Bindings", themeComponentID: CmpHelpViewSectionTableHeader},
+		{text: "Action", themeComponentID: CmpHelpViewSectionTableHeader},
+		{text: "Description", themeComponentID: CmpHelpViewSectionTableHeader},
 	}
 
 	tableFormatter := NewTableFormatterWithHeaders(headers, config)

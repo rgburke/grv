@@ -145,6 +145,7 @@ func NewHelpView(channels Channels, config Config) *HelpView {
 func (helpView *HelpView) Initialise() (err error) {
 	helpSections := []*HelpSection{helpView.introductionHelpSection()}
 	helpSections = append(helpSections, helpView.config.GenerateHelpSections()...)
+	helpSections = append(helpSections, GenerateFilterQueryLanguageHelpSections(helpView.config)...)
 
 	for _, helpSection := range helpSections {
 		if err = helpSection.initialise(); err != nil {
@@ -261,9 +262,9 @@ func (helpView *HelpView) introductionHelpSection() *HelpSection {
 	return &HelpSection{
 		title: HelpSectionText{text: "Introduction"},
 		description: []HelpSectionText{
-			HelpSectionText{text: "GRV - Git Repository Viewer - is a TUI for viewing and modifying git repositories."},
-			HelpSectionText{text: "The sections below provide a brief overview of the ways to configure and interact with GRV."},
-			HelpSectionText{text: "For full documentation please visit: https://github.com/rgburke/grv/blob/master/doc/documentation.md"},
+			{text: "GRV - Git Repository Viewer - is a TUI for viewing and modifying git repositories."},
+			{text: "The sections below provide a brief overview of the ways to configure and interact with GRV."},
+			{text: "For full documentation please visit: https://github.com/rgburke/grv/blob/master/doc/documentation.md"},
 		},
 	}
 }

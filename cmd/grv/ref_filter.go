@@ -2,6 +2,8 @@ package main
 
 import (
 	"strings"
+
+	slice "github.com/bradfitz/slice"
 )
 
 // CreateRefFilter creates a ref filter from the provided query
@@ -69,4 +71,36 @@ var refFields = map[string]refField{
 			return strings.TrimLeft(renderedRef.value, " ")
 		},
 	},
+}
+
+// GenerateRefFieldHelpSection generates help documentation for the ref fields available
+func GenerateRefFieldHelpSection(config Config) *HelpSection {
+	headers := []TableHeader{
+		{text: "Field", themeComponentID: CmpHelpViewSectionTableHeader},
+		{text: "Type", themeComponentID: CmpHelpViewSectionTableHeader},
+	}
+
+	tableFormatter := NewTableFormatterWithHeaders(headers, config)
+	tableFormatter.SetGridLines(true)
+
+	refFieldNames := []string{}
+	for refFieldName := range refFields {
+		refFieldNames = append(refFieldNames, refFieldName)
+	}
+
+	slice.Sort(refFieldNames, func(i, j int) bool {
+		return refFieldNames[i] < refFieldNames[j]
+	})
+
+	tableFormatter.Resize(uint(len(refFieldNames)))
+
+	for rowIndex, refFieldName := range refFieldNames {
+		refField := refFields[refFieldName]
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 0, CmpHelpViewSectionTableRow, "%v", refFieldName)
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 1, CmpHelpViewSectionTableRow, "%v", FieldTypeName(refField.fieldType))
+	}
+
+	return &HelpSection{
+		tableFormatter: tableFormatter,
+	}
 }

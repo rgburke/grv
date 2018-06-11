@@ -153,6 +153,12 @@ var fieldTypeNames = map[FieldType]string{
 	FtRegex:   "Regex",
 }
 
+// FieldTypeName returns the name of the provided FieldType
+func FieldTypeName(fieldType FieldType) (fieldTypeName string) {
+	fieldTypeName, _ = fieldTypeNames[fieldType]
+	return
+}
+
 // TypeDescriptor returns the type of a field or value
 type TypeDescriptor interface {
 	FieldType(fieldTypeDescriptor FieldTypeDescriptor) FieldType

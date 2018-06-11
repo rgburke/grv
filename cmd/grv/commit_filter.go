@@ -2,6 +2,8 @@ package main
 
 import (
 	"strings"
+
+	slice "github.com/bradfitz/slice"
 )
 
 // CreateCommitFilter constructs a commit filter from the provided query
@@ -124,4 +126,36 @@ var commitFields = map[string]CommitField{
 			return float64(commit.commit.ParentCount())
 		},
 	},
+}
+
+// GenerateCommitFieldHelpSection generates documentation for the commit fields available
+func GenerateCommitFieldHelpSection(config Config) *HelpSection {
+	headers := []TableHeader{
+		{text: "Field", themeComponentID: CmpHelpViewSectionTableHeader},
+		{text: "Type", themeComponentID: CmpHelpViewSectionTableHeader},
+	}
+
+	tableFormatter := NewTableFormatterWithHeaders(headers, config)
+	tableFormatter.SetGridLines(true)
+
+	commitFieldNames := []string{}
+	for commitFieldName := range commitFields {
+		commitFieldNames = append(commitFieldNames, commitFieldName)
+	}
+
+	slice.Sort(commitFieldNames, func(i, j int) bool {
+		return commitFieldNames[i] < commitFieldNames[j]
+	})
+
+	tableFormatter.Resize(uint(len(commitFieldNames)))
+
+	for rowIndex, commitFieldName := range commitFieldNames {
+		commitField := commitFields[commitFieldName]
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 0, CmpHelpViewSectionTableRow, "%v", commitFieldName)
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 1, CmpHelpViewSectionTableRow, "%v", FieldTypeName(commitField.fieldType))
+	}
+
+	return &HelpSection{
+		tableFormatter: tableFormatter,
+	}
 }

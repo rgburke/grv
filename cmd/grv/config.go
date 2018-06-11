@@ -894,11 +894,11 @@ func (config *Configuration) GenerateHelpSections() (helpSections []*HelpSection
 
 func (config *Configuration) generateConfigVariableHelpSection() (helpSection *HelpSection) {
 	headers := []TableHeader{
-		TableHeader{text: "Variable", themeComponentID: CmpHelpViewSectionTableHeader},
-		TableHeader{text: "Type", themeComponentID: CmpHelpViewSectionTableHeader},
-		TableHeader{text: "Default Value", themeComponentID: CmpHelpViewSectionTableHeader},
-		TableHeader{text: "Current Value", themeComponentID: CmpHelpViewSectionTableHeader},
-		TableHeader{text: "Description", themeComponentID: CmpHelpViewSectionTableHeader},
+		{text: "Variable", themeComponentID: CmpHelpViewSectionTableHeader},
+		{text: "Type", themeComponentID: CmpHelpViewSectionTableHeader},
+		{text: "Default Value", themeComponentID: CmpHelpViewSectionTableHeader},
+		{text: "Current Value", themeComponentID: CmpHelpViewSectionTableHeader},
+		{text: "Description", themeComponentID: CmpHelpViewSectionTableHeader},
 	}
 
 	tableFormatter := NewTableFormatterWithHeaders(headers, config)
@@ -934,8 +934,8 @@ func (config *Configuration) generateConfigVariableHelpSection() (helpSection *H
 	return &HelpSection{
 		title: HelpSectionText{text: "Configuration Variables"},
 		description: []HelpSectionText{
-			HelpSectionText{text: "Configuration variables allow features to be enabled, disabled and configured."},
-			HelpSectionText{text: "They are specified using the set command in the grvrc file or at the command prompt"},
+			{text: "Configuration variables allow features to be enabled, disabled and configured."},
+			{text: "They are specified using the set command in the grvrc file or at the command prompt"},
 		},
 		tableFormatter: tableFormatter,
 	}

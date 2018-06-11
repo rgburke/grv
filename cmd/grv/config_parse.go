@@ -201,16 +201,16 @@ func GenerateConfigCommandHelpSections(config Config) (helpSections []*HelpSecti
 	helpSections = append(helpSections, &HelpSection{
 		title: HelpSectionText{text: "Configuration Commands"},
 		description: []HelpSectionText{
-			HelpSectionText{text: "The behaviour of GRV can be customised through the use of commands specified in a configuration file"},
-			HelpSectionText{text: "GRV will look for the following configuration files on start up:"},
-			HelpSectionText{},
-			HelpSectionText{text: " - $XDG_CONFIG_HOME/grv/grvrc"},
-			HelpSectionText{text: " - $HOME/.config/grv/grvrc"},
-			HelpSectionText{},
-			HelpSectionText{text: "GRV will attempt to process the first file which exists."},
-			HelpSectionText{text: "Commands can also be specified within GRV using the command prompt :"},
-			HelpSectionText{},
-			HelpSectionText{text: "Below are the set of configuration commands supported:"},
+			{text: "The behaviour of GRV can be customised through the use of commands specified in a configuration file"},
+			{text: "GRV will look for the following configuration files on start up:"},
+			{},
+			{text: " - $XDG_CONFIG_HOME/grv/grvrc"},
+			{text: " - $HOME/.config/grv/grvrc"},
+			{},
+			{text: "GRV will attempt to process the first file which exists."},
+			{text: "Commands can also be specified within GRV using the command prompt :"},
+			{},
+			{text: "Below are the set of configuration commands supported:"},
 		},
 	})
 

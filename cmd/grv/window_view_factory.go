@@ -144,8 +144,8 @@ func (windowViewFactory *WindowViewFactory) getRef(args []interface{}) (ref Ref,
 // GenerateWindowViewFactoryHelpSection generates a help documentation table of supported views
 func GenerateWindowViewFactoryHelpSection(config Config) *HelpSection {
 	headers := []TableHeader{
-		TableHeader{text: "View", themeComponentID: CmpHelpViewSectionTableHeader},
-		TableHeader{text: "Args", themeComponentID: CmpHelpViewSectionTableHeader},
+		{text: "View", themeComponentID: CmpHelpViewSectionTableHeader},
+		{text: "Args", themeComponentID: CmpHelpViewSectionTableHeader},
 	}
 
 	tableFormatter := NewTableFormatterWithHeaders(headers, config)
@@ -157,19 +157,19 @@ func GenerateWindowViewFactoryHelpSection(config Config) *HelpSection {
 	}
 
 	viewConstructors := []viewConstructor{
-		viewConstructor{
+		{
 			viewID: ViewCommit,
 			args:   "ref or oid",
 		},
-		viewConstructor{
+		{
 			viewID: ViewDiff,
 			args:   "oid",
 		},
-		viewConstructor{
+		{
 			viewID: ViewGitStatus,
 			args:   "none",
 		},
-		viewConstructor{
+		{
 			viewID: ViewRef,
 			args:   "none",
 		},

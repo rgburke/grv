@@ -7,30 +7,30 @@ import (
 // GenerateSetCommandHelpSections generates help documentation for the set command
 func GenerateSetCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "set", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The set command allows configuration variables to be set. It has the form:"},
-		HelpSectionText{},
-		HelpSectionText{text: "set variable value", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "For example, to set the tab width to tab width to 4, the currently active theme to \"mytheme\" and enable mouse support:"},
-		HelpSectionText{},
-		HelpSectionText{text: "set tabwidth 4", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "set theme mytheme", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "set mouse true", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "GRV currently has the following themes available:"},
-		HelpSectionText{},
-		HelpSectionText{text: " - solarized"},
-		HelpSectionText{text: " - classic"},
-		HelpSectionText{text: " - cold"},
-		HelpSectionText{},
-		HelpSectionText{text: "The solarized theme is the default theme for GRV and does not respect the terminals colour palette."},
-		HelpSectionText{text: "The classic and cold themes do respect the terminals colour palette."},
+		{text: "set", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The set command allows configuration variables to be set. It has the form:"},
+		{},
+		{text: "set variable value", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "For example, to set the tab width to tab width to 4, the currently active theme to \"mytheme\" and enable mouse support:"},
+		{},
+		{text: "set tabwidth 4", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "set theme mytheme", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "set mouse true", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "GRV currently has the following themes available:"},
+		{},
+		{text: " - solarized"},
+		{text: " - classic"},
+		{text: " - cold"},
+		{},
+		{text: "The solarized theme is the default theme for GRV and does not respect the terminals colour palette."},
+		{text: "The classic and cold themes do respect the terminals colour palette."},
 	}
 
 	return []*HelpSection{
-		&HelpSection{
+		{
 			description: description,
 		},
 	}
@@ -39,52 +39,52 @@ func GenerateSetCommandHelpSections(config Config) (helpSections []*HelpSection)
 // GenerateThemeCommandHelpSections generates help documentation for the theme command
 func GenerateThemeCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "theme", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The theme command allows a custom theme to be defined."},
-		HelpSectionText{text: "This theme can then be activated using the theme config variable described above."},
-		HelpSectionText{text: "The form of the theme command is:"},
-		HelpSectionText{},
-		HelpSectionText{text: "theme --name [ThemeName] --component [ComponentId] --bgcolor [BackgroundColor] --fgcolor [ForegroundColor]", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: " - ThemeName: The name of the theme to be created/updated."},
-		HelpSectionText{text: " - ComponentId: The Id of the screen component (the part of the display to change)."},
-		HelpSectionText{text: " - BackgroundColor: The background color."},
-		HelpSectionText{text: " - ForegroundColor: The foreground color."},
-		HelpSectionText{},
-		HelpSectionText{text: "Using a sequence of theme commands it is possible to define a theme."},
-		HelpSectionText{text: "For example, to define a new theme \"mytheme\" and set it as the active theme:"},
-		HelpSectionText{},
-		HelpSectionText{text: "theme --name mytheme --component CommitView.Date      --bgcolor None --fgcolor Red", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "theme --name mytheme --component RefView.Tag          --bgcolor Blue --fgcolor 36", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "theme --name mytheme --component StatusBarView.Normal --bgcolor None --fgcolor f14a98", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "set theme mytheme", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "GRV supports 256 colors (when available). Provided colors will be mapped to the nearest available color."},
-		HelpSectionText{text: "The allowed color values are:"},
-		HelpSectionText{},
-		HelpSectionText{text: "System colors:"},
-		HelpSectionText{},
-		HelpSectionText{text: "None", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "Black", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "Red", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "Green", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "Yellow", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "Blue", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "Magenta", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "Cyan", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "White", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "Terminal Color Numbers:"},
-		HelpSectionText{},
-		HelpSectionText{text: "0 - 255", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "Hex Colors:"},
-		HelpSectionText{},
-		HelpSectionText{text: "000000 - ffffff", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "The set of screen components that can be customised is:"},
-		HelpSectionText{},
+		{text: "theme", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The theme command allows a custom theme to be defined."},
+		{text: "This theme can then be activated using the theme config variable described above."},
+		{text: "The form of the theme command is:"},
+		{},
+		{text: "theme --name [ThemeName] --component [ComponentId] --bgcolor [BackgroundColor] --fgcolor [ForegroundColor]", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: " - ThemeName: The name of the theme to be created/updated."},
+		{text: " - ComponentId: The Id of the screen component (the part of the display to change)."},
+		{text: " - BackgroundColor: The background color."},
+		{text: " - ForegroundColor: The foreground color."},
+		{},
+		{text: "Using a sequence of theme commands it is possible to define a theme."},
+		{text: "For example, to define a new theme \"mytheme\" and set it as the active theme:"},
+		{},
+		{text: "theme --name mytheme --component CommitView.Date      --bgcolor None --fgcolor Red", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "theme --name mytheme --component RefView.Tag          --bgcolor Blue --fgcolor 36", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "theme --name mytheme --component StatusBarView.Normal --bgcolor None --fgcolor f14a98", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "set theme mytheme", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "GRV supports 256 colors (when available). Provided colors will be mapped to the nearest available color."},
+		{text: "The allowed color values are:"},
+		{},
+		{text: "System colors:"},
+		{},
+		{text: "None", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "Black", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "Red", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "Green", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "Yellow", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "Blue", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "Magenta", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "Cyan", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "White", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "Terminal Color Numbers:"},
+		{},
+		{text: "0 - 255", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "Hex Colors:"},
+		{},
+		{text: "000000 - ffffff", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "The set of screen components that can be customised is:"},
+		{},
 	}
 
 	var prevPrefix string
@@ -100,7 +100,7 @@ func GenerateThemeCommandHelpSections(config Config) (helpSections []*HelpSectio
 	}
 
 	return []*HelpSection{
-		&HelpSection{
+		{
 			description: description,
 		},
 	}
@@ -109,31 +109,31 @@ func GenerateThemeCommandHelpSections(config Config) (helpSections []*HelpSectio
 // GenerateMapCommandHelpSections generates help documentation for the map command
 func GenerateMapCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "map", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The map command allows a key sequence to be mapped to an action or another key sequence for a specified view."},
-		HelpSectionText{text: "The form of the map command is:"},
-		HelpSectionText{},
-		HelpSectionText{text: "map view fromkeys tokeys", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "For example, to map the key 'a' to the keys 'gg' in the Ref View:"},
-		HelpSectionText{},
-		HelpSectionText{text: "map RefView a gg", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "When pressing 'a' in the Ref View, the first line would then become the selected line, as 'gg' moves the cursor to the first line."},
-		HelpSectionText{text: "All is a valid view argument when a binding should apply to all views."},
-		HelpSectionText{},
-		HelpSectionText{text: "GRV also has a text representation of actions that are independent of key bindings."},
-		HelpSectionText{text: "For example, the following commands can be used to make the <Up> key move a line down and the <Down> key move a line up:"},
-		HelpSectionText{},
-		HelpSectionText{text: "map All <Up> <grv-next-line>", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "map All <Down> <grv-prev-line>", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "The set of actions available is described in the key binding tables above."},
+		{text: "map", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The map command allows a key sequence to be mapped to an action or another key sequence for a specified view."},
+		{text: "The form of the map command is:"},
+		{},
+		{text: "map view fromkeys tokeys", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "For example, to map the key 'a' to the keys 'gg' in the Ref View:"},
+		{},
+		{text: "map RefView a gg", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "When pressing 'a' in the Ref View, the first line would then become the selected line, as 'gg' moves the cursor to the first line."},
+		{text: "All is a valid view argument when a binding should apply to all views."},
+		{},
+		{text: "GRV also has a text representation of actions that are independent of key bindings."},
+		{text: "For example, the following commands can be used to make the <Up> key move a line down and the <Down> key move a line up:"},
+		{},
+		{text: "map All <Up> <grv-next-line>", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "map All <Down> <grv-prev-line>", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "The set of actions available is described in the key binding tables above."},
 	}
 
 	return []*HelpSection{
-		&HelpSection{
+		{
 			description: description,
 		},
 	}
@@ -142,20 +142,20 @@ func GenerateMapCommandHelpSections(config Config) (helpSections []*HelpSection)
 // GenerateUnmapCommandHelpSections generates help documentation for the unmap command
 func GenerateUnmapCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "unmap", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The unmap command removes any defined key binding for a key sequence in the specified view."},
-		HelpSectionText{text: "The form of the unmap command is:"},
-		HelpSectionText{},
-		HelpSectionText{text: "unmap view fromkeys", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "For example, to unmap the key 'c' in the Ref View:"},
-		HelpSectionText{},
-		HelpSectionText{text: "unmap RefView c", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "unmap", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The unmap command removes any defined key binding for a key sequence in the specified view."},
+		{text: "The form of the unmap command is:"},
+		{},
+		{text: "unmap view fromkeys", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "For example, to unmap the key 'c' in the Ref View:"},
+		{},
+		{text: "unmap RefView c", themeComponentID: CmpHelpViewSectionCodeBlock},
 	}
 
 	return []*HelpSection{
-		&HelpSection{
+		{
 			description: description,
 		},
 	}
@@ -164,15 +164,15 @@ func GenerateUnmapCommandHelpSections(config Config) (helpSections []*HelpSectio
 // GenerateQuitCommandHelpSections generates help documentation for the quit command
 func GenerateQuitCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "q", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The quit command is used to exit GRV and can be used with the following keys:"},
-		HelpSectionText{},
-		HelpSectionText{text: ":q<Enter>", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "q", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The quit command is used to exit GRV and can be used with the following keys:"},
+		{},
+		{text: ":q<Enter>", themeComponentID: CmpHelpViewSectionCodeBlock},
 	}
 
 	return []*HelpSection{
-		&HelpSection{
+		{
 			description: description,
 		},
 	}
@@ -181,20 +181,20 @@ func GenerateQuitCommandHelpSections(config Config) (helpSections []*HelpSection
 // GenerateAddTabCommandHelpSections generates help documentation for the addtab command
 func GenerateAddTabCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "addtab", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The addtab command creates a new named empty tab and switches to this new tab."},
-		HelpSectionText{text: "The format of the command is:"},
-		HelpSectionText{},
-		HelpSectionText{text: "addtab tabname", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "For example, to add a new tab titled \"mycustomtab\" the following command can be used:"},
-		HelpSectionText{},
-		HelpSectionText{text: "addtab mycustomtab", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "addtab", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The addtab command creates a new named empty tab and switches to this new tab."},
+		{text: "The format of the command is:"},
+		{},
+		{text: "addtab tabname", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "For example, to add a new tab titled \"mycustomtab\" the following command can be used:"},
+		{},
+		{text: "addtab mycustomtab", themeComponentID: CmpHelpViewSectionCodeBlock},
 	}
 
 	return []*HelpSection{
-		&HelpSection{
+		{
 			description: description,
 		},
 	}
@@ -203,13 +203,13 @@ func GenerateAddTabCommandHelpSections(config Config) (helpSections []*HelpSecti
 // GenerateRmTabCommandHelpSections generates help documentation for the rmtab command
 func GenerateRmTabCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "rmtab", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The rmtab removes the currently active tab. If the tab removed is the last tab then GRV will exit."},
+		{text: "rmtab", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The rmtab removes the currently active tab. If the tab removed is the last tab then GRV will exit."},
 	}
 
 	return []*HelpSection{
-		&HelpSection{
+		{
 			description: description,
 		},
 	}
@@ -218,14 +218,14 @@ func GenerateRmTabCommandHelpSections(config Config) (helpSections []*HelpSectio
 // GenerateAddViewCommandHelpSections generates help documentation for the addview command
 func GenerateAddViewCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "addview", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The addview command allows a view to be added to the currently active tab."},
-		HelpSectionText{text: "The form of the command is:"},
-		HelpSectionText{},
-		HelpSectionText{text: "addview view viewargs...", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "Each view accepts a different set of arguments. This is described in the table below:"},
+		{text: "addview", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The addview command allows a view to be added to the currently active tab."},
+		{text: "The form of the command is:"},
+		{},
+		{text: "addview view viewargs...", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "Each view accepts a different set of arguments. This is described in the table below:"},
 	}
 
 	helpSections = append(helpSections, &HelpSection{
@@ -235,12 +235,12 @@ func GenerateAddViewCommandHelpSections(config Config) (helpSections []*HelpSect
 	helpSections = append(helpSections, GenerateWindowViewFactoryHelpSection(config))
 
 	description = []HelpSectionText{
-		HelpSectionText{text: "Examples usages for each view are given below:"},
-		HelpSectionText{},
-		HelpSectionText{text: "addview CommitView origin/master", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "addview DiffView 4882ca9044661b49a26ae03ceb1be3a70d00c6a2", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "addview GitStatusView", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{text: "addview RefView", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "Examples usages for each view are given below:"},
+		{},
+		{text: "addview CommitView origin/master", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "addview DiffView 4882ca9044661b49a26ae03ceb1be3a70d00c6a2", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "addview GitStatusView", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "addview RefView", themeComponentID: CmpHelpViewSectionCodeBlock},
 	}
 
 	helpSections = append(helpSections, &HelpSection{
@@ -253,20 +253,20 @@ func GenerateAddViewCommandHelpSections(config Config) (helpSections []*HelpSect
 // GenerateVSplitCommandHelpSections generates help documentation for the vsplit command
 func GenerateVSplitCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "vsplit", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The vsplit command creates a vertical split between the currently selected view and the view specified in the command."},
-		HelpSectionText{text: "The form of the command is:"},
-		HelpSectionText{},
-		HelpSectionText{text: "vsplit view viewargs...", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "For example, to create a vertical split between the currently selected view and a CommitView displaying commits for master:"},
-		HelpSectionText{},
-		HelpSectionText{text: "vsplit CommitView master", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "vsplit", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The vsplit command creates a vertical split between the currently selected view and the view specified in the command."},
+		{text: "The form of the command is:"},
+		{},
+		{text: "vsplit view viewargs...", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "For example, to create a vertical split between the currently selected view and a CommitView displaying commits for master:"},
+		{},
+		{text: "vsplit CommitView master", themeComponentID: CmpHelpViewSectionCodeBlock},
 	}
 
 	return []*HelpSection{
-		&HelpSection{
+		{
 			description: description,
 		},
 	}
@@ -275,20 +275,20 @@ func GenerateVSplitCommandHelpSections(config Config) (helpSections []*HelpSecti
 // GenerateHSplitCommandHelpSections generates help documentation for the hsplit command
 func GenerateHSplitCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "hsplit", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The hsplit command creates a horizontal split between the currently selected view and the view specified in the command."},
-		HelpSectionText{text: "The form of the command is:"},
-		HelpSectionText{},
-		HelpSectionText{text: "hsplit view viewargs...", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "For example, to create a horizontal split between the currently selected view and a RefView:"},
-		HelpSectionText{},
-		HelpSectionText{text: "hsplit RefView", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "hsplit", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The hsplit command creates a horizontal split between the currently selected view and the view specified in the command."},
+		{text: "The form of the command is:"},
+		{},
+		{text: "hsplit view viewargs...", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "For example, to create a horizontal split between the currently selected view and a RefView:"},
+		{},
+		{text: "hsplit RefView", themeComponentID: CmpHelpViewSectionCodeBlock},
 	}
 
 	return []*HelpSection{
-		&HelpSection{
+		{
 			description: description,
 		},
 	}
@@ -297,17 +297,17 @@ func GenerateHSplitCommandHelpSections(config Config) (helpSections []*HelpSecti
 // GenerateSplitCommandHelpSections generates help documentation for the split command
 func GenerateSplitCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "split", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The split command is similar to the vsplit and hsplit commands."},
-		HelpSectionText{text: "It creates either a new vsplit or hsplit determined by the current dimensions of the active view."},
-		HelpSectionText{text: "The form of the command is:"},
-		HelpSectionText{},
-		HelpSectionText{text: "split view viewargs...", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "split", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The split command is similar to the vsplit and hsplit commands."},
+		{text: "It creates either a new vsplit or hsplit determined by the current dimensions of the active view."},
+		{text: "The form of the command is:"},
+		{},
+		{text: "split view viewargs...", themeComponentID: CmpHelpViewSectionCodeBlock},
 	}
 
 	return []*HelpSection{
-		&HelpSection{
+		{
 			description: description,
 		},
 	}
@@ -316,21 +316,21 @@ func GenerateSplitCommandHelpSections(config Config) (helpSections []*HelpSectio
 // GenerateGitCommandHelpSections generates help documentation for the git command
 func GenerateGitCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "git", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The git command is an alias to the git cli command."},
-		HelpSectionText{text: "It allows a non-interactive git command to run without having to leave GRV."},
-		HelpSectionText{text: "A pop-up window displays the output of the command."},
-		HelpSectionText{text: "For example, to run 'git status' from within GRV use the following key sequence"},
-		HelpSectionText{},
-		HelpSectionText{text: ":git status", themeComponentID: CmpHelpViewSectionCodeBlock},
-		HelpSectionText{},
-		HelpSectionText{text: "Only non-interactive git commands (i.e. those that require no user input) can be run using the git command."},
-		HelpSectionText{text: "For interactive git commands the giti command can be used."},
+		{text: "git", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The git command is an alias to the git cli command."},
+		{text: "It allows a non-interactive git command to run without having to leave GRV."},
+		{text: "A pop-up window displays the output of the command."},
+		{text: "For example, to run 'git status' from within GRV use the following key sequence"},
+		{},
+		{text: ":git status", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "Only non-interactive git commands (i.e. those that require no user input) can be run using the git command."},
+		{text: "For interactive git commands the giti command can be used."},
 	}
 
 	return []*HelpSection{
-		&HelpSection{
+		{
 			description: description,
 		},
 	}
@@ -339,18 +339,18 @@ func GenerateGitCommandHelpSections(config Config) (helpSections []*HelpSection)
 // GenerateGitiCommandHelpSections generates help documentation for the giti command
 func GenerateGitiCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "giti", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The git command is an alias to the git cli command."},
-		HelpSectionText{text: "It allows an interactive git command (i.e. those that require user input) to be run without having to leave GRV."},
-		HelpSectionText{text: "The command is executed in the controlling terminal and GRV is resumed on command completion."},
-		HelpSectionText{text: "For example, to run 'git rebase -i HEAD~2' use the following key sequence:"},
-		HelpSectionText{},
-		HelpSectionText{text: ":giti rebase -i HEAD~2", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "giti", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The git command is an alias to the git cli command."},
+		{text: "It allows an interactive git command (i.e. those that require user input) to be run without having to leave GRV."},
+		{text: "The command is executed in the controlling terminal and GRV is resumed on command completion."},
+		{text: "For example, to run 'git rebase -i HEAD~2' use the following key sequence:"},
+		{},
+		{text: ":giti rebase -i HEAD~2", themeComponentID: CmpHelpViewSectionCodeBlock},
 	}
 
 	return []*HelpSection{
-		&HelpSection{
+		{
 			description: description,
 		},
 	}
@@ -359,13 +359,13 @@ func GenerateGitiCommandHelpSections(config Config) (helpSections []*HelpSection
 // GenerateHelpCommandHelpSections generates help documentation for the help command
 func GenerateHelpCommandHelpSections(config Config) (helpSections []*HelpSection) {
 	description := []HelpSectionText{
-		HelpSectionText{text: "help", themeComponentID: CmpHelpViewSectionSubTitle},
-		HelpSectionText{},
-		HelpSectionText{text: "The help command opens a tab containing documentation for GRV."},
+		{text: "help", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The help command opens a tab containing documentation for GRV."},
 	}
 
 	return []*HelpSection{
-		&HelpSection{
+		{
 			description: description,
 		},
 	}

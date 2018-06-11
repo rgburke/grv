@@ -308,3 +308,65 @@ func regexpComparator(value1 interface{}, value2 interface{}) bool {
 
 	return regex.MatchString(input)
 }
+
+// GenerateFilterQueryLanguageHelpSections generates help documentation for the Filter Query Language
+func GenerateFilterQueryLanguageHelpSections(config Config) (helpSections []*HelpSection) {
+	description := []HelpSectionText{
+		{text: "GRV has a built in query language which can be used to filter the content of the Ref and Commit views."},
+		{text: "All queries resolve to boolean values which are tested against each item listed in the view."},
+		{text: "A query is composed of at least one comparison:"},
+		{},
+		{text: "field CMP value", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "CMP can be any of the following comparison operators, which are case-insensitive:"},
+		{},
+		{text: "=, !=, >, >=, <, <=, GLOB, REGEXP", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "Value is one of the following types:"},
+		{},
+		{text: "string          (e.g. \"test\")", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "number          (e.g. 123 or 123.0)", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "date            (e.g. \"2017-09-05 10:05:25\" or \"2017-09-05\")", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "Field is specific to the view that is being filtered."},
+		{text: "For example, to filter commits to those whose commit messages start with \"Bug Fix:\":"},
+		{},
+		{text: "summary GLOB \"Bug Fix:*\"", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "Or equivalently:"},
+		{},
+		{text: "summary REGEXP \"^Bug Fix:.*\"", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "For more inforation about the supported GLOB syntax see: https://github.com/gobwas/glob"},
+		{text: "For more information about the supported regex syntax see: https://golang.org/s/re2syntax"},
+		{},
+		{text: "Comparisons can be composed together using the following logical operators, which are case-insensitive:"},
+		{},
+		{text: "AND, OR, NOT", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "For example, to filter commits to those authored by John Smith or Jane Roe in September 2017, ignoring merge commits:"},
+		{},
+		{text: `authordate >= "2017-09-01" AND authordate < "2017-10-01" AND (authorname = "John Smith" OR authorname = "Jane Roe") AND parentcount < 2`, themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "As shown above, expressions can be grouped using parentheses."},
+		{},
+		{text: "The list of (case-insensitive) fields that can be used in the Commit View is:"},
+	}
+
+	helpSections = append(helpSections, &HelpSection{
+		title:       HelpSectionText{text: "Filter Query Language"},
+		description: description,
+	})
+
+	helpSections = append(helpSections, GenerateCommitFieldHelpSection(config))
+
+	helpSections = append(helpSections, &HelpSection{
+		description: []HelpSectionText{
+			{text: "The list of (case-insensitive) fields that can be used in the Ref View is:"},
+		},
+	})
+
+	helpSections = append(helpSections, GenerateRefFieldHelpSection(config))
+
+	return
+}
