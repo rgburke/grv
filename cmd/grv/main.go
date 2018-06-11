@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -83,4 +86,29 @@ func getVersion() string {
 
 func printVersion() {
 	fmt.Printf("%v\n", getVersion())
+}
+
+// GenerateCommandLineArgumentsHelpSections generates help documentation for command line arguments
+func GenerateCommandLineArgumentsHelpSections() *HelpSection {
+	description := []HelpSectionText{
+		{text: "GRV accepts the following command line arguments:"},
+		{},
+	}
+
+	var buffer bytes.Buffer
+	flag.CommandLine.SetOutput(&buffer)
+	flag.CommandLine.PrintDefaults()
+
+	scanner := bufio.NewScanner(&buffer)
+	for scanner.Scan() {
+		description = append(description, HelpSectionText{
+			text:             strings.TrimLeft(scanner.Text(), " "),
+			themeComponentID: CmpHelpViewSectionCodeBlock,
+		})
+	}
+
+	return &HelpSection{
+		title:       HelpSectionText{text: "Command Line Arguments"},
+		description: description,
+	}
 }

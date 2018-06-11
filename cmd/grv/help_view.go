@@ -144,6 +144,7 @@ func NewHelpView(channels Channels, config Config) *HelpView {
 // Initialise does nothing
 func (helpView *HelpView) Initialise() (err error) {
 	helpSections := []*HelpSection{helpView.introductionHelpSection()}
+	helpSections = append(helpSections, GenerateCommandLineArgumentsHelpSections())
 	helpSections = append(helpSections, helpView.config.GenerateHelpSections()...)
 	helpSections = append(helpSections, GenerateFilterQueryLanguageHelpSections(helpView.config)...)
 
