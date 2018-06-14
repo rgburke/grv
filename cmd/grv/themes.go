@@ -296,6 +296,15 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
 			},
+			CmpHelpViewIndexTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+				style:   ThemeStyle{styleTypes: TstBold | TstUnderline},
+			},
+			CmpHelpViewIndexSubTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
 			CmpHelpViewSectionTitle: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
@@ -634,6 +643,15 @@ func NewColdTheme() MutableTheme {
 			CmpHelpViewTitle: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpHelpViewIndexTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+				style:   ThemeStyle{styleTypes: TstBold | TstUnderline},
+			},
+			CmpHelpViewIndexSubTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
 			},
 			CmpHelpViewSectionTitle: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -993,6 +1011,15 @@ func NewSolarizedTheme() MutableTheme {
 			CmpHelpViewTitle: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(solarizedCyan),
+			},
+			CmpHelpViewIndexTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedBlue),
+				style:   ThemeStyle{styleTypes: TstBold | TstUnderline},
+			},
+			CmpHelpViewIndexSubTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedBlue),
 			},
 			CmpHelpViewSectionTitle: {
 				bgcolor: NewSystemColor(ColorNone),

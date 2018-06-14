@@ -72,6 +72,8 @@ const (
 	CmpGitStatusConflictedFile
 
 	CmpHelpViewTitle
+	CmpHelpViewIndexTitle
+	CmpHelpViewIndexSubTitle
 	CmpHelpViewSectionTitle
 	CmpHelpViewSectionSubTitle
 	CmpHelpViewSectionDescription

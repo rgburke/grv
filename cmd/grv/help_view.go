@@ -120,13 +120,111 @@ func (helpSection *HelpSection) renderRow(win RenderWindow, winStartRowIndex, he
 	return
 }
 
+// HelpViewSection represents a help view section and
+// its child sections
+type HelpViewSection struct {
+	title    string
+	children []*HelpViewSection
+}
+
+// HelpViewIndex is an index of help view sections
+type HelpViewIndex struct {
+	sections  []*HelpViewSection
+	rowMap    map[uint]uint
+	totalRows uint
+}
+
+// NewHelpViewIndex creates a new instance
+func NewHelpViewIndex(helpSections []*HelpSection) *HelpViewIndex {
+	var current *HelpViewSection
+	sections := []*HelpViewSection{}
+	totalRows := uint(0)
+	indexRowIndex := uint(2)
+	rowMap := map[uint]uint{}
+
+	for _, helpSection := range helpSections {
+		if helpSection.title.text != "" {
+			current = &HelpViewSection{
+				title: helpSection.title.text,
+			}
+
+			sections = append(sections, current)
+
+			indexRowIndex++
+			rowMap[indexRowIndex] = totalRows + 1
+			indexRowIndex++
+		}
+
+		for descriptionLineIndex, descriptionLine := range helpSection.description {
+			if descriptionLine.themeComponentID == CmpHelpViewSectionSubTitle {
+				current.children = append(current.children, &HelpViewSection{
+					title: descriptionLine.text,
+				})
+
+				rowMap[indexRowIndex] = totalRows + helpSection.titleRows() + uint(descriptionLineIndex)
+				indexRowIndex++
+			}
+		}
+
+		totalRows += helpSection.rows()
+	}
+
+	return &HelpViewIndex{
+		sections:  sections,
+		rowMap:    rowMap,
+		totalRows: totalRows,
+	}
+}
+
+func (helpViewIndex *HelpViewIndex) applyOffset(preOffset, postOffset uint) {
+	helpViewIndex.totalRows += postOffset
+
+	rowMap := map[uint]uint{}
+	for index, rowIndex := range helpViewIndex.rowMap {
+		rowMap[index+preOffset] = rowIndex + postOffset
+	}
+
+	helpViewIndex.rowMap = rowMap
+}
+
+func (helpViewIndex *HelpViewIndex) generateHelpSection() *HelpSection {
+	description := []HelpSectionText{}
+
+	for _, section := range helpViewIndex.sections {
+		description = append(description, HelpSectionText{text: section.title, themeComponentID: CmpHelpViewIndexTitle})
+
+		for _, childSection := range section.children {
+			description = append(description, HelpSectionText{text: "  - " + childSection.title, themeComponentID: CmpHelpViewIndexSubTitle})
+		}
+
+		description = append(description, HelpSectionText{})
+	}
+
+	if len(description) > 0 {
+		description = description[:len(description)-1]
+	}
+
+	return &HelpSection{
+		title:       HelpSectionText{text: "Table Of Contents"},
+		description: description,
+	}
+}
+
+func (helpViewIndex *HelpViewIndex) mappedRow(rowIndex uint) (mappedIndex uint, exists bool) {
+	mappedIndex, exists = helpViewIndex.rowMap[rowIndex]
+	return
+}
+
+type helpViewHandler func(*HelpView, Action) error
+
 // HelpView displays help information
 type HelpView struct {
 	*AbstractWindowView
 	activeViewPos     ViewPos
 	lastViewDimension ViewDimension
 	helpSections      []*HelpSection
-	totalRows         uint
+	helpViewIndex     *HelpViewIndex
+	handlers          map[ActionType]helpViewHandler
 	lock              sync.Mutex
 }
 
@@ -134,6 +232,9 @@ type HelpView struct {
 func NewHelpView(channels Channels, config Config) *HelpView {
 	helpView := &HelpView{
 		activeViewPos: NewViewPosition(),
+		handlers: map[ActionType]helpViewHandler{
+			ActionSelect: selectHelpRow,
+		},
 	}
 
 	helpView.AbstractWindowView = NewAbstractWindowView(helpView, channels, config, "help line")
@@ -143,21 +244,7 @@ func NewHelpView(channels Channels, config Config) *HelpView {
 
 // Initialise does nothing
 func (helpView *HelpView) Initialise() (err error) {
-	helpSections := []*HelpSection{helpView.introductionHelpSection()}
-	helpSections = append(helpSections, GenerateCommandLineArgumentsHelpSections())
-	helpSections = append(helpSections, helpView.config.GenerateHelpSections()...)
-	helpSections = append(helpSections, GenerateFilterQueryLanguageHelpSections(helpView.config)...)
-
-	for _, helpSection := range helpSections {
-		if err = helpSection.initialise(); err != nil {
-			return
-		}
-
-		helpView.totalRows += helpSection.rows()
-	}
-
-	helpView.helpSections = helpSections
-
+	helpView.helpSections, helpView.helpViewIndex, err = GenerateHelpView(helpView.config)
 	return
 }
 
@@ -228,12 +315,25 @@ func (helpView *HelpView) renderRow(win RenderWindow, viewStartRowIndex, rowInde
 	return fmt.Errorf("Unable to render row with index: %v", rowIndex)
 }
 
+// RenderHelpBar shows key bindings custom to the help view
+func (helpView *HelpView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
+	rowIndex := helpView.activeViewPos.ActiveRowIndex()
+
+	if _, exists := helpView.helpViewIndex.mappedRow(rowIndex); exists {
+		RenderKeyBindingHelp(helpView.ViewID(), lineBuilder, helpView.config, []ActionMessage{
+			{action: ActionSelect, message: "Jump to section"},
+		})
+	}
+
+	return
+}
+
 func (helpView *HelpView) viewPos() ViewPos {
 	return helpView.activeViewPos
 }
 
 func (helpView *HelpView) rows() uint {
-	return helpView.totalRows
+	return helpView.helpViewIndex.totalRows
 }
 
 func (helpView *HelpView) viewDimension() ViewDimension {
@@ -250,7 +350,10 @@ func (helpView *HelpView) HandleAction(action Action) (err error) {
 	defer helpView.lock.Unlock()
 
 	var handled bool
-	if handled, err = helpView.AbstractWindowView.HandleAction(action); handled {
+	if handler, ok := helpView.handlers[action.ActionType]; ok {
+		log.Debugf("Action handled by HelpView")
+		err = handler(helpView, action)
+	} else if handled, err = helpView.AbstractWindowView.HandleAction(action); handled {
 		log.Debugf("Action handled by AbstractWindowView")
 	} else {
 		log.Debugf("Action not handled")
@@ -259,13 +362,45 @@ func (helpView *HelpView) HandleAction(action Action) (err error) {
 	return
 }
 
-func (helpView *HelpView) introductionHelpSection() *HelpSection {
-	return &HelpSection{
+func selectHelpRow(helpView *HelpView, action Action) (err error) {
+	rowIndex := helpView.activeViewPos.ActiveRowIndex()
+	mappedRowIndex, exists := helpView.helpViewIndex.mappedRow(rowIndex)
+	if !exists {
+		return
+	}
+
+	helpView.activeViewPos.SetActiveRowIndex(mappedRowIndex)
+	helpView.AbstractWindowView.HandleAction(Action{ActionType: ActionScrollCursorTop})
+	helpView.channels.UpdateDisplay()
+
+	return
+}
+
+// GenerateHelpView generates the help view
+func GenerateHelpView(config Config) (helpSections []*HelpSection, helpViewIndex *HelpViewIndex, err error) {
+	introHelpSection := &HelpSection{
 		title: HelpSectionText{text: "Introduction"},
 		description: []HelpSectionText{
 			{text: "GRV - Git Repository Viewer - is a TUI for viewing and modifying git repositories."},
-			{text: "The sections below provide a brief overview of the ways to configure and interact with GRV."},
-			{text: "For full documentation please visit: https://github.com/rgburke/grv/blob/master/doc/documentation.md"},
+			{text: "The sections below provide an overview of the ways to configure and interact with GRV."},
 		},
 	}
+
+	helpSections = append(helpSections, GenerateCommandLineArgumentsHelpSections())
+	helpSections = append(helpSections, config.GenerateHelpSections()...)
+	helpSections = append(helpSections, GenerateFilterQueryLanguageHelpSections(config)...)
+
+	helpViewIndex = NewHelpViewIndex(helpSections)
+	indexHelpSection := helpViewIndex.generateHelpSection()
+	helpViewIndex.applyOffset(introHelpSection.rows(), introHelpSection.rows()+indexHelpSection.rows())
+
+	helpSections = append([]*HelpSection{introHelpSection, indexHelpSection}, helpSections...)
+
+	for _, helpSection := range helpSections {
+		if err = helpSection.initialise(); err != nil {
+			return
+		}
+	}
+
+	return
 }
