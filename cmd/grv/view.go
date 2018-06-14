@@ -612,8 +612,12 @@ func (view *View) newTab(action Action) (err error) {
 func (view *View) addTab(tabName string) *ContainerView {
 	containerView := NewContainerView(view.channels, view.config)
 	containerView.SetTitle(tabName)
-	view.views = append(view.views, containerView)
-	view.activeViewPos = uint(len(view.views) - 1)
+
+	view.activeViewPos++
+	view.views = append(view.views, nil)
+	copy(view.views[view.activeViewPos+1:], view.views[view.activeViewPos:])
+	view.views[view.activeViewPos] = containerView
+
 	view.channels.UpdateDisplay()
 
 	return containerView
@@ -631,6 +635,8 @@ func (view *View) removeTab() {
 
 	if index >= uint(len(view.views)) {
 		view.activeViewPos = uint(len(view.views) - 1)
+	} else if index > 0 {
+		view.activeViewPos--
 	}
 
 	view.onActiveChange(true)
