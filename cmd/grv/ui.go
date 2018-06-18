@@ -575,17 +575,16 @@ func (ui *NCursesUI) cancelGetInput() error {
 func (ui *NCursesUI) GetMouseEvent() (event MouseEvent, exists bool) {
 	mouseEvent := gc.GetMouse()
 
-	if mouseEvent == nil {
-		return
-	}
-
-	mouseEventType, exists := ui.getMouseEventType(mouseEvent.State)
+	mouseEventType, exists := ui.getMouseEventType(mouseEvent)
 
 	if exists {
 		event = MouseEvent{
 			mouseEventType: mouseEventType,
-			row:            uint(mouseEvent.Y),
-			col:            uint(mouseEvent.X),
+		}
+
+		if mouseEvent != nil {
+			event.row = uint(mouseEvent.Y)
+			event.col = uint(mouseEvent.X)
 		}
 
 		log.Debugf("Mouse event: %v", event)
@@ -594,7 +593,14 @@ func (ui *NCursesUI) GetMouseEvent() (event MouseEvent, exists bool) {
 	return
 }
 
-func (ui *NCursesUI) getMouseEventType(button gc.MouseButton) (mouseEventType MouseEventType, exists bool) {
+func (ui *NCursesUI) getMouseEventType(mouseEvent *gc.MouseEvent) (mouseEventType MouseEventType, exists bool) {
+	var button gc.MouseButton
+	if mouseEvent == nil {
+		button = gc.M_B2_PRESSED
+	} else {
+		button = mouseEvent.State
+	}
+
 	log.Debugf("Ncurses button: %v", button)
 
 	switch {
