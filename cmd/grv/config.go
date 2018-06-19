@@ -893,13 +893,19 @@ func (config *Configuration) GenerateHelpSections() (helpSections []*HelpSection
 }
 
 func (config *Configuration) generateConfigVariableHelpSection() (helpSection *HelpSection) {
+	isDocFile := os.Getenv(MnGenerateDocumentationEnv) != ""
+
 	headers := []TableHeader{
 		{text: "Variable", themeComponentID: CmpHelpViewSectionTableHeader},
 		{text: "Type", themeComponentID: CmpHelpViewSectionTableHeader},
 		{text: "Default Value", themeComponentID: CmpHelpViewSectionTableHeader},
-		{text: "Current Value", themeComponentID: CmpHelpViewSectionTableHeader},
-		{text: "Description", themeComponentID: CmpHelpViewSectionTableHeader},
 	}
+
+	if !isDocFile {
+		headers = append(headers, TableHeader{text: "Current Value", themeComponentID: CmpHelpViewSectionTableHeader})
+	}
+
+	headers = append(headers, TableHeader{text: "Description", themeComponentID: CmpHelpViewSectionTableHeader})
 
 	tableFormatter := NewTableFormatterWithHeaders(headers, config)
 	tableFormatter.SetGridLines(true)
@@ -922,13 +928,17 @@ func (config *Configuration) generateConfigVariableHelpSection() (helpSection *H
 		tableFormatter.SetCellWithStyle(uint(rowIndex), 1, CmpHelpViewSectionTableRow, "%v", reflect.TypeOf(configVariable.defaultValue))
 		tableFormatter.SetCellWithStyle(uint(rowIndex), 2, CmpHelpViewSectionTableRow, "%v", configVariable.defaultValue)
 
-		currentValueThemeComponentID := CmpHelpViewSectionTableRow
-		if configVariable.defaultValue != configVariable.value {
-			currentValueThemeComponentID = CmpHelpViewSectionTableRowHighlighted
-		}
-		tableFormatter.SetCellWithStyle(uint(rowIndex), 3, currentValueThemeComponentID, "%v", configVariable.value)
+		if isDocFile {
+			tableFormatter.SetCellWithStyle(uint(rowIndex), 3, CmpHelpViewSectionTableRow, "%v", configVariable.description)
+		} else {
+			currentValueThemeComponentID := CmpHelpViewSectionTableRow
+			if configVariable.defaultValue != configVariable.value {
+				currentValueThemeComponentID = CmpHelpViewSectionTableRowHighlighted
+			}
 
-		tableFormatter.SetCellWithStyle(uint(rowIndex), 4, CmpHelpViewSectionTableRow, "%v", configVariable.description)
+			tableFormatter.SetCellWithStyle(uint(rowIndex), 3, currentValueThemeComponentID, "%v", configVariable.value)
+			tableFormatter.SetCellWithStyle(uint(rowIndex), 4, CmpHelpViewSectionTableRow, "%v", configVariable.description)
+		}
 	}
 
 	return &HelpSection{

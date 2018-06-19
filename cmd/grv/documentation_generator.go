@@ -70,9 +70,9 @@ func writeHelpSectionDescription(writer io.Writer, description []HelpSectionText
 
 		switch line.themeComponentID {
 		case CmpHelpViewIndexTitle:
-			writeHelpSectionTitleLink(writer, line.text, false)
+			lineIndex = writeHelpSectionTitleLink(writer, line.text, false, lineIndex, description)
 		case CmpHelpViewIndexSubTitle:
-			writeHelpSectionTitleLink(writer, line.text, true)
+			lineIndex = writeHelpSectionTitleLink(writer, line.text, true, lineIndex, description)
 		case CmpHelpViewSectionSubTitle:
 			fmt.Fprintln(writer, "###", line.text)
 		case CmpHelpViewSectionCodeBlock:
@@ -93,7 +93,7 @@ func writeHelpSectionDescription(writer io.Writer, description []HelpSectionText
 	fmt.Fprintln(writer, "")
 }
 
-func writeHelpSectionTitleLink(writer io.Writer, title string, subTitle bool) {
+func writeHelpSectionTitleLink(writer io.Writer, title string, subTitle bool, lineIndex int, description []HelpSectionText) int {
 	title = strings.TrimLeft(title, " -")
 	link := strings.ToLower(strings.Replace(title, " ", "-", -1))
 	markDownTitle := fmt.Sprintf("[%v](#%v)", title, link)
@@ -105,6 +105,14 @@ func writeHelpSectionTitleLink(writer io.Writer, title string, subTitle bool) {
 	}
 
 	fmt.Fprintln(writer, markDownTitle)
+
+	if nextLineIndex := lineIndex + 1; nextLineIndex < len(description) {
+		if description[nextLineIndex].text == "" {
+			return nextLineIndex
+		}
+	}
+
+	return lineIndex
 }
 
 func writeHelpSectionCodeBlock(writer io.Writer, codeBlock []HelpSectionText) {

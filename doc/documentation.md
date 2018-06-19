@@ -13,7 +13,6 @@ The sections below provide an overview of the ways to configure and interact wit
 ## Table Of Contents
 
  - [Command Line Arguments](#command-line-arguments)
-
  - [Key Bindings](#key-bindings)
      * [Movement](#movement)
      * [Search](#search)
@@ -22,9 +21,7 @@ The sections below provide an overview of the ways to configure and interact wit
      * [RefView Specific](#refview-specific)
      * [CommitView Specific](#commitview-specific)
      * [GitStatusView Specific](#gitstatusview-specific)
-
  - [Configuration Variables](#configuration-variables)
-
  - [Configuration Commands](#configuration-commands)
      * [addtab](#addtab)
      * [addview](#addview)
@@ -40,7 +37,6 @@ The sections below provide an overview of the ways to configure and interact wit
      * [theme](#theme)
      * [unmap](#unmap)
      * [vsplit](#vsplit)
-
  - [Filter Query Language](#filter-query-language)
 
 
@@ -170,15 +166,15 @@ Configuration variables allow features to be enabled, disabled and configured.
 They are specified using the set command in the grvrc file or at the command prompt
 
 ```
- Variable            | Type   | Default Value | Current Value | Description                                  
- --------------------+--------+---------------+---------------+-----------------------------------------------
- commit-graph        | bool   | false         | false         | Commit graph visible                         
- confirm-checkout    | bool   | true          | true          | Confirm before performing git checkout       
- mouse               | bool   | false         | false         | Mouse support enabled                        
- mouse-scroll-rows   | int    | 3             | 3             | Number of rows scrolled for each mouse event 
- prompt-history-size | int    | 1000          | 1000          | Maximum number of prompt entries retained    
- tabwidth            | int    | 8             | 8             | Tab character screen width (minimum value: 1)
- theme               | string | solarized     | solarized     | The currently active theme                   
+ Variable            | Type   | Default Value | Description                                  
+ --------------------+--------+---------------+-----------------------------------------------
+ commit-graph        | bool   | false         | Commit graph visible                         
+ confirm-checkout    | bool   | true          | Confirm before performing git checkout       
+ mouse               | bool   | false         | Mouse support enabled                        
+ mouse-scroll-rows   | int    | 3             | Number of rows scrolled for each mouse event 
+ prompt-history-size | int    | 1000          | Maximum number of prompt entries retained    
+ tabwidth            | int    | 8             | Tab character screen width (minimum value: 1)
+ theme               | string | solarized     | The currently active theme                   
 ```
 
 
@@ -187,8 +183,10 @@ They are specified using the set command in the grvrc file or at the command pro
 The behaviour of GRV can be customised through the use of commands specified in a configuration file
 GRV will look for the following configuration files on start up:
 
+```
  - $XDG_CONFIG_HOME/grv/grvrc
  - $HOME/.config/grv/grvrc
+```
 
 GRV will attempt to process the first file which exists.
 Commands can also be specified within GRV using the command prompt :
@@ -566,6 +564,7 @@ summary REGEXP "^Bug Fix:.*"
 ```
 
 For more inforation about the supported GLOB syntax see: https://github.com/gobwas/glob
+
 For more information about the supported regex syntax see: https://golang.org/s/re2syntax
 
 Comparisons can be composed together using the following logical operators, which are case-insensitive:

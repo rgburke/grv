@@ -338,6 +338,7 @@ func GenerateFilterQueryLanguageHelpSections(config Config) (helpSections []*Hel
 		{text: "summary REGEXP \"^Bug Fix:.*\"", themeComponentID: CmpHelpViewSectionCodeBlock},
 		{},
 		{text: "For more inforation about the supported GLOB syntax see: https://github.com/gobwas/glob"},
+		{},
 		{text: "For more information about the supported regex syntax see: https://golang.org/s/re2syntax"},
 		{},
 		{text: "Comparisons can be composed together using the following logical operators, which are case-insensitive:"},

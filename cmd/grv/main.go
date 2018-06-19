@@ -16,7 +16,8 @@ const (
 	mnRepoFilePathDefault     = "."
 	mnWorkTreeFilePathDefault = ""
 	mnLogFilePathDefault      = "grv.log"
-	mnGenerateDocumentatioEnv = "GRV_GENERATE_DOCUMENTATION"
+	// MnGenerateDocumentationEnv is set when documentation should be generated
+	MnGenerateDocumentationEnv = "GRV_GENERATE_DOCUMENTATION"
 	// MnLogLevelDefault is the default log level for grv
 	MnLogLevelDefault = "NONE"
 )
@@ -42,7 +43,7 @@ func main() {
 		return
 	}
 
-	if os.Getenv(mnGenerateDocumentatioEnv) != "" {
+	if os.Getenv(MnGenerateDocumentationEnv) != "" {
 		if err := GenerateDocumentation(); err != nil {
 			log.Fatalf("Failed to generate documentation: %v", err)
 		} else {
