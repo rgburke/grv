@@ -76,10 +76,14 @@ static: build-libgit2
 	$(GOCMD) build $(GRV_STATIC_BUILD_FLAGS) -o $(BINARY) $(GRV_SOURCE_DIR)
 
 .PHONY: test
-test: $(BINARY) update-test
+test: $(BINARY) doc update-test
 	$(GOCMD) test $(GRV_BUILD_FLAGS) $(GRV_SOURCE_DIR)
 	# $(GOCMD) vet $(GRV_SOURCE_DIR)
 	$(GOLINT) -set_exit_status $(GRV_SOURCE_DIR)
+
+.PHONY: doc
+doc: $(BINARY)
+	@GRV_GENERATE_DOCUMENTATION=1 ./$(BINARY)
 
 .PHONY: clean
 clean:

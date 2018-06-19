@@ -92,7 +92,7 @@ func GenerateThemeCommandHelpSections(config Config) (helpSections []*HelpSectio
 		prefix := strings.Split(themeComponent, ".")[0]
 
 		if prevPrefix != "" && prevPrefix != prefix {
-			description = append(description, HelpSectionText{})
+			description = append(description, HelpSectionText{themeComponentID: CmpHelpViewSectionCodeBlock})
 		}
 
 		prevPrefix = prefix

@@ -339,6 +339,59 @@ func (tableFormatter *TableFormatter) renderHeaderGridLines(lineBuilder *LineBui
 	}
 }
 
+// RenderRowText generates a textual representation of a rendered row
+func (tableFormatter *TableFormatter) RenderRowText(renderedRowIndex uint) string {
+	rowIndex := renderedRowIndex
+	var buffer bytes.Buffer
+
+	if tableFormatter.hasHeaders() {
+		if renderedRowIndex == 0 {
+			for colIndex, header := range tableFormatter.headers {
+				buffer.WriteString(header.text)
+
+				if tableFormatter.gridLines && colIndex != len(tableFormatter.headers)-1 {
+					buffer.WriteString(" | ")
+				}
+			}
+
+			return buffer.String()
+		} else if tableFormatter.gridLines && renderedRowIndex == 1 {
+			for maxColIndex, maxColWidth := range tableFormatter.maxColWidths {
+				for i := uint(0); i < maxColWidth+1; i++ {
+					buffer.WriteRune('-')
+				}
+
+				if uint(maxColIndex) != tableFormatter.cols()-1 {
+					buffer.WriteRune('+')
+					buffer.WriteRune('-')
+				}
+			}
+
+			return buffer.String()
+		} else {
+			rowIndex--
+
+			if tableFormatter.gridLines {
+				rowIndex--
+			}
+		}
+	}
+
+	for colIndex := range tableFormatter.cells[rowIndex] {
+		tableCell := &tableFormatter.cells[rowIndex][colIndex]
+
+		for _, textEntry := range tableCell.textEntries {
+			buffer.WriteString(textEntry.text)
+		}
+
+		if colIndex != len(tableFormatter.cells[rowIndex])-1 {
+			buffer.WriteString(" | ")
+		}
+	}
+
+	return buffer.String()
+}
+
 // PadCells pads each cell with whitespace so that the text in each column is of uniform width
 func (tableFormatter *TableFormatter) PadCells(border bool) (err error) {
 	tableFormatter.determineMaxColWidths(border)
