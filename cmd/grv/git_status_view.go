@@ -157,7 +157,7 @@ func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 	renderedStatusNum := uint(len(renderedStatus))
 	rows := win.Rows() - 2
 
-	viewPos := gitStatusView.ViewPos()
+	viewPos := gitStatusView.viewPos()
 	viewPos.DetermineViewStartRow(rows, renderedStatusNum)
 	renderedStatusIndex := viewPos.ViewStartRowIndex()
 	startColumn := viewPos.ViewStartColumn()
@@ -316,7 +316,7 @@ func (gitStatusView *GitStatusView) selectEntry(index uint) (err error) {
 		return fmt.Errorf("Invalid rendered status index: %v out of %v entries", index, renderedStatusNum)
 	}
 
-	gitStatusView.ViewPos().SetActiveRowIndex(index)
+	gitStatusView.viewPos().SetActiveRowIndex(index)
 
 	if renderedStatusNum == 0 {
 		return
@@ -362,7 +362,10 @@ func (gitStatusView *GitStatusView) LineNumber() (rows uint) {
 
 // ViewPos returns the view position for this view
 func (gitStatusView *GitStatusView) ViewPos() ViewPos {
-	return gitStatusView.activeViewPos
+	gitStatusView.lock.Lock()
+	defer gitStatusView.lock.Unlock()
+
+	return gitStatusView.viewPos()
 }
 
 func (gitStatusView *GitStatusView) viewPos() ViewPos {
@@ -374,7 +377,7 @@ func (gitStatusView *GitStatusView) OnSearchMatch(startPos ViewPos, matchLineInd
 	gitStatusView.lock.Lock()
 	defer gitStatusView.lock.Unlock()
 
-	viewPos := gitStatusView.ViewPos()
+	viewPos := gitStatusView.viewPos()
 
 	if viewPos != startPos {
 		log.Debugf("Selected git status entry has changed since search started")
@@ -399,7 +402,7 @@ func (gitStatusView *GitStatusView) OnStatusChanged(status *Status) {
 
 	renderedStatus := gitStatusView.renderedStatus
 	renderedStatusNum := uint(len(renderedStatus))
-	viewPos := gitStatusView.ViewPos()
+	viewPos := gitStatusView.viewPos()
 	index := viewPos.ActiveRowIndex()
 
 	if renderedStatusNum == 0 {
@@ -747,7 +750,7 @@ func selectGitStatusEntry(gitStatusView *GitStatusView, action Action) (err erro
 	if len(gitStatusView.gitStatusViewListeners) == 0 {
 		gitStatusView.createGitStatusViewListener()
 	} else {
-		viewPos := gitStatusView.ViewPos()
+		viewPos := gitStatusView.viewPos()
 		gitStatusView.selectEntry(viewPos.ActiveRowIndex())
 	}
 

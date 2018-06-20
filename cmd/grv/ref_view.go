@@ -656,7 +656,10 @@ func (refView *RefView) ViewID() ViewID {
 
 // ViewPos returns the current cursor position in the view
 func (refView *RefView) ViewPos() ViewPos {
-	return refView.activeViewPos
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
+
+	return refView.viewPos()
 }
 
 func (refView *RefView) viewPos() ViewPos {

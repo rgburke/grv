@@ -609,7 +609,10 @@ func (diffView *DiffView) HandleEvent(event Event) (err error) {
 
 // ViewPos returns the current view position
 func (diffView *DiffView) ViewPos() ViewPos {
-	return diffView.activeViewPos
+	diffView.lock.Lock()
+	defer diffView.lock.Unlock()
+
+	return diffView.viewPos()
 }
 
 func (diffView *DiffView) viewPos() ViewPos {
@@ -621,7 +624,7 @@ func (diffView *DiffView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
-	viewPos := diffView.ViewPos()
+	viewPos := diffView.viewPos()
 
 	if viewPos != startPos {
 		log.Debugf("Selected ref has changed since search started")

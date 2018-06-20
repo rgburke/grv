@@ -433,7 +433,7 @@ func (commitView *CommitView) OnCommitsUpdated(ref Ref) {
 			return
 		}
 
-		viewPos := commitView.ViewPos()
+		viewPos := commitView.viewPos()
 		if viewPos.ActiveRowIndex() > commitSetState.commitNum {
 			viewPos.SetActiveRowIndex(uint(MaxInt(0, int(commitSetState.commitNum)-1)))
 		}
@@ -558,7 +558,7 @@ func (commitView *CommitView) selectCommit(lineIndex uint) (err error) {
 		return
 	}
 
-	commitView.ViewPos().SetActiveRowIndex(lineIndex)
+	commitView.viewPos().SetActiveRowIndex(lineIndex)
 	commitView.notifyCommitViewListeners(selectedCommit)
 
 	return
@@ -596,12 +596,15 @@ func (commitView *CommitView) createCommitViewListenerView(commit *Commit) {
 
 // ViewPos returns the current view position
 func (commitView *CommitView) ViewPos() ViewPos {
-	refViewData := commitView.refViewData[commitView.activeRef.Name()]
-	return refViewData.viewPos
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
+	return commitView.viewPos()
 }
 
 func (commitView *CommitView) viewPos() ViewPos {
-	return commitView.ViewPos()
+	refViewData := commitView.refViewData[commitView.activeRef.Name()]
+	return refViewData.viewPos
 }
 
 // OnSearchMatch updates the view position when there is a search match
@@ -609,7 +612,7 @@ func (commitView *CommitView) OnSearchMatch(startPos ViewPos, matchLineIndex uin
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
-	viewPos := commitView.ViewPos()
+	viewPos := commitView.viewPos()
 
 	if viewPos != startPos {
 		log.Debugf("Selected ref has changed since search started")
@@ -845,7 +848,7 @@ func addCommitFilter(commitView *CommitView, action Action) (err error) {
 		return
 	}
 
-	commitView.ViewPos().SetActiveRowIndex(0)
+	commitView.viewPos().SetActiveRowIndex(0)
 
 	go func() {
 		// TODO: Works in practice, but there is no guarantee the filtered commit set will have
@@ -855,7 +858,7 @@ func addCommitFilter(commitView *CommitView, action Action) (err error) {
 		commitView.lock.Lock()
 		defer commitView.lock.Unlock()
 
-		if err := commitView.selectCommit(commitView.ViewPos().ActiveRowIndex()); err != nil {
+		if err := commitView.selectCommit(commitView.viewPos().ActiveRowIndex()); err != nil {
 			log.Errorf("Unable to select commit after filter has been applied: %v", err)
 		}
 	}()
@@ -880,7 +883,7 @@ func removeCommitFilter(commitView *CommitView, action Action) (err error) {
 }
 
 func selectCommit(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
+	viewPos := commitView.viewPos()
 
 	if commitView.commitViewListenerCount() == 0 {
 		var commit *Commit
@@ -895,7 +898,7 @@ func selectCommit(commitView *CommitView, action Action) (err error) {
 }
 
 func checkoutCommit(commitView *CommitView, action Action) (err error) {
-	viewPos := commitView.ViewPos()
+	viewPos := commitView.viewPos()
 
 	commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.ActiveRowIndex())
 	if err != nil {
@@ -938,7 +941,7 @@ func createBranchFromCommit(commitView *CommitView, action Action) (err error) {
 		return fmt.Errorf("Expected first argument to be branch name but found %T", action.Args[0])
 	}
 
-	viewPos := commitView.ViewPos()
+	viewPos := commitView.viewPos()
 
 	commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.ActiveRowIndex())
 	if err != nil {
@@ -959,7 +962,7 @@ func showActionsForCommit(commitView *CommitView, action Action) (err error) {
 		return
 	}
 
-	viewPos := commitView.ViewPos()
+	viewPos := commitView.viewPos()
 	commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.ActiveRowIndex())
 	if err != nil {
 		return
