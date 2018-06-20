@@ -120,6 +120,28 @@ func (helpSection *HelpSection) renderRow(win RenderWindow, winStartRowIndex, he
 	return
 }
 
+func (helpSection *HelpSection) rowText(helpSectionRowIndex uint) (line string) {
+	if helpSectionRowIndex < helpSection.titleRows() {
+		if helpSectionRowIndex == 1 {
+			return helpSection.title.text
+		}
+	} else if helpSectionRowIndex < helpSection.titleRows()+helpSection.descriptionRows() {
+		descriptionLineIndex := helpSectionRowIndex - helpSection.titleRows()
+
+		if descriptionLineIndex < uint(len(helpSection.description)) {
+			return helpSection.description[descriptionLineIndex].text
+		}
+	} else if helpSection.tableFormatter != nil {
+		tableRowIndex := helpSectionRowIndex - (helpSection.titleRows() + helpSection.descriptionRows())
+
+		if tableRowIndex < helpSection.tableFormatter.RenderedRows() {
+			return helpSection.tableFormatter.RenderRowText(tableRowIndex)
+		}
+	}
+
+	return
+}
+
 // HelpViewSection represents a help view section and
 // its child sections
 type HelpViewSection struct {
@@ -225,6 +247,7 @@ type HelpView struct {
 	helpSections      []*HelpSection
 	helpViewIndex     *HelpViewIndex
 	handlers          map[ActionType]helpViewHandler
+	viewSearch        *ViewSearch
 	lock              sync.Mutex
 }
 
@@ -238,6 +261,7 @@ func NewHelpView(channels Channels, config Config) *HelpView {
 	}
 
 	helpView.AbstractWindowView = NewAbstractWindowView(helpView, channels, config, "help line")
+	helpView.viewSearch = NewViewSearch(helpView, channels)
 
 	return helpView
 }
@@ -292,27 +316,42 @@ func (helpView *HelpView) Render(win RenderWindow) (err error) {
 		return
 	}
 
+	if searchActive, searchPattern, lastSearchFoundMatch := helpView.viewSearch.SearchActive(); searchActive && lastSearchFoundMatch {
+		if err = win.Highlight(searchPattern, CmpAllviewSearchMatch); err != nil {
+			return
+		}
+	}
+
 	return
 }
 
 func (helpView *HelpView) renderRow(win RenderWindow, viewStartRowIndex, rowIndex, startColumn uint) (err error) {
-	rows := uint(0)
-	prevRows := uint(0)
+	helpSection, helpSectionStartRowIndex, err := helpView.helpSection(rowIndex)
+	if err != nil {
+		return
+	}
 
-	for _, helpSection := range helpView.helpSections {
+	helpSectionRowIndex := rowIndex - helpSectionStartRowIndex
+	winStartRowIndex := (helpSectionStartRowIndex - viewStartRowIndex) + 1
+
+	return helpSection.renderRow(win, winStartRowIndex, helpSectionRowIndex, startColumn)
+}
+
+func (helpView *HelpView) helpSection(rowIndex uint) (helpSection *HelpSection, helpSectionStartRowIndex uint, err error) {
+	rows := uint(0)
+
+	for _, helpSection = range helpView.helpSections {
 		rows += helpSection.rows()
 
 		if rowIndex < rows {
-			tableRowIndex := rowIndex - prevRows
-			winStartRowIndex := (prevRows - viewStartRowIndex) + 1
-
-			return helpSection.renderRow(win, winStartRowIndex, tableRowIndex, startColumn)
+			return
 		}
 
-		prevRows = rows
+		helpSectionStartRowIndex = rows
 	}
 
-	return fmt.Errorf("Unable to render row with index: %v", rowIndex)
+	err = fmt.Errorf("Unable to find HelpSection with row index: %v", rowIndex)
+	return
 }
 
 // RenderHelpBar shows key bindings custom to the help view
@@ -326,6 +365,52 @@ func (helpView *HelpView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	}
 
 	return
+}
+
+// Line returns the rendered line at the index provided
+func (helpView *HelpView) Line(lineIndex uint) (line string) {
+	helpView.lock.Lock()
+	defer helpView.lock.Unlock()
+
+	helpSection, helpSectionStartRowIndex, err := helpView.helpSection(lineIndex)
+	if err != nil {
+		return
+	}
+
+	helpSectionRowIndex := lineIndex - helpSectionStartRowIndex
+	return helpSection.rowText(helpSectionRowIndex)
+}
+
+// LineNumber returns the total number of rendered lines the help view has
+func (helpView *HelpView) LineNumber() (lineNumber uint) {
+	helpView.lock.Lock()
+	defer helpView.lock.Unlock()
+
+	return helpView.rows()
+}
+
+// ViewPos returns the current view position
+func (helpView *HelpView) ViewPos() ViewPos {
+	helpView.lock.Lock()
+	defer helpView.lock.Unlock()
+
+	return helpView.viewPos()
+}
+
+// OnSearchMatch updates the view position when there is a search match
+func (helpView *HelpView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
+	helpView.lock.Lock()
+	defer helpView.lock.Unlock()
+
+	viewPos := helpView.viewPos()
+
+	if viewPos != startPos {
+		log.Debugf("Selected ref has changed since search started")
+		return
+	}
+
+	viewPos.SetActiveRowIndex(matchLineIndex)
+	helpView.channels.UpdateDisplay()
 }
 
 func (helpView *HelpView) viewPos() ViewPos {
@@ -353,6 +438,8 @@ func (helpView *HelpView) HandleAction(action Action) (err error) {
 	if handler, ok := helpView.handlers[action.ActionType]; ok {
 		log.Debugf("Action handled by HelpView")
 		err = handler(helpView, action)
+	} else if handled, err = helpView.viewSearch.HandleAction(action); handled {
+		log.Debugf("Action handled by ViewSearch")
 	} else if handled, err = helpView.AbstractWindowView.HandleAction(action); handled {
 		log.Debugf("Action handled by AbstractWindowView")
 	} else {
