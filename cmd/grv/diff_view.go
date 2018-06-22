@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"strings"
 	"sync"
@@ -570,7 +569,7 @@ func (diffView *DiffView) generateDiffLinesForCommit(commit *Commit) (lines []*d
 }
 
 func (diffView *DiffView) generateDiffLinesForDiff(diff *Diff) (lines []*diffLineData, err error) {
-	scanner := bufio.NewScanner(bytes.NewReader(diff.stats.Bytes()))
+	scanner := bufio.NewScanner(&diff.stats)
 
 	for scanner.Scan() {
 		lines = append(lines, &diffLineData{
@@ -591,7 +590,7 @@ func (diffView *DiffView) generateDiffLinesForDiff(diff *Diff) (lines []*diffLin
 		})
 	}
 
-	scanner = bufio.NewScanner(bytes.NewReader(diff.diffText.Bytes()))
+	scanner = bufio.NewScanner(&diff.diffText)
 
 	for scanner.Scan() {
 		lines = append(lines, &diffLineData{

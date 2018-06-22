@@ -54,6 +54,7 @@ type RepoData interface {
 	Path() string
 	Workdir() string
 	UserEditor() (string, error)
+	GenerateGitCommandEnvironment() []string
 	LoadHead() error
 	LoadRefs(OnRefsLoaded)
 	LoadCommits(Ref) error
@@ -1457,4 +1458,10 @@ func (repoData *RepositoryData) handleViewRemovedEvent(event Event) {
 			repoData.refCommitSets.unregisterCommitSetListener(commitSetListener)
 		}
 	}
+}
+
+// GenerateGitCommandEnvironment populates git environment variables for
+// the current repository
+func (repoData *RepositoryData) GenerateGitCommandEnvironment() []string {
+	return repoData.repoDataLoader.GenerateGitCommandEnvironment()
 }

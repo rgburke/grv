@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -22,6 +25,8 @@ const (
 	rdlShortOidLen      = 7
 )
 
+var diffErrorRegex = regexp.MustCompile(`Invalid (regexp|collation character)`)
+
 type instanceCache struct {
 	oids       map[string]*Oid
 	commits    map[string]*Commit
@@ -31,9 +36,10 @@ type instanceCache struct {
 
 // RepoDataLoader handles loading data from the repository
 type RepoDataLoader struct {
-	repo     *git.Repository
-	cache    *instanceCache
-	channels Channels
+	repo             *git.Repository
+	cache            *instanceCache
+	channels         Channels
+	diffErrorPresent bool
 }
 
 // Oid is reference to a git object
@@ -917,6 +923,10 @@ func (repoDataLoader *RepoDataLoader) DiffCommit(commit *Commit) (diff *Diff, er
 		return
 	}
 
+	if repoDataLoader.diffErrorPresent {
+		return repoDataLoader.generateCommitDiffUsingCLI(commit)
+	}
+
 	var commitTree, parentTree *git.Tree
 	if commitTree, err = commit.commit.Tree(); err != nil {
 		return
@@ -941,15 +951,30 @@ func (repoDataLoader *RepoDataLoader) DiffCommit(commit *Commit) (diff *Diff, er
 	}
 	defer commitDiff.Free()
 
-	return repoDataLoader.generateDiff(commitDiff)
+	if diff, err = repoDataLoader.generateDiff(commitDiff); err != nil && diffErrorRegex.MatchString(err.Error()) {
+		log.Infof("Falling back to git cli after encountering error: %v", err)
+		repoDataLoader.diffErrorPresent = true
+		return repoDataLoader.generateCommitDiffUsingCLI(commit)
+	}
+
+	return
 }
 
 // DiffStage returns a diff for all files in the provided stage
 func (repoDataLoader *RepoDataLoader) DiffStage(statusType StatusType) (diff *Diff, err error) {
+	if repoDataLoader.diffErrorPresent {
+		return repoDataLoader.generateStageDiffUsingCLI(statusType)
+	}
+
 	diff = &Diff{}
 
 	rawDiff, err := repoDataLoader.generateRawDiff(statusType)
-	if err != nil || rawDiff == nil {
+
+	if err != nil && diffErrorRegex.MatchString(err.Error()) {
+		log.Infof("Falling back to git cli after encountering error: %v", err)
+		repoDataLoader.diffErrorPresent = true
+		return repoDataLoader.generateStageDiffUsingCLI(statusType)
+	} else if err != nil || rawDiff == nil {
 		return
 	}
 	defer rawDiff.Free()
@@ -961,10 +986,18 @@ func (repoDataLoader *RepoDataLoader) DiffStage(statusType StatusType) (diff *Di
 // If statusType is StStaged then the diff is between HEAD and the index
 // If statusType is StUnstaged then the diff is between index and the working directory
 func (repoDataLoader *RepoDataLoader) DiffFile(statusType StatusType, path string) (diff *Diff, err error) {
+	if repoDataLoader.diffErrorPresent {
+		return repoDataLoader.generateFileDiffUsingCLI(statusType, path)
+	}
+
 	diff = &Diff{}
 
 	rawDiff, err := repoDataLoader.generateRawDiff(statusType)
-	if err != nil || rawDiff == nil {
+	if err != nil && diffErrorRegex.MatchString(err.Error()) {
+		log.Infof("Falling back to git cli after encountering error: %v", err)
+		repoDataLoader.diffErrorPresent = true
+		return repoDataLoader.generateFileDiffUsingCLI(statusType, path)
+	} else if err != nil || rawDiff == nil {
 		return
 	}
 	defer rawDiff.Free()
@@ -1097,6 +1130,102 @@ func (repoDataLoader *RepoDataLoader) generateDiff(rawDiff *git.Diff) (diff *Dif
 	return
 }
 
+type diffType int
+
+const (
+	dtCommit diffType = iota
+	dtStage
+	dtFile
+)
+
+func (repoDataLoader *RepoDataLoader) generateCommitDiffUsingCLI(commit *Commit) (diff *Diff, err error) {
+	log.Debugf("Attempting to load diff using cli for commit: %v", commit.oid.String())
+	gitCommand := []string{"git", "show", "--encoding=UTF8", "--pretty=oneline", "--root", "--patch-with-stat", "--no-color", commit.oid.String()}
+	return repoDataLoader.runGitCLIDiff(gitCommand, dtCommit)
+}
+
+func (repoDataLoader *RepoDataLoader) generateFileDiffUsingCLI(statusType StatusType, path string) (diff *Diff, err error) {
+	log.Debugf("Attempting to load diff using cli for StatusType: %v and file: %v", StatusTypeDisplayName(statusType), path)
+
+	gitCommand := []string{"git", "diff"}
+
+	if statusType == StStaged {
+		gitCommand = append(gitCommand, "--cached")
+	} else if statusType != StUnstaged {
+		return &Diff{}, nil
+	}
+
+	gitCommand = append(gitCommand, []string{"--encoding=UTF8", "--root", "--no-color", "--", path}...)
+
+	return repoDataLoader.runGitCLIDiff(gitCommand, dtFile)
+}
+
+func (repoDataLoader *RepoDataLoader) generateStageDiffUsingCLI(statusType StatusType) (diff *Diff, err error) {
+	log.Debugf("Attempting to load diff using cli for StatusType: %v", StatusTypeDisplayName(statusType))
+
+	gitCommand := []string{"git", "diff"}
+
+	if statusType == StStaged {
+		gitCommand = append(gitCommand, "--cached")
+	} else if statusType != StUnstaged {
+		return &Diff{}, nil
+	}
+
+	gitCommand = append(gitCommand, []string{"--encoding=UTF8", "--root", "--patch-with-stat", "--no-color"}...)
+
+	return repoDataLoader.runGitCLIDiff(gitCommand, dtStage)
+}
+
+func (repoDataLoader *RepoDataLoader) runGitCLIDiff(gitCommand []string, diffType diffType) (diff *Diff, err error) {
+	diff = &Diff{}
+
+	cmd := exec.Command(gitCommand[0], gitCommand[1:]...)
+	cmd.Env = repoDataLoader.GenerateGitCommandEnvironment()
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err = cmd.Run(); err != nil {
+		err = fmt.Errorf("Unable to generate commit diff using git cli: %v", err)
+		return
+	}
+
+	if stderr.Len() > 0 {
+		err = fmt.Errorf("Error when generating commit diff using git cli: %v", stderr.String())
+		return
+	}
+
+	scanner := bufio.NewScanner(&stdout)
+
+	if diffType != dtFile {
+		if diffType == dtCommit {
+			scanner.Scan()
+		}
+
+		for scanner.Scan() {
+			if line := scanner.Text(); line == "" {
+				break
+			} else {
+				diff.stats.WriteString(strings.TrimPrefix(line, " "))
+				diff.stats.WriteRune('\n')
+			}
+		}
+	}
+
+	for scanner.Scan() {
+		diff.diffText.WriteString(scanner.Text())
+		diff.diffText.WriteRune('\n')
+	}
+
+	if err = scanner.Err(); err != nil {
+		err = fmt.Errorf("Reading commit diff cli output failed: %v", err)
+		return
+	}
+
+	return
+}
+
 // LoadStatus loads git status and populates a Status instance with the data
 func (repoDataLoader *RepoDataLoader) LoadStatus() (*Status, error) {
 	log.Debug("Loading git status")
@@ -1145,4 +1274,22 @@ func (repoDataLoader *RepoDataLoader) UserEditor() (editor string, err error) {
 
 	editor = os.Getenv("GIT_EDITOR")
 	return
+}
+
+// GenerateGitCommandEnvironment populates git environment variables for
+// the current repository
+func (repoDataLoader *RepoDataLoader) GenerateGitCommandEnvironment() []string {
+	env := os.Environ()
+
+	gitDir := repoDataLoader.Path()
+	if gitDir != "" {
+		env = append(env, fmt.Sprintf("GIT_DIR=%v", gitDir))
+	}
+
+	workdir := repoDataLoader.Workdir()
+	if workdir != "" {
+		env = append(env, fmt.Sprintf("GIT_WORK_TREE=%v", workdir))
+	}
+
+	return env
 }
