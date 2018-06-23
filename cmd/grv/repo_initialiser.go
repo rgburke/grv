@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	log "github.com/Sirupsen/logrus"
-	git "gopkg.in/libgit2/git2go.v26"
+	git "gopkg.in/libgit2/git2go.v27"
 )
 
 // RepoSupplier supplies a git2go repository instance

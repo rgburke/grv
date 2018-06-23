@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
-	git "gopkg.in/libgit2/git2go.v26"
+	git "gopkg.in/libgit2/git2go.v27"
 )
 
 // CheckoutRefResultHandler is notified when the checkout is complete

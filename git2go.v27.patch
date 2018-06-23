@@ -1,8 +1,8 @@
 diff --git a/script/build-libgit2-static.sh b/script/build-libgit2-static.sh
-index 5723721..e2924ba 100755
+index 5723721..e23f2c1 100755
 --- a/script/build-libgit2-static.sh
 +++ b/script/build-libgit2-static.sh
-@@ -14,6 +14,13 @@ cmake -DTHREADSAFE=ON \
+@@ -14,6 +14,12 @@ cmake -DTHREADSAFE=ON \
        -DCMAKE_C_FLAGS=-fPIC \
        -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
        -DCMAKE_INSTALL_PREFIX=../install \
@@ -12,7 +12,6 @@ index 5723721..e2924ba 100755
 +      -DUSE_SSH=OFF \
 +      -DCURL=OFF \
 +      -DUSE_GSSAPI=OFF \
-+      -DUSE_OPENSSL=OFF \
        .. &&
  
  cmake --build .
