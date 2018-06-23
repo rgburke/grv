@@ -165,6 +165,7 @@ type NCursesUI struct {
 	suspended     bool
 	suspendedLock *sync.Cond
 	mouseMask     gc.MouseButton
+	colorPairs    map[ThemeComponentID]int16
 }
 
 // NewNCursesDisplay creates a new NCursesUI instance
@@ -426,7 +427,7 @@ func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
 
 	for _, win := range wins {
 		if nwin, ok := ui.windows[win]; ok {
-			drawWindow(win, nwin)
+			ui.drawWindow(win, nwin)
 
 			if win.IsCursorSet() {
 				cursorWin = win
@@ -449,10 +450,10 @@ func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
 	return
 }
 
-func drawWindow(win *Window, nwin *nCursesWindow) {
+func (ui *NCursesUI) drawWindow(win *Window, nwin *nCursesWindow) {
 	log.Debugf("Drawing window %v", win.ID())
 
-	nwin.SetBackground(gc.ColorPair(int16(CmpAllviewDefault)))
+	nwin.SetBackground(gc.ColorPair(ui.colorPair(CmpAllviewDefault)))
 
 	for rowIndex := uint(0); rowIndex < win.rows; rowIndex++ {
 		line := win.lines[rowIndex]
@@ -462,7 +463,7 @@ func drawWindow(win *Window, nwin *nCursesWindow) {
 			cell := line.cells[colIndex]
 
 			if cell.style.acsChar != 0 || cell.codePoints.Len() > 0 {
-				attr := cell.style.attr | gc.ColorPair(int16(cell.style.themeComponentID))
+				attr := cell.style.attr | gc.ColorPair(ui.colorPair(cell.style.themeComponentID))
 				if err := nwin.AttrOn(attr); err != nil {
 					log.Errorf("Error when attempting to set AttrOn with %v: %v", attr, err)
 				}
@@ -481,6 +482,14 @@ func drawWindow(win *Window, nwin *nCursesWindow) {
 	}
 
 	nwin.NoutRefresh()
+}
+
+func (ui *NCursesUI) colorPair(themeComponentID ThemeComponentID) int16 {
+	if colorPairID, ok := ui.colorPairs[themeComponentID]; ok {
+		return colorPairID
+	}
+
+	return 0
 }
 
 // GetInput blocks until user input is available
@@ -651,14 +660,17 @@ func (ui *NCursesUI) initialiseColorPairsFromTheme(theme Theme) {
 	defaultComponent := theme.GetComponent(CmpAllviewDefault)
 	fgDefault := ui.getNCursesColor(defaultComponent.fgcolor)
 	bgDefault := ui.getNCursesColor(defaultComponent.bgcolor)
-	failed := false
+
+	type colorPair struct {
+		fgcolor int16
+		bgcolor int16
+	}
+
+	distinctColorPairs := map[colorPair]int16{}
+	ui.colorPairs = map[ThemeComponentID]int16{}
+	colorPairID := int16(1)
 
 	for themeComponentID, themeComponent := range theme.GetAllComponents() {
-		if int(themeComponentID) >= ui.maxColorPairs {
-			failed = true
-			continue
-		}
-
 		fgcolor := ui.getNCursesColor(themeComponent.fgcolor)
 		bgcolor := ui.getNCursesColor(themeComponent.bgcolor)
 
@@ -669,18 +681,28 @@ func (ui *NCursesUI) initialiseColorPairsFromTheme(theme Theme) {
 			bgcolor = bgDefault
 		}
 
-		log.Debugf("Initialising color pair for ThemeComponentID %v - %v:%v", themeComponentID, fgcolor, bgcolor)
-
-		if err := gc.InitPair(int16(themeComponentID), fgcolor, bgcolor); err != nil {
-			log.Errorf("Ncurses InitPair failed. Error when seting color pair %v:%v - %v", fgcolor, bgcolor, err)
+		colorPair := colorPair{
+			fgcolor: fgcolor,
+			bgcolor: bgcolor,
 		}
-	}
 
-	if failed {
-		ui.channels.ReportError(
-			fmt.Errorf("Not enough color pairs for theme. Required: %v, Actual: %v - GRV may not display correctly",
-				len(theme.GetAllComponents()), ui.maxColorPairs),
-		)
+		if existingColorPair, ok := distinctColorPairs[colorPair]; ok {
+			ui.colorPairs[themeComponentID] = existingColorPair
+		} else if int(colorPairID) > ui.maxColorPairs {
+			ui.channels.ReportError(fmt.Errorf("Not enough color pairs for theme - GRV may not display correctly"))
+			return
+		} else {
+			distinctColorPairs[colorPair] = colorPairID
+			ui.colorPairs[themeComponentID] = colorPairID
+
+			log.Debugf("Initialising color pair %v - %v:%v", colorPairID, fgcolor, bgcolor)
+
+			if err := gc.InitPair(colorPairID, fgcolor, bgcolor); err != nil {
+				log.Errorf("Ncurses InitPair failed. Error when seting color pair %v:%v - %v", fgcolor, bgcolor, err)
+			}
+
+			colorPairID++
+		}
 	}
 }
 
