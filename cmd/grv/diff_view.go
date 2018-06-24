@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -96,31 +95,32 @@ type diffLines struct {
 }
 
 type diffLoadRequest interface {
-	diffLoadRequestTime() time.Time
-}
-
-type abstractDiffLoadRequest struct {
-	requestTime time.Time
-}
-
-func (request *abstractDiffLoadRequest) diffLoadRequestTime() time.Time {
-	return request.requestTime
+	diffID() diffID
 }
 
 type commitDiffLoadRequest struct {
-	*abstractDiffLoadRequest
 	commit *Commit
 }
 
+func (commitDiffLoadRequest *commitDiffLoadRequest) diffID() diffID {
+	return diffID(commitDiffLoadRequest.commit.oid.String())
+}
+
 type fileDiffLoadRequest struct {
-	*abstractDiffLoadRequest
 	statusType StatusType
 	filePath   string
 }
 
+func (fileDiffLoadRequest *fileDiffLoadRequest) diffID() diffID {
+	return diffID(fileDiffLoadRequest.filePath)
+}
+
 type stageDiffLoadRequest struct {
-	*abstractDiffLoadRequest
 	statusType StatusType
+}
+
+func (stageDiffLoadRequest *stageDiffLoadRequest) diffID() diffID {
+	return diffID(fmt.Sprintf("%v files", strings.ToLower(StatusTypeDisplayName(stageDiffLoadRequest.statusType))))
 }
 
 type diffID string
@@ -131,8 +131,8 @@ type DiffView struct {
 	channels          Channels
 	repoData          RepoData
 	config            Config
+	lastRequestedDiff diffID
 	activeDiff        diffID
-	activeDiffTime    time.Time
 	diffs             map[diffID]*diffLines
 	activeViewPos     ViewPos
 	lastViewDimension ViewDimension
@@ -140,7 +140,6 @@ type DiffView struct {
 	active            bool
 	viewSearch        *ViewSearch
 	diffLoadRequestCh chan diffLoadRequest
-	diffLoading       bool
 	lock              sync.Mutex
 }
 
@@ -194,7 +193,7 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 
 	if diffView.activeDiff == "" {
 		return diffView.renderEmptyView(win, "No diff to display")
-	} else if diffView.diffLoading {
+	} else if diffView.activeDiff != diffView.lastRequestedDiff {
 		return diffView.renderEmptyView(win, "Loading diff...")
 	}
 
@@ -352,9 +351,10 @@ func (diffView *DiffView) OnCommitSelected(commit *Commit) (err error) {
 	diffID := diffID(commit.oid.String())
 
 	diffView.lock.Lock()
+	diffView.lastRequestedDiff = diffID
+
 	if diffLines, ok := diffView.diffs[diffID]; ok {
 		diffView.activeDiff = diffID
-		diffView.activeDiffTime = time.Now()
 		diffView.activeViewPos = diffLines.viewPos
 		diffView.channels.UpdateDisplay()
 		diffView.lock.Unlock()
@@ -364,9 +364,6 @@ func (diffView *DiffView) OnCommitSelected(commit *Commit) (err error) {
 	diffView.lock.Unlock()
 
 	diffView.addDiffLoadRequest(&commitDiffLoadRequest{
-		abstractDiffLoadRequest: &abstractDiffLoadRequest{
-			requestTime: time.Now(),
-		},
 		commit: commit,
 	})
 
@@ -377,25 +374,31 @@ func (diffView *DiffView) OnCommitSelected(commit *Commit) (err error) {
 func (diffView *DiffView) OnFileSelected(statusType StatusType, filePath string) {
 	log.Debugf("DiffView loading diff for file %v", filePath)
 
-	diffView.addDiffLoadRequest(&fileDiffLoadRequest{
-		abstractDiffLoadRequest: &abstractDiffLoadRequest{
-			requestTime: time.Now(),
-		},
+	request := &fileDiffLoadRequest{
 		statusType: statusType,
 		filePath:   filePath,
-	})
+	}
+
+	diffView.lock.Lock()
+	diffView.lastRequestedDiff = request.diffID()
+	diffView.lock.Unlock()
+
+	diffView.addDiffLoadRequest(request)
 }
 
 // OnStageGroupSelected does nothing
 func (diffView *DiffView) OnStageGroupSelected(statusType StatusType) {
 	log.Debugf("DiffView loading diff for stage %v", statusType)
 
-	diffView.addDiffLoadRequest(&stageDiffLoadRequest{
-		abstractDiffLoadRequest: &abstractDiffLoadRequest{
-			requestTime: time.Now(),
-		},
+	request := &stageDiffLoadRequest{
 		statusType: statusType,
-	})
+	}
+
+	diffView.lock.Lock()
+	diffView.lastRequestedDiff = request.diffID()
+	diffView.lock.Unlock()
+
+	diffView.addDiffLoadRequest(request)
 }
 
 // OnNoEntrySelected clears the diff view
@@ -417,15 +420,8 @@ func (diffView *DiffView) addDiffLoadRequest(request diffLoadRequest) {
 
 func (diffView *DiffView) processDiffLoadRequests() {
 	for request := range diffView.diffLoadRequestCh {
-		if request = diffView.retrieveLatestDiffLoadRequest(request); request == nil {
-			continue
-		}
-
+		request = diffView.retrieveLatestDiffLoadRequest(request)
 		var err error
-
-		diffView.lock.Lock()
-		diffView.diffLoading = true
-		diffView.lock.Unlock()
 
 		switch req := request.(type) {
 		case *commitDiffLoadRequest:
@@ -437,10 +433,6 @@ func (diffView *DiffView) processDiffLoadRequests() {
 		default:
 			log.Errorf("Unknown diff load request type: %T", request)
 		}
-
-		diffView.lock.Lock()
-		diffView.diffLoading = false
-		diffView.lock.Unlock()
 
 		if err != nil {
 			diffView.channels.ReportError(err)
@@ -461,20 +453,11 @@ func (diffView *DiffView) retrieveLatestDiffLoadRequest(request diffLoadRequest)
 		}
 	}
 
-	diffView.lock.Lock()
-	activeDiffTime := diffView.activeDiffTime
-	diffView.lock.Unlock()
-
-	if activeDiffTime.After(request.diffLoadRequestTime()) {
-		return nil
-	}
-
 	return request
 }
 
 func (diffView *DiffView) loadCommitDiffAndMakeActive(request *commitDiffLoadRequest) (err error) {
 	commit := request.commit
-	diffID := diffID(commit.oid.String())
 
 	lines, err := diffView.generateDiffLinesForCommit(commit)
 	if err != nil {
@@ -482,7 +465,7 @@ func (diffView *DiffView) loadCommitDiffAndMakeActive(request *commitDiffLoadReq
 		return
 	}
 
-	diffView.storeDiff(diffID, lines)
+	diffView.storeDiff(request.diffID(), lines)
 
 	return
 }
@@ -503,7 +486,7 @@ func (diffView *DiffView) loadFileDiffAndMakeActive(request *fileDiffLoadRequest
 		return
 	}
 
-	diffView.storeDiff(diffID(filePath), lines)
+	diffView.storeDiff(request.diffID(), lines)
 
 	return
 }
@@ -523,22 +506,26 @@ func (diffView *DiffView) loadStageDiffAndMakeActive(request *stageDiffLoadReque
 		return
 	}
 
-	id := fmt.Sprintf("%v files", strings.ToLower(StatusTypeDisplayName(statusType)))
-	diffView.storeDiff(diffID(id), lines)
+	diffView.storeDiff(request.diffID(), lines)
 
 	return
 }
 
 func (diffView *DiffView) storeDiff(diffID diffID, lines []*diffLineData) {
+	diffView.lock.Lock()
+	defer diffView.lock.Unlock()
+
 	diffLines := &diffLines{
 		lines:   lines,
 		viewPos: NewViewPosition(),
 	}
 
-	diffView.lock.Lock()
-	defer diffView.lock.Unlock()
-
 	diffView.diffs[diffID] = diffLines
+
+	if diffID != diffView.lastRequestedDiff {
+		return
+	}
+
 	diffView.activeDiff = diffID
 	diffView.activeViewPos = diffLines.viewPos
 
