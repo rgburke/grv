@@ -36,10 +36,12 @@ type instanceCache struct {
 
 // RepoDataLoader handles loading data from the repository
 type RepoDataLoader struct {
-	repo             *git.Repository
-	cache            *instanceCache
-	channels         Channels
-	diffErrorPresent bool
+	repo               *git.Repository
+	cache              *instanceCache
+	channels           Channels
+	config             Config
+	diffErrorPresent   bool
+	gitBinaryConfirmed bool
 }
 
 // Oid is reference to a git object
@@ -600,10 +602,11 @@ func (cache *instanceCache) getCachedOid(oidStr string) (oid *Oid, exists bool) 
 }
 
 // NewRepoDataLoader creates a new instance
-func NewRepoDataLoader(channels Channels) *RepoDataLoader {
+func NewRepoDataLoader(channels Channels, config Config) *RepoDataLoader {
 	return &RepoDataLoader{
 		cache:    newInstanceCache(),
 		channels: channels,
+		config:   config,
 	}
 }
 
@@ -1140,14 +1143,14 @@ const (
 
 func (repoDataLoader *RepoDataLoader) generateCommitDiffUsingCLI(commit *Commit) (diff *Diff, err error) {
 	log.Debugf("Attempting to load diff using cli for commit: %v", commit.oid.String())
-	gitCommand := []string{"git", "show", "--encoding=UTF8", "--pretty=oneline", "--root", "--patch-with-stat", "--no-color", commit.oid.String()}
+	gitCommand := []string{"show", "--encoding=UTF8", "--pretty=oneline", "--root", "--patch-with-stat", "--no-color", commit.oid.String()}
 	return repoDataLoader.runGitCLIDiff(gitCommand, dtCommit)
 }
 
 func (repoDataLoader *RepoDataLoader) generateFileDiffUsingCLI(statusType StatusType, path string) (diff *Diff, err error) {
 	log.Debugf("Attempting to load diff using cli for StatusType: %v and file: %v", StatusTypeDisplayName(statusType), path)
 
-	gitCommand := []string{"git", "diff"}
+	gitCommand := []string{"diff"}
 
 	if statusType == StStaged {
 		gitCommand = append(gitCommand, "--cached")
@@ -1163,7 +1166,7 @@ func (repoDataLoader *RepoDataLoader) generateFileDiffUsingCLI(statusType Status
 func (repoDataLoader *RepoDataLoader) generateStageDiffUsingCLI(statusType StatusType) (diff *Diff, err error) {
 	log.Debugf("Attempting to load diff using cli for StatusType: %v", StatusTypeDisplayName(statusType))
 
-	gitCommand := []string{"git", "diff"}
+	gitCommand := []string{"diff"}
 
 	if statusType == StStaged {
 		gitCommand = append(gitCommand, "--cached")
@@ -1176,10 +1179,28 @@ func (repoDataLoader *RepoDataLoader) generateStageDiffUsingCLI(statusType Statu
 	return repoDataLoader.runGitCLIDiff(gitCommand, dtStage)
 }
 
+func (repoDataLoader *RepoDataLoader) gitBinary() string {
+	if gitBinary := repoDataLoader.config.GetString(CfGitBinaryFilePath); gitBinary != "" {
+		return gitBinary
+	}
+
+	return "git"
+}
+
 func (repoDataLoader *RepoDataLoader) runGitCLIDiff(gitCommand []string, diffType diffType) (diff *Diff, err error) {
 	diff = &Diff{}
 
-	cmd := exec.Command(gitCommand[0], gitCommand[1:]...)
+	if !repoDataLoader.gitBinaryConfirmed {
+		if exec.Command(repoDataLoader.gitBinary(), "version").Run() == nil {
+			repoDataLoader.gitBinaryConfirmed = true
+		} else {
+			err = fmt.Errorf("Unable to successfully call git binary. "+
+				"If git is not in $PATH then please set the config variable %v", CfGitBinaryFilePath)
+			return
+		}
+	}
+
+	cmd := exec.Command(repoDataLoader.gitBinary(), gitCommand...)
 	cmd.Env = repoDataLoader.GenerateGitCommandEnvironment()
 
 	var stdout, stderr bytes.Buffer

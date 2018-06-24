@@ -266,6 +266,10 @@ func (ui *NCursesUI) initialiseNCurses() (err error) {
 	gc.Raw(true)
 	gc.MouseInterval(0)
 
+	if ui.config.GetBool(CfMouse) {
+		ui.toggleMouse()
+	}
+
 	if gc.Cursor(0) != nil {
 		log.Debugf("Unable to hide cursor")
 	}
@@ -649,11 +653,15 @@ func (ui *NCursesUI) onConfigVariableChange(configVariable ConfigVariable) {
 		theme := ui.config.GetTheme()
 		ui.initialiseColorPairsFromTheme(theme)
 	case CfMouse:
-		log.Infof("Toggling mouse enabled")
-		gc.MouseMask(ui.mouseMask, &ui.mouseMask)
+		ui.toggleMouse()
 	default:
 		log.Warn("Received notification for variable I didn't register for: %v", configVariable)
 	}
+}
+
+func (ui *NCursesUI) toggleMouse() {
+	log.Infof("Toggling mouse enabled")
+	gc.MouseMask(ui.mouseMask, &ui.mouseMask)
 }
 
 func (ui *NCursesUI) initialiseColorPairsFromTheme(theme Theme) {

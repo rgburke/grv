@@ -173,8 +173,10 @@ func NewGRV(readOnly bool) *GRV {
 	}
 
 	channels := grvChannels.Channels()
+	keyBindings := NewKeyBindingManager()
+	config := NewConfiguration(keyBindings, channels)
 
-	repoDataLoader := NewRepoDataLoader(channels)
+	repoDataLoader := NewRepoDataLoader(channels, config)
 	repoData := NewRepositoryData(repoDataLoader, channels)
 
 	var repoController RepoController
@@ -185,8 +187,6 @@ func NewGRV(readOnly bool) *GRV {
 		repoController = NewRepoController(repoData, channels)
 	}
 
-	keyBindings := NewKeyBindingManager()
-	config := NewConfiguration(keyBindings, channels)
 	ui := NewNCursesDisplay(channels, config)
 	view := NewView(repoData, repoController, channels, config)
 
@@ -208,6 +208,12 @@ func NewGRV(readOnly bool) *GRV {
 func (grv *GRV) Initialise(repoPath, workTreePath string) (err error) {
 	log.Info("Initialising GRV")
 
+	channels := grv.channels.Channels()
+
+	if configErrors := grv.config.Initialise(); configErrors != nil {
+		channels.ReportErrors(configErrors)
+	}
+
 	if err = grv.repoInitialiser.CreateRepositoryInstance(repoPath, workTreePath); err != nil {
 		return
 	}
@@ -226,13 +232,6 @@ func (grv *GRV) Initialise(repoPath, workTreePath string) (err error) {
 		return
 	}
 
-	if configErrors := grv.config.Initialise(); configErrors != nil {
-		for _, configError := range configErrors {
-			grv.channels.errorCh <- configError
-		}
-	}
-
-	channels := grv.channels.Channels()
 	InitReadLine(channels, grv.config)
 
 	return

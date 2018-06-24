@@ -166,15 +166,16 @@ Configuration variables allow features to be enabled, disabled and configured.
 They are specified using the set command in the grvrc file or at the command prompt
 
 ```
- Variable            | Type   | Default Value | Description                                  
- --------------------+--------+---------------+-----------------------------------------------
- commit-graph        | bool   | false         | Commit graph visible                         
- confirm-checkout    | bool   | true          | Confirm before performing git checkout       
- mouse               | bool   | false         | Mouse support enabled                        
- mouse-scroll-rows   | int    | 3             | Number of rows scrolled for each mouse event 
- prompt-history-size | int    | 1000          | Maximum number of prompt entries retained    
- tabwidth            | int    | 8             | Tab character screen width (minimum value: 1)
- theme               | string | solarized     | The currently active theme                   
+ Variable             | Type   | Default Value | Description                                                           
+ ---------------------+--------+---------------+------------------------------------------------------------------------
+ commit-graph         | bool   | false         | Commit graph visible                                                  
+ confirm-checkout     | bool   | true          | Confirm before performing git checkout                                
+ git-binary-file-path | string |               | File path to git binary. Required only when git binary is not in $PATH
+ mouse                | bool   | false         | Mouse support enabled                                                 
+ mouse-scroll-rows    | int    | 3             | Number of rows scrolled for each mouse event                          
+ prompt-history-size  | int    | 1000          | Maximum number of prompt entries retained                             
+ tabwidth             | int    | 8             | Tab character screen width (minimum value: 1)                         
+ theme                | string | solarized     | The currently active theme                                            
 ```
 
 

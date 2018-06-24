@@ -32,6 +32,7 @@ const (
 	cfCommitGraphDefaultValue       = false
 	cfConfirmCheckoutDefaultValue   = true
 	cfPromptHistorySizeDefaultValue = 1000
+	cfGitBinaryFilePathDefaultValue = ""
 
 	cfAllView           = "All"
 	cfMainView          = "MainView"
@@ -68,6 +69,8 @@ const (
 	CfConfirmCheckout ConfigVariable = "confirm-checkout"
 	// CfPromptHistorySize stores the maximum number of prompt entries retained
 	CfPromptHistorySize ConfigVariable = "prompt-history-size"
+	// CfGitBinaryFilePath stores the file path to the git binary
+	CfGitBinaryFilePath ConfigVariable = "git-binary-file-path"
 )
 
 var systemColorValues = map[string]SystemColorValue{
@@ -316,6 +319,10 @@ func NewConfiguration(keyBindings KeyBindings, channels Channels) *Configuration
 			defaultValue: cfPromptHistorySizeDefaultValue,
 			validator:    promptHistorySizeValidator{},
 			description:  "Maximum number of prompt entries retained",
+		},
+		CfGitBinaryFilePath: {
+			defaultValue: cfGitBinaryFilePathDefaultValue,
+			description:  "File path to git binary. Required only when git binary is not in $PATH",
 		},
 	}
 
