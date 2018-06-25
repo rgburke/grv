@@ -18,6 +18,7 @@ More screenshots can be seen [here](doc/screenshots.md)
  - Vi like keybindings by default, key bindings can be customised.
  - Custom themes can be created.
  - Mouse support.
+ - Commit Graph.
 
 ## Documentation
 
@@ -33,7 +34,7 @@ Static binaries are available for Linux (amd64 and arm32). For example, to use
 the amd64 binary run the following steps:
 
 ```
-wget -O grv https://github.com/rgburke/grv/releases/download/v0.1.3/grv_v0.1.3_linux64
+wget -O grv https://github.com/rgburke/grv/releases/download/v0.2.0/grv_v0.2.0_linux64
 chmod +x ./grv
 ./grv -repoFilePath /path/to/repo
 ```
