@@ -64,6 +64,7 @@ type CommitView struct {
 	lastDotRenderTime      time.Time
 	commitGraphLoadCh      chan commitGraphLoadRequest
 	commitSelectedCh       chan *Commit
+	waitGroup              sync.WaitGroup
 	lock                   sync.Mutex
 }
 
@@ -98,8 +99,12 @@ func NewCommitView(repoData RepoData, repoController RepoController, channels Ch
 func (commitView *CommitView) Initialise() (err error) {
 	log.Info("Initialising CommitView")
 
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
 	commitView.repoData.RegisterCommitSetListener(commitView)
 
+	commitView.waitGroup.Add(2)
 	go commitView.processCommitGraphLoadRequests()
 	go commitView.processSelectedCommits()
 
@@ -109,12 +114,15 @@ func (commitView *CommitView) Initialise() (err error) {
 // Dispose of any resources held by the view
 func (commitView *CommitView) Dispose() {
 	commitView.lock.Lock()
-	defer commitView.lock.Unlock()
 
 	close(commitView.commitGraphLoadCh)
 	close(commitView.commitSelectedCh)
 	commitView.commitGraphLoadCh = nil
 	commitView.commitSelectedCh = nil
+
+	commitView.lock.Unlock()
+
+	commitView.waitGroup.Wait()
 }
 
 // Render generates and draws the commit view to the provided window
@@ -522,6 +530,8 @@ func (commitView *CommitView) notifyCommitViewListeners(commit *Commit) {
 }
 
 func (commitView *CommitView) processSelectedCommits() {
+	defer commitView.waitGroup.Done()
+
 	for commit := range commitView.commitSelectedCh {
 		log.Debugf("Notifying commit listeners of selected commit %v", commit.oid)
 		commitViewListeners := commitView.commitViewListenersCopy()
@@ -720,6 +730,7 @@ func (commitView *CommitView) removeCommitViewListener(commitViewListener Commit
 }
 
 func (commitView *CommitView) processCommitGraphLoadRequests() {
+	defer commitView.waitGroup.Done()
 	log.Info("Started processing commit graph load requests")
 
 	for request := range commitView.commitGraphLoadCh {

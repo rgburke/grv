@@ -140,6 +140,7 @@ type DiffView struct {
 	active            bool
 	viewSearch        *ViewSearch
 	diffLoadRequestCh chan diffLoadRequest
+	waitGroup         sync.WaitGroup
 	lock              sync.Mutex
 }
 
@@ -170,6 +171,7 @@ func (diffView *DiffView) Initialise() (err error) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
+	diffView.waitGroup.Add(1)
 	go diffView.processDiffLoadRequests()
 
 	return
@@ -178,10 +180,13 @@ func (diffView *DiffView) Initialise() (err error) {
 // Dispose of any resources held by the view
 func (diffView *DiffView) Dispose() {
 	diffView.lock.Lock()
-	defer diffView.lock.Unlock()
 
 	close(diffView.diffLoadRequestCh)
 	diffView.diffLoadRequestCh = nil
+
+	diffView.lock.Unlock()
+
+	diffView.waitGroup.Wait()
 }
 
 // Render generates and writes the diff view to the provided window
@@ -419,6 +424,8 @@ func (diffView *DiffView) addDiffLoadRequest(request diffLoadRequest) {
 }
 
 func (diffView *DiffView) processDiffLoadRequests() {
+	defer diffView.waitGroup.Done()
+
 	for request := range diffView.diffLoadRequestCh {
 		request = diffView.retrieveLatestDiffLoadRequest(request)
 		var err error

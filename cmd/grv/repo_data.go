@@ -987,6 +987,7 @@ type RepositoryData struct {
 	refCommitSets  *refCommitSets
 	statusManager  *statusManager
 	refUpdateCh    chan *UpdatedRef
+	waitGroup      sync.WaitGroup
 }
 
 // NewRepositoryData creates a new instance
@@ -1009,12 +1010,14 @@ func NewRepositoryData(repoDataLoader *RepoDataLoader, channels Channels) *Repos
 func (repoData *RepositoryData) Free() {
 	close(repoData.refUpdateCh)
 	repoData.refUpdateCh = nil
+	repoData.waitGroup.Wait()
 }
 
 // Initialise performs setup to allow loading data from the repository
 func (repoData *RepositoryData) Initialise(repoSupplier RepoSupplier) (err error) {
 	repoData.repoDataLoader.Initialise(repoSupplier)
 
+	repoData.waitGroup.Add(1)
 	go repoData.processUpdatedRefs()
 	repoData.RegisterRefStateListener(repoData)
 
@@ -1374,6 +1377,7 @@ func (repoData *RepositoryData) addUpdatedRefsToProcessingQueue(updatedRefs []*U
 }
 
 func (repoData *RepositoryData) processUpdatedRefs() {
+	defer repoData.waitGroup.Done()
 	log.Info("Starting UpdatedRef processor")
 
 	for updatedRef := range repoData.refUpdateCh {
