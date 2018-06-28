@@ -48,6 +48,7 @@ const (
 	cfGitStatusView     = "GitStatusView"
 	cfContextMenuView   = "ContextMenuView"
 	cfCommandOutputView = "CommandOutputView"
+	cfMessageBoxView    = "MessageBoxView"
 	cfHelpView          = "HelpView"
 )
 
@@ -100,6 +101,7 @@ var viewIDNames = map[string]ViewID{
 	cfGitStatusView:     ViewGitStatus,
 	cfContextMenuView:   ViewContextMenu,
 	cfCommandOutputView: ViewCommandOutput,
+	cfMessageBoxView:    ViewMessageBox,
 	cfHelpView:          ViewHelp,
 }
 

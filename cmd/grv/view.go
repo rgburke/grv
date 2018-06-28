@@ -32,6 +32,7 @@ const (
 	ViewGitStatus
 	ViewContextMenu
 	ViewCommandOutput
+	ViewMessageBox
 	ViewHelp
 )
 
