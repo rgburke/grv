@@ -104,6 +104,10 @@ const (
 	CmpCommandOutputSuccess
 	CmpCommandOutputFooter
 
+	CmpMessageBoxTitle
+	CmpMessageBoxContent
+	CmpMessageBoxSelectedButton
+
 	CmpCount
 )
 

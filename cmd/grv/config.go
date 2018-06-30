@@ -36,6 +36,7 @@ const (
 
 	cfAllView           = "All"
 	cfMainView          = "MainView"
+	cfContainerView     = "ContainerView"
 	cfHistoryView       = "HistoryView"
 	cfStatusView        = "StatusView"
 	cfGRVStatusView     = "GRVStatusView"
@@ -89,6 +90,7 @@ var systemColorValues = map[string]SystemColorValue{
 var viewIDNames = map[string]ViewID{
 	cfAllView:           ViewAll,
 	cfMainView:          ViewMain,
+	cfContainerView:     ViewContainer,
 	cfHistoryView:       ViewHistory,
 	cfStatusView:        ViewStatus,
 	cfGRVStatusView:     ViewGRVStatus,
@@ -124,15 +126,24 @@ var themeComponents = map[string]ThemeComponentID{
 	cfRefView + ".TagsHeader":           CmpRefviewTagsHeader,
 	cfRefView + ".Tag":                  CmpRefviewTag,
 
-	cfCommitView + ".Title":        CmpCommitviewTitle,
-	cfCommitView + ".Footer":       CmpCommitviewFooter,
-	cfCommitView + ".ShortOid":     CmpCommitviewShortOid,
-	cfCommitView + ".Date":         CmpCommitviewDate,
-	cfCommitView + ".Author":       CmpCommitviewAuthor,
-	cfCommitView + ".Summary":      CmpCommitviewSummary,
-	cfCommitView + ".Tag":          CmpCommitviewTag,
-	cfCommitView + ".LocalBranch":  CmpCommitviewLocalBranch,
-	cfCommitView + ".RemoteBranch": CmpCommitviewRemoteBranch,
+	cfCommitView + ".Title":                  CmpCommitviewTitle,
+	cfCommitView + ".Footer":                 CmpCommitviewFooter,
+	cfCommitView + ".ShortOid":               CmpCommitviewShortOid,
+	cfCommitView + ".Date":                   CmpCommitviewDate,
+	cfCommitView + ".Author":                 CmpCommitviewAuthor,
+	cfCommitView + ".Summary":                CmpCommitviewSummary,
+	cfCommitView + ".Tag":                    CmpCommitviewTag,
+	cfCommitView + ".LocalBranch":            CmpCommitviewLocalBranch,
+	cfCommitView + ".RemoteBranch":           CmpCommitviewRemoteBranch,
+	cfCommitView + ".CommitGraphCommit":      CmpCommitviewGraphCommit,
+	cfCommitView + ".CommitGraphMergeCommit": CmpCommitviewGraphMergeCommit,
+	cfCommitView + ".CommitGraphBranch1":     CmpCommitviewGraphBranch1,
+	cfCommitView + ".CommitGraphBranch2":     CmpCommitviewGraphBranch2,
+	cfCommitView + ".CommitGraphBranch3":     CmpCommitviewGraphBranch3,
+	cfCommitView + ".CommitGraphBranch4":     CmpCommitviewGraphBranch4,
+	cfCommitView + ".CommitGraphBranch5":     CmpCommitviewGraphBranch5,
+	cfCommitView + ".CommitGraphBranch6":     CmpCommitviewGraphBranch6,
+	cfCommitView + ".CommitGraphBranch7":     CmpCommitviewGraphBranch7,
 
 	cfDiffView + ".Title":                 CmpDiffviewTitle,
 	cfDiffView + ".Footer":                CmpDiffviewFooter,
@@ -161,11 +172,16 @@ var themeComponents = map[string]ThemeComponentID{
 	cfGitStatusView + ".ConflictedFile":  CmpGitStatusConflictedFile,
 
 	cfHelpView + ".Title":                      CmpHelpViewTitle,
+	cfHelpView + ".IndexTitle":                 CmpHelpViewIndexTitle,
+	cfHelpView + ".IndexSubTitle":              CmpHelpViewIndexSubTitle,
 	cfHelpView + ".SectionTitle":               CmpHelpViewSectionTitle,
+	cfHelpView + ".SectionSubTitle":            CmpHelpViewSectionSubTitle,
 	cfHelpView + ".SectionDescription":         CmpHelpViewSectionDescription,
+	cfHelpView + ".SectionCodeBlock":           CmpHelpViewSectionCodeBlock,
 	cfHelpView + ".SectionTableHeader":         CmpHelpViewSectionTableHeader,
 	cfHelpView + ".SectionTableRow":            CmpHelpViewSectionTableRow,
 	cfHelpView + ".SectionTableRowHighlighted": CmpHelpViewSectionTableRowHighlighted,
+	cfHelpView + ".SectionTableCellSeparator":  CmpHelpViewSectionTableCellSeparator,
 	cfHelpView + ".Footer":                     CmpHelpViewFooter,
 
 	cfStatusBarView + ".Normal": CmpStatusbarviewNormal,
@@ -182,10 +198,15 @@ var themeComponents = map[string]ThemeComponentID{
 	cfContextMenuView + ".Footer":  CmpContextMenuFooter,
 
 	cfCommandOutputView + ".Title":   CmpCommandOutputTitle,
+	cfCommandOutputView + ".Command": CmpCommandOutputCommand,
 	cfCommandOutputView + ".Normal":  CmpCommandOutputNormal,
 	cfCommandOutputView + ".Error":   CmpCommandOutputError,
 	cfCommandOutputView + ".Success": CmpCommandOutputSuccess,
 	cfCommandOutputView + ".Footer":  CmpCommandOutputFooter,
+
+	cfMessageBoxView + ".Title":          CmpMessageBoxTitle,
+	cfMessageBoxView + ".Content":        CmpMessageBoxContent,
+	cfMessageBoxView + ".SelectedButton": CmpMessageBoxSelectedButton,
 }
 
 var colorNumberPattern = regexp.MustCompile(`[0-9]{1,3}`)

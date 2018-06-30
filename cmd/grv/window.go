@@ -332,7 +332,7 @@ func (win *Window) OffsetPosition(rowOffset, colOffset int) {
 
 func applyOffset(value uint, offset int) uint {
 	if offset < 0 {
-		return value - MinUint(value, Abs(offset))
+		return value - MinUInt(value, Abs(offset))
 	}
 
 	return value + uint(offset)

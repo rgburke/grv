@@ -899,7 +899,7 @@ func checkoutRef(refView *RefView, action Action) (err error) {
 	}
 
 	if refView.config.GetBool(CfConfirmCheckout) {
-		question := fmt.Sprintf("Are you sure you want to checkout ref %v", renderedRef.ref.Shorthand())
+		question := fmt.Sprintf("Are you sure you want to checkout ref %v?", renderedRef.ref.Shorthand())
 
 		refView.channels.DoAction(YesNoQuestion(question, func(response QuestionResponse) {
 			if response == ResponseYes {

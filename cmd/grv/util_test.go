@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-func TestMinUint(t *testing.T) {
-	var minTests = []struct {
+func TestMinUInt(t *testing.T) {
+	var tests = []struct {
 		arg1           uint
 		arg2           uint
 		expectedResult uint
@@ -27,17 +27,86 @@ func TestMinUint(t *testing.T) {
 		},
 	}
 
-	for _, minTest := range minTests {
-		actualResult := MinUint(minTest.arg1, minTest.arg2)
+	for _, test := range tests {
+		actualResult := MinUInt(test.arg1, test.arg2)
 
-		if actualResult != minTest.expectedResult {
-			t.Errorf("Min return arg does not match expected arg. Expected: %v, Actual: %v", minTest.expectedResult, actualResult)
+		if actualResult != test.expectedResult {
+			t.Errorf("MinUInt return arg does not match expected arg. Expected: %v, Actual: %v", test.expectedResult, actualResult)
+		}
+	}
+}
+
+func TestMaxUInt(t *testing.T) {
+	var tests = []struct {
+		arg1           uint
+		arg2           uint
+		expectedResult uint
+	}{
+		{
+			arg1:           1,
+			arg2:           2,
+			expectedResult: 2,
+		},
+		{
+			arg1:           5,
+			arg2:           4,
+			expectedResult: 5,
+		},
+		{
+			arg1:           5,
+			arg2:           5,
+			expectedResult: 5,
+		},
+	}
+
+	for _, test := range tests {
+		actualResult := MaxUInt(test.arg1, test.arg2)
+
+		if actualResult != test.expectedResult {
+			t.Errorf("MaxUInt return arg does not match expected arg. Expected: %v, Actual: %v", test.expectedResult, actualResult)
+		}
+	}
+}
+
+func TestMinInt(t *testing.T) {
+	var tests = []struct {
+		arg1           int
+		arg2           int
+		expectedResult int
+	}{
+		{
+			arg1:           1,
+			arg2:           2,
+			expectedResult: 1,
+		},
+		{
+			arg1:           5,
+			arg2:           4,
+			expectedResult: 4,
+		},
+		{
+			arg1:           5,
+			arg2:           5,
+			expectedResult: 5,
+		},
+		{
+			arg1:           -1,
+			arg2:           -2,
+			expectedResult: -2,
+		},
+	}
+
+	for _, test := range tests {
+		actualResult := MinInt(test.arg1, test.arg2)
+
+		if actualResult != test.expectedResult {
+			t.Errorf("MinInt return arg does not match expected arg. Expected: %v, Actual: %v", test.expectedResult, actualResult)
 		}
 	}
 }
 
 func TestMaxInt(t *testing.T) {
-	var maxTests = []struct {
+	var tests = []struct {
 		arg1           int
 		arg2           int
 		expectedResult int
@@ -64,11 +133,11 @@ func TestMaxInt(t *testing.T) {
 		},
 	}
 
-	for _, maxTest := range maxTests {
-		actualResult := MaxInt(maxTest.arg1, maxTest.arg2)
+	for _, test := range tests {
+		actualResult := MaxInt(test.arg1, test.arg2)
 
-		if actualResult != maxTest.expectedResult {
-			t.Errorf("Max return arg does not match expected arg. Expected: %v, Actual: %v", maxTest.expectedResult, actualResult)
+		if actualResult != test.expectedResult {
+			t.Errorf("MaxInt return arg does not match expected arg. Expected: %v, Actual: %v", test.expectedResult, actualResult)
 		}
 	}
 }

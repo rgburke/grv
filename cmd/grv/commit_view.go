@@ -917,7 +917,7 @@ func checkoutCommit(commitView *CommitView, action Action) (err error) {
 	}
 
 	if commitView.config.GetBool(CfConfirmCheckout) {
-		question := fmt.Sprintf("Are you sure you want to checkout commit %v", commit.oid.ShortID())
+		question := fmt.Sprintf("Are you sure you want to checkout commit %v?", commit.oid.ShortID())
 
 		commitView.channels.DoAction(YesNoQuestion(question, func(response QuestionResponse) {
 			if response == ResponseYes {

@@ -78,7 +78,7 @@ func (viewPos *ViewPosition) DetermineViewStartRow(viewRows, rows uint) {
 	} else if rowDiff := viewPos.activeRowIndex - viewPos.viewStartRowIndex; rowDiff >= viewRows {
 		viewPos.viewStartRowIndex += (rowDiff - viewRows) + 1
 	} else if visibleRows := rows - (viewPos.viewStartRowIndex + 1); visibleRows < viewRows && viewPos.viewStartRowIndex > 0 {
-		viewPos.viewStartRowIndex -= MinUint(viewPos.viewStartRowIndex, (viewRows-visibleRows)-1)
+		viewPos.viewStartRowIndex -= MinUInt(viewPos.viewStartRowIndex, (viewRows-visibleRows)-1)
 	}
 }
 
@@ -105,7 +105,7 @@ func (viewPos *ViewPosition) MoveLineUp() (changed bool) {
 // MovePageDown moves the cursor and display down a page
 func (viewPos *ViewPosition) MovePageDown(pageRows, rows uint) (changed bool) {
 	if viewPos.activeRowIndex+1 < rows {
-		viewPos.activeRowIndex += MinUint(pageRows, rows-(viewPos.activeRowIndex+1))
+		viewPos.activeRowIndex += MinUInt(pageRows, rows-(viewPos.activeRowIndex+1))
 		viewPos.viewStartRowIndex = viewPos.activeRowIndex
 		changed = true
 	}
@@ -116,7 +116,7 @@ func (viewPos *ViewPosition) MovePageDown(pageRows, rows uint) (changed bool) {
 // MovePageUp moves the cursor and display up a page
 func (viewPos *ViewPosition) MovePageUp(pageRows uint) (changed bool) {
 	if viewPos.activeRowIndex > 0 {
-		viewPos.activeRowIndex -= MinUint(pageRows, viewPos.activeRowIndex)
+		viewPos.activeRowIndex -= MinUInt(pageRows, viewPos.activeRowIndex)
 		viewPos.viewStartRowIndex = viewPos.activeRowIndex
 		changed = true
 	}
@@ -176,7 +176,7 @@ func (viewPos *ViewPosition) CenterActiveRow(pageRows uint) (changed bool) {
 		viewPos.viewStartRowIndex += selectedRow - centerRow
 		changed = true
 	} else if centerRow > selectedRow {
-		viewPos.viewStartRowIndex -= MinUint(centerRow-selectedRow, viewPos.viewStartRowIndex)
+		viewPos.viewStartRowIndex -= MinUInt(centerRow-selectedRow, viewPos.viewStartRowIndex)
 		changed = true
 	}
 
@@ -221,7 +221,7 @@ func (viewPos *ViewPosition) MoveCursorTopPage() (changed bool) {
 
 // MoveCursorMiddlePage moves the cursor to middle of the page
 func (viewPos *ViewPosition) MoveCursorMiddlePage(pageRows, rows uint) (changed bool) {
-	middleRowInPage := viewPos.viewStartRowIndex + MinUint(pageRows, rows-viewPos.viewStartRowIndex)/2
+	middleRowInPage := viewPos.viewStartRowIndex + MinUInt(pageRows, rows-viewPos.viewStartRowIndex)/2
 
 	if viewPos.activeRowIndex != middleRowInPage {
 		viewPos.activeRowIndex = middleRowInPage
@@ -233,7 +233,7 @@ func (viewPos *ViewPosition) MoveCursorMiddlePage(pageRows, rows uint) (changed 
 
 // MoveCursorBottomPage moves the cursor to bottom of the page
 func (viewPos *ViewPosition) MoveCursorBottomPage(pageRows, rows uint) (changed bool) {
-	lastRowInPage := MinUint(viewPos.viewStartRowIndex+pageRows-1, rows-1)
+	lastRowInPage := MinUInt(viewPos.viewStartRowIndex+pageRows-1, rows-1)
 
 	if viewPos.activeRowIndex != lastRowInPage {
 		viewPos.activeRowIndex = lastRowInPage

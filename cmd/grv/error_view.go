@@ -44,7 +44,7 @@ func (errorView *ErrorView) DisplayRowsRequired() uint {
 // Render generates and writes the error view to the provided window
 func (errorView *ErrorView) Render(win RenderWindow) (err error) {
 	errorNum := uint(len(errorView.errors))
-	errorDisplayNum := MinUint(errorNum, evMaxErrorDisplayNum)
+	errorDisplayNum := MinUInt(errorNum, evMaxErrorDisplayNum)
 
 	var lineBuilder *LineBuilder
 	for i := uint(1); i < win.Rows()-1 && i-1 < errorDisplayNum; i++ {

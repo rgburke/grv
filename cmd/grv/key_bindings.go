@@ -80,11 +80,14 @@ const (
 	ActionCreateBranch
 	ActionCreateContextMenu
 	ActionCreateCommandOutputView
+	ActionCreateMessageBoxView
 	ActionShowAvailableActions
 	ActionStageFile
 	ActionUnstageFile
 	ActionCommit
 	ActionShowHelpView
+	ActionNextButton
+	ActionPrevButton
 )
 
 // ActionCategory defines the type of an action
@@ -478,6 +481,10 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		actionCategory: ActionCategoryGeneral,
 		description:    "Create a command output view",
 	},
+	ActionCreateMessageBoxView: {
+		actionCategory: ActionCategoryGeneral,
+		description:    "Create a message box view",
+	},
 	ActionShowAvailableActions: {
 		actionKey:      "<grv-show-available-actions>",
 		actionCategory: ActionCategoryGeneral,
@@ -514,6 +521,22 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		actionKey:      "<grv-show-help>",
 		actionCategory: ActionCategoryGeneral,
 		description:    "Show the help view",
+	},
+	ActionNextButton: {
+		actionKey:      "<grv-next-button>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Select the next button",
+		keyBindings: map[ViewID][]string{
+			ViewMessageBox: {"<Right>", "l", "<Tab>"},
+		},
+	},
+	ActionPrevButton: {
+		actionKey:      "<grv-prev-button>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Select the previous button",
+		keyBindings: map[ViewID][]string{
+			ViewMessageBox: {"<Left>", "h", "<S-Tab>"},
+		},
 	},
 }
 
@@ -578,6 +601,11 @@ type ActionCreateCommandOutputViewArgs struct {
 	command       string
 	viewDimension ViewDimension
 	onCreation    func(commandOutputProcessor CommandOutputProcessor)
+}
+
+// ActionCreateMessageBoxViewArgs contains arguments to create and configure a message box view
+type ActionCreateMessageBoxViewArgs struct {
+	config MessageBoxConfig
 }
 
 // ActionRunCommandArgs contains arguments to run a command and process
@@ -1051,22 +1079,23 @@ func GetMouseEventFromAction(action Action) (mouseEvent MouseEvent, err error) {
 // The onResponse handler is called when an answer is received
 func YesNoQuestion(question string, onResponse func(QuestionResponse)) Action {
 	return Action{
-		ActionType: ActionQuestionPrompt,
-		Args: []interface{}{ActionQuestionPromptArgs{
-			question: question,
-			answers:  []string{"y", "n"},
-			onAnswer: func(answer string) {
-				var response QuestionResponse
-				switch answer {
-				case "y":
-					response = ResponseYes
-				case "n":
-					response = ResponseNo
-				default:
-					response = ResponseNone
-				}
+		ActionType: ActionCreateMessageBoxView,
+		Args: []interface{}{ActionCreateMessageBoxViewArgs{
+			config: MessageBoxConfig{
+				Title:   "Confirm",
+				Message: question,
+				Buttons: []MessageBoxButton{ButtonYes, ButtonNo},
+				OnSelect: func(button MessageBoxButton) {
+					var response QuestionResponse
 
-				onResponse(response)
+					if button == ButtonYes {
+						response = ResponseYes
+					} else {
+						response = ResponseNo
+					}
+
+					onResponse(response)
+				},
 			},
 		}},
 	}

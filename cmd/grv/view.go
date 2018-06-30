@@ -34,6 +34,8 @@ const (
 	ViewCommandOutput
 	ViewMessageBox
 	ViewHelp
+
+	ViewCount // i.e. Number of views
 )
 
 // HelpRenderer renders help information
@@ -80,17 +82,53 @@ func (viewDimension ViewDimension) String() string {
 // RegisterViewListener is a function which registers an observer on a view
 type RegisterViewListener func(observer interface{}) error
 
-type popupView struct {
-	view          WindowView
+// ViewDimensionSupplier provides view dimensions
+type ViewDimensionSupplier interface {
+	ViewDimension() ViewDimension
+}
+
+type popupView interface {
+	ViewDimensionSupplier
+	windowView() WindowView
+	window() *Window
+}
+
+type abstractPopupView struct {
+	view WindowView
+	win  *Window
+}
+
+func (abstractPopupView *abstractPopupView) windowView() WindowView {
+	return abstractPopupView.view
+}
+
+func (abstractPopupView *abstractPopupView) window() *Window {
+	return abstractPopupView.win
+}
+
+type fixedSizePopupView struct {
+	*abstractPopupView
 	viewDimension ViewDimension
-	win           *Window
+}
+
+func (fixedSizePopupView *fixedSizePopupView) ViewDimension() ViewDimension {
+	return fixedSizePopupView.viewDimension
+}
+
+type dynamicSizePopupView struct {
+	*abstractPopupView
+	viewDimensionSupplier ViewDimensionSupplier
+}
+
+func (dynamicSizePopupView *dynamicSizePopupView) ViewDimension() ViewDimension {
+	return dynamicSizePopupView.viewDimensionSupplier.ViewDimension()
 }
 
 // View is the top level view in grv
 // All views in grv are children of this view
 type View struct {
 	views             []WindowViewCollection
-	popupViews        []*popupView
+	popupViews        []popupView
 	activeViewPos     uint
 	grvStatusView     WindowViewCollection
 	channels          Channels
@@ -311,20 +349,22 @@ func (view *View) renderActiveView(availableCols uint) (err error) {
 
 func (view *View) renderPopupViews(availableViewDimension ViewDimension) (wins []*Window, err error) {
 	for _, popupView := range view.popupViews {
+		popupViewDimension := popupView.ViewDimension()
+
 		viewDimension := ViewDimension{
-			rows: MinUint(popupView.viewDimension.rows, availableViewDimension.rows-2),
-			cols: MinUint(popupView.viewDimension.cols, availableViewDimension.cols-2),
+			rows: MinUInt(popupViewDimension.rows, availableViewDimension.rows-2),
+			cols: MinUInt(popupViewDimension.cols, availableViewDimension.cols-2),
 		}
 
 		startRow := (availableViewDimension.rows - viewDimension.rows) / 2
 		startCol := (availableViewDimension.cols - viewDimension.cols) / 2
 
-		win := popupView.win
+		win := popupView.window()
 		win.Resize(viewDimension)
 		win.SetPosition(startRow, startCol)
 		win.Clear()
 
-		if err = popupView.view.Render(win); err != nil {
+		if err = popupView.windowView().Render(win); err != nil {
 			return
 		}
 
@@ -460,6 +500,11 @@ func (view *View) HandleAction(action Action) (err error) {
 		defer view.lock.Unlock()
 
 		return view.createCommandOutputView(action)
+	case ActionCreateMessageBoxView:
+		view.lock.Lock()
+		defer view.lock.Unlock()
+
+		return view.createMessageBoxView(action)
 	case ActionShowHelpView:
 		view.lock.Lock()
 		defer view.lock.Unlock()
@@ -531,7 +576,7 @@ func (view *View) ActiveView() BaseView {
 
 func (view *View) activeView() BaseView {
 	if view.popupViewsActive() {
-		return view.popupViews[len(view.popupViews)-1].view
+		return view.popupViews[len(view.popupViews)-1].windowView()
 	} else if view.promptActive {
 		return view.grvStatusView
 	}
@@ -779,10 +824,12 @@ func (view *View) createContextMenuView(action Action) (err error) {
 		return fmt.Errorf("Expected ActionCreateContextMenuArgs argument but got %T", action.Args[0])
 	}
 
-	view.addPopupView(&popupView{
-		view:          NewContextMenuView(arg.config, view.channels, view.config),
+	view.addPopupView(&fixedSizePopupView{
+		abstractPopupView: &abstractPopupView{
+			view: NewContextMenuView(arg.config, view.channels, view.config),
+			win:  NewWindow(fmt.Sprintf("popupView-%v", len(view.popupViews)), view.config),
+		},
 		viewDimension: arg.viewDimension,
-		win:           NewWindow(fmt.Sprintf("popupView-%v", len(view.popupViews)), view.config),
 	})
 
 	log.Debugf("Created context menu")
@@ -802,10 +849,12 @@ func (view *View) createCommandOutputView(action Action) (err error) {
 
 	commandOutputView := NewCommandOutputView(arg.command, view.channels, view.config)
 
-	view.addPopupView(&popupView{
-		view:          commandOutputView,
+	view.addPopupView(&fixedSizePopupView{
+		abstractPopupView: &abstractPopupView{
+			view: commandOutputView,
+			win:  NewWindow(fmt.Sprintf("popupView-%v", len(view.popupViews)), view.config),
+		},
 		viewDimension: arg.viewDimension,
-		win:           NewWindow(fmt.Sprintf("popupView-%v", len(view.popupViews)), view.config),
 	})
 
 	arg.onCreation(commandOutputView)
@@ -817,7 +866,32 @@ func (view *View) createCommandOutputView(action Action) (err error) {
 	return
 }
 
-func (view *View) addPopupView(popupView *popupView) {
+func (view *View) createMessageBoxView(action Action) (err error) {
+	if len(action.Args) == 0 {
+		return fmt.Errorf("Expected ActionCreateMessageBoxViewArgs argument")
+	}
+
+	arg, ok := action.Args[0].(ActionCreateMessageBoxViewArgs)
+	if !ok {
+		return fmt.Errorf("Expected ActionCreateMessageBoxViewArgs argument but got %T", action.Args[0])
+	}
+
+	messageBoxView := NewMessageBoxView(arg.config, view.channels, view.config)
+
+	view.addPopupView(&dynamicSizePopupView{
+		abstractPopupView: &abstractPopupView{
+			view: messageBoxView,
+			win:  NewWindow(fmt.Sprintf("popupView-%v", len(view.popupViews)), view.config),
+		},
+		viewDimensionSupplier: messageBoxView,
+	})
+
+	log.Debugf("Created context menu")
+
+	return
+}
+
+func (view *View) addPopupView(popupView popupView) {
 	if !view.popupViewsActive() {
 		view.onActiveChange(false)
 	}

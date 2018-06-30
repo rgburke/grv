@@ -21,6 +21,7 @@ The sections below provide an overview of the ways to configure and interact wit
      * [RefView Specific](#refview-specific)
      * [CommitView Specific](#commitview-specific)
      * [GitStatusView Specific](#gitstatusview-specific)
+     * [MessageBoxView Specific](#messageboxview-specific)
  - [Configuration Variables](#configuration-variables)
  - [Configuration Commands](#configuration-commands)
      * [addtab](#addtab)
@@ -157,6 +158,15 @@ The following tables contain default and user configured key bindings
  c            | <grv-action-commit> | Commit     
  a            | <grv-stage-file>    | Stage      
  u            | <grv-unstage-file>  | Unstage    
+```
+
+### MessageBoxView Specific
+
+```
+ Key Bindings       | Action            | Description               
+ -------------------+-------------------+----------------------------
+ <Right>, l, <Tab>  | <grv-next-button> | Select the next button    
+ <Left>, h, <S-Tab> | <grv-prev-button> | Select the previous button
 ```
 
 
@@ -419,6 +429,7 @@ All.Default
 All.InactiveViewSelectedRow
 All.SearchMatch
 
+CommandOutputView.Command
 CommandOutputView.Error
 CommandOutputView.Footer
 CommandOutputView.Normal
@@ -426,6 +437,15 @@ CommandOutputView.Success
 CommandOutputView.Title
 
 CommitView.Author
+CommitView.CommitGraphBranch1
+CommitView.CommitGraphBranch2
+CommitView.CommitGraphBranch3
+CommitView.CommitGraphBranch4
+CommitView.CommitGraphBranch5
+CommitView.CommitGraphBranch6
+CommitView.CommitGraphBranch7
+CommitView.CommitGraphCommit
+CommitView.CommitGraphMergeCommit
 CommitView.Date
 CommitView.Footer
 CommitView.LocalBranch
@@ -473,7 +493,12 @@ HelpBarView.Normal
 HelpBarView.Special
 
 HelpView.Footer
+HelpView.IndexSubTitle
+HelpView.IndexTitle
+HelpView.SectionCodeBlock
 HelpView.SectionDescription
+HelpView.SectionSubTitle
+HelpView.SectionTableCellSeparator
 HelpView.SectionTableHeader
 HelpView.SectionTableRow
 HelpView.SectionTableRowHighlighted
@@ -482,6 +507,10 @@ HelpView.Title
 
 MainView.ActiveView
 MainView.NormalView
+
+MessageBoxView.Content
+MessageBoxView.SelectedButton
+MessageBoxView.Title
 
 RefView.Footer
 RefView.Head

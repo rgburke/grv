@@ -7,8 +7,17 @@ import (
 	rw "github.com/mattn/go-runewidth"
 )
 
-// MinUint returns the minimum value of the supplied arguments
-func MinUint(x, y uint) uint {
+// MaxUInt returns the largest value of the supplied arguments
+func MaxUInt(x, y uint) uint {
+	if x > y {
+		return x
+	}
+
+	return y
+}
+
+// MinUInt returns the smallest value of the supplied arguments
+func MinUInt(x, y uint) uint {
 	if x < y {
 		return x
 	}
@@ -16,9 +25,18 @@ func MinUint(x, y uint) uint {
 	return y
 }
 
-// MaxInt returns the largest values of the supplied arguments
+// MaxInt returns the largest value of the supplied arguments
 func MaxInt(x, y int) int {
 	if x > y {
+		return x
+	}
+
+	return y
+}
+
+// MinInt returns the smallest value of the supplied arguments
+func MinInt(x, y int) int {
+	if x < y {
 		return x
 	}
 

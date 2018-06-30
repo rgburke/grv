@@ -344,6 +344,19 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
 			},
+			CmpMessageBoxTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpMessageBoxContent: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpMessageBoxSelectedButton: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+				style:   ThemeStyle{styleTypes: TstUnderline | TstBold | TstReverse},
+			},
 		},
 	}
 }
@@ -691,6 +704,19 @@ func NewColdTheme() MutableTheme {
 			CmpHelpViewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpMessageBoxTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpMessageBoxContent: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpMessageBoxSelectedButton: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+				style:   ThemeStyle{styleTypes: TstUnderline | TstBold | TstReverse},
 			},
 		},
 	}
@@ -1059,6 +1085,19 @@ func NewSolarizedTheme() MutableTheme {
 			CmpHelpViewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(solarizedCyan),
+			},
+			CmpMessageBoxTitle: {
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedCyan),
+			},
+			CmpMessageBoxContent: {
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedWhite),
+			},
+			CmpMessageBoxSelectedButton: {
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedWhite),
+				style:   ThemeStyle{styleTypes: TstUnderline | TstBold | TstReverse},
 			},
 		},
 	}
