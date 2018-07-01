@@ -209,13 +209,14 @@ func NewRefView(repoData RepoData, repoController RepoController, channels Chann
 			},
 		},
 		handlers: map[ActionType]refViewHandler{
-			ActionSelect:               selectRef,
-			ActionAddFilter:            addRefFilter,
-			ActionRemoveFilter:         removeRefFilter,
-			ActionMouseSelect:          mouseSelectRef,
-			ActionCheckoutRef:          checkoutRef,
-			ActionCreateBranch:         createBranchFromRef,
-			ActionShowAvailableActions: showActionsForRef,
+			ActionSelect:                  selectRef,
+			ActionAddFilter:               addRefFilter,
+			ActionRemoveFilter:            removeRefFilter,
+			ActionMouseSelect:             mouseSelectRef,
+			ActionCheckoutRef:             checkoutRef,
+			ActionCreateBranch:            createBranchFromRef,
+			ActionCreateBranchAndCheckout: createBranchFromRefAndCheckout,
+			ActionShowAvailableActions:    showActionsForRef,
 		},
 	}
 
@@ -925,24 +926,34 @@ func (refView *RefView) performCheckoutRef(renderedRef *RenderedRef) {
 
 		refView.generateRenderedRefs()
 
-		for renderedRefIndex, renderedRef := range refView.renderedRefs.RenderedRefs() {
-			if renderedRef.ref != nil && renderedRef.ref.Equal(ref) {
-				refView.activeViewPos.SetActiveRowIndex(uint(renderedRefIndex))
-				if err = selectRef(refView, Action{}); err != nil {
-					refView.channels.ReportError(err)
-				}
-
-				break
-			}
+		if err = refView.setSelectedRowToRef(ref); err != nil {
+			refView.channels.ReportError(err)
 		}
 
 		refView.channels.UpdateDisplay()
 	})
 }
 
+func (refView *RefView) setSelectedRowToRef(ref Ref) (err error) {
+	for renderedRefIndex, renderedRef := range refView.renderedRefs.RenderedRefs() {
+		if renderedRef.ref != nil && renderedRef.ref.Equal(ref) {
+			refView.activeViewPos.SetActiveRowIndex(uint(renderedRefIndex))
+			return selectRef(refView, Action{})
+		}
+	}
+
+	log.Errorf("Unable to find ref %v to select", ref.Name())
+	return
+}
+
 func createBranchFromRef(refView *RefView, action Action) (err error) {
 	if len(action.Args) == 0 {
-		return fmt.Errorf("Expected branch name argument")
+		refView.channels.DoAction(Action{
+			ActionType: ActionBranchNamePrompt,
+			Args:       []interface{}{ActionCreateBranch},
+		})
+
+		return
 	}
 
 	branchName, isString := action.Args[0].(string)
@@ -968,6 +979,51 @@ func createBranchFromRef(refView *RefView, action Action) (err error) {
 	return
 }
 
+func createBranchFromRefAndCheckout(refView *RefView, action Action) (err error) {
+	if len(action.Args) == 0 {
+		refView.channels.DoAction(Action{
+			ActionType: ActionBranchNamePrompt,
+			Args:       []interface{}{ActionCreateBranchAndCheckout},
+		})
+
+		return
+	}
+
+	branchName, isString := action.Args[0].(string)
+	if !isString {
+		return fmt.Errorf("Expected first argument to be branch name but found %T", action.Args[0])
+	}
+
+	renderedRefs := refView.renderedRefs.RenderedRefs()
+	renderedRef := renderedRefs[refView.activeViewPos.ActiveRowIndex()]
+
+	if renderedRef.ref == nil {
+		return
+	}
+
+	ref := renderedRef.ref
+
+	refView.repoController.CreateBranchAndCheckout(branchName, ref.Oid(), func(ref Ref, err error) {
+		refView.lock.Lock()
+		defer refView.lock.Unlock()
+
+		if err != nil {
+			refView.channels.ReportError(fmt.Errorf("Failed to create and checkout branch %v", branchName))
+			return
+		}
+
+		refView.generateRenderedRefs()
+
+		if err = refView.setSelectedRowToRef(ref); err != nil {
+			refView.channels.ReportError(err)
+		}
+
+		refView.channels.ReportStatus("Created and checked out branch %v", branchName)
+	})
+
+	return
+}
+
 func showActionsForRef(refView *RefView, action Action) (err error) {
 	if refView.rows() == 0 {
 		return
@@ -989,10 +1045,16 @@ func showActionsForRef(refView *RefView, action Action) (err error) {
 		})
 	}
 
-	contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
-		DisplayName: "Create branch from ref",
-		Value:       Action{ActionType: ActionBranchNamePrompt},
-	})
+	contextMenuEntries = append(contextMenuEntries,
+		ContextMenuEntry{
+			DisplayName: "Create branch from ref",
+			Value:       Action{ActionType: ActionCreateBranch},
+		},
+		ContextMenuEntry{
+			DisplayName: "Create branch from ref and checkout",
+			Value:       Action{ActionType: ActionCreateBranchAndCheckout},
+		},
+	)
 
 	refView.channels.DoAction(Action{
 		ActionType: ActionCreateContextMenu,

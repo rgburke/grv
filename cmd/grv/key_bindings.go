@@ -78,6 +78,7 @@ const (
 	ActionCheckoutRef
 	ActionCheckoutCommit
 	ActionCreateBranch
+	ActionCreateBranchAndCheckout
 	ActionCreateContextMenu
 	ActionCreateCommandOutputView
 	ActionCreateMessageBoxView
@@ -177,14 +178,9 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		description:    "Prompt the user with a question",
 	},
 	ActionBranchNamePrompt: {
-		actionKey:      "<grv-branch-name-prompt>",
-		actionCategory: ActionCategoryViewSpecific,
+		actionCategory: ActionCategoryGeneral,
 		promptAction:   true,
-		description:    "Create a new branch",
-		keyBindings: map[ViewID][]string{
-			ViewRef:    {"b"},
-			ViewCommit: {"b"},
-		},
+		description:    "Specify branch name",
 	},
 	ActionSearch: {
 		actionCategory: ActionCategorySearch,
@@ -470,8 +466,22 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		},
 	},
 	ActionCreateBranch: {
-		actionCategory: ActionCategoryGeneral,
-		description:    "Create a branch",
+		actionKey:      "<grv-create-branch>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Create a new branch",
+		keyBindings: map[ViewID][]string{
+			ViewRef:    {"b"},
+			ViewCommit: {"b"},
+		},
+	},
+	ActionCreateBranchAndCheckout: {
+		actionKey:      "<grv-create-branch-and-checkout>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Create a new branch and checkout",
+		keyBindings: map[ViewID][]string{
+			ViewRef:    {"B"},
+			ViewCommit: {"B"},
+		},
 	},
 	ActionCreateContextMenu: {
 		actionCategory: ActionCategoryGeneral,

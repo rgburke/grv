@@ -29,6 +29,7 @@ type RepoController interface {
 	CheckoutRef(Ref, CheckoutRefResultHandler)
 	CheckoutCommit(*Commit, CheckoutCommitResultHandler)
 	CreateBranch(branchName string, oid *Oid) error
+	CreateBranchAndCheckout(branchName string, oid *Oid, resultHandler CheckoutRefResultHandler)
 	StageFiles(filePaths []string) error
 	UnstageFiles(filePaths []string) error
 	CommitMessageFile() (*os.File, error)
@@ -59,17 +60,22 @@ func (repoController *ReadOnlyRepositoryController) CheckoutCommit(commit *Commi
 }
 
 // CreateBranch returns a read only error
-func (repoController *ReadOnlyRepositoryController) CreateBranch(branchName string, oid *Oid) (err error) {
+func (repoController *ReadOnlyRepositoryController) CreateBranch(string, *Oid) error {
 	return errReadOnly
 }
 
+// CreateBranchAndCheckout returns a read only error
+func (repoController *ReadOnlyRepositoryController) CreateBranchAndCheckout(branchName string, oid *Oid, resultHandler CheckoutRefResultHandler) {
+	go resultHandler(nil, errReadOnly)
+}
+
 // StageFiles returns a read only error
-func (repoController *ReadOnlyRepositoryController) StageFiles(filePaths []string) (err error) {
+func (repoController *ReadOnlyRepositoryController) StageFiles([]string) error {
 	return errReadOnly
 }
 
 // UnstageFiles returns a read only error
-func (repoController *ReadOnlyRepositoryController) UnstageFiles(filePaths []string) (err error) {
+func (repoController *ReadOnlyRepositoryController) UnstageFiles([]string) error {
 	return errReadOnly
 }
 
@@ -79,7 +85,7 @@ func (repoController *ReadOnlyRepositoryController) CommitMessageFile() (file *o
 }
 
 // Commit returns a read only error
-func (repoController *ReadOnlyRepositoryController) Commit(ref Ref, message string) (oid *Oid, err error) {
+func (repoController *ReadOnlyRepositoryController) Commit(Ref, string) (oid *Oid, err error) {
 	return oid, errReadOnly
 }
 
@@ -276,6 +282,35 @@ func (repoController *RepositoryController) CreateBranch(branchName string, oid 
 	_, err = repoController.createBranch(branchName, oid)
 
 	return
+}
+
+// CreateBranchAndCheckout creates a new local branch with the specified name pointing to the provided oid
+// and after creation performs a checkout on the branch
+func (repoController *RepositoryController) CreateBranchAndCheckout(branchName string, oid *Oid, resultHandler CheckoutRefResultHandler) {
+	go func() {
+		repoController.lock.Lock()
+		defer repoController.lock.Unlock()
+
+		branch, err := repoController.createBranch(branchName, oid)
+		if err != nil {
+			resultHandler(nil, err)
+			return
+		}
+
+		refName := branch.Reference.Name()
+
+		repoController.repoData.LoadRefs(func(refs []Ref) (err error) {
+			for _, ref := range refs {
+				if ref.Name() == refName {
+					repoController.CheckoutRef(ref, resultHandler)
+					return
+				}
+			}
+
+			resultHandler(nil, fmt.Errorf("Unable to find branch %v", refName))
+			return
+		})
+	}()
 }
 
 func (repoController *RepositoryController) createBranch(branchName string, oid *Oid) (branch *git.Branch, err error) {

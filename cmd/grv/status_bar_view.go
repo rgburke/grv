@@ -198,12 +198,23 @@ func (statusBarView *StatusBarView) showQuestionPrompt(action Action) {
 }
 
 func (statusBarView *StatusBarView) showBranchNamePrompt(action Action) {
+	if len(action.Args) == 0 {
+		log.Errorf("Expected ActionType argument")
+		return
+	}
+
+	nextAction, ok := action.Args[0].(ActionType)
+	if !ok {
+		log.Errorf("Expected ActionType argument but found %T", action.Args[0])
+		return
+	}
+
 	statusBarView.promptType = ptFilter
 	input := statusBarView.showPrompt(&PromptArgs{Prompt: BranchNamePromptText}, action)
 
 	if input != "" {
 		statusBarView.channels.DoAction(Action{
-			ActionType: ActionCreateBranch,
+			ActionType: nextAction,
 			Args:       []interface{}{input},
 		})
 	}

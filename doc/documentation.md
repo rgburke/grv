@@ -131,23 +131,25 @@ The following tables contain default and user configured key bindings
 ### RefView Specific
 
 ```
- Key Bindings | Action                   | Description        
- -------------+--------------------------+---------------------
- b            | <grv-branch-name-prompt> | Create a new branch
- c            | <grv-checkout-ref>       | Checkout ref       
- <C-q>        | <grv-filter-prompt>      | Add filter         
- <C-r>        | <grv-remove-filter>      | Remove filter      
+ Key Bindings | Action                           | Description                     
+ -------------+----------------------------------+----------------------------------
+ c            | <grv-checkout-ref>               | Checkout ref                    
+ B            | <grv-create-branch-and-checkout> | Create a new branch and checkout
+ b            | <grv-create-branch>              | Create a new branch             
+ <C-q>        | <grv-filter-prompt>              | Add filter                      
+ <C-r>        | <grv-remove-filter>              | Remove filter                   
 ```
 
 ### CommitView Specific
 
 ```
- Key Bindings | Action                   | Description        
- -------------+--------------------------+---------------------
- b            | <grv-branch-name-prompt> | Create a new branch
- c            | <grv-checkout-commit>    | Checkout commit    
- <C-q>        | <grv-filter-prompt>      | Add filter         
- <C-r>        | <grv-remove-filter>      | Remove filter      
+ Key Bindings | Action                           | Description                     
+ -------------+----------------------------------+----------------------------------
+ c            | <grv-checkout-commit>            | Checkout commit                 
+ B            | <grv-create-branch-and-checkout> | Create a new branch and checkout
+ b            | <grv-create-branch>              | Create a new branch             
+ <C-q>        | <grv-filter-prompt>              | Add filter                      
+ <C-r>        | <grv-remove-filter>              | Remove filter                   
 ```
 
 ### GitStatusView Specific

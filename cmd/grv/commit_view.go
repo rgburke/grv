@@ -80,12 +80,13 @@ func NewCommitView(repoData RepoData, repoController RepoController, channels Ch
 		refViewData:       make(map[string]*referenceViewData),
 		lastDotRenderTime: time.Now(),
 		handlers: map[ActionType]commitViewHandler{
-			ActionAddFilter:            addCommitFilter,
-			ActionRemoveFilter:         removeCommitFilter,
-			ActionSelect:               selectCommit,
-			ActionCheckoutCommit:       checkoutCommit,
-			ActionCreateBranch:         createBranchFromCommit,
-			ActionShowAvailableActions: showActionsForCommit,
+			ActionAddFilter:               addCommitFilter,
+			ActionRemoveFilter:            removeCommitFilter,
+			ActionSelect:                  selectCommit,
+			ActionCheckoutCommit:          checkoutCommit,
+			ActionCreateBranch:            createBranchFromCommit,
+			ActionCreateBranchAndCheckout: createBranchFromCommitAndCheckout,
+			ActionShowAvailableActions:    showActionsForCommit,
 		},
 	}
 
@@ -944,7 +945,12 @@ func (commitView *CommitView) checkoutCommit(commit *Commit) {
 
 func createBranchFromCommit(commitView *CommitView, action Action) (err error) {
 	if len(action.Args) == 0 {
-		return fmt.Errorf("Expected branch name argument")
+		commitView.channels.DoAction(Action{
+			ActionType: ActionBranchNamePrompt,
+			Args:       []interface{}{ActionCreateBranch},
+		})
+
+		return
 	}
 
 	branchName, isString := action.Args[0].(string)
@@ -964,6 +970,40 @@ func createBranchFromCommit(commitView *CommitView, action Action) (err error) {
 	}
 
 	commitView.channels.ReportStatus("Created branch %v at %v", branchName, commit.oid.ShortID())
+
+	return
+}
+
+func createBranchFromCommitAndCheckout(commitView *CommitView, action Action) (err error) {
+	if len(action.Args) == 0 {
+		commitView.channels.DoAction(Action{
+			ActionType: ActionBranchNamePrompt,
+			Args:       []interface{}{ActionCreateBranchAndCheckout},
+		})
+
+		return
+	}
+
+	branchName, isString := action.Args[0].(string)
+	if !isString {
+		return fmt.Errorf("Expected first argument to be branch name but found %T", action.Args[0])
+	}
+
+	viewPos := commitView.viewPos()
+
+	commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.ActiveRowIndex())
+	if err != nil {
+		return
+	}
+
+	commitView.repoController.CreateBranchAndCheckout(branchName, commit.oid, func(ref Ref, err error) {
+		if err != nil {
+			commitView.channels.ReportError(fmt.Errorf("Failed to create branch and checkout: %v", err))
+			return
+		}
+
+		commitView.channels.ReportStatus("Created and checked out branch %v at %v", branchName, commit.oid.ShortID())
+	})
 
 	return
 }
@@ -997,7 +1037,11 @@ func showActionsForCommit(commitView *CommitView, action Action) (err error) {
 						},
 						{
 							DisplayName: "Create branch from commit",
-							Value:       Action{ActionType: ActionBranchNamePrompt},
+							Value:       Action{ActionType: ActionCreateBranch},
+						},
+						{
+							DisplayName: "Create branch from commit and checkout",
+							Value:       Action{ActionType: ActionCreateBranchAndCheckout},
 						},
 						{
 							DisplayName: fmt.Sprintf(`Filter commits by author "%v"`, commitAuthor),
