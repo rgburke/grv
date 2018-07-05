@@ -430,14 +430,48 @@ var statusTypeMap = map[git.Status]StatusType{
 	git.StatusConflicted: StConflicted,
 }
 
-// Status contains all git status data
-type Status struct {
-	entries map[StatusType][]*StatusEntry
+// RepositoryState describes the state of the repository
+// e.g. whether an operation is in progress
+type RepositoryState int
+
+// Set of supported repository states
+const (
+	RepositoryStateUnknown RepositoryState = iota
+	RepositoryStateNone
+	RepositoryStateMerge
+	RepositoryStateRevert
+	RepositoryStateCherrypick
+	RepositoryStateBisect
+	RepositoryStateRebase
+	RepositoryStateRebaseInteractive
+	RepositoryStateRebaseMerge
+	RepositoryStateApplyMailbox
+	RepositoryStateApplyMailboxOrRebase
+)
+
+var repositoryStateMap = map[git.RepositoryState]RepositoryState{
+	git.RepositoryStateNone:                 RepositoryStateNone,
+	git.RepositoryStateMerge:                RepositoryStateMerge,
+	git.RepositoryStateRevert:               RepositoryStateRevert,
+	git.RepositoryStateCherrypick:           RepositoryStateCherrypick,
+	git.RepositoryStateBisect:               RepositoryStateBisect,
+	git.RepositoryStateRebase:               RepositoryStateRebase,
+	git.RepositoryStateRebaseInteractive:    RepositoryStateRebaseInteractive,
+	git.RepositoryStateRebaseMerge:          RepositoryStateRebaseMerge,
+	git.RepositoryStateApplyMailbox:         RepositoryStateApplyMailbox,
+	git.RepositoryStateApplyMailboxOrRebase: RepositoryStateApplyMailboxOrRebase,
 }
 
-func newStatus() *Status {
+// Status contains all git status data
+type Status struct {
+	repositoryState RepositoryState
+	entries         map[StatusType][]*StatusEntry
+}
+
+func newStatus(repositoryState RepositoryState) *Status {
 	return &Status{
-		entries: make(map[StatusType][]*StatusEntry),
+		repositoryState: repositoryState,
+		entries:         make(map[StatusType][]*StatusEntry),
 	}
 }
 
@@ -539,6 +573,11 @@ func statusEntriesEqual(entries, otherEntries []*StatusEntry) bool {
 	}
 
 	return true
+}
+
+// RepositoryState returns the current repository state
+func (status *Status) RepositoryState() RepositoryState {
+	return status.repositoryState
 }
 
 func newInstanceCache() *instanceCache {
@@ -1268,7 +1307,8 @@ func (repoDataLoader *RepoDataLoader) LoadStatus() (*Status, error) {
 		return nil, fmt.Errorf("Unable to determine repository status: %v", err)
 	}
 
-	status := newStatus()
+	repositoryState := repoDataLoader.RepositoryState()
+	status := newStatus(repositoryState)
 
 	for i := 0; i < entryCount; i++ {
 		statusEntry, err := statusList.ByIndex(i)
@@ -1313,4 +1353,15 @@ func (repoDataLoader *RepoDataLoader) GenerateGitCommandEnvironment() []string {
 	}
 
 	return env
+}
+
+// RepositoryState returns the current repository state
+func (repoDataLoader *RepoDataLoader) RepositoryState() RepositoryState {
+	repositoryState := repoDataLoader.repo.State()
+
+	if mappedRepositoryState, ok := repositoryStateMap[repositoryState]; ok {
+		return mappedRepositoryState
+	}
+
+	return RepositoryStateUnknown
 }
