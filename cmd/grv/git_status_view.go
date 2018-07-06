@@ -616,7 +616,12 @@ func (gitStatusView *GitStatusView) generateBranchStatus() (lines []string) {
 		return
 	}
 
-	branch, isLocalBranch := head.(*LocalBranch)
+	ref, err := gitStatusView.repoData.Ref(head.Name())
+	if err != nil {
+		return
+	}
+
+	branch, isLocalBranch := ref.(*LocalBranch)
 	if !isLocalBranch {
 		return
 	}
