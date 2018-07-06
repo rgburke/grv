@@ -59,23 +59,47 @@ func (selectableRowView *SelectableRowView) HandleAction(action Action) (handled
 	return
 }
 
-func (selectableRowView *SelectableRowView) findNearestSelectableRow(startRowIndex uint, searchDownwards bool) (rowIndex uint) {
-	if searchDownwards {
-		rows := selectableRowView.child.rows()
-		for rowIndex = startRowIndex + 1; rowIndex < rows; rowIndex++ {
-			if selectableRowView.child.isSelectableRow(rowIndex) {
-				return
-			}
+func (selectableRowView *SelectableRowView) findNearestSelectableRow(startRowIndex uint, searchDownwardsFirst bool) uint {
+	if searchDownwardsFirst {
+		if rowIndex, found := selectableRowView.searchDownwards(startRowIndex); found {
+			return rowIndex
+		} else if rowIndex, found := selectableRowView.searchUpwards(startRowIndex); found {
+			return rowIndex
+		}
+	} else {
+		if rowIndex, found := selectableRowView.searchUpwards(startRowIndex); found {
+			return rowIndex
+		} else if rowIndex, found := selectableRowView.searchDownwards(startRowIndex); found {
+			return rowIndex
 		}
 	}
 
-	if startRowIndex == 0 {
-		return 0
+	return 0
+}
+
+func (selectableRowView *SelectableRowView) searchDownwards(startRowIndex uint) (rowIndex uint, found bool) {
+	rows := selectableRowView.child.rows()
+	for rowIndex = startRowIndex + 1; rowIndex < rows; rowIndex++ {
+		if selectableRowView.child.isSelectableRow(rowIndex) {
+			found = true
+			break
+		}
 	}
 
-	for rowIndex = startRowIndex - 1; rowIndex > 0; rowIndex-- {
+	return
+}
+
+func (selectableRowView *SelectableRowView) searchUpwards(startRowIndex uint) (rowIndex uint, found bool) {
+	if startRowIndex == 0 {
+		return
+	}
+
+	for rowIndex = startRowIndex - 1; ; rowIndex-- {
 		if selectableRowView.child.isSelectableRow(rowIndex) {
-			return
+			found = true
+			break
+		} else if rowIndex == 0 {
+			break
 		}
 	}
 

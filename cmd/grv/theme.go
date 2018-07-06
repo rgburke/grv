@@ -62,6 +62,7 @@ const (
 	CmpDiffviewDifflineLineAdded
 	CmpDiffviewDifflineLineRemoved
 
+	CmpGitStatusMessage
 	CmpGitStatusStagedTitle
 	CmpGitStatusUnstagedTitle
 	CmpGitStatusUntrackedTitle

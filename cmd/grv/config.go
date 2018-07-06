@@ -162,6 +162,7 @@ var themeComponents = map[string]ThemeComponentID{
 	cfDiffView + ".AddedLine":             CmpDiffviewDifflineLineAdded,
 	cfDiffView + ".RemovedLine":           CmpDiffviewDifflineLineRemoved,
 
+	cfGitStatusView + ".Message":         CmpGitStatusMessage,
 	cfGitStatusView + ".StagedTitle":     CmpGitStatusStagedTitle,
 	cfGitStatusView + ".UnstagedTitle":   CmpGitStatusUnstagedTitle,
 	cfGitStatusView + ".UntrackedTitle":  CmpGitStatusUntrackedTitle,

@@ -484,6 +484,7 @@ ErrorView.Title
 
 GitStatusView.ConflictedFile
 GitStatusView.ConflictedTitle
+GitStatusView.Message
 GitStatusView.StagedFile
 GitStatusView.StagedTitle
 GitStatusView.UnstagedFile

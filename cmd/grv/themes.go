@@ -224,6 +224,10 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorRed),
 				fgcolor: NewSystemColor(ColorWhite),
 			},
+			CmpGitStatusMessage: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorYellow),
+			},
 			CmpGitStatusStagedTitle: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorMagenta),
@@ -584,6 +588,10 @@ func NewColdTheme() MutableTheme {
 			CmpErrorViewErrors: {
 				bgcolor: NewSystemColor(ColorRed),
 				fgcolor: NewSystemColor(ColorWhite),
+			},
+			CmpGitStatusMessage: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorYellow),
 			},
 			CmpGitStatusStagedTitle: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -965,6 +973,10 @@ func NewSolarizedTheme() MutableTheme {
 			CmpErrorViewErrors: {
 				bgcolor: NewColorNumber(solarizedRed),
 				fgcolor: NewColorNumber(solarizedBrightCyan),
+			},
+			CmpGitStatusMessage: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedYellow),
 			},
 			CmpGitStatusStagedTitle: {
 				bgcolor: NewSystemColor(ColorNone),

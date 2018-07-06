@@ -61,6 +61,7 @@ type renderedStatusEntryType int
 
 const (
 	rsetEmpty renderedStatusEntryType = iota
+	rsetStatusMessage
 	rsetHeader
 	rsetFile
 )
@@ -75,7 +76,8 @@ type renderedStatusEntry struct {
 }
 
 func (renderedStatusEntry *renderedStatusEntry) isSelectable() bool {
-	return renderedStatusEntry.entryType != rsetEmpty
+	return renderedStatusEntry.entryType != rsetEmpty &&
+		renderedStatusEntry.entryType != rsetStatusMessage
 }
 
 func (renderedStatusEntry *renderedStatusEntry) isFileEntry() bool {
@@ -129,6 +131,7 @@ func NewGitStatusView(repoData RepoData, repoController RepoController, channels
 	gitStatusView.SelectableRowView = NewSelectableRowView(gitStatusView, channels, config, "status row")
 	gitStatusView.viewSearch = NewViewSearch(gitStatusView, channels)
 	repoData.RegisterStatusListener(gitStatusView)
+	repoData.RegisterRefStateListener(gitStatusView)
 
 	return gitStatusView
 }
@@ -162,21 +165,18 @@ func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 	renderedStatusIndex := viewPos.ViewStartRowIndex()
 	startColumn := viewPos.ViewStartColumn()
 
-	if renderedStatusNum == 0 {
-		if err = win.SetRow(2, startColumn, CmpNone, "   %v", "nothing to commit, working tree clean"); err != nil {
+	var rowIndex uint
+	for rowIndex = 0; rowIndex < rows && renderedStatusIndex < renderedStatusNum; rowIndex++ {
+		renderedStatusEntry := renderedStatus[renderedStatusIndex]
+
+		if err = win.SetRow(rowIndex+1, startColumn, renderedStatusEntry.themeComponentID, " %v", renderedStatusEntry.text); err != nil {
 			return
 		}
-	} else {
-		for rowIndex := uint(0); rowIndex < rows && renderedStatusIndex < renderedStatusNum; rowIndex++ {
-			renderedStatusEntry := renderedStatus[renderedStatusIndex]
 
-			if err = win.SetRow(rowIndex+1, startColumn, renderedStatusEntry.themeComponentID, " %v", renderedStatusEntry.text); err != nil {
-				return
-			}
+		renderedStatusIndex++
+	}
 
-			renderedStatusIndex++
-		}
-
+	if !gitStatusView.status.IsEmpty() {
 		if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, gitStatusView.active); err != nil {
 			return
 		}
@@ -318,7 +318,7 @@ func (gitStatusView *GitStatusView) selectEntry(index uint) (err error) {
 
 	gitStatusView.viewPos().SetActiveRowIndex(index)
 
-	if renderedStatusNum == 0 {
+	if gitStatusView.status.IsEmpty() {
 		return
 	}
 
@@ -405,7 +405,7 @@ func (gitStatusView *GitStatusView) OnStatusChanged(status *Status) {
 	viewPos := gitStatusView.viewPos()
 	index := viewPos.ActiveRowIndex()
 
-	if renderedStatusNum == 0 {
+	if status.IsEmpty() {
 		index = 0
 	} else if viewPos.ActiveRowIndex() >= renderedStatusNum {
 		index = renderedStatusNum - 1
@@ -415,7 +415,7 @@ func (gitStatusView *GitStatusView) OnStatusChanged(status *Status) {
 		log.Errorf("Error when attempting to selected status entry at index %v out of %v entries", index, renderedStatusNum)
 	}
 
-	if renderedStatusNum == 0 {
+	if status.IsEmpty() {
 		gitStatusView.notifyNoEntrySelected()
 	} else if (!gitStatusView.isSelectableRow(index)) ||
 		time.Now().Before(gitStatusView.lastModify.Add(time.Millisecond*gsvLastModifyThresholdMillis)) {
@@ -424,57 +424,110 @@ func (gitStatusView *GitStatusView) OnStatusChanged(status *Status) {
 	}
 }
 
+// OnRefsChanged updates the status message when refs have changed
+func (gitStatusView *GitStatusView) OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef) {
+	gitStatusView.lock.Lock()
+	defer gitStatusView.lock.Unlock()
+
+	gitStatusView.generateRenderedStatus()
+	gitStatusView.channels.UpdateDisplay()
+}
+
+// OnHeadChanged updates the status message when head has changed
+func (gitStatusView *GitStatusView) OnHeadChanged(oldHead, newHead Ref) {
+	gitStatusView.lock.Lock()
+	defer gitStatusView.lock.Unlock()
+
+	gitStatusView.generateRenderedStatus()
+	gitStatusView.channels.UpdateDisplay()
+}
+
+// OnTrackingBranchesUpdated updates the status message when tracking branch data has been refreshed
+func (gitStatusView *GitStatusView) OnTrackingBranchesUpdated(trackingBranches []*LocalBranch) {
+	gitStatusView.lock.Lock()
+	defer gitStatusView.lock.Unlock()
+
+	gitStatusView.generateRenderedStatus()
+	gitStatusView.channels.UpdateDisplay()
+}
+
 func (gitStatusView *GitStatusView) generateRenderedStatus() {
-	var renderedStatus []*renderedStatusEntry
+	renderedStatus := gitStatusView.generateRenderedBranchStatus()
 	status := gitStatusView.status
-	statusTypes := status.StatusTypes()
 
-	for statusTypeIndex, statusType := range statusTypes {
-		renderedStatus = append(renderedStatus, statusTypeTitle[statusType], emptyStatusLine)
+	if status.IsEmpty() {
+		renderedStatus = append(renderedStatus, &renderedStatusEntry{
+			entryType:        rsetStatusMessage,
+			text:             "nothing to commit, working tree clean",
+			themeComponentID: CmpGitStatusMessage,
+		})
+	} else {
+		renderedStatus = append(renderedStatus, emptyStatusLine)
+		statusTypes := status.StatusTypes()
 
-		themeComponentID := statusTypeFileStyle[statusType]
-		statusEntries := status.Entries(statusType)
+		for statusTypeIndex, statusType := range statusTypes {
+			renderedStatus = append(renderedStatus, statusTypeTitle[statusType], emptyStatusLine)
 
-		for _, statusEntry := range statusEntries {
-			var text string
+			themeComponentID := statusTypeFileStyle[statusType]
+			statusEntries := status.Entries(statusType)
 
-			switch statusEntry.statusEntryType {
-			case SetNew:
-				prefix := ""
+			for _, statusEntry := range statusEntries {
+				var text string
 
-				if statusType == StStaged {
-					prefix = "new file:   "
+				switch statusEntry.statusEntryType {
+				case SetNew:
+					prefix := ""
+
+					if statusType == StStaged {
+						prefix = "new file:   "
+					}
+
+					text = fmt.Sprintf("%v%v", prefix, statusEntry.NewFilePath())
+				case SetModified:
+					text = fmt.Sprintf("modified:   %v", statusEntry.NewFilePath())
+				case SetDeleted:
+					text = fmt.Sprintf("deleted:   %v", statusEntry.NewFilePath())
+				case SetRenamed:
+					text = fmt.Sprintf("renamed:   %v -> %v", statusEntry.OldFilePath(), statusEntry.NewFilePath())
+				case SetTypeChange:
+					text = fmt.Sprintf("typechange: %v", statusEntry.NewFilePath())
+				case SetConflicted:
+					text = fmt.Sprintf("both modified:   %v", statusEntry.NewFilePath())
 				}
 
-				text = fmt.Sprintf("%v%v", prefix, statusEntry.NewFilePath())
-			case SetModified:
-				text = fmt.Sprintf("modified:   %v", statusEntry.NewFilePath())
-			case SetDeleted:
-				text = fmt.Sprintf("deleted:   %v", statusEntry.NewFilePath())
-			case SetRenamed:
-				text = fmt.Sprintf("renamed:   %v -> %v", statusEntry.OldFilePath(), statusEntry.NewFilePath())
-			case SetTypeChange:
-				text = fmt.Sprintf("typechange: %v", statusEntry.NewFilePath())
-			case SetConflicted:
-				text = fmt.Sprintf("both modified:   %v", statusEntry.NewFilePath())
+				renderedStatus = append(renderedStatus, &renderedStatusEntry{
+					entryType:        rsetFile,
+					text:             "\t" + text,
+					filePath:         statusEntry.NewFilePath(),
+					themeComponentID: themeComponentID,
+					statusType:       statusType,
+					StatusEntry:      statusEntry,
+				})
 			}
 
-			renderedStatus = append(renderedStatus, &renderedStatusEntry{
-				entryType:        rsetFile,
-				text:             "\t" + text,
-				filePath:         statusEntry.NewFilePath(),
-				themeComponentID: themeComponentID,
-				statusType:       statusType,
-				StatusEntry:      statusEntry,
-			})
-		}
-
-		if statusTypeIndex != len(statusTypes)-1 {
-			renderedStatus = append(renderedStatus, emptyStatusLine)
+			if statusTypeIndex != len(statusTypes)-1 {
+				renderedStatus = append(renderedStatus, emptyStatusLine)
+			}
 		}
 	}
 
 	gitStatusView.renderedStatus = renderedStatus
+
+	gitStatusView.SelectNearestSelectableRow()
+}
+
+func (gitStatusView *GitStatusView) generateRenderedBranchStatus() (renderedStatus []*renderedStatusEntry) {
+	branchStatus := gitStatusView.generateBranchStatus()
+
+	for _, branchStatusLine := range branchStatus {
+		renderedStatus = append(renderedStatus, &renderedStatusEntry{
+			entryType:        rsetStatusMessage,
+			text:             branchStatusLine,
+			themeComponentID: CmpGitStatusMessage,
+		})
+	}
+
+	return
 }
 
 func (gitStatusView *GitStatusView) rows() uint {
