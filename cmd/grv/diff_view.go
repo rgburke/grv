@@ -197,9 +197,9 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	diffView.lastViewDimension = win.ViewDimensions()
 
 	if diffView.activeDiff == "" {
-		return diffView.renderEmptyView(win, "No diff to display")
+		return diffView.AbstractWindowView.RenderEmptyView(win, "No diff to display")
 	} else if diffView.activeDiff != diffView.lastRequestedDiff {
-		return diffView.renderEmptyView(win, "Loading diff...")
+		return diffView.AbstractWindowView.RenderEmptyView(win, "Loading diff...")
 	}
 
 	rows := win.Rows() - 2
@@ -289,19 +289,6 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 			return
 		}
 	}
-
-	return
-}
-
-func (diffView *DiffView) renderEmptyView(win RenderWindow, msg string) (err error) {
-	viewPos := diffView.activeViewPos
-	startColumn := viewPos.ViewStartColumn()
-
-	if err = win.SetRow(2, startColumn, CmpNone, "   %v", msg); err != nil {
-		return
-	}
-
-	win.DrawBorder()
 
 	return
 }

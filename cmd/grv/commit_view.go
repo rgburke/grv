@@ -139,7 +139,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	commitView.lastViewDimension = win.ViewDimensions()
 
 	if commitView.activeRef == nil {
-		return commitView.renderEmptyView(win, "No commits to display")
+		return commitView.AbstractWindowView.RenderEmptyView(win, "No commits to display")
 	}
 
 	refViewData, ok := commitView.refViewData[commitView.activeRef.Name()]
@@ -187,14 +187,14 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	} else {
 		if commitSetState.loading {
 			commitView.loadingDotCount %= 4
-			err = commitView.renderEmptyView(win, fmt.Sprintf("Fetching commits%v", strings.Repeat(".", int(commitView.loadingDotCount))))
+			err = commitView.AbstractWindowView.RenderEmptyView(win, fmt.Sprintf("Fetching commits%v", strings.Repeat(".", int(commitView.loadingDotCount))))
 
 			if time.Since(commitView.lastDotRenderTime).Seconds() >= (cvLoadRefreshMs / 1000.0) {
 				commitView.lastDotRenderTime = time.Now()
 				commitView.loadingDotCount++
 			}
 		} else {
-			err = commitView.renderEmptyView(win, "No commits to display")
+			err = commitView.AbstractWindowView.RenderEmptyView(win, "No commits to display")
 		}
 
 		if err != nil {
@@ -241,16 +241,6 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	}
 
 	return err
-}
-
-func (commitView *CommitView) renderEmptyView(win RenderWindow, message string) (err error) {
-	if err = win.SetRow(2, 1, CmpNone, "   %v", message); err != nil {
-		return
-	}
-
-	win.DrawBorder()
-
-	return
 }
 
 func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIndex uint, commit *Commit) (err error) {

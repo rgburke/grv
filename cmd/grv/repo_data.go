@@ -1021,11 +1021,7 @@ func (repoData *RepositoryData) Initialise(repoSupplier RepoSupplier) (err error
 	go repoData.processUpdatedRefs()
 	repoData.RegisterRefStateListener(repoData)
 
-	if err = repoData.LoadHead(); err != nil {
-		return
-	}
-
-	return repoData.LoadStatus()
+	return repoData.LoadHead()
 }
 
 // Path returns the file patch location of the repository

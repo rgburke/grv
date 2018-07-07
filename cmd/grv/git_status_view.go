@@ -139,6 +139,9 @@ func NewGitStatusView(repoData RepoData, repoController RepoController, channels
 // Initialise does nothing
 func (gitStatusView *GitStatusView) Initialise() (err error) {
 	log.Debug("Initialising GitStatusView")
+
+	go gitStatusView.repoData.LoadStatus()
+
 	return
 }
 
@@ -155,6 +158,10 @@ func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 	log.Debug("Rendering GitStatusView")
 
 	gitStatusView.lastViewDimension = win.ViewDimensions()
+
+	if gitStatusView.status == nil {
+		return gitStatusView.AbstractWindowView.RenderEmptyView(win, "Loading status...")
+	}
 
 	renderedStatus := gitStatusView.renderedStatus
 	renderedStatusNum := uint(len(renderedStatus))
@@ -318,7 +325,7 @@ func (gitStatusView *GitStatusView) selectEntry(index uint) (err error) {
 
 	gitStatusView.viewPos().SetActiveRowIndex(index)
 
-	if gitStatusView.status.IsEmpty() {
+	if gitStatusView.status == nil || gitStatusView.status.IsEmpty() {
 		return
 	}
 
@@ -455,13 +462,15 @@ func (gitStatusView *GitStatusView) generateRenderedStatus() {
 	renderedStatus := gitStatusView.generateRenderedBranchStatus()
 	status := gitStatusView.status
 
-	if status.IsEmpty() {
+	switch {
+	case status == nil:
+	case status.IsEmpty():
 		renderedStatus = append(renderedStatus, &renderedStatusEntry{
 			entryType:        rsetStatusMessage,
 			text:             "nothing to commit, working tree clean",
 			themeComponentID: CmpGitStatusMessage,
 		})
-	} else {
+	default:
 		renderedStatus = append(renderedStatus, emptyStatusLine)
 		statusTypes := status.StatusTypes()
 
@@ -756,6 +765,11 @@ func (gitStatusView *GitStatusView) processCommitMessageFile(filePath string) (c
 func (gitStatusView *GitStatusView) HandleAction(action Action) (err error) {
 	gitStatusView.lock.Lock()
 	defer gitStatusView.lock.Unlock()
+
+	if gitStatusView.status == nil {
+		log.Debugf("Status not set. Cannot perform any actions yet")
+		return
+	}
 
 	var handled bool
 	if handler, ok := gitStatusView.handlers[action.ActionType]; ok {

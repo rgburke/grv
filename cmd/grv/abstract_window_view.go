@@ -87,6 +87,20 @@ func (abstractWindowView *AbstractWindowView) HandleEvent(event Event) (err erro
 	return
 }
 
+// RenderEmptyView renders an empty view displaying the provided message
+func (abstractWindowView *AbstractWindowView) RenderEmptyView(win RenderWindow, msg string) (err error) {
+	viewPos := abstractWindowView.child.viewPos()
+	startColumn := viewPos.ViewStartColumn()
+
+	if err = win.SetRow(2, startColumn, CmpNone, "   %v", msg); err != nil {
+		return
+	}
+
+	win.DrawBorder()
+
+	return
+}
+
 // HandleAction checks if this action is supported by the AbstractWindowView
 // and if so handles it
 func (abstractWindowView *AbstractWindowView) HandleAction(action Action) (handled bool, err error) {
