@@ -116,6 +116,10 @@ func (commitView *CommitView) Initialise() (err error) {
 func (commitView *CommitView) Dispose() {
 	commitView.lock.Lock()
 
+	if commitView.refreshTask != nil {
+		commitView.refreshTask.stop()
+	}
+
 	close(commitView.commitGraphLoadCh)
 	close(commitView.commitSelectedCh)
 	commitView.commitGraphLoadCh = nil
