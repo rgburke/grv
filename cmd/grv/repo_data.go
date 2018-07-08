@@ -702,14 +702,14 @@ func (commitRefSet *commitRefSet) clear() {
 	commitRefSet.commitRefs = make(map[*Oid]*CommitRefs)
 }
 
-func (commitRefSet *commitRefSet) addTagForCommit(commit *Commit, newTag *Tag) {
+func (commitRefSet *commitRefSet) addTagForCommit(oid *Oid, newTag *Tag) {
 	commitRefSet.lock.Lock()
 	defer commitRefSet.lock.Unlock()
 
-	commitRefs, ok := commitRefSet.commitRefs[commit.oid]
+	commitRefs, ok := commitRefSet.commitRefs[oid]
 	if !ok {
 		commitRefs = &CommitRefs{}
-		commitRefSet.commitRefs[commit.oid] = commitRefs
+		commitRefSet.commitRefs[oid] = commitRefs
 	}
 
 	for _, tag := range commitRefs.tags {
@@ -721,14 +721,14 @@ func (commitRefSet *commitRefSet) addTagForCommit(commit *Commit, newTag *Tag) {
 	commitRefs.tags = append(commitRefs.tags, newTag)
 }
 
-func (commitRefSet *commitRefSet) addBranchForCommit(commit *Commit, newBranch Branch) {
+func (commitRefSet *commitRefSet) addBranchForCommit(oid *Oid, newBranch Branch) {
 	commitRefSet.lock.Lock()
 	defer commitRefSet.lock.Unlock()
 
-	commitRefs, ok := commitRefSet.commitRefs[commit.oid]
+	commitRefs, ok := commitRefSet.commitRefs[oid]
 	if !ok {
 		commitRefs = &CommitRefs{}
-		commitRefSet.commitRefs[commit.oid] = commitRefs
+		commitRefSet.commitRefs[oid] = commitRefs
 	}
 
 	for _, branch := range commitRefs.branches {
@@ -740,13 +740,13 @@ func (commitRefSet *commitRefSet) addBranchForCommit(commit *Commit, newBranch B
 	commitRefs.branches = append(commitRefs.branches, newBranch)
 }
 
-func (commitRefSet *commitRefSet) refsForCommit(commit *Commit) (commitRefsCopy *CommitRefs) {
+func (commitRefSet *commitRefSet) refsForCommit(oid *Oid) (commitRefsCopy *CommitRefs) {
 	commitRefSet.lock.Lock()
 	defer commitRefSet.lock.Unlock()
 
 	commitRefsCopy = &CommitRefs{}
 
-	commitRefs, ok := commitRefSet.commitRefs[commit.oid]
+	commitRefs, ok := commitRefSet.commitRefs[oid]
 	if ok {
 		commitRefsCopy.tags = append([]*Tag(nil), commitRefs.tags...)
 		commitRefsCopy.branches = append([]Branch(nil), commitRefs.branches...)
@@ -1103,17 +1103,11 @@ func (repoData *RepositoryData) mapRefsToCommits(refs []Ref) {
 	commitRefSet.clear()
 
 	for _, ref := range refs {
-		commit, err := repoData.repoDataLoader.Commit(ref.Oid())
-		if err != nil {
-			log.Errorf("Error when loading ref %v:%v - %v", ref.Name(), ref.Oid(), err)
-			continue
-		}
-
 		switch refInstance := ref.(type) {
 		case Branch:
-			commitRefSet.addBranchForCommit(commit, refInstance)
+			commitRefSet.addBranchForCommit(ref.Oid(), refInstance)
 		case *Tag:
-			commitRefSet.addTagForCommit(commit, refInstance)
+			commitRefSet.addTagForCommit(ref.Oid(), refInstance)
 		}
 	}
 
@@ -1199,7 +1193,7 @@ func (repoData *RepositoryData) LocalBranches(remoteBranch *RemoteBranch) []*Loc
 
 // RefsForCommit returns the set of all refs that point to the provided commit
 func (repoData *RepositoryData) RefsForCommit(commit *Commit) *CommitRefs {
-	return repoData.commitRefSet.refsForCommit(commit)
+	return repoData.commitRefSet.refsForCommit(commit.oid)
 }
 
 // CommitSetState returns the current commit set state for the provided oid
