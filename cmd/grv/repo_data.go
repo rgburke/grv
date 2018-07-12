@@ -1071,8 +1071,6 @@ func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 			return
 		}
 
-		repoData.mapRefsToCommits(refs)
-
 		if err = refSet.updateRefs(refs); err != nil {
 			repoData.channels.ReportError(err)
 			return
@@ -1083,8 +1081,6 @@ func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 			return
 		}
 
-		refSet.endRefUpdate()
-
 		log.Debug("Refs loaded")
 
 		if onRefsLoaded != nil {
@@ -1092,6 +1088,11 @@ func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 				repoData.channels.ReportError(err)
 			}
 		}
+
+		repoData.mapRefsToCommits(refs)
+		repoData.channels.UpdateDisplay()
+
+		refSet.endRefUpdate()
 	}()
 }
 
@@ -1107,7 +1108,11 @@ func (repoData *RepositoryData) mapRefsToCommits(refs []Ref) {
 		case Branch:
 			commitRefSet.addBranchForCommit(ref.Oid(), refInstance)
 		case *Tag:
-			commitRefSet.addTagForCommit(ref.Oid(), refInstance)
+			if commit, err := repoData.repoDataLoader.Commit(ref.Oid()); err != nil {
+				log.Errorf("Unable to load commit for tag: %v", ref.Name())
+			} else {
+				commitRefSet.addTagForCommit(commit.oid, refInstance)
+			}
 		}
 	}
 

@@ -956,13 +956,7 @@ func (repoDataLoader *RepoDataLoader) loadTags() (tags []*Tag, err error) {
 		}
 
 		if !ref.IsRemote() && ref.IsTag() {
-			var rawTag *git.Tag
-			if rawTag, err = repoDataLoader.repo.LookupTag(ref.Target()); err != nil {
-				err = fmt.Errorf("Error when loading tags: %v", err)
-				break
-			}
-
-			oid := repoDataLoader.cache.getOid(rawTag.TargetId())
+			oid := repoDataLoader.cache.getOid(ref.Target())
 
 			newTag := &Tag{
 				oid:       oid,
@@ -971,8 +965,6 @@ func (repoDataLoader *RepoDataLoader) loadTags() (tags []*Tag, err error) {
 			}
 
 			tags = append(tags, newTag)
-			rawTag.Free()
-
 			log.Debugf("Loaded tag %v", newTag)
 		}
 	}
