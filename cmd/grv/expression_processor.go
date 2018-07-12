@@ -402,8 +402,7 @@ func (binaryExpression *BinaryExpression) processDateComparison(fieldTypeDescrip
 		return GenerateExpressionError(dateString, "Unable to parse date %v: %v", dateString.value.value, err)
 	}
 
-	dateTime := time.Date(utcDateTime.Year(), utcDateTime.Month(), utcDateTime.Day(), utcDateTime.Hour(),
-		utcDateTime.Minute(), utcDateTime.Second(), utcDateTime.Nanosecond(), time.Local)
+	dateTime := TimeWithLocation(utcDateTime, time.Local)
 
 	*datePtr = &DateLiteral{
 		dateTime:   dateTime,

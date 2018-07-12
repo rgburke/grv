@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 )
 
 func TestMinUInt(t *testing.T) {
@@ -31,7 +32,7 @@ func TestMinUInt(t *testing.T) {
 		actualResult := MinUInt(test.arg1, test.arg2)
 
 		if actualResult != test.expectedResult {
-			t.Errorf("MinUInt return arg does not match expected arg. Expected: %v, Actual: %v", test.expectedResult, actualResult)
+			t.Errorf("MinUInt return arg does not match expected value. Expected: %v, Actual: %v", test.expectedResult, actualResult)
 		}
 	}
 }
@@ -63,7 +64,7 @@ func TestMaxUInt(t *testing.T) {
 		actualResult := MaxUInt(test.arg1, test.arg2)
 
 		if actualResult != test.expectedResult {
-			t.Errorf("MaxUInt return arg does not match expected arg. Expected: %v, Actual: %v", test.expectedResult, actualResult)
+			t.Errorf("MaxUInt return arg does not match expected value. Expected: %v, Actual: %v", test.expectedResult, actualResult)
 		}
 	}
 }
@@ -100,7 +101,7 @@ func TestMinInt(t *testing.T) {
 		actualResult := MinInt(test.arg1, test.arg2)
 
 		if actualResult != test.expectedResult {
-			t.Errorf("MinInt return arg does not match expected arg. Expected: %v, Actual: %v", test.expectedResult, actualResult)
+			t.Errorf("MinInt return arg does not match expected value. Expected: %v, Actual: %v", test.expectedResult, actualResult)
 		}
 	}
 }
@@ -137,7 +138,7 @@ func TestMaxInt(t *testing.T) {
 		actualResult := MaxInt(test.arg1, test.arg2)
 
 		if actualResult != test.expectedResult {
-			t.Errorf("MaxInt return arg does not match expected arg. Expected: %v, Actual: %v", test.expectedResult, actualResult)
+			t.Errorf("MaxInt return arg does not match expected value. Expected: %v, Actual: %v", test.expectedResult, actualResult)
 		}
 	}
 }
@@ -165,7 +166,7 @@ func TestAbs(t *testing.T) {
 		actualResult := Abs(absTest.arg)
 
 		if actualResult != absTest.expectedResult {
-			t.Errorf("Abs return arg does not match expected arg. Expected: %v, Actual: %v", absTest.expectedResult, actualResult)
+			t.Errorf("Abs return arg does not match expected value. Expected: %v, Actual: %v", absTest.expectedResult, actualResult)
 		}
 	}
 }
@@ -261,7 +262,34 @@ func TestNonPrintableCharString(t *testing.T) {
 		actualResult := NonPrintableCharString(printableCharTest.arg)
 
 		if actualResult != printableCharTest.expectedResult {
-			t.Errorf("Abs return arg does not match expected arg. Expected: %v, Actual: %v", printableCharTest.expectedResult, actualResult)
+			t.Errorf("Abs return arg does not match expected value. Expected: %v, Actual: %v", printableCharTest.expectedResult, actualResult)
+		}
+	}
+}
+
+func TestTimeWithLocation(t *testing.T) {
+	var tests = []struct {
+		arg1           time.Time
+		arg2           *time.Location
+		expectedResult time.Time
+	}{
+		{
+			arg1:           time.Date(2018, 07, 12, 20, 25, 45, 0, time.UTC),
+			arg2:           time.FixedZone("TestZone", 3600),
+			expectedResult: time.Date(2018, 07, 12, 20, 25, 45, 0, time.FixedZone("TestZone", 3600)),
+		},
+		{
+			arg1:           time.Date(2018, 07, 12, 20, 25, 45, 0, time.UTC),
+			arg2:           time.UTC,
+			expectedResult: time.Date(2018, 07, 12, 20, 25, 45, 0, time.UTC),
+		},
+	}
+
+	for _, test := range tests {
+		actualResult := TimeWithLocation(test.arg1, test.arg2)
+
+		if !actualResult.Equal(test.expectedResult) {
+			t.Errorf("TimeWithLocation return arg does not match expected value. Expected: %v, Actual: %v", test.expectedResult, actualResult)
 		}
 	}
 }

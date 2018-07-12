@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	rw "github.com/mattn/go-runewidth"
 )
@@ -97,4 +98,17 @@ func CanonicalPath(path string) (canonicalPath string, err error) {
 	}
 
 	return filepath.Abs(canonicalPath)
+}
+
+// TimeWithLocation returns the provided time with the provided location set
+func TimeWithLocation(oldTime time.Time, location *time.Location) time.Time {
+	return time.Date(
+		oldTime.Year(),
+		oldTime.Month(),
+		oldTime.Day(),
+		oldTime.Hour(),
+		oldTime.Minute(),
+		oldTime.Second(),
+		oldTime.Nanosecond(),
+		location)
 }

@@ -33,6 +33,7 @@ const (
 	cfConfirmCheckoutDefaultValue   = true
 	cfPromptHistorySizeDefaultValue = 1000
 	cfGitBinaryFilePathDefaultValue = ""
+	cfCommitLimitDefaultValue       = ""
 
 	cfAllView           = "All"
 	cfMainView          = "MainView"
@@ -73,6 +74,8 @@ const (
 	CfPromptHistorySize ConfigVariable = "prompt-history-size"
 	// CfGitBinaryFilePath stores the file path to the git binary
 	CfGitBinaryFilePath ConfigVariable = "git-binary-file-path"
+	// CfCommitLimit stores the limit on the number of commits to load
+	CfCommitLimit ConfigVariable = "commit-limit"
 )
 
 var systemColorValues = map[string]SystemColorValue{
@@ -347,6 +350,10 @@ func NewConfiguration(keyBindings KeyBindings, channels Channels) *Configuration
 		CfGitBinaryFilePath: {
 			defaultValue: cfGitBinaryFilePathDefaultValue,
 			description:  "File path to git binary. Required only when git binary is not in $PATH",
+		},
+		CfCommitLimit: {
+			defaultValue: cfCommitLimitDefaultValue,
+			description:  "Limit the numer of commits loaded. Allowed values: number, date, oid or tag",
 		},
 	}
 

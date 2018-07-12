@@ -9,8 +9,10 @@ import (
 	"os/exec"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	slice "github.com/bradfitz/slice"
@@ -19,13 +21,29 @@ import (
 
 const (
 	// RdlHeadRef is the HEAD ref name
-	RdlHeadRef          = "HEAD"
-	rdlCommitBufferSize = 100
-	rdlDiffStatsCols    = 80
-	rdlShortOidLen      = 7
+	RdlHeadRef                       = "HEAD"
+	rdlCommitBufferSize              = 100
+	rdlDiffStatsCols                 = 80
+	rdlShortOidLen                   = 7
+	rdlCommitLimitDateFormat         = "2006-01-02"
+	rdlCommitLimitDateTimeFormat     = "2006-01-02 15:04:05"
+	rdlCommitLimitDateTimeZoneFormat = "2006-01-02 15:04:05-0700"
 )
 
 var diffErrorRegex = regexp.MustCompile(`Invalid (regexp|collation character)`)
+
+var noCommitLimit = regexp.MustCompile(`^\s*$`)
+var numericCommitLimit = regexp.MustCompile(`^\d+$`)
+var dateCommitLimit = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+var dateTimeCommitLimit = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}$`)
+var dateTimeZoneCommitLimit = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(\+|-)\d{4}$`)
+var oidCommitLimit = regexp.MustCompile(`^[[:xdigit:]]+$`)
+
+type commitLimitPredicate func(*git.Commit) bool
+
+var noCommitLimitPredicate = func(*git.Commit) bool {
+	return false
+}
 
 type instanceCache struct {
 	oids       map[string]*Oid
@@ -40,6 +58,7 @@ type RepoDataLoader struct {
 	cache              *instanceCache
 	channels           Channels
 	config             Config
+	commitLimitReached commitLimitPredicate
 	diffErrorPresent   bool
 	gitBinaryConfirmed bool
 }
@@ -640,6 +659,133 @@ func (cache *instanceCache) getCachedOid(oidStr string) (oid *Oid, exists bool) 
 	return
 }
 
+func (repoDataLoader *RepoDataLoader) newCommitLimiter(commitLimitString string) (commitLimitReached commitLimitPredicate, err error) {
+	commitLimitReached = noCommitLimitPredicate
+
+	switch {
+	case noCommitLimit.MatchString(commitLimitString):
+	case numericCommitLimit.MatchString(commitLimitString):
+		var limit int
+		if limit, err = strconv.Atoi(commitLimitString); err != nil {
+			err = fmt.Errorf("Unable to parse commit limit: %v", commitLimitString)
+			return
+		}
+
+		commitCount := 0
+		commitLimitReached = func(*git.Commit) bool {
+			if commitCount >= limit {
+				return true
+			}
+
+			commitCount++
+			return false
+		}
+	case dateCommitLimit.MatchString(commitLimitString):
+		if commitLimitReached, err = generateDateCommitLimitTester(commitLimitString, rdlCommitLimitDateFormat, false); err != nil {
+			err = fmt.Errorf("Failed to parse commit limit date string: %v", err)
+			return
+		}
+	case dateTimeCommitLimit.MatchString(commitLimitString):
+		if commitLimitReached, err = generateDateCommitLimitTester(commitLimitString, rdlCommitLimitDateTimeFormat, false); err != nil {
+			err = fmt.Errorf("Failed to parse commit limit date-time string: %v", err)
+			return
+		}
+	case dateTimeZoneCommitLimit.MatchString(commitLimitString):
+		if commitLimitReached, err = generateDateCommitLimitTester(commitLimitString, rdlCommitLimitDateTimeZoneFormat, true); err != nil {
+			err = fmt.Errorf("Failed to parse commit limit date-time string: %v", err)
+			return
+		}
+	case oidCommitLimit.MatchString(commitLimitString):
+		var object *git.Object
+		if object, err = repoDataLoader.repo.RevparseSingle(commitLimitString); err != nil {
+			err = fmt.Errorf("Invalid oid for commit limit: %v", err)
+			return
+		}
+		defer object.Free()
+
+		if object.Type() != git.ObjectCommit {
+			err = fmt.Errorf("Oid for commit limit does not reference commit: %v", commitLimitString)
+			return
+		}
+
+		oid := object.Id().String()
+
+		commitSeen := false
+		commitLimitReached = func(commit *git.Commit) bool {
+			if commitSeen {
+				return true
+			}
+
+			commitSeen = commit.Id().String() == oid
+
+			return false
+		}
+	default:
+		var object *git.Object
+		if object, err = repoDataLoader.repo.RevparseSingle(commitLimitString); err != nil {
+			err = fmt.Errorf("Invalid tag for commit limit: %v", err)
+			return
+		}
+		defer object.Free()
+
+		if object.Type() != git.ObjectTag {
+			err = fmt.Errorf("Oid for commit limit does not reference tag: %v", commitLimitString)
+			return
+		}
+
+		var tag *git.Tag
+		if tag, err = object.AsTag(); err != nil {
+			err = fmt.Errorf("Unable to load tag with name %v for commit limit: %v", commitLimitString, err)
+			return
+		}
+
+		if tag.TargetType() != git.ObjectCommit {
+			err = fmt.Errorf("Tag for commit limit does not reference commit: %v", commitLimitString)
+			return
+		}
+
+		var commit *git.Commit
+		if commit, err = tag.Target().AsCommit(); err != nil {
+			err = fmt.Errorf("Unable to load commit for commit limit tag %v: %v", commitLimitString, err)
+			return
+		}
+
+		oid := commit.Id().String()
+
+		commitSeen := false
+		commitLimitReached = func(commit *git.Commit) bool {
+			if commitSeen {
+				return true
+			}
+
+			commitSeen = commit.Id().String() == oid
+
+			return false
+		}
+	}
+
+	return
+}
+
+func generateDateCommitLimitTester(dateString string, dateFormat string, timeZone bool) (commitLimitReached commitLimitPredicate, err error) {
+	commitLimitReached = noCommitLimitPredicate
+
+	dateTime, err := time.Parse(dateFormat, dateString)
+	if err != nil {
+		return
+	}
+
+	if !timeZone {
+		dateTime = TimeWithLocation(dateTime, time.Local)
+	}
+
+	commitLimitReached = func(commit *git.Commit) bool {
+		return commit.Author().When.Before(dateTime)
+	}
+
+	return
+}
+
 // NewRepoDataLoader creates a new instance
 func NewRepoDataLoader(channels Channels, config Config) *RepoDataLoader {
 	return &RepoDataLoader{
@@ -792,21 +938,40 @@ func (repoDataLoader *RepoDataLoader) loadTags() (tags []*Tag, err error) {
 	}
 	defer refIter.Free()
 
+	var ref *git.Reference
+
 	for {
-		ref, err := refIter.Next()
-		if err != nil || repoDataLoader.channels.Exit() {
+		if repoDataLoader.channels.Exit() {
+			break
+		}
+
+		if ref, err = refIter.Next(); err != nil {
+			if gitError, isGitError := err.(*git.GitError); !isGitError || gitError.Code != git.ErrIterOver {
+				err = fmt.Errorf("Error when loading tags: %v", err)
+			} else {
+				err = nil
+			}
+
 			break
 		}
 
 		if !ref.IsRemote() && ref.IsTag() {
-			oid := repoDataLoader.cache.getOid(ref.Target())
+			var rawTag *git.Tag
+			if rawTag, err = repoDataLoader.repo.LookupTag(ref.Target()); err != nil {
+				err = fmt.Errorf("Error when loading tags: %v", err)
+				break
+			}
+
+			oid := repoDataLoader.cache.getOid(rawTag.TargetId())
 
 			newTag := &Tag{
 				oid:       oid,
 				name:      ref.Name(),
 				shorthand: ref.Shorthand(),
 			}
+
 			tags = append(tags, newTag)
+			rawTag.Free()
 
 			log.Debugf("Loaded tag %v", newTag)
 		}
@@ -849,6 +1014,12 @@ func (repoDataLoader *RepoDataLoader) CommitRange(commitRange string) (<-chan *C
 
 func (repoDataLoader *RepoDataLoader) loadCommits(revWalk *git.RevWalk) <-chan *Commit {
 	commitCh := make(chan *Commit, rdlCommitBufferSize)
+	commitLimit := repoDataLoader.config.GetString(CfCommitLimit)
+
+	commitLimitReached, err := repoDataLoader.newCommitLimiter(commitLimit)
+	if err != nil {
+		repoDataLoader.channels.ReportError(err)
+	}
 
 	go func() {
 		defer close(commitCh)
@@ -858,6 +1029,9 @@ func (repoDataLoader *RepoDataLoader) loadCommits(revWalk *git.RevWalk) <-chan *
 
 		if err := revWalk.Iterate(func(commit *git.Commit) bool {
 			if repoDataLoader.channels.Exit() {
+				return false
+			} else if commitLimitReached(commit) {
+				repoDataLoader.channels.ReportStatus("Commit limit reached")
 				return false
 			}
 
