@@ -4,9 +4,6 @@ os:
   - linux
   - osx
 
-git:
-  submodules: false
-
 addons:
   apt:
     packages:
@@ -14,6 +11,8 @@ addons:
       - libncursesw5-dev
       - libreadline-dev
       - libgit2-dev
+      - libgpm-dev
 
 script:
-  - make test
+  - make test && make clean &&
+    if [ "$TRAVIS_OS_NAME" = 'linux' ]; then make static; fi
