@@ -73,7 +73,7 @@ doc: $(BINARY)
 	@GRV_GENERATE_DOCUMENTATION=1 ./$(BINARY)
 
 .PHONY: update-latest-github-release
-update-latest-github-release: $(BINARY)
+update-latest-github-release:
 	$(GOCMD) get github.com/google/go-github/github
 	$(GOCMD) get golang.org/x/oauth2
 	$(GOCMD) run util/update_latest_release.go
