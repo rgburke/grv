@@ -72,6 +72,12 @@ test: $(BINARY) doc update-test
 doc: $(BINARY)
 	@GRV_GENERATE_DOCUMENTATION=1 ./$(BINARY)
 
+.PHONY: update-latest-github-release
+update-latest-github-release: $(BINARY)
+	$(GOCMD) get github.com/google/go-github/github
+	$(GOCMD) get golang.org/x/oauth2
+	$(GOCMD) run util/update_latest_release.go
+
 .PHONY: clean
 clean:
 	rm -f $(BINARY)

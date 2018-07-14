@@ -16,3 +16,6 @@ addons:
 script:
   - make test && make clean &&
     if [ "$TRAVIS_OS_NAME" = 'linux' ]; then make static; fi
+
+after_success:
+  - if [ "$TRAVIS_OS_NAME" = 'linux' ] && [ "$TRAVIS_BRANCH" = 'master' ]; then make update-latest-github-release; fi
