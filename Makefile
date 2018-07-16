@@ -1,4 +1,4 @@
-GRV_VERSION=$(shell git describe --long --tags --dirty --always 2>/dev/null || echo 'Unknown')
+GRV_VERSION=$(shell git describe --long --tags --dirty --always --match=v*.*.* 2>/dev/null || echo 'Unknown')
 GRV_BUILD_DATETIME=$(shell date '+%Y-%m-%d %H:%M:%S %Z')
 
 GOCMD=go
