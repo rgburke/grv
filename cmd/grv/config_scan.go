@@ -19,6 +19,7 @@ const (
 	CtkOption
 	CtkWhiteSpace
 	CtkComment
+	CtkShellCommand
 	CtkTerminator
 	CtkEOF
 )
@@ -160,6 +161,12 @@ func (scanner *ConfigScanner) Scan() (token *ConfigToken, err error) {
 		}
 
 		token, err = scanner.scanComment()
+	case char == '!':
+		if err = scanner.unread(); err != nil {
+			break
+		}
+
+		token, err = scanner.scanShellCommand()
 	case char == '-':
 		var nextBytes []byte
 		nextBytes, err = scanner.reader.Peek(1)
@@ -268,6 +275,14 @@ OuterLoop:
 }
 
 func (scanner *ConfigScanner) scanComment() (token *ConfigToken, err error) {
+	return scanner.scanToEndOfLine(CtkComment)
+}
+
+func (scanner *ConfigScanner) scanShellCommand() (token *ConfigToken, err error) {
+	return scanner.scanToEndOfLine(CtkShellCommand)
+}
+
+func (scanner *ConfigScanner) scanToEndOfLine(tokenType ConfigTokenType) (token *ConfigToken, err error) {
 	var buffer bytes.Buffer
 	var char rune
 	var eof bool
@@ -295,7 +310,7 @@ OuterLoop:
 	}
 
 	token = &ConfigToken{
-		tokenType: CtkComment,
+		tokenType: tokenType,
 		value:     buffer.String(),
 		endPos:    scanner.pos,
 	}

@@ -87,6 +87,21 @@ func TestScanSingleConfigToken(t *testing.T) {
 			},
 		},
 		{
+			input: "!git status",
+			expectedToken: ConfigToken{
+				tokenType: CtkShellCommand,
+				value:     "!git status",
+				startPos: ConfigScannerPos{
+					line: 1,
+					col:  1,
+				},
+				endPos: ConfigScannerPos{
+					line: 1,
+					col:  11,
+				},
+			},
+		},
+		{
 			input: "\n",
 			expectedToken: ConfigToken{
 				tokenType: CtkTerminator,
@@ -791,6 +806,119 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 					endPos: ConfigScannerPos{
 						line: 3,
 						col:  22,
+					},
+				},
+			},
+		},
+		{
+			input: "map All a !git add \"$FILE\"\n#EOF",
+			expectedTokens: []ConfigToken{
+				{
+					tokenType: CtkWord,
+					value:     "map",
+					startPos: ConfigScannerPos{
+						line: 1,
+						col:  1,
+					},
+					endPos: ConfigScannerPos{
+						line: 1,
+						col:  3,
+					},
+				},
+				{
+					tokenType: CtkWhiteSpace,
+					value:     " ",
+					startPos: ConfigScannerPos{
+						line: 1,
+						col:  4,
+					},
+					endPos: ConfigScannerPos{
+						line: 1,
+						col:  4,
+					},
+				},
+				{
+					tokenType: CtkWord,
+					value:     "All",
+					startPos: ConfigScannerPos{
+						line: 1,
+						col:  5,
+					},
+					endPos: ConfigScannerPos{
+						line: 1,
+						col:  7,
+					},
+				},
+				{
+					tokenType: CtkWhiteSpace,
+					value:     " ",
+					startPos: ConfigScannerPos{
+						line: 1,
+						col:  8,
+					},
+					endPos: ConfigScannerPos{
+						line: 1,
+						col:  8,
+					},
+				},
+				{
+					tokenType: CtkWord,
+					value:     "a",
+					startPos: ConfigScannerPos{
+						line: 1,
+						col:  9,
+					},
+					endPos: ConfigScannerPos{
+						line: 1,
+						col:  9,
+					},
+				},
+				{
+					tokenType: CtkWhiteSpace,
+					value:     " ",
+					startPos: ConfigScannerPos{
+						line: 1,
+						col:  10,
+					},
+					endPos: ConfigScannerPos{
+						line: 1,
+						col:  10,
+					},
+				},
+				{
+					tokenType: CtkShellCommand,
+					value:     "!git add \"$FILE\"",
+					startPos: ConfigScannerPos{
+						line: 1,
+						col:  11,
+					},
+					endPos: ConfigScannerPos{
+						line: 1,
+						col:  26,
+					},
+				},
+				{
+					tokenType: CtkTerminator,
+					value:     "\n",
+					startPos: ConfigScannerPos{
+						line: 1,
+						col:  27,
+					},
+					endPos: ConfigScannerPos{
+						line: 1,
+						col:  27,
+					},
+				},
+				{
+					tokenType: CtkComment,
+					value:     "#EOF",
+					startPos: ConfigScannerPos{
+						line: 2,
+						col:  1,
+					},
+					endPos: ConfigScannerPos{
+						line: 2,
+						col:  4,
 					},
 				},
 			},
