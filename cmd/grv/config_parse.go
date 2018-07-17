@@ -117,6 +117,13 @@ type HelpCommand struct{}
 
 func (helpCommand *HelpCommand) configCommand() {}
 
+// ShellCommand represents a shell command
+type ShellCommand struct {
+	command *ConfigToken
+}
+
+func (shellCommand *ShellCommand) configCommand() {}
+
 type commandHelpGenerator func(config Config) []*HelpSection
 
 type commandDescriptor struct {
@@ -261,6 +268,8 @@ func (parser *ConfigParser) Parse() (command ConfigCommand, eof bool, err error)
 		switch token.tokenType {
 		case CtkWord:
 			command, eof, err = parser.parseCommand(token)
+		case CtkShellCommand:
+			command = parser.shellCommand(token)
 		case CtkTerminator:
 			continue
 		case CtkEOF:
@@ -405,6 +414,12 @@ OuterLoop:
 
 	command, err = commandDescriptor.constructor(parser, commandToken, tokens)
 	return
+}
+
+func (parser *ConfigParser) shellCommand(commandToken *ConfigToken) *ShellCommand {
+	return &ShellCommand{
+		command: commandToken,
+	}
 }
 
 func setCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {

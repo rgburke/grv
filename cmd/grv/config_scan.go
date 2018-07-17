@@ -25,13 +25,14 @@ const (
 )
 
 var configTokenNames = map[ConfigTokenType]string{
-	CtkInvalid:    "Invalid",
-	CtkWord:       "Word",
-	CtkOption:     "Option",
-	CtkWhiteSpace: "White Space",
-	CtkComment:    "Comment",
-	CtkTerminator: "Terminator",
-	CtkEOF:        "EOF",
+	CtkInvalid:      "Invalid",
+	CtkWord:         "Word",
+	CtkOption:       "Option",
+	CtkWhiteSpace:   "White Space",
+	CtkComment:      "Comment",
+	CtkShellCommand: "Shell Command",
+	CtkTerminator:   "Terminator",
+	CtkEOF:          "EOF",
 }
 
 // ConfigScannerPos represents a position in the config scanner input stream

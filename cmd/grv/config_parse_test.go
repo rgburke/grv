@@ -237,6 +237,23 @@ func (helpCommandValues *HelpCommandValues) Equal(command ConfigCommand) bool {
 	return ok
 }
 
+type ShellCommandValues struct {
+	command string
+}
+
+func (shellCommandValues *ShellCommandValues) Equal(command ConfigCommand) bool {
+	if command == nil {
+		return false
+	}
+
+	other, ok := command.(*ShellCommand)
+	if !ok {
+		return false
+	}
+
+	return shellCommandValues.command == other.command.value
+}
+
 func TestParseSingleCommand(t *testing.T) {
 	var singleCommandTests = []struct {
 		input           string
@@ -335,6 +352,12 @@ func TestParseSingleCommand(t *testing.T) {
 		{
 			input:           "help",
 			expectedCommand: &HelpCommandValues{},
+		},
+		{
+			input: "!git add -A",
+			expectedCommand: &ShellCommandValues{
+				command: "!git add -A",
+			},
 		},
 	}
 
