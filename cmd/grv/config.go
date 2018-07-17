@@ -483,9 +483,11 @@ func (config *Configuration) processCommand(command ConfigCommand, inputSource s
 	case *SplitViewCommand:
 		err = config.processSplitViewCommand(command, inputSource)
 	case *GitCommand:
-		err = config.processGitCommand(command, inputSource)
+		config.processGitCommand(command)
 	case *HelpCommand:
 		config.processHelpCommand()
+	case *ShellCommand:
+		err = config.processShellCommand(command, inputSource)
 	default:
 		log.Errorf("Unknown command type %T", command)
 	}
@@ -751,7 +753,7 @@ func (config *Configuration) processSplitViewCommand(splitViewCommand *SplitView
 	return
 }
 
-func (config *Configuration) processGitCommand(gitCommand *GitCommand, inputSource string) (err error) {
+func (config *Configuration) processGitCommand(gitCommand *GitCommand) {
 	var buffer bytes.Buffer
 
 	buffer.WriteString("git ")
@@ -764,7 +766,29 @@ func (config *Configuration) processGitCommand(gitCommand *GitCommand, inputSour
 	buffer.Truncate(buffer.Len() - 1)
 	command := buffer.String()
 
-	if gitCommand.interactive {
+	config.runCommand(command, gitCommand.interactive)
+}
+
+func (config *Configuration) processShellCommand(shellCommand *ShellCommand, inputSource string) (err error) {
+	command := strings.TrimSpace(shellCommand.command.value)
+	commandLength := len([]rune(command))
+
+	if commandLength < 1 || command[0] != '!' {
+		return generateConfigError(inputSource, shellCommand.command, "Expected command token with preceeding !")
+	} else if commandLength == 1 {
+		log.Debugf("Empty command, not running")
+		return
+	}
+
+	command = command[1:]
+
+	config.runCommand(command, false)
+
+	return
+}
+
+func (config *Configuration) runCommand(command string, interactive bool) {
+	if interactive {
 		config.channels.DoAction(Action{ActionType: ActionRunCommand, Args: []interface{}{
 			ActionRunCommandArgs{
 				command:        command,
@@ -800,8 +824,6 @@ func (config *Configuration) processGitCommand(gitCommand *GitCommand, inputSour
 			},
 		}})
 	}
-
-	return
 }
 
 func (config *Configuration) runNonInteractiveCommand(command string, commandOutputProcessor CommandOutputProcessor) {
