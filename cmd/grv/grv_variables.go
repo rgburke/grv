@@ -1,5 +1,9 @@
 package main
 
+import (
+	"sync"
+)
+
 // GRVVariable contains the state of a GRV property
 type GRVVariable int
 
@@ -14,7 +18,7 @@ const (
 	VarLineNumer
 	VarLineCount
 	VarRepoPath
-	VarRepoWorkTree
+	VarRepoWorkDir
 
 	VarCount
 )
@@ -76,40 +80,43 @@ var variableDescriptors = []variableDescriptor{
 		description: "Repository file path",
 	},
 	{
-		variable:    VarRepoWorkTree,
-		name:        "repo-worktree",
-		description: "Work tree file path",
+		variable:    VarRepoWorkDir,
+		name:        "repo-workdir",
+		description: "Work directory path",
 	},
 }
 
 var activeViewOnlyVariables = map[GRVVariable]bool{}
-var variableNameMap = map[string]*variableDescriptor{}
+var variableNameDescriptorMap = map[string]*variableDescriptor{}
+var variableNameMap = map[GRVVariable]*variableDescriptor{}
 
 func init() {
 	for _, variableDescriptor := range variableDescriptors {
 		activeViewOnlyVariables[variableDescriptor.variable] = variableDescriptor.activeViewOnly
-		variableNameMap[variableDescriptor.name] = &variableDescriptor
+		variableNameDescriptorMap[variableDescriptor.name] = &variableDescriptor
+		variableNameMap[variableDescriptor.variable] = &variableDescriptor
 	}
 }
 
-// GRVVariableSetterClient sets the value of a GRV variable
-type GRVVariableSetterClient interface {
-	SetVariable(GRVVariable, string)
+// GRVVariableName returns the name of the provided variable
+func GRVVariableName(variable GRVVariable) string {
+	return variableNameMap[variable].name
 }
 
-// GRVVariableSetter creates a view client
+// GRVVariableSetter sets the value of a GRV variable
 type GRVVariableSetter interface {
-	GRVVariableSetterClient
-	ViewClient(isActiveView bool) GRVVariableSetterClient
+	SetViewVariable(variable GRVVariable, value string, isActiveView bool)
+	VariableValues() map[GRVVariable]string
 }
 
 // GRVVariables stores the values of all variables
 type GRVVariables struct {
 	values map[GRVVariable]string
+	lock   sync.Mutex
 }
 
 // NewGRVVariables creates a new instance
-func NewGRVVariables() GRVVariableSetter {
+func NewGRVVariables() *GRVVariables {
 	return &GRVVariables{
 		values: make(map[GRVVariable]string),
 	}
@@ -117,32 +124,29 @@ func NewGRVVariables() GRVVariableSetter {
 
 // SetVariable sets the value of a GRV variable
 func (grvVariables *GRVVariables) SetVariable(variable GRVVariable, value string) {
+	grvVariables.lock.Lock()
+	defer grvVariables.lock.Unlock()
+
 	grvVariables.values[variable] = value
 }
 
-// ViewClient creates a view client
-func (grvVariables *GRVVariables) ViewClient(isActive bool) GRVVariableSetterClient {
-	return newGRVVariablesWindowClient(grvVariables, isActive)
-}
-
-type grvVariablesClient struct {
-	variables *GRVVariables
-	isActive  bool
-}
-
-func newGRVVariablesWindowClient(variables *GRVVariables, isActive bool) *grvVariablesClient {
-	return &grvVariablesClient{
-		variables: variables,
-		isActive:  isActive,
+// SetViewVariable sets the value of a GRV variable for a view
+func (grvVariables *GRVVariables) SetViewVariable(variable GRVVariable, value string, isActiveView bool) {
+	if !activeViewOnlyVariables[variable] || isActiveView {
+		grvVariables.SetVariable(variable, value)
 	}
 }
 
-// SetVariable sets the value of a GRV variable
-// Values may not be set for variables valid only for the active view
-func (client *grvVariablesClient) SetVariable(variable GRVVariable, value string) {
-	if activeViewOnlyVariables[variable] && !client.isActive {
-		return
+// VariableValues returns the current values of all variables
+func (grvVariables *GRVVariables) VariableValues() map[GRVVariable]string {
+	grvVariables.lock.Lock()
+	defer grvVariables.lock.Unlock()
+
+	values := map[GRVVariable]string{}
+
+	for variable, value := range grvVariables.values {
+		values[variable] = value
 	}
 
-	client.variables.SetVariable(variable, value)
+	return values
 }

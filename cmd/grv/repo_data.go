@@ -987,11 +987,12 @@ type RepositoryData struct {
 	refCommitSets  *refCommitSets
 	statusManager  *statusManager
 	refUpdateCh    chan *UpdatedRef
+	variables      *GRVVariables
 	waitGroup      sync.WaitGroup
 }
 
 // NewRepositoryData creates a new instance
-func NewRepositoryData(repoDataLoader *RepoDataLoader, channels Channels) *RepositoryData {
+func NewRepositoryData(repoDataLoader *RepoDataLoader, channels Channels, variables *GRVVariables) *RepositoryData {
 	repoData := &RepositoryData{
 		channels:       channels,
 		repoDataLoader: repoDataLoader,
@@ -999,6 +1000,7 @@ func NewRepositoryData(repoDataLoader *RepoDataLoader, channels Channels) *Repos
 		refCommitSets:  newRefCommitSets(channels),
 		statusManager:  newStatusManager(repoDataLoader),
 		refUpdateCh:    make(chan *UpdatedRef, updatedRefChannelSize),
+		variables:      variables,
 	}
 
 	repoData.refSet = newRefSet(repoData)
@@ -1016,6 +1018,9 @@ func (repoData *RepositoryData) Free() {
 // Initialise performs setup to allow loading data from the repository
 func (repoData *RepositoryData) Initialise(repoSupplier RepoSupplier) (err error) {
 	repoData.repoDataLoader.Initialise(repoSupplier)
+
+	repoData.variables.SetVariable(VarRepoPath, repoData.Path())
+	repoData.variables.SetVariable(VarRepoWorkDir, repoData.Workdir())
 
 	repoData.waitGroup.Add(1)
 	go repoData.processUpdatedRefs()
@@ -1047,6 +1052,12 @@ func (repoData *RepositoryData) LoadHead() (err error) {
 	}
 
 	repoData.refSet.updateHead(head)
+
+	if _, isDetached := head.(*HEAD); isDetached {
+		repoData.variables.SetVariable(VarHead, head.Oid().String())
+	} else {
+		repoData.variables.SetVariable(VarHead, head.Name())
+	}
 
 	return
 }

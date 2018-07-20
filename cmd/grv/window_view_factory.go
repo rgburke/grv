@@ -14,17 +14,19 @@ type WindowViewFactory struct {
 	repoController RepoController
 	channels       Channels
 	config         Config
+	variables      GRVVariableSetter
 }
 
 var hexRegexp = regexp.MustCompile(`^[[:xdigit:]]+$`)
 
 // NewWindowViewFactory creates a new instance
-func NewWindowViewFactory(repoData RepoData, repoController RepoController, channels Channels, config Config) *WindowViewFactory {
+func NewWindowViewFactory(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter) *WindowViewFactory {
 	return &WindowViewFactory{
 		repoData:       repoData,
 		repoController: repoController,
 		channels:       channels,
 		config:         config,
+		variables:      variables,
 	}
 }
 
@@ -62,7 +64,8 @@ func (windowViewFactory *WindowViewFactory) createCommitView(args []interface{})
 		return
 	}
 
-	commitView = NewCommitView(windowViewFactory.repoData, windowViewFactory.repoController, windowViewFactory.channels, windowViewFactory.config)
+	commitView = NewCommitView(windowViewFactory.repoData, windowViewFactory.repoController, windowViewFactory.channels,
+		windowViewFactory.config, windowViewFactory.variables)
 
 	log.Info("Created CommitView instance")
 

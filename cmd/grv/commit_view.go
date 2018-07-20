@@ -64,12 +64,13 @@ type CommitView struct {
 	lastDotRenderTime      time.Time
 	commitGraphLoadCh      chan commitGraphLoadRequest
 	commitSelectedCh       chan *Commit
+	variables              GRVVariableSetter
 	waitGroup              sync.WaitGroup
 	lock                   sync.Mutex
 }
 
 // NewCommitView creates a new instance of the commit view
-func NewCommitView(repoData RepoData, repoController RepoController, channels Channels, config Config) *CommitView {
+func NewCommitView(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter) *CommitView {
 	commitView := &CommitView{
 		channels:          channels,
 		repoData:          repoData,
@@ -79,6 +80,7 @@ func NewCommitView(repoData RepoData, repoController RepoController, channels Ch
 		commitSelectedCh:  make(chan *Commit, cvCommitSelectedChannelSize),
 		refViewData:       make(map[string]*referenceViewData),
 		lastDotRenderTime: time.Now(),
+		variables:         variables,
 		handlers: map[ActionType]commitViewHandler{
 			ActionAddFilter:               addCommitFilter,
 			ActionRemoveFilter:            removeCommitFilter,
@@ -522,6 +524,8 @@ func (commitView *CommitView) notifyCommitViewListeners(commit *Commit) {
 	if commitView.commitSelectedCh != nil {
 		commitView.commitSelectedCh <- commit
 	}
+
+	commitView.variables.SetViewVariable(VarCommit, commit.oid.String(), commitView.active)
 }
 
 func (commitView *CommitView) processSelectedCommits() {

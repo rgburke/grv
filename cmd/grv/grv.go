@@ -97,6 +97,7 @@ type GRV struct {
 	inputBuffer     *InputBuffer
 	input           *InputKeyMapper
 	eventListeners  []EventListener
+	variables       *GRVVariables
 }
 
 // UpdateDisplay sends a request to update the display
@@ -175,9 +176,10 @@ func NewGRV(readOnly bool) *GRV {
 	channels := grvChannels.Channels()
 	keyBindings := NewKeyBindingManager()
 	config := NewConfiguration(keyBindings, channels)
+	variables := NewGRVVariables()
 
 	repoDataLoader := NewRepoDataLoader(channels, config)
-	repoData := NewRepositoryData(repoDataLoader, channels)
+	repoData := NewRepositoryData(repoDataLoader, channels, variables)
 
 	var repoController RepoController
 	if readOnly {
@@ -188,7 +190,7 @@ func NewGRV(readOnly bool) *GRV {
 	}
 
 	ui := NewNCursesDisplay(channels, config)
-	view := NewView(repoData, repoController, channels, config)
+	view := NewView(repoData, repoController, channels, config, variables)
 
 	return &GRV{
 		repoInitialiser: NewRepositoryInitialiser(),
@@ -201,6 +203,7 @@ func NewGRV(readOnly bool) *GRV {
 		inputBuffer:     NewInputBuffer(keyBindings),
 		input:           NewInputKeyMapper(ui),
 		eventListeners:  []EventListener{view, repoData},
+		variables:       variables,
 	}
 }
 
