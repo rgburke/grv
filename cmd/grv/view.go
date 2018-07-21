@@ -34,6 +34,7 @@ const (
 	ViewCommandOutput
 	ViewMessageBox
 	ViewHelp
+	ViewGRVVariable
 
 	ViewCount // i.e. Number of views
 )

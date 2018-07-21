@@ -91,10 +91,10 @@ var variableNameDescriptorMap = map[string]*variableDescriptor{}
 var variableNameMap = map[GRVVariable]*variableDescriptor{}
 
 func init() {
-	for _, variableDescriptor := range variableDescriptors {
+	for index, variableDescriptor := range variableDescriptors {
 		activeViewOnlyVariables[variableDescriptor.variable] = variableDescriptor.activeViewOnly
-		variableNameDescriptorMap[variableDescriptor.name] = &variableDescriptor
-		variableNameMap[variableDescriptor.variable] = &variableDescriptor
+		variableNameDescriptorMap[variableDescriptor.name] = &variableDescriptors[index]
+		variableNameMap[variableDescriptor.variable] = &variableDescriptors[index]
 	}
 }
 

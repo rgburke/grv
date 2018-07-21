@@ -483,6 +483,11 @@ ErrorView.Errors
 ErrorView.Footer
 ErrorView.Title
 
+GRVStatusView.Footer
+GRVStatusView.Title
+GRVStatusView.Value
+GRVStatusView.Variable
+
 GitStatusView.ConflictedFile
 GitStatusView.ConflictedTitle
 GitStatusView.Message

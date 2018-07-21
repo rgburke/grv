@@ -361,6 +361,22 @@ func NewClassicTheme() MutableTheme {
 				fgcolor: NewSystemColor(ColorNone),
 				style:   ThemeStyle{styleTypes: TstUnderline | TstBold | TstReverse},
 			},
+			CmpGRVVariableViewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpGRVVariableViewVariable: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorMagenta),
+			},
+			CmpGRVVariableViewValue: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorYellow),
+			},
+			CmpGRVVariableViewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
 		},
 	}
 }
@@ -725,6 +741,22 @@ func NewColdTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 				style:   ThemeStyle{styleTypes: TstUnderline | TstBold | TstReverse},
+			},
+			CmpGRVVariableViewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpGRVVariableViewVariable: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorMagenta),
+			},
+			CmpGRVVariableViewValue: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorNone),
+			},
+			CmpGRVVariableViewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
 			},
 		},
 	}
@@ -1110,6 +1142,22 @@ func NewSolarizedTheme() MutableTheme {
 				bgcolor: NewColorNumber(solarizedBlack),
 				fgcolor: NewColorNumber(solarizedWhite),
 				style:   ThemeStyle{styleTypes: TstUnderline | TstBold | TstReverse},
+			},
+			CmpGRVVariableViewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedCyan),
+			},
+			CmpGRVVariableViewVariable: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedMagenta),
+			},
+			CmpGRVVariableViewValue: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedYellow),
+			},
+			CmpGRVVariableViewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedCyan),
 			},
 		},
 	}

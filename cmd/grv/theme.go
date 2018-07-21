@@ -109,6 +109,11 @@ const (
 	CmpMessageBoxContent
 	CmpMessageBoxSelectedButton
 
+	CmpGRVVariableViewTitle
+	CmpGRVVariableViewVariable
+	CmpGRVVariableViewValue
+	CmpGRVVariableViewFooter
+
 	CmpCount
 )
 
