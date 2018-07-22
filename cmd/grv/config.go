@@ -214,10 +214,10 @@ var themeComponents = map[string]ThemeComponentID{
 	cfMessageBoxView + ".Content":        CmpMessageBoxContent,
 	cfMessageBoxView + ".SelectedButton": CmpMessageBoxSelectedButton,
 
-	cfGRVStatusView + ".Title":    CmpGRVVariableViewTitle,
-	cfGRVStatusView + ".Variable": CmpGRVVariableViewVariable,
-	cfGRVStatusView + ".Value":    CmpGRVVariableViewValue,
-	cfGRVStatusView + ".Footer":   CmpGRVVariableViewFooter,
+	cfGRVVariableView + ".Title":    CmpGRVVariableViewTitle,
+	cfGRVVariableView + ".Variable": CmpGRVVariableViewVariable,
+	cfGRVVariableView + ".Value":    CmpGRVVariableViewValue,
+	cfGRVVariableView + ".Footer":   CmpGRVVariableViewFooter,
 }
 
 var colorNumberPattern = regexp.MustCompile(`[0-9]{1,3}`)
