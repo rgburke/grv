@@ -173,6 +173,7 @@ type RefView struct {
 	lastViewDimension ViewDimension
 	handlers          map[ActionType]refViewHandler
 	viewSearch        *ViewSearch
+	variables         GRVVariableSetter
 	lock              sync.Mutex
 }
 
@@ -182,12 +183,13 @@ type RefListener interface {
 }
 
 // NewRefView creates a new instance
-func NewRefView(repoData RepoData, repoController RepoController, channels Channels, config Config) *RefView {
+func NewRefView(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter) *RefView {
 	refView := &RefView{
 		channels:       channels,
 		repoData:       repoData,
 		repoController: repoController,
 		config:         config,
+		variables:      variables,
 		activeViewPos:  NewViewPosition(),
 		renderedRefs:   newRenderedRefList(),
 		refLists: []*refList{
@@ -254,6 +256,7 @@ func (refView *RefView) Initialise() (err error) {
 		}
 
 		refView.activeViewPos.SetActiveRowIndex(activeRowIndex)
+		refView.setVariables()
 		refView.channels.UpdateDisplay()
 
 		refView.repoData.RegisterRefStateListener(refView)
@@ -527,6 +530,7 @@ func (refView *RefView) generateRenderedRefs() {
 	}
 
 	refView.channels.ReportError(refView.SelectNearestSelectableRow())
+	refView.setVariables()
 }
 
 func generateBranches(refView *RefView, refList *refList, renderedRefs renderedRefSet) {
@@ -719,6 +723,7 @@ func (refView *RefView) viewDimension() ViewDimension {
 }
 
 func (refView *RefView) onRowSelected(rowIndex uint) (err error) {
+	refView.setVariables()
 	return
 }
 
@@ -731,6 +736,29 @@ func (refView *RefView) isSelectableRow(rowIndex uint) (isSelectable bool) {
 	renderedRef := renderedRefs[rowIndex]
 
 	return renderedRef.isSelectable()
+}
+
+func (refView *RefView) setVariables() {
+	selectedRefIndex := refView.viewPos().ActiveRowIndex()
+	var branch, tag string
+
+	if selectedRefIndex < refView.rows() {
+		renderedRefs := refView.renderedRefs.RenderedRefs()
+		renderedRef := renderedRefs[selectedRefIndex]
+
+		if renderedRef.renderedRefType == RvLocalBranch || renderedRef.renderedRefType == RvRemoteBranch {
+			branch = renderedRef.ref.Name()
+		} else if renderedRef.renderedRefType == RvTag {
+			tag = renderedRef.ref.Name()
+		} else if renderedRef.renderedRefType == RvHead {
+			if _, isDetached := renderedRef.ref.(*HEAD); !isDetached {
+				branch = renderedRef.ref.Name()
+			}
+		}
+	}
+
+	refView.variables.SetViewVariable(VarBranch, branch, refView.active)
+	refView.variables.SetViewVariable(VarTag, tag, refView.active)
 }
 
 // HandleEvent reacts to an event

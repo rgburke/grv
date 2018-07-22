@@ -57,7 +57,8 @@ func (windowViewFactory *WindowViewFactory) CreateWindowViewWithArgs(viewID View
 
 func (windowViewFactory *WindowViewFactory) createRefView() *RefView {
 	log.Info("Created RefView instance")
-	return NewRefView(windowViewFactory.repoData, windowViewFactory.repoController, windowViewFactory.channels, windowViewFactory.config)
+	return NewRefView(windowViewFactory.repoData, windowViewFactory.repoController, windowViewFactory.channels,
+		windowViewFactory.config, windowViewFactory.variables)
 }
 
 func (windowViewFactory *WindowViewFactory) createCommitView(args []interface{}) (commitView *CommitView, err error) {
