@@ -757,8 +757,10 @@ func (refView *RefView) setVariables() {
 		}
 	}
 
-	refView.variables.SetViewVariable(VarBranch, branch, refView.active)
-	refView.variables.SetViewVariable(VarTag, tag, refView.active)
+	if branch != "" || tag != "" {
+		refView.variables.SetViewVariable(VarBranch, branch, refView.active)
+		refView.variables.SetViewVariable(VarTag, tag, refView.active)
+	}
 }
 
 // HandleEvent reacts to an event
