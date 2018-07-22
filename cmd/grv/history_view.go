@@ -8,7 +8,7 @@ const (
 func NewHistoryView(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter) *ContainerView {
 	refView := NewRefView(repoData, repoController, channels, config, variables)
 	commitView := NewCommitView(repoData, repoController, channels, config, variables)
-	diffView := NewDiffView(repoData, channels, config)
+	diffView := NewDiffView(repoData, channels, config, variables)
 
 	refView.RegisterRefListener(commitView)
 	commitView.RegisterCommitViewListener(diffView)

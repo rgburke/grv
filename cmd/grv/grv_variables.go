@@ -64,7 +64,7 @@ var variableDescriptors = []variableDescriptor{
 	},
 	{
 		variable:       VarLineNumer,
-		name:           "line-numer",
+		name:           "line-number",
 		description:    "Selected line number",
 		activeViewOnly: true,
 	},

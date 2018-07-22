@@ -86,7 +86,7 @@ func (windowViewFactory *WindowViewFactory) createDiffView(args []interface{}) (
 		return
 	}
 
-	diffView = NewDiffView(windowViewFactory.repoData, windowViewFactory.channels, windowViewFactory.config)
+	diffView = NewDiffView(windowViewFactory.repoData, windowViewFactory.channels, windowViewFactory.config, windowViewFactory.variables)
 
 	log.Info("Created DiffView instance")
 

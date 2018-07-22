@@ -140,12 +140,13 @@ type DiffView struct {
 	active            bool
 	viewSearch        *ViewSearch
 	diffLoadRequestCh chan diffLoadRequest
+	variables         GRVVariableSetter
 	waitGroup         sync.WaitGroup
 	lock              sync.Mutex
 }
 
 // NewDiffView creates a new diff view instance
-func NewDiffView(repoData RepoData, channels Channels, config Config) *DiffView {
+func NewDiffView(repoData RepoData, channels Channels, config Config, variables GRVVariableSetter) *DiffView {
 	diffView := &DiffView{
 		repoData:          repoData,
 		channels:          channels,
@@ -153,6 +154,7 @@ func NewDiffView(repoData RepoData, channels Channels, config Config) *DiffView 
 		activeViewPos:     NewViewPosition(),
 		diffs:             make(map[diffID]*diffLines),
 		diffLoadRequestCh: make(chan diffLoadRequest, dvDiffLoadRequestChannelSize),
+		variables:         variables,
 		handlers: map[ActionType]diffViewHandler{
 			ActionSelect: selectDiffLine,
 		},
@@ -237,14 +239,10 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 				AppendWithStyle(CmpDiffviewDifflineHunkHeader, "%v", lineParts[2])
 
 		} else if diffLine.lineType == dltDiffStatsFile {
-			sepIndex := strings.LastIndex(diffLine.line, "|")
-
-			if sepIndex == -1 || sepIndex >= len(diffLine.line)-1 {
-				return fmt.Errorf("Unable to display diff stats file line: %v", diffLine.line)
+			var filePart, changePart string
+			if filePart, changePart, err = diffView.splitDiffStatsFileLine(diffLine); err != nil {
+				return
 			}
-
-			filePart := diffLine.line[0:sepIndex]
-			changePart := diffLine.line[sepIndex+1:]
 
 			var lineBuilder *LineBuilder
 			if lineBuilder, err = win.LineBuilder(rowIndex+1, startColumn); err != nil {
@@ -348,6 +346,7 @@ func (diffView *DiffView) OnCommitSelected(commit *Commit) (err error) {
 	if diffLines, ok := diffView.diffs[diffID]; ok {
 		diffView.activeDiff = diffID
 		diffView.activeViewPos = diffLines.viewPos
+		diffView.setVariables()
 		diffView.channels.UpdateDisplay()
 		diffView.lock.Unlock()
 		return
@@ -522,6 +521,7 @@ func (diffView *DiffView) storeDiff(diffID diffID, lines []*diffLineData) {
 
 	diffView.activeDiff = diffID
 	diffView.activeViewPos = diffLines.viewPos
+	diffView.setVariables()
 
 	return
 }
@@ -711,6 +711,53 @@ func (diffView *DiffView) viewDimension() ViewDimension {
 }
 
 func (diffView *DiffView) onRowSelected(rowIndex uint) (err error) {
+	diffView.setVariables()
+	return
+}
+
+func (diffView *DiffView) setVariables() {
+	rowIndex := diffView.viewPos().ActiveRowIndex()
+	if rowIndex >= diffView.rows() {
+		return
+	}
+
+	diffLines, ok := diffView.diffs[diffView.activeDiff]
+	if !ok {
+		return
+	}
+
+	diffLine := diffLines.lines[rowIndex]
+
+	if diffLine.lineType == dltDiffStatsFile {
+		filePart, _, err := diffView.splitDiffStatsFileLine(diffLine)
+		if err != nil {
+			log.Errorf("Unable to set variables for diff view: %v", err)
+			return
+		}
+
+		filePart = strings.TrimRight(filePart, " ")
+		diffView.variables.SetViewVariable(VarFile, filePart, diffView.active)
+	}
+
+	return
+}
+
+func (diffView *DiffView) splitDiffStatsFileLine(diffLine *diffLineData) (filePart, changePart string, err error) {
+	if diffLine.lineType != dltDiffStatsFile {
+		err = fmt.Errorf("Expected line of type %v but found line of type %v", dltDiffStatsFile, diffLine.lineType)
+		return
+	}
+
+	sepIndex := strings.LastIndex(diffLine.line, "|")
+
+	if sepIndex == -1 || sepIndex >= len(diffLine.line)-1 {
+		err = fmt.Errorf("Unable to determine file path from line: %v", diffLine.line)
+		return
+	}
+
+	filePart = diffLine.line[0:sepIndex]
+	changePart = diffLine.line[sepIndex+1:]
+
 	return
 }
 
@@ -727,13 +774,12 @@ func selectDiffLine(diffView *DiffView, action Action) (err error) {
 		return
 	}
 
-	sepIndex := strings.LastIndex(diffLine.line, "|")
-
-	if sepIndex == -1 || sepIndex >= len(diffLine.line)-1 {
-		return fmt.Errorf("Unable to determine file path from line: %v", diffLine.line)
+	filePart, _, err := diffView.splitDiffStatsFileLine(diffLine)
+	if err != nil {
+		return
 	}
 
-	filePart := strings.TrimRight(diffLine.line[0:sepIndex], " ")
+	filePart = strings.TrimRight(filePart, " ")
 	pattern := fmt.Sprintf("diff --git a/%v b/%v", filePart, filePart)
 
 	for lineIndex++; lineIndex < uint(len(diffLines.lines)); lineIndex++ {
