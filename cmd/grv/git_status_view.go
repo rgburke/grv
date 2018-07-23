@@ -108,11 +108,12 @@ type GitStatusView struct {
 	lastViewDimension      ViewDimension
 	viewSearch             *ViewSearch
 	lastModify             time.Time
+	variables              GRVVariableSetter
 	lock                   sync.Mutex
 }
 
 // NewGitStatusView created a new GitStatusView
-func NewGitStatusView(repoData RepoData, repoController RepoController, channels Channels, config Config) *GitStatusView {
+func NewGitStatusView(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter) *GitStatusView {
 	gitStatusView := &GitStatusView{
 		repoData:       repoData,
 		repoController: repoController,
@@ -120,6 +121,7 @@ func NewGitStatusView(repoData RepoData, repoController RepoController, channels
 		config:         config,
 		activeViewPos:  NewViewPosition(),
 		lastModify:     time.Now(),
+		variables:      variables,
 		handlers: map[ActionType]gitStatusViewHandler{
 			ActionSelect:      selectGitStatusEntry,
 			ActionStageFile:   stageFile,
@@ -340,6 +342,8 @@ func (gitStatusView *GitStatusView) selectEntry(index uint) (err error) {
 		}
 	}
 
+	gitStatusView.setVariables()
+
 	return
 }
 
@@ -523,6 +527,7 @@ func (gitStatusView *GitStatusView) generateRenderedStatus() {
 	gitStatusView.renderedStatus = renderedStatus
 
 	gitStatusView.SelectNearestSelectableRow()
+	gitStatusView.setVariables()
 }
 
 func (gitStatusView *GitStatusView) generateRenderedBranchStatus() (renderedStatus []*renderedStatusEntry) {
@@ -537,6 +542,17 @@ func (gitStatusView *GitStatusView) generateRenderedBranchStatus() (renderedStat
 	}
 
 	return
+}
+
+func (gitStatusView *GitStatusView) setVariables() {
+	rowIndex := gitStatusView.viewPos().ActiveRowIndex()
+
+	if !gitStatusView.isFileEntry(rowIndex) {
+		return
+	}
+
+	filePath := gitStatusView.renderedStatus[rowIndex].filePath
+	gitStatusView.variables.SetViewVariable(VarFile, filePath, gitStatusView.active)
 }
 
 func (gitStatusView *GitStatusView) rows() uint {

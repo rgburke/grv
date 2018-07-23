@@ -104,7 +104,8 @@ func (windowViewFactory *WindowViewFactory) createDiffView(args []interface{}) (
 }
 
 func (windowViewFactory *WindowViewFactory) createGitStatusView() *GitStatusView {
-	gitStatusView := NewGitStatusView(windowViewFactory.repoData, windowViewFactory.repoController, windowViewFactory.channels, windowViewFactory.config)
+	gitStatusView := NewGitStatusView(windowViewFactory.repoData, windowViewFactory.repoController, windowViewFactory.channels,
+		windowViewFactory.config, windowViewFactory.variables)
 
 	status := windowViewFactory.repoData.Status()
 	gitStatusView.OnStatusChanged(status)
