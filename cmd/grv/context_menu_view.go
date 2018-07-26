@@ -37,7 +37,7 @@ type ContextMenuView struct {
 }
 
 // NewContextMenuView creates a new instance
-func NewContextMenuView(contextMenuConfig ContextMenuConfig, channels Channels, config Config) *ContextMenuView {
+func NewContextMenuView(contextMenuConfig ContextMenuConfig, channels Channels, config Config, variables GRVVariableSetter) *ContextMenuView {
 	contextMenuView := &ContextMenuView{
 		contextMenuConfig: contextMenuConfig,
 		activeViewPos:     NewViewPosition(),
@@ -46,7 +46,7 @@ func NewContextMenuView(contextMenuConfig ContextMenuConfig, channels Channels, 
 		},
 	}
 
-	contextMenuView.AbstractWindowView = NewAbstractWindowView(contextMenuView, channels, config, "menu item")
+	contextMenuView.AbstractWindowView = NewAbstractWindowView(contextMenuView, channels, config, variables, &contextMenuView.lock, "menu item")
 
 	return contextMenuView
 }
@@ -127,6 +127,14 @@ func (contextMenuView *ContextMenuView) viewDimension() ViewDimension {
 }
 
 func (contextMenuView *ContextMenuView) onRowSelected(rowIndex uint) (err error) {
+	return
+}
+
+func (contextMenuView *ContextMenuView) line(lineIndex uint) (line string) {
+	if lineIndex < contextMenuView.rows() {
+		line = contextMenuView.contextMenuConfig.Entries[lineIndex].DisplayName
+	}
+
 	return
 }
 

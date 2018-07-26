@@ -55,7 +55,7 @@ type MessageBoxView struct {
 }
 
 // NewMessageBoxView creates a new instance
-func NewMessageBoxView(messageBoxConfig MessageBoxConfig, channels Channels, config Config) *MessageBoxView {
+func NewMessageBoxView(messageBoxConfig MessageBoxConfig, channels Channels, config Config, variables GRVVariableSetter) *MessageBoxView {
 	messageBoxView := &MessageBoxView{
 		messageBoxConfig: messageBoxConfig,
 		activeViewPos:    NewViewPosition(),
@@ -66,7 +66,7 @@ func NewMessageBoxView(messageBoxConfig MessageBoxConfig, channels Channels, con
 		},
 	}
 
-	messageBoxView.AbstractWindowView = NewAbstractWindowView(messageBoxView, channels, config, "message box row")
+	messageBoxView.AbstractWindowView = NewAbstractWindowView(messageBoxView, channels, config, variables, &messageBoxView.lock, "message box row")
 
 	return messageBoxView
 }
@@ -212,6 +212,10 @@ func (messageBoxView *MessageBoxView) onRowSelected(rowIndex uint) (err error) {
 
 func (messageBoxView *MessageBoxView) buttons() uint {
 	return uint(len(messageBoxView.messageBoxConfig.Buttons))
+}
+
+func (messageBoxView *MessageBoxView) line(lineIndex uint) (line string) {
+	return
 }
 
 // ViewDimension calculates the view dimensions required to display

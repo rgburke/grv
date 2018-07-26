@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -142,6 +143,11 @@ func (childWindowView *MockChildWindowView) onRowSelected(rowIndex uint) error {
 	return args.Error(0)
 }
 
+func (childWindowView *MockChildWindowView) line(lineIndex uint) string {
+	args := childWindowView.Called(lineIndex)
+	return args.String(0)
+}
+
 type MockChannels struct {
 	mock.Mock
 }
@@ -223,32 +229,69 @@ func (config *MockConfig) GenerateHelpSections() []*HelpSection {
 	return args.Get(0).([]*HelpSection)
 }
 
+type MockGRVVariableSetter struct {
+	mock.Mock
+}
+
+func (variables *MockGRVVariableSetter) SetViewVariable(variable GRVVariable, value string, isActiveView bool) {
+	variables.Called(variable, value, isActiveView)
+}
+
+func (variables *MockGRVVariableSetter) VariableValues() map[GRVVariable]string {
+	args := variables.Called()
+	return args.Get(0).(map[GRVVariable]string)
+}
+
+type MockLock struct {
+	mock.Mock
+}
+
+func (lock *MockLock) Lock() {
+	lock.Called()
+}
+
+func (lock *MockLock) Unlock() {
+	lock.Called()
+}
+
 type abstractWindowViewMocks struct {
-	viewPos  *MockViewPos
-	child    *MockChildWindowView
-	channels *MockChannels
-	config   *MockConfig
+	viewPos   *MockViewPos
+	child     *MockChildWindowView
+	channels  *MockChannels
+	config    *MockConfig
+	variables *MockGRVVariableSetter
+	lock      *MockLock
 }
 
 func setupAbstractWindowView() (*AbstractWindowView, *abstractWindowViewMocks) {
 	mocks := &abstractWindowViewMocks{
-		viewPos:  &MockViewPos{},
-		child:    &MockChildWindowView{},
-		channels: &MockChannels{},
-		config:   &MockConfig{},
+		viewPos:   &MockViewPos{},
+		child:     &MockChildWindowView{},
+		channels:  &MockChannels{},
+		config:    &MockConfig{},
+		variables: &MockGRVVariableSetter{},
+		lock:      &MockLock{},
 	}
 
 	mocks.child.On("viewPos").Return(mocks.viewPos)
 	mocks.child.On("onRowSelected", uint(0)).Return(nil)
 	mocks.child.On("viewDimension").Return(ViewDimension{rows: 24, cols: 80})
 	mocks.child.On("rows").Return(uint(24))
+	mocks.child.On("line", uint(0)).Return("")
+
 	mocks.viewPos.On("ActiveRowIndex").Return(uint(0))
 	mocks.viewPos.On("ViewStartRowIndex").Return(uint(0))
 	mocks.viewPos.On("ViewStartColumn").Return(uint(1))
+
 	mocks.channels.On("UpdateDisplay").Return()
+
 	mocks.config.On("GetInt", CfMouseScrollRows).Return(3)
 
-	return NewAbstractWindowView(mocks.child, mocks.channels, mocks.config, "test line"), mocks
+	mocks.variables.On("SetViewVariable", VarLineNumer, "1", false)
+	mocks.variables.On("SetViewVariable", VarLineCount, "24", false)
+	mocks.variables.On("SetViewVariable", VarLineText, "", false)
+
+	return NewAbstractWindowView(mocks.child, mocks.channels, mocks.config, mocks.variables, mocks.lock, "test line"), mocks
 }
 
 func assertChildViewAndDisplayUpdated(t *testing.T, mocks *abstractWindowViewMocks) {
@@ -297,6 +340,8 @@ func TestErrorByActionHandlerIsReturned(t *testing.T) {
 	mocks.viewPos.On("MoveLineUp").Return(true)
 	mocks.child = &MockChildWindowView{}
 	mocks.child.On("viewPos").Return(mocks.viewPos)
+	mocks.child.On("rows").Return(uint(24))
+	mocks.child.On("line", uint(0)).Return("")
 	abstractWindowView.child = mocks.child
 	mocks.child.On("onRowSelected", uint(0)).Return(errTest)
 
@@ -734,4 +779,49 @@ func TestActionMouseScrollUpIsHandledAndUpdatesResultWhenScrollUpReturnsTrue(t *
 
 	mocks.viewPos.AssertCalled(t, "ScrollUp", uint(22), uint(3))
 	assertChildViewAndDisplayUpdated(t, mocks)
+}
+
+func TestOnActiveChangeSetsActiveAndCallsSetVariablesWhenTrue(t *testing.T) {
+	abstractWindowView, mocks := setupAbstractWindowView()
+
+	mocks.lock.On("Lock").Return()
+	mocks.lock.On("Unlock").Return()
+	mocks.variables.On("SetViewVariable", VarLineNumer, "1", true).Return()
+	mocks.variables.On("SetViewVariable", VarLineCount, "24", true).Return()
+	mocks.variables.On("SetViewVariable", VarLineText, "", true).Return()
+
+	abstractWindowView.OnActiveChange(true)
+
+	assert.Equal(t, abstractWindowView.active, true, "active should be true")
+}
+
+func TestOnActiveChangeSetsActiveAndDoesNotCallSetVariablesWhenFalse(t *testing.T) {
+	abstractWindowView, mocks := setupAbstractWindowView()
+
+	mocks.lock.On("Lock").Return()
+	mocks.lock.On("Unlock").Return()
+
+	abstractWindowView.OnActiveChange(false)
+
+	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineNumer, "1", true)
+	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineCount, "24", true)
+	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineText, "", true)
+
+	assert.Equal(t, abstractWindowView.active, false, "active should be true")
+}
+
+func WhenNotifyChildRowSelectedIsCalledThenSetVariablesIsAsWell(t *testing.T) {
+	abstractWindowView, mocks := setupAbstractWindowView()
+	errTest := errors.New("Test error")
+
+	mocks.child.On("line", uint(5)).Return("Line Text")
+	mocks.child.On("onRowSelected", uint(5)).Return(errTest)
+
+	resultError := abstractWindowView.notifyChildRowSelected(5)
+
+	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineNumer, "6", true)
+	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineCount, "24", true)
+	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineText, "Line Text", true)
+
+	assert.Equal(t, resultError, errTest)
 }

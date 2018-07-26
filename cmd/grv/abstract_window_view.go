@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -11,6 +13,13 @@ type ChildWindowView interface {
 	rows() uint
 	viewDimension() ViewDimension
 	onRowSelected(rowIndex uint) error
+	line(rowIndex uint) string
+}
+
+// Lock represents a lock that can be locked and unlocked
+type Lock interface {
+	Lock()
+	Unlock()
 }
 
 type abstractWindowViewHandler func(*AbstractWindowView, Action) error
@@ -20,17 +29,22 @@ type AbstractWindowView struct {
 	child         ChildWindowView
 	channels      Channels
 	config        Config
+	variables     GRVVariableSetter
+	active        bool
 	borderWidth   uint
 	rowDescriptor string
 	handlers      map[ActionType]abstractWindowViewHandler
+	lock          Lock
 }
 
 // NewAbstractWindowView create a new instance
-func NewAbstractWindowView(child ChildWindowView, channels Channels, config Config, rowDescriptor string) *AbstractWindowView {
+func NewAbstractWindowView(child ChildWindowView, channels Channels, config Config, variables GRVVariableSetter, lock Lock, rowDescriptor string) *AbstractWindowView {
 	return &AbstractWindowView{
 		child:         child,
 		channels:      channels,
 		config:        config,
+		variables:     variables,
+		lock:          lock,
 		borderWidth:   2,
 		rowDescriptor: rowDescriptor,
 		handlers: map[ActionType]abstractWindowViewHandler{
@@ -79,7 +93,26 @@ func (abstractWindowView *AbstractWindowView) RenderHelpBar(lineBuilder *LineBui
 
 // OnActiveChange does nothing
 func (abstractWindowView *AbstractWindowView) OnActiveChange(active bool) {
+	abstractWindowView.lock.Lock()
+	defer abstractWindowView.lock.Unlock()
 
+	abstractWindowView.active = active
+
+	if active {
+		abstractWindowView.setVariables()
+	}
+}
+
+func (abstractWindowView *AbstractWindowView) setVariables() {
+	rowIndex := abstractWindowView.child.viewPos().ActiveRowIndex()
+	rows := abstractWindowView.child.rows()
+	active := abstractWindowView.active
+
+	abstractWindowView.variables.SetViewVariable(VarLineNumer, fmt.Sprintf("%v", rowIndex+1), active)
+	abstractWindowView.variables.SetViewVariable(VarLineCount, fmt.Sprintf("%v", rows), active)
+
+	line := abstractWindowView.child.line(rowIndex)
+	abstractWindowView.variables.SetViewVariable(VarLineText, line, active)
 }
 
 // HandleEvent does nothing
@@ -87,8 +120,7 @@ func (abstractWindowView *AbstractWindowView) HandleEvent(event Event) (err erro
 	return
 }
 
-// RenderEmptyView renders an empty view displaying the provided message
-func (abstractWindowView *AbstractWindowView) RenderEmptyView(win RenderWindow, msg string) (err error) {
+func (abstractWindowView *AbstractWindowView) renderEmptyView(win RenderWindow, msg string) (err error) {
 	viewPos := abstractWindowView.child.viewPos()
 	startColumn := viewPos.ViewStartColumn()
 
@@ -97,6 +129,13 @@ func (abstractWindowView *AbstractWindowView) RenderEmptyView(win RenderWindow, 
 	}
 
 	win.DrawBorder()
+
+	return
+}
+
+func (abstractWindowView *AbstractWindowView) notifyChildRowSelected(rowIndex uint) (err error) {
+	err = abstractWindowView.child.onRowSelected(rowIndex)
+	abstractWindowView.setVariables()
 
 	return
 }
@@ -127,7 +166,7 @@ func moveUpRow(abstractWindowView *AbstractWindowView, action Action) (err error
 
 	if viewPos.MoveLineUp() {
 		log.Debugf("Moving cursor up one %v", abstractWindowView.rowDescriptor)
-		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
+		err = abstractWindowView.notifyChildRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -140,7 +179,7 @@ func moveDownRow(abstractWindowView *AbstractWindowView, action Action) (err err
 
 	if viewPos.MoveLineDown(rows) {
 		log.Debugf("Moving cursor down one %v", abstractWindowView.rowDescriptor)
-		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
+		err = abstractWindowView.notifyChildRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -152,7 +191,7 @@ func moveUpPage(abstractWindowView *AbstractWindowView, action Action) (err erro
 
 	if viewPos.MovePageUp(abstractWindowView.child.viewDimension().rows - abstractWindowView.borderWidth) {
 		log.Debugf("Moving cursor up one page of %vs", abstractWindowView.rowDescriptor)
-		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
+		err = abstractWindowView.notifyChildRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -165,7 +204,7 @@ func moveDownPage(abstractWindowView *AbstractWindowView, action Action) (err er
 
 	if viewPos.MovePageDown(abstractWindowView.child.viewDimension().rows-abstractWindowView.borderWidth, rows) {
 		log.Debugf("Moving cursor down one page of %vs", abstractWindowView.rowDescriptor)
-		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
+		err = abstractWindowView.notifyChildRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -177,7 +216,7 @@ func moveUpHalfPage(abstractWindowView *AbstractWindowView, action Action) (err 
 
 	if viewPos.MovePageUp(abstractWindowView.child.viewDimension().rows/2 - abstractWindowView.borderWidth) {
 		log.Debugf("Moving cursor up half page of %vs", abstractWindowView.rowDescriptor)
-		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
+		err = abstractWindowView.notifyChildRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -190,7 +229,7 @@ func moveDownHalfPage(abstractWindowView *AbstractWindowView, action Action) (er
 
 	if viewPos.MovePageDown(abstractWindowView.child.viewDimension().rows/2-abstractWindowView.borderWidth, rows) {
 		log.Debugf("Moving cursor down half page of %vs", abstractWindowView.rowDescriptor)
-		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
+		err = abstractWindowView.notifyChildRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -222,7 +261,7 @@ func moveToFirstRow(abstractWindowView *AbstractWindowView, action Action) (err 
 
 	if viewPos.MoveToFirstLine() {
 		log.Debugf("Moving cursor to first %v", abstractWindowView.rowDescriptor)
-		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
+		err = abstractWindowView.notifyChildRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -235,7 +274,7 @@ func moveToLastRow(abstractWindowView *AbstractWindowView, action Action) (err e
 
 	if viewPos.MoveToLastLine(rows) {
 		log.Debugf("Moving cursor to last %v", abstractWindowView.rowDescriptor)
-		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
+		err = abstractWindowView.notifyChildRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -280,7 +319,7 @@ func moveCursorTopOfView(abstractWindowView *AbstractWindowView, action Action) 
 
 	if viewPos.MoveCursorTopPage() {
 		log.Debugf("Moving cursor to %v at top of view", abstractWindowView.rowDescriptor)
-		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
+		err = abstractWindowView.notifyChildRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -293,7 +332,7 @@ func moveCursorMiddleOfView(abstractWindowView *AbstractWindowView, action Actio
 
 	if viewPos.MoveCursorMiddlePage(abstractWindowView.child.viewDimension().rows-abstractWindowView.borderWidth, rows) {
 		log.Debugf("Moving cursor to %v in middle of view", abstractWindowView.rowDescriptor)
-		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
+		err = abstractWindowView.notifyChildRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -306,7 +345,7 @@ func moveCursorBottomOfView(abstractWindowView *AbstractWindowView, action Actio
 
 	if viewPos.MoveCursorBottomPage(abstractWindowView.child.viewDimension().rows-abstractWindowView.borderWidth, rows) {
 		log.Debugf("Moving cursor to %v at bottom of view", abstractWindowView.rowDescriptor)
-		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
+		err = abstractWindowView.notifyChildRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -333,7 +372,7 @@ func mouseSelectRow(abstractWindowView *AbstractWindowView, action Action) (err 
 	log.Debugf("Mouse selected %v at index: %v", abstractWindowView.rowDescriptor, selectedIndex)
 	viewPos.SetActiveRowIndex(selectedIndex)
 
-	err = abstractWindowView.child.onRowSelected(selectedIndex)
+	err = abstractWindowView.notifyChildRowSelected(selectedIndex)
 	abstractWindowView.channels.UpdateDisplay()
 
 	return
@@ -347,7 +386,7 @@ func mouseScrollDown(abstractWindowView *AbstractWindowView, action Action) (err
 
 	if viewPos.ScrollDown(rows, pageRows, scrollRows) {
 		log.Debugf("Mouse scrolled down %v %vs", scrollRows, abstractWindowView.rowDescriptor)
-		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
+		err = abstractWindowView.notifyChildRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 
@@ -361,7 +400,7 @@ func mouseScrollUp(abstractWindowView *AbstractWindowView, action Action) (err e
 
 	if viewPos.ScrollUp(pageRows, scrollRows) {
 		log.Debugf("Mouse scrolled up %v %vs", scrollRows, abstractWindowView.rowDescriptor)
-		err = abstractWindowView.child.onRowSelected(viewPos.ActiveRowIndex())
+		err = abstractWindowView.notifyChildRowSelected(viewPos.ActiveRowIndex())
 		abstractWindowView.channels.UpdateDisplay()
 	}
 

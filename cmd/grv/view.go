@@ -134,6 +134,7 @@ type View struct {
 	grvStatusView     WindowViewCollection
 	channels          Channels
 	config            Config
+	variables         GRVVariableSetter
 	promptActive      bool
 	errorView         *ErrorView
 	errorViewWin      *Window
@@ -154,6 +155,7 @@ func NewView(repoData RepoData, repoController RepoController, channels Channels
 		},
 		channels:          channels,
 		config:            config,
+		variables:         variables,
 		windowViewFactory: NewWindowViewFactory(repoData, repoController, channels, config, variables),
 	}
 
@@ -827,7 +829,7 @@ func (view *View) createContextMenuView(action Action) (err error) {
 
 	view.addPopupView(&fixedSizePopupView{
 		abstractPopupView: &abstractPopupView{
-			view: NewContextMenuView(arg.config, view.channels, view.config),
+			view: NewContextMenuView(arg.config, view.channels, view.config, view.variables),
 			win:  NewWindow(fmt.Sprintf("popupView-%v", len(view.popupViews)), view.config),
 		},
 		viewDimension: arg.viewDimension,
@@ -848,7 +850,7 @@ func (view *View) createCommandOutputView(action Action) (err error) {
 		return fmt.Errorf("Expected ActionCreateCommandOutputViewArgs argument but got %T", action.Args[0])
 	}
 
-	commandOutputView := NewCommandOutputView(arg.command, view.channels, view.config)
+	commandOutputView := NewCommandOutputView(arg.command, view.channels, view.config, view.variables)
 
 	view.addPopupView(&fixedSizePopupView{
 		abstractPopupView: &abstractPopupView{
@@ -877,7 +879,7 @@ func (view *View) createMessageBoxView(action Action) (err error) {
 		return fmt.Errorf("Expected ActionCreateMessageBoxViewArgs argument but got %T", action.Args[0])
 	}
 
-	messageBoxView := NewMessageBoxView(arg.config, view.channels, view.config)
+	messageBoxView := NewMessageBoxView(arg.config, view.channels, view.config, view.variables)
 
 	view.addPopupView(&dynamicSizePopupView{
 		abstractPopupView: &abstractPopupView{
@@ -947,7 +949,7 @@ func (view *View) showHelpView() (err error) {
 		}
 	}
 
-	helpView := NewHelpView(view.channels, view.config)
+	helpView := NewHelpView(view.channels, view.config, view.variables)
 	if err = helpView.Initialise(); err != nil {
 		return
 	}

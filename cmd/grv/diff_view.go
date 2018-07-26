@@ -137,7 +137,6 @@ type DiffView struct {
 	activeViewPos     ViewPos
 	lastViewDimension ViewDimension
 	handlers          map[ActionType]diffViewHandler
-	active            bool
 	viewSearch        *ViewSearch
 	diffLoadRequestCh chan diffLoadRequest
 	variables         GRVVariableSetter
@@ -160,7 +159,7 @@ func NewDiffView(repoData RepoData, channels Channels, config Config, variables 
 		},
 	}
 
-	diffView.AbstractWindowView = NewAbstractWindowView(diffView, channels, config, "diff line")
+	diffView.AbstractWindowView = NewAbstractWindowView(diffView, channels, config, variables, &diffView.lock, "diff line")
 	diffView.viewSearch = NewViewSearch(diffView, channels)
 
 	return diffView
@@ -199,9 +198,9 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	diffView.lastViewDimension = win.ViewDimensions()
 
 	if diffView.activeDiff == "" {
-		return diffView.AbstractWindowView.RenderEmptyView(win, "No diff to display")
+		return diffView.AbstractWindowView.renderEmptyView(win, "No diff to display")
 	} else if diffView.activeDiff != diffView.lastRequestedDiff {
-		return diffView.AbstractWindowView.RenderEmptyView(win, "Loading diff...")
+		return diffView.AbstractWindowView.renderEmptyView(win, "Loading diff...")
 	}
 
 	rows := win.Rows() - 2
@@ -318,15 +317,6 @@ func (diffView *DiffView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	}
 
 	return
-}
-
-// OnActiveChange sets whether the diff view is the active view or not
-func (diffView *DiffView) OnActiveChange(active bool) {
-	log.Debugf("DiffView active: %v", active)
-	diffView.lock.Lock()
-	defer diffView.lock.Unlock()
-
-	diffView.active = active
 }
 
 // ViewID returns the diff views ID
@@ -671,6 +661,10 @@ func (diffView *DiffView) Line(lineIndex uint) (line string) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
+	return diffView.line(lineIndex)
+}
+
+func (diffView *DiffView) line(lineIndex uint) (line string) {
 	diffLines, ok := diffView.diffs[diffView.activeDiff]
 	if !ok {
 		return
@@ -716,6 +710,8 @@ func (diffView *DiffView) onRowSelected(rowIndex uint) (err error) {
 }
 
 func (diffView *DiffView) setVariables() {
+	diffView.AbstractWindowView.setVariables()
+
 	rowIndex := diffView.viewPos().ActiveRowIndex()
 	if rowIndex >= diffView.rows() {
 		return

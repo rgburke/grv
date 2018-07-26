@@ -19,10 +19,10 @@ type SelectableRowView struct {
 }
 
 // NewSelectableRowView creates a new instance
-func NewSelectableRowView(child SelectableRowChildWindowView, channels Channels, config Config, rowDescriptor string) *SelectableRowView {
+func NewSelectableRowView(child SelectableRowChildWindowView, channels Channels, config Config, variables GRVVariableSetter, lock Lock, rowDescriptor string) *SelectableRowView {
 	decoratedChild := newSelectableRowDecorator(child)
 	return &SelectableRowView{
-		AbstractWindowView: NewAbstractWindowView(decoratedChild, channels, config, rowDescriptor),
+		AbstractWindowView: NewAbstractWindowView(decoratedChild, channels, config, variables, lock, rowDescriptor),
 		child:              decoratedChild,
 	}
 }
@@ -55,7 +55,7 @@ func (selectableRowView *SelectableRowView) HandleAction(action Action) (handled
 	}
 
 	log.Debugf("Notifying child view of selected row index: %v", selectedRowIndex)
-	err = selectableRowView.child.notifyChildRowSelected(selectedRowIndex)
+	err = selectableRowView.notifyChildRowSelected(selectedRowIndex)
 	return
 }
 
@@ -106,6 +106,13 @@ func (selectableRowView *SelectableRowView) searchUpwards(startRowIndex uint) (r
 	return
 }
 
+func (selectableRowView *SelectableRowView) notifyChildRowSelected(rowIndex uint) (err error) {
+	err = selectableRowView.child.notifyChildRowSelected(rowIndex)
+	selectableRowView.setVariables()
+
+	return
+}
+
 // SelectNearestSelectableRow selects the nearest selectable row
 // if the current row is not selectable
 func (selectableRowView *SelectableRowView) SelectNearestSelectableRow() (err error) {
@@ -120,7 +127,7 @@ func (selectableRowView *SelectableRowView) SelectNearestSelectableRow() (err er
 
 	nearestSelectableRow := selectableRowView.findNearestSelectableRow(currentRowIndex, true)
 	selectableRowView.child.viewPos().SetActiveRowIndex(nearestSelectableRow)
-	return selectableRowView.child.notifyChildRowSelected(nearestSelectableRow)
+	return selectableRowView.notifyChildRowSelected(nearestSelectableRow)
 }
 
 type selectableRowDecorator struct {
@@ -139,6 +146,10 @@ func (selectableRowDecorator *selectableRowDecorator) viewPos() ViewPos {
 
 func (selectableRowDecorator *selectableRowDecorator) rows() uint {
 	return selectableRowDecorator.child.rows()
+}
+
+func (selectableRowDecorator *selectableRowDecorator) line(lineIndex uint) string {
+	return selectableRowDecorator.child.line(lineIndex)
 }
 
 func (selectableRowDecorator *selectableRowDecorator) viewDimension() ViewDimension {

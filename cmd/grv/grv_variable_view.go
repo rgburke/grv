@@ -12,7 +12,6 @@ type GRVVariableView struct {
 	*AbstractWindowView
 	variables         GRVVariableSetter
 	activeViewPos     ViewPos
-	active            bool
 	lastViewDimension ViewDimension
 	viewSearch        *ViewSearch
 	lock              sync.Mutex
@@ -25,7 +24,7 @@ func NewGRVVariableView(channels Channels, config Config, variables GRVVariableS
 		activeViewPos: NewViewPosition(),
 	}
 
-	grvVariableView.AbstractWindowView = NewAbstractWindowView(grvVariableView, channels, config, "variable")
+	grvVariableView.AbstractWindowView = NewAbstractWindowView(grvVariableView, channels, config, variables, &grvVariableView.lock, "variable")
 	grvVariableView.viewSearch = NewViewSearch(grvVariableView, channels)
 
 	return grvVariableView
@@ -89,15 +88,6 @@ func (grvVariableView *GRVVariableView) Render(win RenderWindow) (err error) {
 	return
 }
 
-// OnActiveChange updates whether this view is currently active
-func (grvVariableView *GRVVariableView) OnActiveChange(active bool) {
-	log.Debugf("GRVVariableView active: %v", active)
-	grvVariableView.lock.Lock()
-	defer grvVariableView.lock.Unlock()
-
-	grvVariableView.active = active
-}
-
 // ViewID returns the ViewID for the grv variable view
 func (grvVariableView *GRVVariableView) ViewID() ViewID {
 	return ViewGRVVariable
@@ -108,6 +98,10 @@ func (grvVariableView *GRVVariableView) Line(lineIndex uint) (line string) {
 	grvVariableView.lock.Lock()
 	defer grvVariableView.lock.Unlock()
 
+	return grvVariableView.line(lineIndex)
+}
+
+func (grvVariableView *GRVVariableView) line(lineIndex uint) (line string) {
 	if lineIndex < grvVariableView.rows() {
 		variables := grvVariableView.variables.VariableValues()
 

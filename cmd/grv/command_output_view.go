@@ -45,12 +45,12 @@ type CommandOutputView struct {
 }
 
 // NewCommandOutputView creates a new instance
-func NewCommandOutputView(command string, channels Channels, config Config) *CommandOutputView {
+func NewCommandOutputView(command string, channels Channels, config Config, variables GRVVariableSetter) *CommandOutputView {
 	commandOutputView := &CommandOutputView{
 		activeViewPos: NewViewPosition(),
 	}
 
-	commandOutputView.AbstractWindowView = NewAbstractWindowView(commandOutputView, channels, config, "output line")
+	commandOutputView.AbstractWindowView = NewAbstractWindowView(commandOutputView, channels, config, variables, &commandOutputView.lock, "output line")
 
 	commandOutputView.addOutputLine(outputLine{
 		line:     fmt.Sprintf("$ %v", command),
@@ -195,6 +195,14 @@ func (commandOutputView *CommandOutputView) viewDimension() ViewDimension {
 }
 
 func (commandOutputView *CommandOutputView) onRowSelected(rowIndex uint) (err error) {
+	return
+}
+
+func (commandOutputView *CommandOutputView) line(lineIndex uint) (line string) {
+	if lineIndex < commandOutputView.rows() {
+		line = commandOutputView.outputLines[lineIndex].line
+	}
+
 	return
 }
 

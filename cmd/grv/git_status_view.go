@@ -103,7 +103,6 @@ type GitStatusView struct {
 	renderedStatus         []*renderedStatusEntry
 	activeViewPos          ViewPos
 	handlers               map[ActionType]gitStatusViewHandler
-	active                 bool
 	gitStatusViewListeners []GitStatusViewListener
 	lastViewDimension      ViewDimension
 	viewSearch             *ViewSearch
@@ -130,7 +129,7 @@ func NewGitStatusView(repoData RepoData, repoController RepoController, channels
 		},
 	}
 
-	gitStatusView.SelectableRowView = NewSelectableRowView(gitStatusView, channels, config, "status row")
+	gitStatusView.SelectableRowView = NewSelectableRowView(gitStatusView, channels, config, variables, &gitStatusView.lock, "status row")
 	gitStatusView.viewSearch = NewViewSearch(gitStatusView, channels)
 	repoData.RegisterStatusListener(gitStatusView)
 	repoData.RegisterRefStateListener(gitStatusView)
@@ -162,7 +161,7 @@ func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 	gitStatusView.lastViewDimension = win.ViewDimensions()
 
 	if gitStatusView.status == nil {
-		return gitStatusView.AbstractWindowView.RenderEmptyView(win, "Loading status...")
+		return gitStatusView.AbstractWindowView.renderEmptyView(win, "Loading status...")
 	}
 
 	renderedStatus := gitStatusView.renderedStatus
@@ -239,11 +238,10 @@ func (gitStatusView *GitStatusView) removeGitStatusViewListener(gitStatusViewLis
 
 // OnActiveChange updates whether this view is currently active
 func (gitStatusView *GitStatusView) OnActiveChange(active bool) {
-	log.Debugf("GitStatusView active: %v", active)
+	gitStatusView.AbstractWindowView.OnActiveChange(active)
+
 	gitStatusView.lock.Lock()
 	defer gitStatusView.lock.Unlock()
-
-	gitStatusView.active = active
 
 	if active {
 		if err := gitStatusView.selectEntry(gitStatusView.activeViewPos.ActiveRowIndex()); err != nil {
@@ -352,6 +350,10 @@ func (gitStatusView *GitStatusView) Line(lineIndex uint) (line string) {
 	gitStatusView.lock.Lock()
 	defer gitStatusView.lock.Unlock()
 
+	return gitStatusView.line(lineIndex)
+}
+
+func (gitStatusView *GitStatusView) line(lineIndex uint) (line string) {
 	rows := gitStatusView.rows()
 	if lineIndex >= rows {
 		log.Errorf("Invalid lineIndex: %v >= %v", lineIndex, rows)
@@ -545,6 +547,8 @@ func (gitStatusView *GitStatusView) generateRenderedBranchStatus() (renderedStat
 }
 
 func (gitStatusView *GitStatusView) setVariables() {
+	gitStatusView.SelectableRowView.setVariables()
+
 	rowIndex := gitStatusView.viewPos().ActiveRowIndex()
 
 	if !gitStatusView.isFileEntry(rowIndex) {

@@ -52,7 +52,6 @@ type CommitView struct {
 	repoController         RepoController
 	config                 Config
 	activeRef              Ref
-	active                 bool
 	refViewData            map[string]*referenceViewData
 	handlers               map[ActionType]commitViewHandler
 	refreshTask            *loadingCommitsRefreshTask
@@ -92,7 +91,7 @@ func NewCommitView(repoData RepoData, repoController RepoController, channels Ch
 		},
 	}
 
-	commitView.AbstractWindowView = NewAbstractWindowView(commitView, channels, config, "commit")
+	commitView.AbstractWindowView = NewAbstractWindowView(commitView, channels, config, variables, &commitView.lock, "commit")
 	commitView.viewSearch = NewViewSearch(commitView, channels)
 
 	return commitView
@@ -141,7 +140,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	commitView.lastViewDimension = win.ViewDimensions()
 
 	if commitView.activeRef == nil {
-		return commitView.AbstractWindowView.RenderEmptyView(win, "No commits to display")
+		return commitView.AbstractWindowView.renderEmptyView(win, "No commits to display")
 	}
 
 	refViewData, ok := commitView.refViewData[commitView.activeRef.Name()]
@@ -189,14 +188,14 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	} else {
 		if commitSetState.loading {
 			commitView.loadingDotCount %= 4
-			err = commitView.AbstractWindowView.RenderEmptyView(win, fmt.Sprintf("Fetching commits%v", strings.Repeat(".", int(commitView.loadingDotCount))))
+			err = commitView.AbstractWindowView.renderEmptyView(win, fmt.Sprintf("Fetching commits%v", strings.Repeat(".", int(commitView.loadingDotCount))))
 
 			if time.Since(commitView.lastDotRenderTime).Seconds() >= (cvLoadRefreshMs / 1000.0) {
 				commitView.lastDotRenderTime = time.Now()
 				commitView.loadingDotCount++
 			}
 		} else {
-			err = commitView.AbstractWindowView.RenderEmptyView(win, "No commits to display")
+			err = commitView.AbstractWindowView.renderEmptyView(win, "No commits to display")
 		}
 
 		if err != nil {
@@ -485,18 +484,14 @@ func (commitView *CommitView) postRenderCell(rowIndex, colIndex uint, lineBuilde
 	return
 }
 
-// OnActiveChange updates whether this view is currently active
-func (commitView *CommitView) OnActiveChange(active bool) {
-	log.Debugf("CommitView active: %v", active)
-	commitView.lock.Lock()
-	defer commitView.lock.Unlock()
-
-	commitView.active = active
-}
-
 // ViewID returns the ViewID for the commit view
 func (commitView *CommitView) ViewID() ViewID {
 	return ViewCommit
+}
+
+func (commitView *CommitView) setVariables(commit *Commit) {
+	commitView.AbstractWindowView.setVariables()
+	commitView.variables.SetViewVariable(VarCommit, commit.oid.String(), commitView.active)
 }
 
 // RegisterCommitViewListener accepts a listener to be notified when a commit is selected
@@ -525,7 +520,7 @@ func (commitView *CommitView) notifyCommitViewListeners(commit *Commit) {
 		commitView.commitSelectedCh <- commit
 	}
 
-	commitView.variables.SetViewVariable(VarCommit, commit.oid.String(), commitView.active)
+	commitView.setVariables(commit)
 }
 
 func (commitView *CommitView) processSelectedCommits() {
@@ -636,6 +631,10 @@ func (commitView *CommitView) Line(lineIndex uint) (line string) {
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 
+	return commitView.line(lineIndex)
+}
+
+func (commitView *CommitView) line(lineIndex uint) (line string) {
 	rows := commitView.rows()
 
 	if lineIndex >= rows {

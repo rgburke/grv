@@ -167,7 +167,6 @@ type RefView struct {
 	config            Config
 	refLists          []*refList
 	refListeners      []RefListener
-	active            bool
 	renderedRefs      renderedRefSet
 	activeViewPos     ViewPos
 	lastViewDimension ViewDimension
@@ -222,7 +221,7 @@ func NewRefView(repoData RepoData, repoController RepoController, channels Chann
 		},
 	}
 
-	refView.SelectableRowView = NewSelectableRowView(refView, channels, config, "ref")
+	refView.SelectableRowView = NewSelectableRowView(refView, channels, config, variables, &refView.lock, "ref")
 	refView.viewSearch = NewViewSearch(refView, channels)
 
 	return refView
@@ -645,15 +644,6 @@ func (refView *RefView) createRefListenerView(ref Ref) {
 	})
 }
 
-// OnActiveChange updates whether the ref view is active or not
-func (refView *RefView) OnActiveChange(active bool) {
-	log.Debugf("RefView active: %v", active)
-	refView.lock.Lock()
-	defer refView.lock.Unlock()
-
-	refView.active = active
-}
-
 // ViewID returns the view ID of the ref view
 func (refView *RefView) ViewID() ViewID {
 	return ViewRef
@@ -691,6 +681,10 @@ func (refView *RefView) Line(lineIndex uint) (line string) {
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
 
+	return refView.line(lineIndex)
+}
+
+func (refView *RefView) line(lineIndex uint) (line string) {
 	renderedRefs := refView.renderedRefs.RenderedRefs()
 	renderedRefNum := uint(len(renderedRefs))
 
@@ -739,6 +733,8 @@ func (refView *RefView) isSelectableRow(rowIndex uint) (isSelectable bool) {
 }
 
 func (refView *RefView) setVariables() {
+	refView.SelectableRowView.setVariables()
+
 	selectedRefIndex := refView.viewPos().ActiveRowIndex()
 	var branch, tag string
 

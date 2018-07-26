@@ -252,7 +252,7 @@ type HelpView struct {
 }
 
 // NewHelpView creates a new instance
-func NewHelpView(channels Channels, config Config) *HelpView {
+func NewHelpView(channels Channels, config Config, variables GRVVariableSetter) *HelpView {
 	helpView := &HelpView{
 		activeViewPos: NewViewPosition(),
 		handlers: map[ActionType]helpViewHandler{
@@ -260,7 +260,7 @@ func NewHelpView(channels Channels, config Config) *HelpView {
 		},
 	}
 
-	helpView.AbstractWindowView = NewAbstractWindowView(helpView, channels, config, "help line")
+	helpView.AbstractWindowView = NewAbstractWindowView(helpView, channels, config, variables, &helpView.lock, "help line")
 	helpView.viewSearch = NewViewSearch(helpView, channels)
 
 	return helpView
@@ -372,6 +372,10 @@ func (helpView *HelpView) Line(lineIndex uint) (line string) {
 	helpView.lock.Lock()
 	defer helpView.lock.Unlock()
 
+	return helpView.line(lineIndex)
+}
+
+func (helpView *HelpView) line(lineIndex uint) (line string) {
 	helpSection, helpSectionStartRowIndex, err := helpView.helpSection(lineIndex)
 	if err != nil {
 		return
