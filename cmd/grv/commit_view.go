@@ -58,7 +58,6 @@ type CommitView struct {
 	commitViewListeners    []CommitViewListener
 	commitViewListenerLock sync.Mutex
 	lastViewDimension      ViewDimension
-	viewSearch             *ViewSearch
 	loadingDotCount        uint
 	lastDotRenderTime      time.Time
 	commitGraphLoadCh      chan commitGraphLoadRequest
@@ -92,7 +91,6 @@ func NewCommitView(repoData RepoData, repoController RepoController, channels Ch
 	}
 
 	commitView.AbstractWindowView = NewAbstractWindowView(commitView, channels, config, variables, &commitView.lock, "commit")
-	commitView.viewSearch = NewViewSearch(commitView, channels)
 
 	return commitView
 }
@@ -598,40 +596,9 @@ func (commitView *CommitView) createCommitViewListenerView(commit *Commit) {
 	})
 }
 
-// ViewPos returns the current view position
-func (commitView *CommitView) ViewPos() ViewPos {
-	commitView.lock.Lock()
-	defer commitView.lock.Unlock()
-
-	return commitView.viewPos()
-}
-
 func (commitView *CommitView) viewPos() ViewPos {
 	refViewData := commitView.refViewData[commitView.activeRef.Name()]
 	return refViewData.viewPos
-}
-
-// OnSearchMatch updates the view position when there is a search match
-func (commitView *CommitView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
-	commitView.lock.Lock()
-	defer commitView.lock.Unlock()
-
-	viewPos := commitView.viewPos()
-
-	if viewPos != startPos {
-		log.Debugf("Selected ref has changed since search started")
-		return
-	}
-
-	commitView.selectCommit(matchLineIndex)
-}
-
-// Line returns the rendered line at the index provided
-func (commitView *CommitView) Line(lineIndex uint) (line string) {
-	commitView.lock.Lock()
-	defer commitView.lock.Unlock()
-
-	return commitView.line(lineIndex)
 }
 
 func (commitView *CommitView) line(lineIndex uint) (line string) {
@@ -670,14 +637,6 @@ func (commitView *CommitView) line(lineIndex uint) (line string) {
 	}
 
 	return
-}
-
-// LineNumber returns the total number of rendered lines the commit view has
-func (commitView *CommitView) LineNumber() (rows uint) {
-	commitView.lock.Lock()
-	defer commitView.lock.Unlock()
-
-	return commitView.rows()
 }
 
 func (commitView *CommitView) rows() (rows uint) {
@@ -823,8 +782,6 @@ func (commitView *CommitView) HandleAction(action Action) (err error) {
 	if handler, ok := commitView.handlers[action.ActionType]; ok {
 		log.Debugf("Action handled by CommitView")
 		err = handler(commitView, action)
-	} else if handled, err = commitView.viewSearch.HandleAction(action); handled {
-		log.Debugf("Action handled by ViewSearch")
 	} else if handled, err = commitView.AbstractWindowView.HandleAction(action); handled {
 		log.Debugf("Action handled by AbstractWindowView")
 	} else {

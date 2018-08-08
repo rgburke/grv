@@ -30,6 +30,7 @@ type AbstractWindowView struct {
 	channels      Channels
 	config        Config
 	variables     GRVVariableSetter
+	viewSearch    *ViewSearch
 	active        bool
 	borderWidth   uint
 	rowDescriptor string
@@ -39,7 +40,7 @@ type AbstractWindowView struct {
 
 // NewAbstractWindowView create a new instance
 func NewAbstractWindowView(child ChildWindowView, channels Channels, config Config, variables GRVVariableSetter, lock Lock, rowDescriptor string) *AbstractWindowView {
-	return &AbstractWindowView{
+	abstractWindowView := &AbstractWindowView{
 		child:         child,
 		channels:      channels,
 		config:        config,
@@ -69,6 +70,10 @@ func NewAbstractWindowView(child ChildWindowView, channels Channels, config Conf
 			ActionMouseScrollUp:      mouseScrollUp,
 		},
 	}
+
+	abstractWindowView.viewSearch = NewViewSearch(abstractWindowView, channels)
+
+	return abstractWindowView
 }
 
 // Initialise does nothing
@@ -91,7 +96,7 @@ func (abstractWindowView *AbstractWindowView) RenderHelpBar(lineBuilder *LineBui
 	return
 }
 
-// OnActiveChange does nothing
+// OnActiveChange updates the active state of the view
 func (abstractWindowView *AbstractWindowView) OnActiveChange(active bool) {
 	abstractWindowView.lock.Lock()
 	defer abstractWindowView.lock.Unlock()
@@ -103,16 +108,49 @@ func (abstractWindowView *AbstractWindowView) OnActiveChange(active bool) {
 	}
 }
 
-func (abstractWindowView *AbstractWindowView) setVariables() {
-	rowIndex := abstractWindowView.child.viewPos().ActiveRowIndex()
-	rows := abstractWindowView.child.rows()
-	active := abstractWindowView.active
+// Line returns the content of the line with the provided index
+func (abstractWindowView *AbstractWindowView) Line(lineIndex uint) string {
+	abstractWindowView.lock.Lock()
+	defer abstractWindowView.lock.Unlock()
 
-	abstractWindowView.variables.SetViewVariable(VarLineNumer, fmt.Sprintf("%v", rowIndex+1), active)
-	abstractWindowView.variables.SetViewVariable(VarLineCount, fmt.Sprintf("%v", rows), active)
+	return abstractWindowView.child.line(lineIndex)
+}
 
-	line := abstractWindowView.child.line(rowIndex)
-	abstractWindowView.variables.SetViewVariable(VarLineText, line, active)
+// LineNumber returns the number of rows in this view
+func (abstractWindowView *AbstractWindowView) LineNumber() uint {
+	abstractWindowView.lock.Lock()
+	defer abstractWindowView.lock.Unlock()
+
+	return abstractWindowView.child.rows()
+}
+
+// ViewPos returns the current view position for this view
+func (abstractWindowView *AbstractWindowView) ViewPos() ViewPos {
+	abstractWindowView.lock.Lock()
+	defer abstractWindowView.lock.Unlock()
+
+	return abstractWindowView.child.viewPos()
+}
+
+// OnSearchMatch sets the active row to the search match row
+// unless the position has been modified since the search started
+func (abstractWindowView *AbstractWindowView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
+	abstractWindowView.lock.Lock()
+	defer abstractWindowView.lock.Unlock()
+
+	viewPos := abstractWindowView.child.viewPos()
+
+	if viewPos != startPos {
+		log.Debugf("Selected ref has changed since search started")
+		return
+	}
+
+	if rows := abstractWindowView.child.rows(); matchLineIndex < rows {
+		viewPos.SetActiveRowIndex(matchLineIndex)
+		abstractWindowView.notifyChildRowSelected(matchLineIndex)
+	} else {
+		log.Warnf("Search match line index is greater than number of rows: %v > %v", matchLineIndex, rows)
+	}
 }
 
 // HandleEvent does nothing
@@ -140,10 +178,24 @@ func (abstractWindowView *AbstractWindowView) notifyChildRowSelected(rowIndex ui
 	return
 }
 
+func (abstractWindowView *AbstractWindowView) setVariables() {
+	rowIndex := abstractWindowView.child.viewPos().ActiveRowIndex()
+	rows := abstractWindowView.child.rows()
+	active := abstractWindowView.active
+
+	abstractWindowView.variables.SetViewVariable(VarLineNumer, fmt.Sprintf("%v", rowIndex+1), active)
+	abstractWindowView.variables.SetViewVariable(VarLineCount, fmt.Sprintf("%v", rows), active)
+
+	line := abstractWindowView.child.line(rowIndex)
+	abstractWindowView.variables.SetViewVariable(VarLineText, line, active)
+}
+
 // HandleAction checks if this action is supported by the AbstractWindowView
 // and if so handles it
 func (abstractWindowView *AbstractWindowView) HandleAction(action Action) (handled bool, err error) {
-	if handler, ok := abstractWindowView.handlers[action.ActionType]; ok {
+	if handled, err = abstractWindowView.viewSearch.HandleAction(action); handled {
+		log.Debugf("Action handled by ViewSearch")
+	} else if handler, ok := abstractWindowView.handlers[action.ActionType]; ok {
 		abstractWindowView.logViewPos("before")
 
 		err = handler(abstractWindowView, action)

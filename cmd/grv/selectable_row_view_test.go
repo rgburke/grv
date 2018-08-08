@@ -117,6 +117,8 @@ func setupSelectableRowView() (*SelectableRowView, *selectableRowViewMocks) {
 	mocks.channels.On("UpdateDisplay").Return()
 	mocks.variables.On("SetViewVariable", VarLineCount, "100", false).Return()
 	mocks.variables.On("SetViewVariable", VarLineText, "", false).Return()
+	mocks.lock.On("Lock").Return()
+	mocks.lock.On("Unlock").Return()
 
 	return NewSelectableRowView(mocks.child, mocks.channels, mocks.config, mocks.variables, mocks.lock, "test line"), mocks
 }
@@ -272,7 +274,7 @@ func TestWhenRowCountIsZeroThenSelectNearestSelectableRowDoesNothing(t *testing.
 	mocks.child.On("rows").Return(uint(0))
 	mocks.child.ExpectedCalls = mocks.child.ExpectedCalls[1:]
 
-	selectableRowView.SelectNearestSelectableRow()
+	selectableRowView.selectNearestSelectableRow()
 }
 
 func TestWhenCurrentRowIsSelectableThenSelectNearestSelectableRowDoesNothing(t *testing.T) {
@@ -281,7 +283,7 @@ func TestWhenCurrentRowIsSelectableThenSelectNearestSelectableRowDoesNothing(t *
 	mocks.viewPos.On("ActiveRowIndex").Return(uint(0))
 	mocks.child.On("isSelectableRow", uint(0)).Return(true)
 
-	selectableRowView.SelectNearestSelectableRow()
+	selectableRowView.selectNearestSelectableRow()
 }
 
 func TestWhenCurrentRowIsNotSelectableThenSelectNearestSelectableRowSetsNearestSelectableRow(t *testing.T) {
@@ -297,7 +299,7 @@ func TestWhenCurrentRowIsNotSelectableThenSelectNearestSelectableRowSetsNearestS
 	mocks.variables.On("SetViewVariable", VarLineNumer, "1", false).Return()
 	mocks.variables.On("SetViewVariable", VarLineNumer, "2", false).Return()
 
-	selectableRowView.SelectNearestSelectableRow()
+	selectableRowView.selectNearestSelectableRow()
 
 	mocks.viewPos.AssertCalled(t, "SetActiveRowIndex", uint(1))
 	mocks.child.AssertCalled(t, "onRowSelected", uint(1))
@@ -316,7 +318,7 @@ func TestErrorReturnedByOnRowSelectedIsReturnedBySelectNeartestSelectableRow(t *
 	mocks.variables.On("SetViewVariable", VarLineNumer, "1", false).Return()
 	mocks.variables.On("SetViewVariable", VarLineNumer, "2", false).Return()
 
-	returnedError := selectableRowView.SelectNearestSelectableRow()
+	returnedError := selectableRowView.selectNearestSelectableRow()
 
 	assert.EqualError(t, returnedError, "Test error", "SelectNearestSelectableRow should return error returned by onRowSelected")
 }
@@ -336,4 +338,64 @@ func TestNotifyChildRowSelectedCallsSetVariables(t *testing.T) {
 	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineNumer, "6", false)
 	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineCount, "100", false)
 	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineText, "Line Text", false)
+}
+
+func TestOnSearchMatchUpdatesTheViewPosAndNotifiesTheSelectableChild(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+
+	mocks.viewPos.On("SetActiveRowIndex", uint(10)).Return()
+	mocks.viewPos.On("ActiveRowIndex").Return(uint(10))
+	mocks.child.On("isSelectableRow", uint(10)).Return(true)
+	mocks.child.On("onRowSelected", uint(10)).Return(nil)
+	mocks.child.On("line", uint(10)).Return("Line Text")
+
+	mocks.variables.On("SetViewVariable", VarLineNumer, "11", false).Return()
+	mocks.variables.On("SetViewVariable", VarLineCount, "100", false).Return()
+	mocks.variables.On("SetViewVariable", VarLineText, "Line Text", false).Return()
+
+	selectableRowView.OnSearchMatch(mocks.viewPos, 10)
+
+	mocks.lock.AssertCalled(t, "Lock")
+	mocks.lock.AssertCalled(t, "Unlock")
+
+	mocks.viewPos.AssertCalled(t, "SetActiveRowIndex", uint(10))
+	mocks.child.AssertCalled(t, "onRowSelected", uint(10))
+}
+
+func TestOnSearchMatchDoesNotUpdateViewPosAndNotifyTheSelectableChildWhenTheRowIsNotSelectable(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+
+	mocks.child.On("isSelectableRow", uint(10)).Return(false)
+
+	selectableRowView.OnSearchMatch(mocks.viewPos, 10)
+
+	mocks.lock.AssertCalled(t, "Lock")
+	mocks.lock.AssertCalled(t, "Unlock")
+
+	mocks.viewPos.AssertNotCalled(t, "SetActiveRowIndex", uint(10))
+	mocks.child.AssertNotCalled(t, "onRowSelected", uint(10))
+}
+
+func TestOnSearchMatchDoesNotUpdateViewPosAndNotifySelectableChildWhenViewPosHasChanged(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+
+	selectableRowView.OnSearchMatch(NewViewPosition(), 10)
+
+	mocks.lock.AssertCalled(t, "Lock")
+	mocks.lock.AssertCalled(t, "Unlock")
+
+	mocks.viewPos.AssertNotCalled(t, "SetActiveRowIndex", uint(10))
+	mocks.child.AssertNotCalled(t, "onRowSelected", uint(10))
+}
+
+func TestOnSearchMatchDoesNotUpdateViewPosAndNotifySelectableChildWhenMatchedLineIndexIsTooLarge(t *testing.T) {
+	selectableRowView, mocks := setupSelectableRowView()
+
+	selectableRowView.OnSearchMatch(mocks.viewPos, 200)
+
+	mocks.lock.AssertCalled(t, "Lock")
+	mocks.lock.AssertCalled(t, "Unlock")
+
+	mocks.viewPos.AssertNotCalled(t, "SetActiveRowIndex", uint(200))
+	mocks.child.AssertNotCalled(t, "onRowSelected", uint(200))
 }

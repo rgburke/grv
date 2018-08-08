@@ -16,15 +16,21 @@ type SelectableRowChildWindowView interface {
 type SelectableRowView struct {
 	*AbstractWindowView
 	child *selectableRowDecorator
+	lock  Lock
 }
 
 // NewSelectableRowView creates a new instance
 func NewSelectableRowView(child SelectableRowChildWindowView, channels Channels, config Config, variables GRVVariableSetter, lock Lock, rowDescriptor string) *SelectableRowView {
 	decoratedChild := newSelectableRowDecorator(child)
-	return &SelectableRowView{
+	selectableRowView := &SelectableRowView{
 		AbstractWindowView: NewAbstractWindowView(decoratedChild, channels, config, variables, lock, rowDescriptor),
 		child:              decoratedChild,
+		lock:               lock,
 	}
+
+	selectableRowView.viewSearch = NewViewSearch(selectableRowView, channels)
+
+	return selectableRowView
 }
 
 // HandleAction proxies the call down to the underlying AbstractWindowView.
@@ -115,7 +121,7 @@ func (selectableRowView *SelectableRowView) notifyChildRowSelected(rowIndex uint
 
 // SelectNearestSelectableRow selects the nearest selectable row
 // if the current row is not selectable
-func (selectableRowView *SelectableRowView) SelectNearestSelectableRow() (err error) {
+func (selectableRowView *SelectableRowView) selectNearestSelectableRow() (err error) {
 	if selectableRowView.child.rows() == 0 {
 		return
 	}
@@ -128,6 +134,31 @@ func (selectableRowView *SelectableRowView) SelectNearestSelectableRow() (err er
 	nearestSelectableRow := selectableRowView.findNearestSelectableRow(currentRowIndex, true)
 	selectableRowView.child.viewPos().SetActiveRowIndex(nearestSelectableRow)
 	return selectableRowView.notifyChildRowSelected(nearestSelectableRow)
+}
+
+// OnSearchMatch sets the active row to the search match row
+// unless the position has been modified since the search started
+// or the row is unselectable
+func (selectableRowView *SelectableRowView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
+	selectableRowView.lock.Lock()
+	defer selectableRowView.lock.Unlock()
+
+	viewPos := selectableRowView.child.viewPos()
+
+	if viewPos != startPos {
+		log.Debugf("Selected ref has changed since search started")
+		return
+	}
+
+	if rows := selectableRowView.child.rows(); matchLineIndex > rows {
+		log.Warnf("Search match line index is greater than number of rows: %v > %v", matchLineIndex, rows)
+		return
+	}
+
+	if selectableRowView.child.isSelectableRow(matchLineIndex) {
+		viewPos.SetActiveRowIndex(matchLineIndex)
+		selectableRowView.notifyChildRowSelected(matchLineIndex)
+	}
 }
 
 type selectableRowDecorator struct {

@@ -13,7 +13,6 @@ type GRVVariableView struct {
 	variables         GRVVariableSetter
 	activeViewPos     ViewPos
 	lastViewDimension ViewDimension
-	viewSearch        *ViewSearch
 	lock              sync.Mutex
 }
 
@@ -25,7 +24,6 @@ func NewGRVVariableView(channels Channels, config Config, variables GRVVariableS
 	}
 
 	grvVariableView.AbstractWindowView = NewAbstractWindowView(grvVariableView, channels, config, variables, &grvVariableView.lock, "variable")
-	grvVariableView.viewSearch = NewViewSearch(grvVariableView, channels)
 
 	return grvVariableView
 }
@@ -93,14 +91,6 @@ func (grvVariableView *GRVVariableView) ViewID() ViewID {
 	return ViewGRVVariable
 }
 
-// Line returns the rendered line at the specified index
-func (grvVariableView *GRVVariableView) Line(lineIndex uint) (line string) {
-	grvVariableView.lock.Lock()
-	defer grvVariableView.lock.Unlock()
-
-	return grvVariableView.line(lineIndex)
-}
-
 func (grvVariableView *GRVVariableView) line(lineIndex uint) (line string) {
 	if lineIndex < grvVariableView.rows() {
 		variables := grvVariableView.variables.VariableValues()
@@ -115,40 +105,8 @@ func (grvVariableView *GRVVariableView) line(lineIndex uint) (line string) {
 	return
 }
 
-// LineNumber returns the number of lines in the view
-func (grvVariableView *GRVVariableView) LineNumber() (rows uint) {
-	grvVariableView.lock.Lock()
-	defer grvVariableView.lock.Unlock()
-
-	return grvVariableView.rows()
-}
-
-// ViewPos returns the view position for this view
-func (grvVariableView *GRVVariableView) ViewPos() ViewPos {
-	grvVariableView.lock.Lock()
-	defer grvVariableView.lock.Unlock()
-
-	return grvVariableView.viewPos()
-}
-
 func (grvVariableView *GRVVariableView) viewPos() ViewPos {
 	return grvVariableView.activeViewPos
-}
-
-// OnSearchMatch selects the line which matched the search pattern
-func (grvVariableView *GRVVariableView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
-	grvVariableView.lock.Lock()
-	defer grvVariableView.lock.Unlock()
-
-	viewPos := grvVariableView.viewPos()
-
-	if viewPos != startPos {
-		log.Debugf("Selected variable has changed since search started")
-		return
-	}
-
-	viewPos.SetActiveRowIndex(matchLineIndex)
-	grvVariableView.channels.UpdateDisplay()
 }
 
 func (grvVariableView *GRVVariableView) rows() uint {
@@ -170,9 +128,7 @@ func (grvVariableView *GRVVariableView) HandleAction(action Action) (err error) 
 	defer grvVariableView.lock.Unlock()
 
 	var handled bool
-	if handled, err = grvVariableView.viewSearch.HandleAction(action); handled {
-		log.Debugf("Action handled by ViewSearch")
-	} else if handled, err = grvVariableView.AbstractWindowView.HandleAction(action); handled {
+	if handled, err = grvVariableView.AbstractWindowView.HandleAction(action); handled {
 		log.Debugf("Action handled by AbstractWindowView")
 	} else {
 		log.Debugf("Action not handled")

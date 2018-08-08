@@ -291,6 +291,9 @@ func setupAbstractWindowView() (*AbstractWindowView, *abstractWindowViewMocks) {
 	mocks.variables.On("SetViewVariable", VarLineCount, "24", false)
 	mocks.variables.On("SetViewVariable", VarLineText, "", false)
 
+	mocks.lock.On("Lock").Return()
+	mocks.lock.On("Unlock").Return()
+
 	return NewAbstractWindowView(mocks.child, mocks.channels, mocks.config, mocks.variables, mocks.lock, "test line"), mocks
 }
 
@@ -784,24 +787,24 @@ func TestActionMouseScrollUpIsHandledAndUpdatesResultWhenScrollUpReturnsTrue(t *
 func TestOnActiveChangeSetsActiveAndCallsSetVariablesWhenTrue(t *testing.T) {
 	abstractWindowView, mocks := setupAbstractWindowView()
 
-	mocks.lock.On("Lock").Return()
-	mocks.lock.On("Unlock").Return()
 	mocks.variables.On("SetViewVariable", VarLineNumer, "1", true).Return()
 	mocks.variables.On("SetViewVariable", VarLineCount, "24", true).Return()
 	mocks.variables.On("SetViewVariable", VarLineText, "", true).Return()
 
 	abstractWindowView.OnActiveChange(true)
 
+	mocks.lock.AssertCalled(t, "Lock")
+	mocks.lock.AssertCalled(t, "Unlock")
 	assert.Equal(t, abstractWindowView.active, true, "active should be true")
 }
 
 func TestOnActiveChangeSetsActiveAndDoesNotCallSetVariablesWhenFalse(t *testing.T) {
 	abstractWindowView, mocks := setupAbstractWindowView()
 
-	mocks.lock.On("Lock").Return()
-	mocks.lock.On("Unlock").Return()
-
 	abstractWindowView.OnActiveChange(false)
+
+	mocks.lock.AssertCalled(t, "Lock")
+	mocks.lock.AssertCalled(t, "Unlock")
 
 	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineNumer, "1", true)
 	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineCount, "24", true)
@@ -810,18 +813,86 @@ func TestOnActiveChangeSetsActiveAndDoesNotCallSetVariablesWhenFalse(t *testing.
 	assert.Equal(t, abstractWindowView.active, false, "active should be true")
 }
 
-func WhenNotifyChildRowSelectedIsCalledThenSetVariablesIsAsWell(t *testing.T) {
+func TestWhenNotifyChildRowSelectedIsCalledThenSetVariablesIsAsWell(t *testing.T) {
 	abstractWindowView, mocks := setupAbstractWindowView()
-	errTest := errors.New("Test error")
 
-	mocks.child.On("line", uint(5)).Return("Line Text")
-	mocks.child.On("onRowSelected", uint(5)).Return(errTest)
+	abstractWindowView.notifyChildRowSelected(0)
 
-	resultError := abstractWindowView.notifyChildRowSelected(5)
+	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineNumer, "1", false)
+	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineCount, "24", false)
+	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineText, "", false)
+}
 
-	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineNumer, "6", true)
-	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineCount, "24", true)
-	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineText, "Line Text", true)
+func TestLineNumberReturnsTheNumberOfRowsInTheView(t *testing.T) {
+	abstractWindowView, mocks := setupAbstractWindowView()
 
-	assert.Equal(t, resultError, errTest)
+	actualLineNumber := abstractWindowView.LineNumber()
+
+	mocks.lock.AssertCalled(t, "Lock")
+	mocks.lock.AssertCalled(t, "Unlock")
+
+	assert.Equal(t, actualLineNumber, uint(24), "LineNumber should return 24")
+}
+
+func TestLineReturnsTheLineContentOfTheProvidedLine(t *testing.T) {
+	abstractWindowView, mocks := setupAbstractWindowView()
+
+	mocks.child.On("line", uint(10)).Return("line content")
+
+	lineContent := abstractWindowView.Line(10)
+
+	mocks.lock.AssertCalled(t, "Lock")
+	mocks.lock.AssertCalled(t, "Unlock")
+
+	assert.Equal(t, lineContent, "line content", "Line content does not match output from child")
+}
+
+func TestViewPosReturnsTheChildViewPos(t *testing.T) {
+	abstractWindowView, mocks := setupAbstractWindowView()
+
+	viewPos := abstractWindowView.ViewPos()
+
+	mocks.lock.AssertCalled(t, "Lock")
+	mocks.lock.AssertCalled(t, "Unlock")
+
+	assert.Equal(t, viewPos, mocks.viewPos, "ViewPos should return child view pos")
+}
+
+func TestOnSearchMatchUpdatesTheViewPosAndNotifiesTheChild(t *testing.T) {
+	abstractWindowView, mocks := setupAbstractWindowView()
+
+	mocks.viewPos.On("SetActiveRowIndex", uint(10)).Return()
+	mocks.child.On("onRowSelected", uint(10)).Return(nil)
+
+	abstractWindowView.OnSearchMatch(mocks.viewPos, 10)
+
+	mocks.lock.AssertCalled(t, "Lock")
+	mocks.lock.AssertCalled(t, "Unlock")
+
+	mocks.viewPos.AssertCalled(t, "SetActiveRowIndex", uint(10))
+	mocks.child.AssertCalled(t, "onRowSelected", uint(10))
+}
+
+func TestOnSearchMatchDoesNotUpdateViewPosAndNotifyChildWhenViewPosHasChanged(t *testing.T) {
+	abstractWindowView, mocks := setupAbstractWindowView()
+
+	abstractWindowView.OnSearchMatch(NewViewPosition(), 10)
+
+	mocks.lock.AssertCalled(t, "Lock")
+	mocks.lock.AssertCalled(t, "Unlock")
+
+	mocks.viewPos.AssertNotCalled(t, "SetActiveRowIndex", uint(10))
+	mocks.child.AssertNotCalled(t, "onRowSelected", uint(10))
+}
+
+func TestOnSearchMatchDoesNotUpdateViewPosAndNotifyChildWhenMatchedLineIndexIsTooLarge(t *testing.T) {
+	abstractWindowView, mocks := setupAbstractWindowView()
+
+	abstractWindowView.OnSearchMatch(mocks.viewPos, 200)
+
+	mocks.lock.AssertCalled(t, "Lock")
+	mocks.lock.AssertCalled(t, "Unlock")
+
+	mocks.viewPos.AssertNotCalled(t, "SetActiveRowIndex", uint(200))
+	mocks.child.AssertNotCalled(t, "onRowSelected", uint(200))
 }

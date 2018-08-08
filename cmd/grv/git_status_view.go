@@ -105,7 +105,6 @@ type GitStatusView struct {
 	handlers               map[ActionType]gitStatusViewHandler
 	gitStatusViewListeners []GitStatusViewListener
 	lastViewDimension      ViewDimension
-	viewSearch             *ViewSearch
 	lastModify             time.Time
 	variables              GRVVariableSetter
 	lock                   sync.Mutex
@@ -130,7 +129,6 @@ func NewGitStatusView(repoData RepoData, repoController RepoController, channels
 	}
 
 	gitStatusView.SelectableRowView = NewSelectableRowView(gitStatusView, channels, config, variables, &gitStatusView.lock, "status row")
-	gitStatusView.viewSearch = NewViewSearch(gitStatusView, channels)
 	repoData.RegisterStatusListener(gitStatusView)
 	repoData.RegisterRefStateListener(gitStatusView)
 
@@ -345,14 +343,6 @@ func (gitStatusView *GitStatusView) selectEntry(index uint) (err error) {
 	return
 }
 
-// Line returns the rendered line at the specified index
-func (gitStatusView *GitStatusView) Line(lineIndex uint) (line string) {
-	gitStatusView.lock.Lock()
-	defer gitStatusView.lock.Unlock()
-
-	return gitStatusView.line(lineIndex)
-}
-
 func (gitStatusView *GitStatusView) line(lineIndex uint) (line string) {
 	rows := gitStatusView.rows()
 	if lineIndex >= rows {
@@ -365,44 +355,8 @@ func (gitStatusView *GitStatusView) line(lineIndex uint) (line string) {
 	return renderedStatusEntry.text
 }
 
-// LineNumber returns the number of lines in the view
-func (gitStatusView *GitStatusView) LineNumber() (rows uint) {
-	gitStatusView.lock.Lock()
-	defer gitStatusView.lock.Unlock()
-
-	return gitStatusView.rows()
-}
-
-// ViewPos returns the view position for this view
-func (gitStatusView *GitStatusView) ViewPos() ViewPos {
-	gitStatusView.lock.Lock()
-	defer gitStatusView.lock.Unlock()
-
-	return gitStatusView.viewPos()
-}
-
 func (gitStatusView *GitStatusView) viewPos() ViewPos {
 	return gitStatusView.activeViewPos
-}
-
-// OnSearchMatch selects the line which matched the search pattern
-func (gitStatusView *GitStatusView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
-	gitStatusView.lock.Lock()
-	defer gitStatusView.lock.Unlock()
-
-	viewPos := gitStatusView.viewPos()
-
-	if viewPos != startPos {
-		log.Debugf("Selected git status entry has changed since search started")
-		return
-	}
-
-	if gitStatusView.renderedStatus[matchLineIndex] == emptyStatusLine {
-		log.Debugf("Unable to select empty line")
-	} else {
-		gitStatusView.selectEntry(matchLineIndex)
-		gitStatusView.channels.UpdateDisplay()
-	}
 }
 
 // OnStatusChanged updates the git status view with the latest git status
@@ -528,7 +482,7 @@ func (gitStatusView *GitStatusView) generateRenderedStatus() {
 
 	gitStatusView.renderedStatus = renderedStatus
 
-	gitStatusView.SelectNearestSelectableRow()
+	gitStatusView.selectNearestSelectableRow()
 	gitStatusView.setVariables()
 }
 
@@ -796,8 +750,6 @@ func (gitStatusView *GitStatusView) HandleAction(action Action) (err error) {
 		log.Debugf("Action handled by GitStatusView")
 		err = handler(gitStatusView, action)
 		gitStatusView.lastModify = time.Now()
-	} else if handled, err = gitStatusView.viewSearch.HandleAction(action); handled {
-		log.Debugf("Action handled by ViewSearch")
 	} else if handled, err = gitStatusView.SelectableRowView.HandleAction(action); handled {
 		log.Debugf("Action handled by SelectableRowView")
 	} else {

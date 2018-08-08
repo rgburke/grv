@@ -247,7 +247,6 @@ type HelpView struct {
 	helpSections      []*HelpSection
 	helpViewIndex     *HelpViewIndex
 	handlers          map[ActionType]helpViewHandler
-	viewSearch        *ViewSearch
 	lock              sync.Mutex
 }
 
@@ -261,7 +260,6 @@ func NewHelpView(channels Channels, config Config, variables GRVVariableSetter) 
 	}
 
 	helpView.AbstractWindowView = NewAbstractWindowView(helpView, channels, config, variables, &helpView.lock, "help line")
-	helpView.viewSearch = NewViewSearch(helpView, channels)
 
 	return helpView
 }
@@ -367,14 +365,6 @@ func (helpView *HelpView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
-// Line returns the rendered line at the index provided
-func (helpView *HelpView) Line(lineIndex uint) (line string) {
-	helpView.lock.Lock()
-	defer helpView.lock.Unlock()
-
-	return helpView.line(lineIndex)
-}
-
 func (helpView *HelpView) line(lineIndex uint) (line string) {
 	helpSection, helpSectionStartRowIndex, err := helpView.helpSection(lineIndex)
 	if err != nil {
@@ -383,38 +373,6 @@ func (helpView *HelpView) line(lineIndex uint) (line string) {
 
 	helpSectionRowIndex := lineIndex - helpSectionStartRowIndex
 	return helpSection.rowText(helpSectionRowIndex)
-}
-
-// LineNumber returns the total number of rendered lines the help view has
-func (helpView *HelpView) LineNumber() (lineNumber uint) {
-	helpView.lock.Lock()
-	defer helpView.lock.Unlock()
-
-	return helpView.rows()
-}
-
-// ViewPos returns the current view position
-func (helpView *HelpView) ViewPos() ViewPos {
-	helpView.lock.Lock()
-	defer helpView.lock.Unlock()
-
-	return helpView.viewPos()
-}
-
-// OnSearchMatch updates the view position when there is a search match
-func (helpView *HelpView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
-	helpView.lock.Lock()
-	defer helpView.lock.Unlock()
-
-	viewPos := helpView.viewPos()
-
-	if viewPos != startPos {
-		log.Debugf("Selected ref has changed since search started")
-		return
-	}
-
-	viewPos.SetActiveRowIndex(matchLineIndex)
-	helpView.channels.UpdateDisplay()
 }
 
 func (helpView *HelpView) viewPos() ViewPos {
@@ -442,8 +400,6 @@ func (helpView *HelpView) HandleAction(action Action) (err error) {
 	if handler, ok := helpView.handlers[action.ActionType]; ok {
 		log.Debugf("Action handled by HelpView")
 		err = handler(helpView, action)
-	} else if handled, err = helpView.viewSearch.HandleAction(action); handled {
-		log.Debugf("Action handled by ViewSearch")
 	} else if handled, err = helpView.AbstractWindowView.HandleAction(action); handled {
 		log.Debugf("Action handled by AbstractWindowView")
 	} else {

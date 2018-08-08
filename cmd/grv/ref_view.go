@@ -171,7 +171,6 @@ type RefView struct {
 	activeViewPos     ViewPos
 	lastViewDimension ViewDimension
 	handlers          map[ActionType]refViewHandler
-	viewSearch        *ViewSearch
 	variables         GRVVariableSetter
 	lock              sync.Mutex
 }
@@ -222,7 +221,6 @@ func NewRefView(repoData RepoData, repoController RepoController, channels Chann
 	}
 
 	refView.SelectableRowView = NewSelectableRowView(refView, channels, config, variables, &refView.lock, "ref")
-	refView.viewSearch = NewViewSearch(refView, channels)
 
 	return refView
 }
@@ -528,7 +526,7 @@ func (refView *RefView) generateRenderedRefs() {
 		}
 	}
 
-	refView.channels.ReportError(refView.SelectNearestSelectableRow())
+	refView.channels.ReportError(refView.selectNearestSelectableRow())
 	refView.setVariables()
 }
 
@@ -649,39 +647,8 @@ func (refView *RefView) ViewID() ViewID {
 	return ViewRef
 }
 
-// ViewPos returns the current cursor position in the view
-func (refView *RefView) ViewPos() ViewPos {
-	refView.lock.Lock()
-	defer refView.lock.Unlock()
-
-	return refView.viewPos()
-}
-
 func (refView *RefView) viewPos() ViewPos {
 	return refView.activeViewPos
-}
-
-// OnSearchMatch updates the view position to the matched search position
-func (refView *RefView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
-	refView.lock.Lock()
-	defer refView.lock.Unlock()
-
-	renderedRefs := refView.renderedRefs.RenderedRefs()
-	renderedRef := renderedRefs[matchLineIndex]
-
-	if renderedRef.isSelectable() {
-		refView.activeViewPos.SetActiveRowIndex(matchLineIndex)
-	} else {
-		log.Debugf("Unable to select search match at index %v as it is not a selectable type", matchLineIndex)
-	}
-}
-
-// Line returns the rendered line specified by the provided line index
-func (refView *RefView) Line(lineIndex uint) (line string) {
-	refView.lock.Lock()
-	defer refView.lock.Unlock()
-
-	return refView.line(lineIndex)
 }
 
 func (refView *RefView) line(lineIndex uint) (line string) {
@@ -697,14 +664,6 @@ func (refView *RefView) line(lineIndex uint) (line string) {
 	line = renderedRef.value
 
 	return
-}
-
-// LineNumber returns the number of lines in the ref view
-func (refView *RefView) LineNumber() (lineNumber uint) {
-	refView.lock.Lock()
-	defer refView.lock.Unlock()
-
-	return refView.rows()
 }
 
 func (refView *RefView) rows() uint {
@@ -800,8 +759,6 @@ func (refView *RefView) HandleAction(action Action) (err error) {
 	if handler, ok := refView.handlers[action.ActionType]; ok {
 		log.Debugf("Action handled by RefView")
 		err = handler(refView, action)
-	} else if handled, err = refView.viewSearch.HandleAction(action); handled {
-		log.Debugf("Action handled by ViewSearch")
 	} else if handled, err = refView.SelectableRowView.HandleAction(action); handled {
 		log.Debugf("Action handled by SelectableRowView")
 	} else {

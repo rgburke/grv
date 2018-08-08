@@ -137,7 +137,6 @@ type DiffView struct {
 	activeViewPos     ViewPos
 	lastViewDimension ViewDimension
 	handlers          map[ActionType]diffViewHandler
-	viewSearch        *ViewSearch
 	diffLoadRequestCh chan diffLoadRequest
 	variables         GRVVariableSetter
 	waitGroup         sync.WaitGroup
@@ -160,7 +159,6 @@ func NewDiffView(repoData RepoData, channels Channels, config Config, variables 
 	}
 
 	diffView.AbstractWindowView = NewAbstractWindowView(diffView, channels, config, variables, &diffView.lock, "diff line")
-	diffView.viewSearch = NewViewSearch(diffView, channels)
 
 	return diffView
 }
@@ -608,31 +606,8 @@ func (diffView *DiffView) HandleEvent(event Event) (err error) {
 	return
 }
 
-// ViewPos returns the current view position
-func (diffView *DiffView) ViewPos() ViewPos {
-	diffView.lock.Lock()
-	defer diffView.lock.Unlock()
-
-	return diffView.viewPos()
-}
-
 func (diffView *DiffView) viewPos() ViewPos {
 	return diffView.activeViewPos
-}
-
-// OnSearchMatch sets the current view position to the search match position
-func (diffView *DiffView) OnSearchMatch(startPos ViewPos, matchLineIndex uint) {
-	diffView.lock.Lock()
-	defer diffView.lock.Unlock()
-
-	viewPos := diffView.viewPos()
-
-	if viewPos != startPos {
-		log.Debugf("Selected ref has changed since search started")
-		return
-	}
-
-	viewPos.SetActiveRowIndex(matchLineIndex)
 }
 
 // HandleAction checks if the diff view supports the provided action and executes it if so
@@ -645,8 +620,6 @@ func (diffView *DiffView) HandleAction(action Action) (err error) {
 	if handler, ok := diffView.handlers[action.ActionType]; ok {
 		log.Debugf("Action handled by DiffView")
 		err = handler(diffView, action)
-	} else if handled, err = diffView.viewSearch.HandleAction(action); handled {
-		log.Debugf("Action handled by ViewSearch")
 	} else if handled, err = diffView.AbstractWindowView.HandleAction(action); handled {
 		log.Debugf("Action handled by AbstractWindowView")
 	} else {
@@ -654,14 +627,6 @@ func (diffView *DiffView) HandleAction(action Action) (err error) {
 	}
 
 	return
-}
-
-// Line returns the rendered line from the diff view at the specified line index
-func (diffView *DiffView) Line(lineIndex uint) (line string) {
-	diffView.lock.Lock()
-	defer diffView.lock.Unlock()
-
-	return diffView.line(lineIndex)
 }
 
 func (diffView *DiffView) line(lineIndex uint) (line string) {
@@ -681,14 +646,6 @@ func (diffView *DiffView) line(lineIndex uint) (line string) {
 	line = diffLine.line
 
 	return
-}
-
-// LineNumber returns the number of lines the diff view currently has
-func (diffView *DiffView) LineNumber() (lineNumber uint) {
-	diffView.lock.Lock()
-	defer diffView.lock.Unlock()
-
-	return diffView.rows()
 }
 
 func (diffView *DiffView) rows() uint {
