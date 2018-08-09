@@ -636,20 +636,29 @@ func (config *Configuration) getVariable(configVariable ConfigVariable) *Configu
 }
 
 func (config *Configuration) processMapCommand(mapCommand *MapCommand, inputSource string) (err error) {
-	viewID, ok := viewIDNames[mapCommand.view.value]
+	view := mapCommand.view.value
+
+	viewID, ok := viewIDNames[view]
 	if !ok {
-		return generateConfigError(inputSource, mapCommand.view, "Invalid view: %v", mapCommand.view.value)
+		return generateConfigError(inputSource, mapCommand.view, "Invalid view: %v", view)
 	}
 
-	if mapCommand.from.value == "" {
+	from := mapCommand.from.value
+	to := mapCommand.to.value
+
+	if from == "" {
 		return generateConfigError(inputSource, mapCommand.from, "from keystring cannot be empty")
-	} else if mapCommand.to.value == "" {
+	} else if to == "" {
 		return generateConfigError(inputSource, mapCommand.to, "to keystring cannot be empty")
 	}
 
-	config.keyBindings.SetKeystringBinding(viewID, mapCommand.from.value, mapCommand.to.value)
+	if (mapCommand.to.tokenType & CtkShellCommand) != 0 {
+		to = "<grv-prompt>" + strings.TrimSuffix(to, "<Enter>") + "<Enter>"
+	}
 
-	log.Infof("Mapped \"%v\" to \"%v\" for view %v", mapCommand.from.value, mapCommand.to.value, mapCommand.view.value)
+	config.keyBindings.SetKeystringBinding(viewID, from, to)
+
+	log.Infof("Mapped \"%v\" to \"%v\" for view %v", from, to, view)
 
 	return
 }

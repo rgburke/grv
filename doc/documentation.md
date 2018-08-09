@@ -297,7 +297,7 @@ hsplit RefView
 
 ### map
 
-The map command allows a key sequence to be mapped to an action or another key sequence for a specified view.
+The map command allows a key sequence to be mapped to an action, another key sequence or a shell command for a specified view.
 The form of the map command is:
 
 ```
@@ -319,6 +319,13 @@ For example, the following commands can be used to make the <Up> key move a line
 ```
 map All <Up> <grv-next-line>
 map All <Down> <grv-prev-line>
+```
+
+The map command also allows a key sequence to be mapped directly to a shell command.
+Prefix a shell command with the '!' character. For example, to map the key 'a' to the shell command 'ls -lh':
+
+```
+map All a !ls -lh
 ```
 
 The set of actions available is described in the key binding tables above.

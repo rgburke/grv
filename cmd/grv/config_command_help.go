@@ -111,7 +111,7 @@ func GenerateMapCommandHelpSections(config Config) (helpSections []*HelpSection)
 	description := []HelpSectionText{
 		{text: "map", themeComponentID: CmpHelpViewSectionSubTitle},
 		{},
-		{text: "The map command allows a key sequence to be mapped to an action or another key sequence for a specified view."},
+		{text: "The map command allows a key sequence to be mapped to an action, another key sequence or a shell command for a specified view."},
 		{text: "The form of the map command is:"},
 		{},
 		{text: "map view fromkeys tokeys", themeComponentID: CmpHelpViewSectionCodeBlock},
@@ -128,6 +128,11 @@ func GenerateMapCommandHelpSections(config Config) (helpSections []*HelpSection)
 		{},
 		{text: "map All <Up> <grv-next-line>", themeComponentID: CmpHelpViewSectionCodeBlock},
 		{text: "map All <Down> <grv-prev-line>", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "The map command also allows a key sequence to be mapped directly to a shell command."},
+		{text: "Prefix a shell command with the '!' character. For example, to map the key 'a' to the shell command 'ls -lh':"},
+		{},
+		{text: "map All a !ls -lh", themeComponentID: CmpHelpViewSectionCodeBlock},
 		{},
 		{text: "The set of actions available is described in the key binding tables above."},
 	}

@@ -6,15 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"unicode"
 )
 
 // ConfigTokenType is an enum of token types the config scanner can produce
-type ConfigTokenType int
+type ConfigTokenType uint
 
 // Token types produced by the config scanner
 const (
-	CtkInvalid ConfigTokenType = iota
+	CtkInvalid ConfigTokenType = 1 << iota
 	CtkWord
 	CtkOption
 	CtkWhiteSpace
@@ -22,6 +23,8 @@ const (
 	CtkShellCommand
 	CtkTerminator
 	CtkEOF
+
+	CtkCount
 )
 
 var configTokenNames = map[ConfigTokenType]string{
@@ -76,7 +79,15 @@ func (token *ConfigToken) Equal(other *ConfigToken) bool {
 
 // ConfigTokenName maps token types to human readable names
 func ConfigTokenName(tokenType ConfigTokenType) string {
-	return configTokenNames[tokenType]
+	tokens := []string{}
+
+	for i := CtkInvalid; i < CtkCount; i <<= 1 {
+		if (i & tokenType) != 0 {
+			tokens = append(tokens, configTokenNames[i])
+		}
+	}
+
+	return strings.Join(tokens, " or ")
 }
 
 // NewConfigScanner creates a new scanner which uses the provided reader

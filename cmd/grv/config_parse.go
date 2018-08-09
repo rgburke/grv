@@ -145,7 +145,7 @@ var commandDescriptors = map[string]*commandDescriptor{
 		commandHelpGenerator: GenerateThemeCommandHelpSections,
 	},
 	mapCommand: {
-		tokenTypes:           []ConfigTokenType{CtkWord, CtkWord, CtkWord},
+		tokenTypes:           []ConfigTokenType{CtkWord, CtkWord, CtkWord | CtkShellCommand},
 		constructor:          mapCommandConstructor,
 		commandHelpGenerator: GenerateMapCommandHelpSections,
 	},
@@ -375,7 +375,7 @@ func (parser *ConfigParser) parseCommand(commandToken *ConfigToken) (command Con
 			err = parser.generateParseError(token, "Unexpected EOF")
 			eof = true
 			return
-		case token.tokenType != expectedConfigTokenType:
+		case (token.tokenType & expectedConfigTokenType) == 0:
 			err = parser.generateParseError(token, "Expected %v but got %v: \"%v\"",
 				ConfigTokenName(expectedConfigTokenType), ConfigTokenName(token.tokenType), token.value)
 			return
