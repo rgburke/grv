@@ -242,6 +242,11 @@ func (variables *MockGRVVariableSetter) VariableValues() map[GRVVariable]string 
 	return args.Get(0).(map[GRVVariable]string)
 }
 
+func (variables *MockGRVVariableSetter) VariableValue(variable GRVVariable) (value string, isSet bool) {
+	args := variables.Called(variable)
+	return args.String(0), args.Bool(1)
+}
+
 type MockLock struct {
 	mock.Mock
 }

@@ -5,9 +5,9 @@ import (
 )
 
 func TestConfigVariablesHaveRequiredFieldsSet(t *testing.T) {
-	config := NewConfiguration(&MockKeyBindings{}, &MockChannels{})
+	config := NewConfiguration(&MockKeyBindings{}, &MockChannels{}, &MockGRVVariableSetter{})
 
-	for configVariableName, configVariable := range config.variables {
+	for configVariableName, configVariable := range config.configVariables {
 		if configVariable.defaultValue == nil {
 			t.Errorf("Config variable \"%v\" has no default value set", configVariableName)
 		}

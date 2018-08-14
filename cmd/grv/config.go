@@ -1,13 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"reflect"
 	"regexp"
 	"sort"
@@ -291,26 +288,28 @@ type ConfigurationVariable struct {
 
 // Configuration contains all configuration state
 type Configuration struct {
-	variables    map[ConfigVariable]*ConfigurationVariable
-	themes       map[string]MutableTheme
-	keyBindings  KeyBindings
-	grvConfigDir string
-	channels     Channels
+	configVariables map[ConfigVariable]*ConfigurationVariable
+	themes          map[string]MutableTheme
+	keyBindings     KeyBindings
+	grvConfigDir    string
+	channels        Channels
+	variables       GRVVariableGetter
 }
 
 // NewConfiguration creates a Configuration instance with default values
-func NewConfiguration(keyBindings KeyBindings, channels Channels) *Configuration {
+func NewConfiguration(keyBindings KeyBindings, channels Channels, variables GRVVariableGetter) *Configuration {
 	config := &Configuration{
 		keyBindings: keyBindings,
+		channels:    channels,
+		variables:   variables,
 		themes: map[string]MutableTheme{
 			cfClassicThemeName:   NewClassicTheme(),
 			cfColdThemeName:      NewColdTheme(),
 			cfSolarizedThemeName: NewSolarizedTheme(),
 		},
-		channels: channels,
 	}
 
-	config.variables = map[ConfigVariable]*ConfigurationVariable{
+	config.configVariables = map[ConfigVariable]*ConfigurationVariable{
 		CfTabWidth: {
 			defaultValue: cfTabWidthDefaultValue,
 			validator:    tabWidithValidator{},
@@ -364,7 +363,7 @@ func NewConfiguration(keyBindings KeyBindings, channels Channels) *Configuration
 		},
 	}
 
-	for _, configVariable := range config.variables {
+	for _, configVariable := range config.configVariables {
 		configVariable.value = configVariable.defaultValue
 	}
 
@@ -504,7 +503,7 @@ func (config *Configuration) processCommand(command ConfigCommand, inputSource s
 
 func (config *Configuration) processSetCommand(setCommand *SetCommand, inputSource string) error {
 	configVariable := ConfigVariable(setCommand.variable.value)
-	variable, ok := config.variables[configVariable]
+	variable, ok := config.configVariables[configVariable]
 	if !ok {
 		return generateConfigError(inputSource, setCommand.variable, "Invalid variable %v", setCommand.variable.value)
 	}
@@ -628,7 +627,7 @@ func getSystemColor(systemColorString string) (ThemeColor, error) {
 }
 
 func (config *Configuration) getVariable(configVariable ConfigVariable) *ConfigurationVariable {
-	if variable, ok := config.variables[configVariable]; ok {
+	if variable, ok := config.configVariables[configVariable]; ok {
 		return variable
 	}
 
@@ -782,7 +781,15 @@ func (config *Configuration) processGitCommand(gitCommand *GitCommand) {
 	buffer.Truncate(buffer.Len() - 1)
 	command := buffer.String()
 
-	config.runCommand(command, gitCommand.interactive)
+	var outputType ShellCommandOutputType
+
+	if gitCommand.interactive {
+		outputType = TerminalOutput
+	} else {
+		outputType = WindowOutput
+	}
+
+	config.runCommand(command, outputType)
 }
 
 func (config *Configuration) processShellCommand(shellCommand *ShellCommand, inputSource string) (err error) {
@@ -798,88 +805,13 @@ func (config *Configuration) processShellCommand(shellCommand *ShellCommand, inp
 
 	command = command[1:]
 
-	config.runCommand(command, false)
+	config.runCommand(command, WindowOutput)
 
 	return
 }
 
-func (config *Configuration) runCommand(command string, interactive bool) {
-	if interactive {
-		config.channels.DoAction(Action{ActionType: ActionRunCommand, Args: []interface{}{
-			ActionRunCommandArgs{
-				command:        command,
-				interactive:    true,
-				promptForInput: true,
-				stdin:          os.Stdin,
-				stdout:         os.Stdout,
-				stderr:         os.Stderr,
-				onComplete: func(commandErr error, exitStatus int) (err error) {
-					if commandErr != nil {
-						return fmt.Errorf(`Command "%v" failed: %v"`, command, commandErr)
-					} else if exitStatus != 0 {
-						return fmt.Errorf(`Command "%v" exited with status %v`, command, exitStatus)
-					}
-
-					config.channels.ReportStatus(`Command "%v" exited with status %v`, command, exitStatus)
-
-					return
-				},
-			},
-		}})
-	} else {
-		config.channels.DoAction(Action{ActionType: ActionCreateCommandOutputView, Args: []interface{}{
-			ActionCreateCommandOutputViewArgs{
-				command: command,
-				viewDimension: ViewDimension{
-					cols: 80,
-					rows: 24,
-				},
-				onCreation: func(commandOutputProcessor CommandOutputProcessor) {
-					config.runNonInteractiveCommand(command, commandOutputProcessor)
-				},
-			},
-		}})
-	}
-}
-
-func (config *Configuration) runNonInteractiveCommand(command string, commandOutputProcessor CommandOutputProcessor) {
-	var scanner *bufio.Scanner
-
-	config.channels.DoAction(Action{ActionType: ActionRunCommand, Args: []interface{}{
-		ActionRunCommandArgs{
-			command:     command,
-			interactive: false,
-			beforeStart: func(cmd *exec.Cmd) {
-				stdout, err := cmd.StdoutPipe()
-				if err != nil {
-					commandOutputProcessor.OnCommandExecutionError(err)
-					return
-				}
-
-				stderr, err := cmd.StderrPipe()
-				if err != nil {
-					commandOutputProcessor.OnCommandExecutionError(err)
-					return
-				}
-
-				scanner = bufio.NewScanner(io.MultiReader(stdout, stderr))
-			},
-			onStart: func(cmd *exec.Cmd) {
-				for scanner.Scan() {
-					commandOutputProcessor.AddOutputLine(scanner.Text())
-				}
-			},
-			onComplete: func(commandErr error, exitStatus int) (err error) {
-				if commandErr != nil {
-					commandOutputProcessor.OnCommandExecutionError(commandErr)
-				} else {
-					commandOutputProcessor.OnCommandComplete(exitStatus)
-				}
-
-				return
-			},
-		},
-	}})
+func (config *Configuration) runCommand(command string, outputType ShellCommandOutputType) {
+	NewShellCommandProcessor(config.channels, config.variables, command, outputType).Execute()
 }
 
 func (config *Configuration) processHelpCommand() {
@@ -987,7 +919,7 @@ func (config *Configuration) generateConfigVariableHelpSection() (helpSection *H
 	tableFormatter.SetGridLines(true)
 
 	configVariableNames := []ConfigVariable{}
-	for configVariableName := range config.variables {
+	for configVariableName := range config.configVariables {
 		configVariableNames = append(configVariableNames, configVariableName)
 	}
 
@@ -998,7 +930,7 @@ func (config *Configuration) generateConfigVariableHelpSection() (helpSection *H
 	tableFormatter.Resize(uint(len(configVariableNames)))
 
 	for rowIndex, configVariableName := range configVariableNames {
-		configVariable := config.variables[configVariableName]
+		configVariable := config.configVariables[configVariableName]
 
 		tableFormatter.SetCellWithStyle(uint(rowIndex), 0, CmpHelpViewSectionTableRow, "%v", configVariableName)
 		tableFormatter.SetCellWithStyle(uint(rowIndex), 1, CmpHelpViewSectionTableRow, "%v", reflect.TypeOf(configVariable.defaultValue))

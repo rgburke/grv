@@ -103,10 +103,26 @@ func GRVVariableName(variable GRVVariable) string {
 	return variableNameMap[variable].name
 }
 
+// LookupGRVVariable returns the variable referenced by the provided name
+func LookupGRVVariable(variableName string) (variable GRVVariable, exists bool) {
+	variableDescriptor, exists := variableNameDescriptorMap[variableName]
+	if exists {
+		variable = variableDescriptor.variable
+	}
+
+	return
+}
+
+// GRVVariableGetter can read the values of GRV variables
+type GRVVariableGetter interface {
+	VariableValue(GRVVariable) (value string, isSet bool)
+	VariableValues() map[GRVVariable]string
+}
+
 // GRVVariableSetter sets the value of a GRV variable
 type GRVVariableSetter interface {
+	GRVVariableGetter
 	SetViewVariable(variable GRVVariable, value string, isActiveView bool)
-	VariableValues() map[GRVVariable]string
 }
 
 // GRVVariables stores the values of all variables
@@ -149,4 +165,13 @@ func (grvVariables *GRVVariables) VariableValues() map[GRVVariable]string {
 	}
 
 	return values
+}
+
+// VariableValue returns the value of the provided variable and a boolean denoting if it's set
+func (grvVariables *GRVVariables) VariableValue(variable GRVVariable) (value string, isSet bool) {
+	grvVariables.lock.Lock()
+	defer grvVariables.lock.Unlock()
+
+	value, isSet = grvVariables.values[variable]
+	return
 }

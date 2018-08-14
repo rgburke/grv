@@ -175,8 +175,8 @@ func NewGRV(readOnly bool) *GRV {
 
 	channels := grvChannels.Channels()
 	keyBindings := NewKeyBindingManager()
-	config := NewConfiguration(keyBindings, channels)
 	variables := NewGRVVariables()
+	config := NewConfiguration(keyBindings, channels, variables)
 
 	repoDataLoader := NewRepoDataLoader(channels, config)
 	repoData := NewRepositoryData(repoDataLoader, channels, variables)
