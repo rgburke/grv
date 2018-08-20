@@ -79,6 +79,8 @@ func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
 		statusBarView.showQuestionPrompt(action)
 	case ActionBranchNamePrompt:
 		statusBarView.showBranchNamePrompt(action)
+	case ActionCustomPrompt:
+		statusBarView.showCustomPrompt(action)
 	case ActionShowStatus:
 		statusBarView.lock.Lock()
 		defer statusBarView.lock.Unlock()
@@ -220,6 +222,23 @@ func (statusBarView *StatusBarView) showBranchNamePrompt(action Action) {
 	}
 
 	statusBarView.promptType = ptNone
+}
+
+func (statusBarView *StatusBarView) showCustomPrompt(action Action) {
+	if len(action.Args) == 0 {
+		log.Errorf("Expected ActionCustomPromptArgs argument")
+		return
+	}
+
+	args, ok := action.Args[0].(ActionCustomPromptArgs)
+	if !ok {
+		log.Errorf("Expected ActionCustomPromptArgs argument but found %T", action.Args[0])
+		return
+	}
+
+	input := statusBarView.showPrompt(&PromptArgs{Prompt: args.prompt}, action)
+
+	args.inputHandler(input)
 }
 
 func (statusBarView *StatusBarView) showPrompt(promptArgs *PromptArgs, action Action) string {

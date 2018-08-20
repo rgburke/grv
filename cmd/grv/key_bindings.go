@@ -36,6 +36,7 @@ const (
 	ActionFilterPrompt
 	ActionQuestionPrompt
 	ActionBranchNamePrompt
+	ActionCustomPrompt
 	ActionSearch
 	ActionReverseSearch
 	ActionSearchFindNext
@@ -181,6 +182,11 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		actionCategory: ActionCategoryGeneral,
 		promptAction:   true,
 		description:    "Specify branch name",
+	},
+	ActionCustomPrompt: {
+		actionCategory: ActionCategoryGeneral,
+		promptAction:   true,
+		description:    "Custom prompt for user input",
 	},
 	ActionSearch: {
 		actionCategory: ActionCategorySearch,
@@ -630,6 +636,13 @@ type ActionRunCommandArgs struct {
 	beforeStart    func(cmd *exec.Cmd)
 	onStart        func(cmd *exec.Cmd)
 	onComplete     func(err error, exitStatus int) error
+}
+
+// ActionCustomPromptArgs contains arguments to display a custom prompt
+// and handle the user input
+type ActionCustomPromptArgs struct {
+	prompt       string
+	inputHandler func(input string)
 }
 
 // ViewHierarchy is a list of views parent to child
