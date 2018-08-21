@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"sync"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -22,23 +23,50 @@ const (
 	StatusBarOutput
 )
 
+type referenceType int
+
+const (
+	rtNone referenceType = iota
+	rtVariable
+	rtPrompt
+)
+
 // ShellCommandProcessor processes a shell command before executing it
 type ShellCommandProcessor struct {
-	channels     Channels
-	variables    GRVVariableGetter
-	command      []rune
-	outputType   ShellCommandOutputType
-	variableRefs []*variableReference
+	channels   Channels
+	variables  GRVVariableGetter
+	command    []rune
+	outputType ShellCommandOutputType
+	refs       []referenceOccurence
+	lock       sync.Mutex
 }
 
-type commandPosition struct {
+type referencePosition struct {
 	startIndex int
 	endIndex   int
 }
 
 type variableReference struct {
+	pos      *referencePosition
 	variable GRVVariable
-	position *commandPosition
+}
+
+func (ref *variableReference) position() *referencePosition {
+	return ref.pos
+}
+
+type promptReference struct {
+	pos    *referencePosition
+	prompt string
+	value  string
+}
+
+func (ref *promptReference) position() *referencePosition {
+	return ref.pos
+}
+
+type referenceOccurence interface {
+	position() *referencePosition
 }
 
 // NewShellCommandProcessor creates a new instance
@@ -55,33 +83,46 @@ func NewShellCommandProcessor(channels Channels, variables GRVVariableGetter, co
 // and then executes the command using the configured
 // output type
 func (processor *ShellCommandProcessor) Execute() {
-	log.Debugf("Processing command: %v", string(processor.command))
-	processor.findVariables()
-	command := processor.replaceVariables()
-	log.Debugf("Executing command: %v", command)
-	processor.executeCommand(command)
+	processor.lock.Lock()
+
+	go func() {
+		defer processor.lock.Unlock()
+
+		log.Debugf("Processing command: %v", string(processor.command))
+		processor.findReferences()
+		processor.determinePromptValues()
+		command := processor.replaceReferences()
+		log.Debugf("Executing command: %v", command)
+		processor.executeCommand(command)
+	}()
 }
 
-func (processor *ShellCommandProcessor) findVariables() {
+func (processor *ShellCommandProcessor) findReferences() {
 	for position := 0; position < len(processor.command); position++ {
-		variableCandidate := processor.nextVariableCandidate(position)
-		if variableCandidate == nil {
-			break
-		}
+		refType, candidate := processor.nextReferenceCandidate(position)
 
-		if variable := processor.getVariable(variableCandidate); variable != nil {
-			log.Debugf("Found variable %v", GRVVariableName(variable.variable))
-			processor.variableRefs = append(processor.variableRefs, variable)
-			position = variable.position.endIndex
+		if refType == rtNone || candidate == nil {
+			break
+		} else if refType == rtVariable {
+			if variable := processor.getVariable(candidate); variable != nil {
+				log.Debugf("Found variable %v at %v", GRVVariableName(variable.variable), *candidate)
+				processor.refs = append(processor.refs, variable)
+				position = variable.pos.endIndex
+			}
+		} else if refType == rtPrompt {
+			promptRef := processor.getPrompt(candidate)
+			log.Debugf("Found prompt %v at %v", promptRef.prompt, *candidate)
+			processor.refs = append(processor.refs, promptRef)
+			position = promptRef.pos.endIndex
 		}
 	}
 }
 
-func (processor *ShellCommandProcessor) nextVariableCandidate(processorIndex int) *commandPosition {
+func (processor *ShellCommandProcessor) nextReferenceCandidate(processorIndex int) (referenceType, *referencePosition) {
 	var startIndex int
 
 	for i := processorIndex; i+1 < len(processor.command); i++ {
-		if processor.command[i] == '$' && processor.command[i+1] == '{' {
+		if (processor.command[i] == '$' || processor.command[i] == '?') && processor.command[i+1] == '{' {
 			startIndex = i
 			break
 		}
@@ -97,45 +138,95 @@ func (processor *ShellCommandProcessor) nextVariableCandidate(processorIndex int
 	}
 
 	if endIndex > startIndex {
-		return &commandPosition{
+		refType := rtVariable
+		if processor.command[startIndex] == '?' {
+			refType = rtPrompt
+		}
+
+		return refType, &referencePosition{
 			startIndex: startIndex,
 			endIndex:   endIndex,
 		}
 	}
 
-	return nil
+	return rtNone, nil
 }
 
-func (processor *ShellCommandProcessor) getVariable(variableCandidate *commandPosition) *variableReference {
+func (processor *ShellCommandProcessor) getVariable(variableCandidate *referencePosition) *variableReference {
 	variableName := string(processor.command[variableCandidate.startIndex+2 : variableCandidate.endIndex])
 
 	if variable, exists := LookupGRVVariable(variableName); exists {
 		return &variableReference{
 			variable: variable,
-			position: variableCandidate,
+			pos:      variableCandidate,
 		}
 	}
 
 	return nil
 }
 
-func (processor *ShellCommandProcessor) replaceVariables() (processedCommand string) {
-	if len(processor.variableRefs) == 0 {
+func (processor *ShellCommandProcessor) getPrompt(position *referencePosition) *promptReference {
+	prompt := string(processor.command[position.startIndex+2 : position.endIndex])
+
+	return &promptReference{
+		prompt: prompt,
+		pos:    position,
+	}
+}
+
+func (processor *ShellCommandProcessor) determinePromptValues() {
+	if len(processor.refs) == 0 {
+		return
+	}
+
+	var waitGroup sync.WaitGroup
+
+	for _, ref := range processor.refs {
+		promptRef, isPromptRef := ref.(*promptReference)
+		if !isPromptRef {
+			continue
+		}
+
+		waitGroup.Add(1)
+
+		processor.channels.DoAction(Action{ActionType: ActionCustomPrompt, Args: []interface{}{
+			ActionCustomPromptArgs{
+				prompt: promptRef.prompt,
+				inputHandler: func(input string) {
+					promptRef.value = input
+					waitGroup.Done()
+				},
+			},
+		}})
+	}
+
+	waitGroup.Wait()
+}
+
+func (processor *ShellCommandProcessor) replaceReferences() (processedCommand string) {
+	if len(processor.refs) == 0 {
 		return string(processor.command)
 	}
 
 	var buf bytes.Buffer
 	index := 0
 
-	for _, variableRef := range processor.variableRefs {
-		for ; index < variableRef.position.startIndex; index++ {
+	for _, ref := range processor.refs {
+		for ; index < ref.position().startIndex; index++ {
 			buf.WriteRune(processor.command[index])
 		}
 
-		value, _ := processor.variables.VariableValue(variableRef.variable)
+		var value string
+
+		if variableRef, isVariableRef := ref.(*variableReference); isVariableRef {
+			value, _ = processor.variables.VariableValue(variableRef.variable)
+		} else if promptRef, isPromptRef := ref.(*promptReference); isPromptRef {
+			value = promptRef.value
+		}
+
 		buf.WriteString(value)
 
-		index = variableRef.position.endIndex + 1
+		index = ref.position().endIndex + 1
 	}
 
 	for ; index < len(processor.command); index++ {
