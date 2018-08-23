@@ -102,6 +102,21 @@ func TestScanSingleConfigToken(t *testing.T) {
 			},
 		},
 		{
+			input: "@git status",
+			expectedToken: ConfigToken{
+				tokenType: CtkShellCommand,
+				value:     "@git status",
+				startPos: ConfigScannerPos{
+					line: 1,
+					col:  1,
+				},
+				endPos: ConfigScannerPos{
+					line: 1,
+					col:  11,
+				},
+			},
+		},
+		{
 			input: "\n",
 			expectedToken: ConfigToken{
 				tokenType: CtkTerminator,

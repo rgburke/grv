@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	log "github.com/Sirupsen/logrus"
 	slice "github.com/bradfitz/slice"
@@ -796,16 +797,18 @@ func (config *Configuration) processShellCommand(shellCommand *ShellCommand, inp
 	command := strings.TrimSpace(shellCommand.command.value)
 	commandLength := len([]rune(command))
 
-	if commandLength < 1 || command[0] != '!' {
+	if commandLength < 1 {
 		return generateConfigError(inputSource, shellCommand.command, "Expected command token with preceeding !")
 	} else if commandLength == 1 {
 		log.Debugf("Empty command, not running")
 		return
 	}
 
+	prefix, _ := utf8.DecodeRuneInString(command)
+	outputType := OutputType(prefix)
 	command = command[1:]
 
-	config.runCommand(command, WindowOutput)
+	config.runCommand(command, outputType)
 
 	return
 }

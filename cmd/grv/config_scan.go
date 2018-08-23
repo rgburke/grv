@@ -173,7 +173,7 @@ func (scanner *ConfigScanner) Scan() (token *ConfigToken, err error) {
 		}
 
 		token, err = scanner.scanComment()
-	case char == '!':
+	case char == '!' || char == '@':
 		if err = scanner.unread(); err != nil {
 			break
 		}

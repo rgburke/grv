@@ -23,6 +23,21 @@ const (
 	StatusBarOutput
 )
 
+var shellCommandPrefixOutputType = map[rune]ShellCommandOutputType{
+	'@': NoOutput,
+	'!': WindowOutput,
+}
+
+// OutputType returns the ShellCommandOutputType the provided shell command prefix maps to
+// or WindowOuput if no mapping exists
+func OutputType(shellCommandPrefix rune) ShellCommandOutputType {
+	if outputType, ok := shellCommandPrefixOutputType[shellCommandPrefix]; ok {
+		return outputType
+	}
+
+	return WindowOutput
+}
+
 type referenceType int
 
 const (
@@ -239,7 +254,7 @@ func (processor *ShellCommandProcessor) replaceReferences() (processedCommand st
 func (processor *ShellCommandProcessor) executeCommand(command string) {
 	switch processor.outputType {
 	case NoOutput:
-		panic("NoOutput shell command not implemented")
+		processor.runNoOutputCommand(command)
 	case WindowOutput:
 		processor.runWindowOutputCommand(command)
 	case TerminalOutput:
@@ -322,6 +337,23 @@ func (processor *ShellCommandProcessor) runNonInteractiveCommand(command string,
 					commandOutputProcessor.OnCommandExecutionError(commandErr)
 				} else {
 					commandOutputProcessor.OnCommandComplete(exitStatus)
+				}
+
+				return
+			},
+		},
+	}})
+}
+
+func (processor *ShellCommandProcessor) runNoOutputCommand(command string) {
+	processor.channels.DoAction(Action{ActionType: ActionRunCommand, Args: []interface{}{
+		ActionRunCommandArgs{
+			command: command,
+			onComplete: func(commandErr error, exitStatus int) (err error) {
+				if commandErr != nil {
+					return fmt.Errorf(`Command "%v" failed: %v"`, command, commandErr)
+				} else if exitStatus != 0 {
+					return fmt.Errorf(`Command "%v" exited with status %v`, command, exitStatus)
 				}
 
 				return
