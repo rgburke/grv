@@ -175,3 +175,25 @@ func (grvVariables *GRVVariables) VariableValue(variable GRVVariable) (value str
 	value, isSet = grvVariables.values[variable]
 	return
 }
+
+// GenerateGRVVariablesHelpSection generates help information for GRV variables
+func GenerateGRVVariablesHelpSection(config Config) *HelpSection {
+	headers := []TableHeader{
+		{text: "Variable", themeComponentID: CmpHelpViewSectionTableHeader},
+		{text: "Description", themeComponentID: CmpHelpViewSectionTableHeader},
+	}
+
+	tableFormatter := NewTableFormatterWithHeaders(headers, config)
+	tableFormatter.SetGridLines(true)
+
+	tableFormatter.Resize(uint(len(variableDescriptors)))
+
+	for rowIndex, variableDescriptor := range variableDescriptors {
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 0, CmpHelpViewSectionTableRow, "%v", variableDescriptor.name)
+		tableFormatter.SetCellWithStyle(uint(rowIndex), 1, CmpHelpViewSectionTableRow, "%v", variableDescriptor.description)
+	}
+
+	return &HelpSection{
+		tableFormatter: tableFormatter,
+	}
+}

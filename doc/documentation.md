@@ -38,6 +38,7 @@ The sections below provide an overview of the ways to configure and interact wit
      * [theme](#theme)
      * [unmap](#unmap)
      * [vsplit](#vsplit)
+ - [Shell Commands](#shell-commands)
  - [Filter Query Language](#filter-query-language)
 
 
@@ -570,6 +571,78 @@ For example, to create a vertical split between the currently selected view and 
 ```
 vsplit CommitView master
 ```
+
+
+## Shell Commands
+
+Shell commands can be specified by using the following prefixes: ! or @.
+The ! prefix runs the command and displays the output in a pop-up window.
+The @ prefix runs the command silently and does not display any output.
+For example, to run the command 'git pull' and see the output in a window:
+
+```
+:!git pull
+```
+
+Alternatively to run the command 'git pull' without seeing the output:
+
+```
+:@git pull
+```
+
+Key sequences can be mapped to shell commands.
+For example, to map 'gp' to run the command 'git pull' in the background:
+
+```
+:map All gp @git pull
+```
+
+GRV maintains a set of variables that can be embedded in shell commands.
+These variables represent the current state of the visible views.
+The set of variables available is:
+
+```
+ Variable     | Description                       
+ -------------+------------------------------------
+ head         | Value of HEAD                     
+ branch       | Selected branch                   
+ tag          | Selected tag                      
+ commit       | Selected commit                   
+ file         | Selected file                     
+ line-text    | Selected lines content            
+ line-number  | Selected line number              
+ line-count   | Number of lines in the active view
+ repo-path    | Repository file path              
+ repo-workdir | Work directory path               
+```
+
+Variables can be specified in shell commands using the syntax:
+
+```
+${variable}
+```
+
+For example, to cherry-pick the currently selected commit:
+
+```
+:!git cherry-pick ${commit}
+```
+
+User input can also be specified in shell commands by specifying a custom prompt.
+The syntax for a custom prompt is:
+
+```
+?{prompt text}
+```
+
+For example, to create a new branch from the currently selected commit:
+
+```
+:!git branch ?{New Branch Name: } ${commit}
+```
+
+When the above command is run the user will be shown the prompt: 'New Branch Name: '
+The value entered into the prompt will be substituted into the command when executed.
 
 
 ## Filter Query Language

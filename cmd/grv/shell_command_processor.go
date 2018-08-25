@@ -361,3 +361,61 @@ func (processor *ShellCommandProcessor) runNoOutputCommand(command string) {
 		},
 	}})
 }
+
+// GenerateShellCommandHelpSections generates help information for shell commands
+func GenerateShellCommandHelpSections(config Config) (helpSections []*HelpSection) {
+	description := []HelpSectionText{
+		{text: "Shell commands can be specified by using the following prefixes: ! or @."},
+		{text: "The ! prefix runs the command and displays the output in a pop-up window."},
+		{text: "The @ prefix runs the command silently and does not display any output."},
+		{text: "For example, to run the command 'git pull' and see the output in a window:"},
+		{},
+		{text: ":!git pull", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "Alternatively to run the command 'git pull' without seeing the output:"},
+		{},
+		{text: ":@git pull", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "Key sequences can be mapped to shell commands."},
+		{text: "For example, to map 'gp' to run the command 'git pull' in the background:"},
+		{},
+		{text: ":map All gp @git pull", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "GRV maintains a set of variables that can be embedded in shell commands."},
+		{text: "These variables represent the current state of the visible views."},
+		{text: "The set of variables available is:"},
+	}
+
+	helpSections = append(helpSections, &HelpSection{
+		title:       HelpSectionText{text: "Shell Commands"},
+		description: description,
+	})
+
+	helpSections = append(helpSections, GenerateGRVVariablesHelpSection(config))
+
+	helpSections = append(helpSections, &HelpSection{
+		description: []HelpSectionText{
+			{text: "Variables can be specified in shell commands using the syntax:"},
+			{},
+			{text: "${variable}", themeComponentID: CmpHelpViewSectionCodeBlock},
+			{},
+			{text: "For example, to cherry-pick the currently selected commit:"},
+			{},
+			{text: ":!git cherry-pick ${commit}", themeComponentID: CmpHelpViewSectionCodeBlock},
+			{},
+			{text: "User input can also be specified in shell commands by specifying a custom prompt."},
+			{text: "The syntax for a custom prompt is:"},
+			{},
+			{text: "?{prompt text}", themeComponentID: CmpHelpViewSectionCodeBlock},
+			{},
+			{text: "For example, to create a new branch from the currently selected commit:"},
+			{},
+			{text: ":!git branch ?{New Branch Name: } ${commit}", themeComponentID: CmpHelpViewSectionCodeBlock},
+			{},
+			{text: "When the above command is run the user will be shown the prompt: 'New Branch Name: '"},
+			{text: "The value entered into the prompt will be substituted into the command when executed."},
+		},
+	})
+
+	return
+}

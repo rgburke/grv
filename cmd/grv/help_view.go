@@ -435,6 +435,7 @@ func GenerateHelpView(config Config) (helpSections []*HelpSection, helpViewIndex
 
 	helpSections = append(helpSections, GenerateCommandLineArgumentsHelpSections())
 	helpSections = append(helpSections, config.GenerateHelpSections()...)
+	helpSections = append(helpSections, GenerateShellCommandHelpSections(config)...)
 	helpSections = append(helpSections, GenerateFilterQueryLanguageHelpSections(config)...)
 
 	helpViewIndex = NewHelpViewIndex(helpSections)
