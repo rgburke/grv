@@ -218,7 +218,7 @@ func (repoController *RepositoryController) checkoutRef(ref Ref) (refName string
 		err = fmt.Errorf("Checkout failed - Unable to update HEAD: %v", err)
 	}
 
-	log.Info("Checked out %v", refName)
+	log.Infof("Checked out %v", refName)
 
 	return
 }
@@ -326,7 +326,7 @@ func (repoController *RepositoryController) createBranch(branchName string, oid 
 		return
 	}
 
-	log.Info("Created local branch %v", branchName)
+	log.Infof("Created local branch %v", branchName)
 
 	return
 }

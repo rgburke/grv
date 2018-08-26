@@ -790,7 +790,7 @@ func selectRef(refView *RefView, action Action) (err error) {
 		}
 		refView.channels.UpdateDisplay()
 	default:
-		log.Warn("Unexpected ref type %v", renderedRef.renderedRefType)
+		log.Warnf("Unexpected ref type %v", renderedRef.renderedRefType)
 	}
 
 	return

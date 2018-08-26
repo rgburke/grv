@@ -390,7 +390,7 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 			nwin.Resize(0, 0)
 			nwin.NoutRefresh()
 			nwin.setHidden(true)
-			log.Debugf("Hiding NCurses window %v - %v:%v", win.ID())
+			log.Debugf("Hiding NCurses window %v", win.ID())
 		}
 	}
 
@@ -655,7 +655,7 @@ func (ui *NCursesUI) onConfigVariableChange(configVariable ConfigVariable) {
 	case CfMouse:
 		ui.toggleMouse()
 	default:
-		log.Warn("Received notification for variable I didn't register for: %v", configVariable)
+		log.Warnf("Received notification for variable I didn't register for: %v", configVariable)
 	}
 }
 
