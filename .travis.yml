@@ -2,6 +2,9 @@ if: tag != latest
 
 language: go
 
+go:
+  - "1.11"
+
 os:
   - linux
   - osx
