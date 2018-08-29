@@ -364,7 +364,9 @@ func (refSet *refSet) updateHead(head Ref) {
 
 	if branch, isLocalBranch := head.(*LocalBranch); isLocalBranch {
 		if branchRef, ok := refSet.refs[branch.Name()]; ok {
-			head = branchRef
+			if branch.Oid().Equal(branchRef.Oid()) {
+				head = branchRef
+			}
 		}
 	}
 
@@ -931,9 +933,12 @@ func (statusManager *statusManager) loadStatus() (err error) {
 		log.Debugf("Git status has changed. Notifying status listeners.")
 		statusManager.status = newStatus
 
-		for _, statusListener := range statusManager.statusListeners {
-			statusListener.OnStatusChanged(newStatus)
-		}
+		statusListeners := append([]StatusListener(nil), statusManager.statusListeners...)
+		go func() {
+			for _, statusListener := range statusListeners {
+				statusListener.OnStatusChanged(newStatus)
+			}
+		}()
 	}
 
 	return
