@@ -186,7 +186,7 @@ func NewGRV(readOnly bool) *GRV {
 		log.Info("Running grv in read only mode")
 		repoController = NewReadOnlyRepositoryController()
 	} else {
-		repoController = NewRepoController(repoData, channels)
+		repoController = NewGitCommandRepoController(repoData, channels, config)
 	}
 
 	ui := NewNCursesDisplay(channels, config)

@@ -33,22 +33,26 @@ func (controller *GitCommandRepoController) Initialise(RepoSupplier) {
 
 // CheckoutRef does a git checkout on the provided ref
 func (controller *GitCommandRepoController) CheckoutRef(ref Ref, resultHandler CheckoutRefResultHandler) {
-	err := controller.runGitCommand("checkout", ref.Shorthand())
-	if err == nil {
-		controller.repoData.LoadRefs(nil)
-	}
+	go func() {
+		err := controller.runGitCommand("checkout", ref.Shorthand())
+		if err == nil {
+			controller.repoData.LoadRefs(nil)
+		}
 
-	go resultHandler(ref, err)
+		resultHandler(ref, err)
+	}()
 }
 
 // CheckoutCommit does a git checkout on the provided commit
 func (controller *GitCommandRepoController) CheckoutCommit(commit *Commit, resultHandler CheckoutCommitResultHandler) {
-	err := controller.runGitCommand("checkout", commit.oid.String())
-	if err == nil {
-		controller.repoData.LoadRefs(nil)
-	}
+	go func() {
+		err := controller.runGitCommand("checkout", commit.oid.String())
+		if err == nil {
+			controller.repoData.LoadRefs(nil)
+		}
 
-	go resultHandler(err)
+		resultHandler(err)
+	}()
 }
 
 // CreateBranch uses git branch to create a new branch with the provided name and oid
@@ -73,7 +77,7 @@ func (controller *GitCommandRepoController) CreateBranchAndCheckout(branchName s
 				}
 			}
 
-			go resultHandler(nil, fmt.Errorf("Unable to find ref %v", branchName))
+			resultHandler(nil, fmt.Errorf("Unable to find ref %v", branchName))
 			return nil
 		})
 	}
@@ -118,10 +122,8 @@ func (controller *GitCommandRepoController) CommitMessageFile() (file *os.File, 
 // Commit uses git commit to create a new commit
 func (controller *GitCommandRepoController) Commit(ref Ref, message string) (oid *Oid, err error) {
 	if err = controller.runGitCommand("commit", "-m", message); err == nil {
-		controller.repoData.LoadHead()
 		if err = controller.repoData.LoadHead(); err == nil {
 			oid = controller.repoData.Head().Oid()
-			log.Debugf("COMMIT OID: %v", oid.String())
 		}
 	}
 
