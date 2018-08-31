@@ -120,6 +120,7 @@ The following tables contain default and user configured key bindings
 ```
  Key Bindings | Action                       | Description                                     
  -------------+------------------------------+--------------------------------------------------
+ None         | <grv-checkout-previous-ref>  | Checkout previous ref                           
  None         | <grv-exit>                   | Exit GRV                                        
  :            | <grv-prompt>                 | GRV Command prompt                              
  None         | <grv-remove-tab>             | Remove the active tab                           

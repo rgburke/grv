@@ -214,6 +214,7 @@ func NewRefView(repoData RepoData, repoController RepoController, channels Chann
 			ActionRemoveFilter:            removeRefFilter,
 			ActionMouseSelect:             mouseSelectRef,
 			ActionCheckoutRef:             checkoutRef,
+			ActionCheckoutPreviousRef:     checkoutPreviousRef,
 			ActionCreateBranch:            createBranchFromRef,
 			ActionCreateBranchAndCheckout: createBranchFromRefAndCheckout,
 			ActionShowAvailableActions:    showActionsForRef,
@@ -897,24 +898,48 @@ func checkoutRef(refView *RefView, action Action) (err error) {
 	return
 }
 
+func checkoutPreviousRef(refView *RefView, action Action) (err error) {
+	if refView.config.GetBool(CfConfirmCheckout) {
+		question := "Are you sure you want to checkout the previous ref?"
+		refView.channels.DoAction(YesNoQuestion(question, func(response QuestionResponse) {
+			if response == ResponseYes {
+				refView.repoController.CheckoutPreviousRef(func(ref Ref, err error) {
+					refView.onRefCheckoutOut(ref, err)
+				})
+			}
+		}))
+	} else {
+		refView.repoController.CheckoutPreviousRef(func(ref Ref, err error) {
+			refView.onRefCheckoutOut(ref, err)
+		})
+	}
+
+	return
+}
+
 func (refView *RefView) performCheckoutRef(renderedRef *RenderedRef) {
 	refView.repoController.CheckoutRef(renderedRef.ref, func(ref Ref, err error) {
-		refView.lock.Lock()
-		defer refView.lock.Unlock()
-
-		if err != nil {
-			refView.channels.ReportError(err)
-			return
-		}
-
-		refView.generateRenderedRefs()
-
-		if err = refView.setSelectedRowToRef(ref); err != nil {
-			refView.channels.ReportError(err)
-		}
-
-		refView.channels.UpdateDisplay()
+		refView.onRefCheckoutOut(ref, err)
 	})
+}
+
+func (refView *RefView) onRefCheckoutOut(ref Ref, err error) {
+	refView.lock.Lock()
+	defer refView.lock.Unlock()
+
+	if err != nil {
+		refView.channels.ReportError(err)
+		return
+	}
+
+	refView.generateRenderedRefs()
+
+	if err = refView.setSelectedRowToRef(ref); err != nil {
+		refView.channels.ReportError(err)
+		return
+	}
+
+	refView.channels.ReportStatus("Checked out %v", ref.Shorthand())
 }
 
 func (refView *RefView) setSelectedRowToRef(ref Ref) (err error) {
@@ -1029,6 +1054,10 @@ func showActionsForRef(refView *RefView, action Action) (err error) {
 	}
 
 	contextMenuEntries = append(contextMenuEntries,
+		ContextMenuEntry{
+			DisplayName: "Checkout previous ref",
+			Value:       Action{ActionType: ActionCheckoutPreviousRef},
+		},
 		ContextMenuEntry{
 			DisplayName: "Create branch from ref",
 			Value:       Action{ActionType: ActionCreateBranch},

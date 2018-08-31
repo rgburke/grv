@@ -72,7 +72,7 @@ func (controller *GitCommandRepoController) CreateBranchAndCheckout(branchName s
 		controller.repoData.LoadRefs(func(refs []Ref) error {
 			for _, ref := range refs {
 				if branchName == ref.Shorthand() {
-					go resultHandler(ref, nil)
+					resultHandler(ref, nil)
 					return nil
 				}
 			}
@@ -83,6 +83,34 @@ func (controller *GitCommandRepoController) CreateBranchAndCheckout(branchName s
 	}
 
 	return
+}
+
+// CheckoutPreviousRef uses git checkout - to checkout the previous ref
+func (controller *GitCommandRepoController) CheckoutPreviousRef(resultHandler CheckoutRefResultHandler) {
+	go func() {
+		var err error
+		if err = controller.runGitCommand("checkout", "-"); err == nil {
+			if err = controller.repoData.LoadHead(); err == nil {
+				head := controller.repoData.Head()
+
+				controller.repoData.LoadRefs(func(refs []Ref) error {
+					for _, ref := range refs {
+						if ref.Name() == head.Name() && ref.Oid().Equal(head.Oid()) {
+							resultHandler(ref, nil)
+							return nil
+						}
+					}
+
+					resultHandler(nil, fmt.Errorf("Unable to find ref %v", head.Name()))
+					return nil
+				})
+			}
+		}
+
+		if err != nil {
+			resultHandler(nil, fmt.Errorf("Failed to checkout previous ref: %v", err))
+		}
+	}()
 }
 
 // StageFiles uses git add with the provided file paths

@@ -77,6 +77,7 @@ const (
 	ActionMouseScrollDown
 	ActionMouseScrollUp
 	ActionCheckoutRef
+	ActionCheckoutPreviousRef
 	ActionCheckoutCommit
 	ActionCreateBranch
 	ActionCreateBranchAndCheckout
@@ -462,6 +463,11 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		keyBindings: map[ViewID][]string{
 			ViewRef: {"c"},
 		},
+	},
+	ActionCheckoutPreviousRef: {
+		actionKey:      "<grv-checkout-previous-ref>",
+		actionCategory: ActionCategoryGeneral,
+		description:    "Checkout previous ref",
 	},
 	ActionCheckoutCommit: {
 		actionKey:      "<grv-checkout-commit>",
