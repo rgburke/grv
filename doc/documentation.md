@@ -159,7 +159,8 @@ The following tables contain default and user configured key bindings
 ```
  Key Bindings | Action              | Description
  -------------+---------------------+-------------
- c            | <grv-action-commit> | Commit     
+ C            | <grv-action-commit> | Commit     
+ c            | <grv-checkout-file> | Checkout   
  a            | <grv-stage-file>    | Stage      
  u            | <grv-unstage-file>  | Unstage    
 ```

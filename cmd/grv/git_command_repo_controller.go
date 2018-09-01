@@ -133,6 +133,16 @@ func (controller *GitCommandRepoController) UnstageFiles(filePaths []string) (er
 	return
 }
 
+// CheckoutFiles does a git checkout with the provided file paths
+func (controller *GitCommandRepoController) CheckoutFiles(filePaths []string) (err error) {
+	args := append([]string{"checkout", "--"}, filePaths...)
+	if err = controller.runGitCommand(args...); err == nil {
+		err = controller.repoData.LoadStatus()
+	}
+
+	return
+}
+
 // CommitMessageFile creates and truncates the COMMIT_EDITMSG file so that a new
 // commit message file is ready to be written
 func (controller *GitCommandRepoController) CommitMessageFile() (file *os.File, err error) {

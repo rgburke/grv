@@ -121,10 +121,11 @@ func NewGitStatusView(repoData RepoData, repoController RepoController, channels
 		lastModify:     time.Now(),
 		variables:      variables,
 		handlers: map[ActionType]gitStatusViewHandler{
-			ActionSelect:      selectGitStatusEntry,
-			ActionStageFile:   stageFile,
-			ActionUnstageFile: unstageFile,
-			ActionCommit:      commit,
+			ActionSelect:       selectGitStatusEntry,
+			ActionStageFile:    stageFile,
+			ActionUnstageFile:  unstageFile,
+			ActionCheckoutFile: checkoutFile,
+			ActionCommit:       commit,
 		},
 	}
 
@@ -258,6 +259,7 @@ func (gitStatusView *GitStatusView) RenderHelpBar(lineBuilder *LineBuilder) (err
 	RenderKeyBindingHelp(gitStatusView.ViewID(), lineBuilder, gitStatusView.config, []ActionMessage{
 		{action: ActionStageFile, message: "Stage"},
 		{action: ActionUnstageFile, message: "Unstage"},
+		{action: ActionCheckoutFile, message: "Checkout"},
 		{action: ActionCommit, message: "Commit"},
 	})
 
@@ -860,6 +862,40 @@ func unstageFile(gitStatusView *GitStatusView, action Action) (err error) {
 	}
 
 	if err = gitStatusView.repoController.UnstageFiles(filePaths); err != nil {
+		return
+	}
+
+	_, err = gitStatusView.SelectableRowView.HandleAction(Action{ActionType: ActionPrevLine})
+	gitStatusView.channels.UpdateDisplay()
+
+	return
+}
+
+func checkoutFile(gitStatusView *GitStatusView, action Action) (err error) {
+	if gitStatusView.rows() == 0 {
+		return
+	}
+
+	renderedStatus := gitStatusView.renderedStatus
+	statusEntry := renderedStatus[gitStatusView.activeViewPos.ActiveRowIndex()]
+
+	if !statusEntry.isSelectable() || statusEntry.statusType != StUnstaged {
+		return
+	}
+
+	var filePaths []string
+
+	if statusEntry.entryType == rsetFile {
+		filePaths = append(filePaths, statusEntry.filePath)
+	} else if statusEntry.entryType == rsetHeader {
+		filePaths = gitStatusView.status.FilePaths(StUnstaged)
+	}
+
+	if len(filePaths) == 0 {
+		return
+	}
+
+	if err = gitStatusView.repoController.CheckoutFiles(filePaths); err != nil {
 		return
 	}
 

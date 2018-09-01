@@ -28,6 +28,7 @@ type RepoController interface {
 	CheckoutPreviousRef(CheckoutRefResultHandler)
 	StageFiles(filePaths []string) error
 	UnstageFiles(filePaths []string) error
+	CheckoutFiles(filePaths []string) error
 	CommitMessageFile() (*os.File, error)
 	Commit(ref Ref, message string) (*Oid, error)
 }
@@ -77,6 +78,11 @@ func (repoController *ReadOnlyRepositoryController) StageFiles([]string) error {
 
 // UnstageFiles returns a read only error
 func (repoController *ReadOnlyRepositoryController) UnstageFiles([]string) error {
+	return errReadOnly
+}
+
+// CheckoutFiles returns a read only error
+func (repoController *ReadOnlyRepositoryController) CheckoutFiles([]string) error {
 	return errReadOnly
 }
 

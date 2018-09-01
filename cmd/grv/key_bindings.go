@@ -87,6 +87,7 @@ const (
 	ActionShowAvailableActions
 	ActionStageFile
 	ActionUnstageFile
+	ActionCheckoutFile
 	ActionCommit
 	ActionShowHelpView
 	ActionNextButton
@@ -531,12 +532,20 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 			ViewGitStatus: {"u"},
 		},
 	},
+	ActionCheckoutFile: {
+		actionKey:      "<grv-checkout-file>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Checkout",
+		keyBindings: map[ViewID][]string{
+			ViewGitStatus: {"c"},
+		},
+	},
 	ActionCommit: {
 		actionKey:      "<grv-action-commit>",
 		actionCategory: ActionCategoryViewSpecific,
 		description:    "Commit",
 		keyBindings: map[ViewID][]string{
-			ViewGitStatus: {"c"},
+			ViewGitStatus: {"C"},
 		},
 	},
 	ActionShowHelpView: {
