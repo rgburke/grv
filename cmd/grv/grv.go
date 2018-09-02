@@ -499,7 +499,13 @@ func (grv *GRV) runCommand(action Action) (err error) {
 		return fmt.Errorf("Expected argument of type ActionRunCommandArgs but found type %T", action.Args[0])
 	}
 
-	cmd := exec.Command("/bin/sh", "-c", arg.command)
+	var cmd *exec.Cmd
+
+	if arg.noShell {
+		cmd = exec.Command(arg.command, arg.args...)
+	} else {
+		cmd = exec.Command("/bin/sh", "-c", arg.command)
+	}
 
 	if arg.stdin != nil {
 		cmd.Stdin = arg.stdin

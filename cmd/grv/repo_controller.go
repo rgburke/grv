@@ -11,6 +11,9 @@ type CheckoutRefResultHandler func(Ref, error)
 // CheckoutCommitResultHandler is notified when the checkout is complete
 type CheckoutCommitResultHandler func(err error)
 
+// CommitResultHandler is notified when commit creation is complete
+type CommitResultHandler func(oid *Oid, err error)
+
 const (
 	checkoutPercentageDiffReportThreshold = 10.0
 )
@@ -30,7 +33,7 @@ type RepoController interface {
 	UnstageFiles(filePaths []string) error
 	CheckoutFiles(filePaths []string) error
 	CommitMessageFile() (*os.File, error)
-	Commit(ref Ref, message string) (*Oid, error)
+	Commit(CommitResultHandler)
 }
 
 // ReadOnlyRepositoryController does not permit any
@@ -92,6 +95,6 @@ func (repoController *ReadOnlyRepositoryController) CommitMessageFile() (file *o
 }
 
 // Commit returns a read only error
-func (repoController *ReadOnlyRepositoryController) Commit(Ref, string) (oid *Oid, err error) {
-	return oid, errReadOnly
+func (repoController *ReadOnlyRepositoryController) Commit(resultHandler CommitResultHandler) {
+	go resultHandler(nil, errReadOnly)
 }

@@ -912,46 +912,13 @@ func commit(gitStatusView *GitStatusView, action Action) (err error) {
 		return fmt.Errorf("Committing is not possible due to unmerged files - Resolve conflicts before commiting")
 	}
 
-	editor, err := gitStatusView.userEditor()
-	if err != nil {
-		return
-	}
-
-	filePath, err := gitStatusView.generateCommitMessageFile()
-	if err != nil {
-		return
-	}
-
-	command := fmt.Sprintf("%v %v", editor, filePath)
-
-	gitStatusView.channels.DoAction(Action{ActionType: ActionRunCommand, Args: []interface{}{
-		ActionRunCommandArgs{
-			command:     command,
-			interactive: true,
-			stdin:       os.Stdin,
-			stdout:      os.Stdout,
-			stderr:      os.Stderr,
-			onComplete: func(commandErr error, exitStatus int) (err error) {
-				if commandErr != nil || exitStatus != 0 {
-					return fmt.Errorf("Editor command failed - Not proceeding with commit")
-				}
-
-				commitMessage, err := gitStatusView.processCommitMessageFile(filePath)
-				if err != nil {
-					return
-				}
-
-				head := gitStatusView.repoData.Head()
-				oid, err := gitStatusView.repoController.Commit(head, commitMessage)
-				if err != nil {
-					return
-				}
-
-				gitStatusView.channels.ReportStatus("Created commit %v", oid.ShortID())
-				return
-			},
-		},
-	}})
+	gitStatusView.repoController.Commit(func(oid *Oid, err error) {
+		if err == nil {
+			gitStatusView.channels.ReportStatus("Created commit %v", oid.ShortID())
+		} else {
+			gitStatusView.channels.ReportError(fmt.Errorf("Commit failed: %v", err))
+		}
+	})
 
 	return
 }

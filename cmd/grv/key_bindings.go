@@ -643,8 +643,10 @@ type ActionCreateMessageBoxViewArgs struct {
 // the status and output
 type ActionRunCommandArgs struct {
 	command        string
+	args           []string
 	interactive    bool
 	promptForInput bool
+	noShell        bool
 	stdin          io.Reader
 	stdout         io.Writer
 	stderr         io.Writer

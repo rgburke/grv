@@ -158,22 +158,35 @@ func (controller *GitCommandRepoController) CommitMessageFile() (file *os.File, 
 }
 
 // Commit uses git commit to create a new commit
-func (controller *GitCommandRepoController) Commit(ref Ref, message string) (oid *Oid, err error) {
-	if err = controller.runGitCommand("commit", "-m", message); err == nil {
-		if err = controller.repoData.LoadHead(); err == nil {
+func (controller *GitCommandRepoController) Commit(resultHandler CommitResultHandler) {
+	controller.runInteractiveGitCommand(func(commandErr error, exitStatus int) (err error) {
+		if commandErr != nil || exitStatus != 0 {
+			resultHandler(nil, fmt.Errorf("Command Status: %v, Error: %v", exitStatus, commandErr))
+			return
+		}
+
+		var resultError error
+		var oid *Oid
+
+		if resultError = controller.repoData.LoadHead(); resultError == nil {
 			oid = controller.repoData.Head().Oid()
 		}
+
+		resultHandler(oid, resultError)
+		return
+	}, "commit")
+}
+
+func (controller *GitCommandRepoController) gitBinary() string {
+	if gitBinary := controller.config.GetString(CfGitBinaryFilePath); gitBinary != "" {
+		return gitBinary
 	}
 
-	return
+	return "git"
 }
 
 func (controller *GitCommandRepoController) runGitCommand(args ...string) (err error) {
-	gitBinary := controller.config.GetString(CfGitBinaryFilePath)
-	if gitBinary == "" {
-		gitBinary = "git"
-	}
-
+	gitBinary := controller.gitBinary()
 	log.Debugf("Running command: %v %v", gitBinary, strings.Join(args, " "))
 
 	cmd := exec.Command(gitBinary, args...)
@@ -184,4 +197,22 @@ func (controller *GitCommandRepoController) runGitCommand(args ...string) (err e
 	}
 
 	return
+}
+
+func (controller *GitCommandRepoController) runInteractiveGitCommand(onComplete func(error, int) error, args ...string) {
+	gitBinary := controller.gitBinary()
+	log.Debugf("Running interactive command: %v %v", gitBinary, strings.Join(args, " "))
+
+	controller.channels.DoAction(Action{ActionType: ActionRunCommand, Args: []interface{}{
+		ActionRunCommandArgs{
+			command:     gitBinary,
+			args:        args,
+			noShell:     true,
+			interactive: true,
+			stdin:       os.Stdin,
+			stdout:      os.Stdout,
+			stderr:      os.Stderr,
+			onComplete:  onComplete,
+		},
+	}})
 }
