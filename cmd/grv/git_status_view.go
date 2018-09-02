@@ -126,6 +126,7 @@ func NewGitStatusView(repoData RepoData, repoController RepoController, channels
 			ActionUnstageFile:  unstageFile,
 			ActionCheckoutFile: checkoutFile,
 			ActionCommit:       commit,
+			ActionAmendCommit:  amendCommit,
 		},
 	}
 
@@ -261,6 +262,7 @@ func (gitStatusView *GitStatusView) RenderHelpBar(lineBuilder *LineBuilder) (err
 		{action: ActionUnstageFile, message: "Unstage"},
 		{action: ActionCheckoutFile, message: "Checkout"},
 		{action: ActionCommit, message: "Commit"},
+		{action: ActionAmendCommit, message: "Amend Commit"},
 	})
 
 	return
@@ -917,6 +919,22 @@ func commit(gitStatusView *GitStatusView, action Action) (err error) {
 			gitStatusView.channels.ReportStatus("Created commit %v", oid.ShortID())
 		} else {
 			gitStatusView.channels.ReportError(fmt.Errorf("Commit failed: %v", err))
+		}
+	})
+
+	return
+}
+
+func amendCommit(gitStatusView *GitStatusView, action Action) (err error) {
+	if len(gitStatusView.status.FilePaths(StConflicted)) > 0 {
+		return fmt.Errorf("Committing is not possible due to unmerged files - Resolve conflicts before commiting")
+	}
+
+	gitStatusView.repoController.AmendCommit(func(oid *Oid, err error) {
+		if err == nil {
+			gitStatusView.channels.ReportStatus("Amended commit. New oid: %v", oid.ShortID())
+		} else {
+			gitStatusView.channels.ReportError(fmt.Errorf("Amending commit failed: %v", err))
 		}
 	})
 

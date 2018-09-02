@@ -157,12 +157,13 @@ The following tables contain default and user configured key bindings
 ### GitStatusView Specific
 
 ```
- Key Bindings | Action              | Description
- -------------+---------------------+-------------
- C            | <grv-action-commit> | Commit     
- c            | <grv-checkout-file> | Checkout   
- a            | <grv-stage-file>    | Stage      
- u            | <grv-unstage-file>  | Unstage    
+ Key Bindings | Action                    | Description 
+ -------------+---------------------------+--------------
+ A            | <grv-action-amend-commit> | Amend commit
+ C            | <grv-action-commit>       | Commit      
+ c            | <grv-checkout-file>       | Checkout    
+ a            | <grv-stage-file>          | Stage       
+ u            | <grv-unstage-file>        | Unstage     
 ```
 
 ### MessageBoxView Specific

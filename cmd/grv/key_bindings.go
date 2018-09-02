@@ -89,6 +89,7 @@ const (
 	ActionUnstageFile
 	ActionCheckoutFile
 	ActionCommit
+	ActionAmendCommit
 	ActionShowHelpView
 	ActionNextButton
 	ActionPrevButton
@@ -546,6 +547,14 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		description:    "Commit",
 		keyBindings: map[ViewID][]string{
 			ViewGitStatus: {"C"},
+		},
+	},
+	ActionAmendCommit: {
+		actionKey:      "<grv-action-amend-commit>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Amend commit",
+		keyBindings: map[ViewID][]string{
+			ViewGitStatus: {"A"},
 		},
 	},
 	ActionShowHelpView: {

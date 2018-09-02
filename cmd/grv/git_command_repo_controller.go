@@ -159,7 +159,16 @@ func (controller *GitCommandRepoController) CommitMessageFile() (file *os.File, 
 
 // Commit uses git commit to create a new commit
 func (controller *GitCommandRepoController) Commit(resultHandler CommitResultHandler) {
-	controller.runInteractiveGitCommand(func(commandErr error, exitStatus int) (err error) {
+	controller.runInteractiveGitCommand(controller.onGitCommit(resultHandler), "commit")
+}
+
+// AmendCommit uses git commit --amend to ammend the last commit
+func (controller *GitCommandRepoController) AmendCommit(resultHandler CommitResultHandler) {
+	controller.runInteractiveGitCommand(controller.onGitCommit(resultHandler), "commit", "--amend")
+}
+
+func (controller *GitCommandRepoController) onGitCommit(resultHandler CommitResultHandler) func(error, int) error {
+	return func(commandErr error, exitStatus int) (err error) {
 		if commandErr != nil || exitStatus != 0 {
 			resultHandler(nil, fmt.Errorf("Command Status: %v, Error: %v", exitStatus, commandErr))
 			return
@@ -174,7 +183,7 @@ func (controller *GitCommandRepoController) Commit(resultHandler CommitResultHan
 
 		resultHandler(oid, resultError)
 		return
-	}, "commit")
+	}
 }
 
 func (controller *GitCommandRepoController) gitBinary() string {

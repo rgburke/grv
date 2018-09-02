@@ -34,6 +34,7 @@ type RepoController interface {
 	CheckoutFiles(filePaths []string) error
 	CommitMessageFile() (*os.File, error)
 	Commit(CommitResultHandler)
+	AmendCommit(CommitResultHandler)
 }
 
 // ReadOnlyRepositoryController does not permit any
@@ -96,5 +97,10 @@ func (repoController *ReadOnlyRepositoryController) CommitMessageFile() (file *o
 
 // Commit returns a read only error
 func (repoController *ReadOnlyRepositoryController) Commit(resultHandler CommitResultHandler) {
+	go resultHandler(nil, errReadOnly)
+}
+
+// AmendCommit returns a read only error
+func (repoController *ReadOnlyRepositoryController) AmendCommit(resultHandler CommitResultHandler) {
 	go resultHandler(nil, errReadOnly)
 }
