@@ -217,6 +217,8 @@ func NewRefView(repoData RepoData, repoController RepoController, channels Chann
 			ActionCheckoutPreviousRef:     checkoutPreviousRef,
 			ActionCreateBranch:            createBranchFromRef,
 			ActionCreateBranchAndCheckout: createBranchFromRefAndCheckout,
+			ActionCreateTag:               createTagFromRef,
+			ActionCreateAnnotatedTag:      createAnnotatedTagFromRef,
 			ActionShowAvailableActions:    showActionsForRef,
 		},
 	}
@@ -954,29 +956,34 @@ func (refView *RefView) setSelectedRowToRef(ref Ref) (err error) {
 	return
 }
 
-func createBranchFromRef(refView *RefView, action Action) (err error) {
+func (refView *RefView) processRefNameAction(action Action, promptAction, nextAction ActionType) (refName string, ref Ref, err error) {
 	if len(action.Args) == 0 {
 		refView.channels.DoAction(Action{
-			ActionType: ActionBranchNamePrompt,
-			Args:       []interface{}{ActionCreateBranch},
+			ActionType: promptAction,
+			Args:       []interface{}{nextAction},
 		})
 
 		return
 	}
 
-	branchName, isString := action.Args[0].(string)
+	refName, isString := action.Args[0].(string)
 	if !isString {
-		return fmt.Errorf("Expected first argument to be branch name but found %T", action.Args[0])
+		err = fmt.Errorf("Expected first argument to be ref name but found %T", action.Args[0])
+		return
 	}
 
 	renderedRefs := refView.renderedRefs.RenderedRefs()
 	renderedRef := renderedRefs[refView.activeViewPos.ActiveRowIndex()]
+	ref = renderedRef.ref
 
-	if renderedRef.ref == nil {
+	return
+}
+
+func createBranchFromRef(refView *RefView, action Action) (err error) {
+	branchName, ref, err := refView.processRefNameAction(action, ActionBranchNamePrompt, ActionCreateBranch)
+	if err != nil || ref == nil || branchName == "" {
 		return
 	}
-
-	ref := renderedRef.ref
 
 	if err = refView.repoController.CreateBranch(branchName, ref.Oid()); err != nil {
 		return
@@ -988,28 +995,10 @@ func createBranchFromRef(refView *RefView, action Action) (err error) {
 }
 
 func createBranchFromRefAndCheckout(refView *RefView, action Action) (err error) {
-	if len(action.Args) == 0 {
-		refView.channels.DoAction(Action{
-			ActionType: ActionBranchNamePrompt,
-			Args:       []interface{}{ActionCreateBranchAndCheckout},
-		})
-
+	branchName, ref, err := refView.processRefNameAction(action, ActionBranchNamePrompt, ActionCreateBranchAndCheckout)
+	if err != nil || ref == nil || branchName == "" {
 		return
 	}
-
-	branchName, isString := action.Args[0].(string)
-	if !isString {
-		return fmt.Errorf("Expected first argument to be branch name but found %T", action.Args[0])
-	}
-
-	renderedRefs := refView.renderedRefs.RenderedRefs()
-	renderedRef := renderedRefs[refView.activeViewPos.ActiveRowIndex()]
-
-	if renderedRef.ref == nil {
-		return
-	}
-
-	ref := renderedRef.ref
 
 	refView.repoController.CreateBranchAndCheckout(branchName, ref.Oid(), func(ref Ref, err error) {
 		refView.lock.Lock()
@@ -1027,6 +1016,44 @@ func createBranchFromRefAndCheckout(refView *RefView, action Action) (err error)
 		}
 
 		refView.channels.ReportStatus("Created and checked out branch %v", branchName)
+	})
+
+	return
+}
+
+func createTagFromRef(refView *RefView, action Action) (err error) {
+	tagName, ref, err := refView.processRefNameAction(action, ActionTagNamePrompt, ActionCreateTag)
+	if err != nil || ref == nil || tagName == "" {
+		return
+	}
+
+	if err = refView.repoController.CreateTag(tagName, ref.Oid()); err != nil {
+		return
+	}
+
+	refView.channels.ReportStatus("Created tag %v at %v", tagName, ref.Oid().ShortID())
+
+	return
+}
+
+func createAnnotatedTagFromRef(refView *RefView, action Action) (err error) {
+	tagName, ref, err := refView.processRefNameAction(action, ActionTagNamePrompt, ActionCreateAnnotatedTag)
+	if err != nil || ref == nil || tagName == "" {
+		return
+	}
+
+	refView.repoController.CreateAnnotatedTag(tagName, ref.Oid(), func(ref Ref, err error) {
+		refView.lock.Lock()
+		defer refView.lock.Unlock()
+
+		if err != nil {
+			refView.channels.ReportError(fmt.Errorf("Failed to create annotated tag %v", tagName))
+			return
+		}
+
+		refView.generateRenderedRefs()
+
+		refView.channels.ReportStatus("Created annotated tag %v at %v", tagName, ref.Oid().ShortID())
 	})
 
 	return
@@ -1065,6 +1092,14 @@ func showActionsForRef(refView *RefView, action Action) (err error) {
 		ContextMenuEntry{
 			DisplayName: "Create branch from ref and checkout",
 			Value:       Action{ActionType: ActionCreateBranchAndCheckout},
+		},
+		ContextMenuEntry{
+			DisplayName: "Create tag at ref",
+			Value:       Action{ActionType: ActionCreateTag},
+		},
+		ContextMenuEntry{
+			DisplayName: "Create annotated tag at ref",
+			Value:       Action{ActionType: ActionCreateAnnotatedTag},
 		},
 	)
 

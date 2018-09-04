@@ -32,7 +32,7 @@ func (controller *GitCommandRepoController) Initialise(RepoSupplier) {
 }
 
 // CheckoutRef does a git checkout on the provided ref
-func (controller *GitCommandRepoController) CheckoutRef(ref Ref, resultHandler CheckoutRefResultHandler) {
+func (controller *GitCommandRepoController) CheckoutRef(ref Ref, resultHandler RefOperationResultHandler) {
 	go func() {
 		err := controller.runGitCommand("checkout", ref.Shorthand())
 		if err == nil {
@@ -57,8 +57,7 @@ func (controller *GitCommandRepoController) CheckoutCommit(commit *Commit, resul
 
 // CreateBranch uses git branch to create a new branch with the provided name and oid
 func (controller *GitCommandRepoController) CreateBranch(branchName string, oid *Oid) (err error) {
-	err = controller.runGitCommand("branch", branchName, oid.String())
-	if err == nil {
+	if err = controller.runGitCommand("branch", branchName, oid.String()); err == nil {
 		controller.repoData.LoadRefs(nil)
 	}
 
@@ -66,43 +65,56 @@ func (controller *GitCommandRepoController) CreateBranch(branchName string, oid 
 }
 
 // CreateBranchAndCheckout uses git checkout -b to create and checkout a branch with the provided name and oid
-func (controller *GitCommandRepoController) CreateBranchAndCheckout(branchName string, oid *Oid, resultHandler CheckoutRefResultHandler) {
+func (controller *GitCommandRepoController) CreateBranchAndCheckout(branchName string, oid *Oid, resultHandler RefOperationResultHandler) {
 	err := controller.runGitCommand("checkout", "-b", branchName, oid.String())
 	if err == nil {
-		controller.repoData.LoadRefs(func(refs []Ref) error {
-			for _, ref := range refs {
-				if branchName == ref.Shorthand() {
-					resultHandler(ref, nil)
-					return nil
-				}
-			}
-
-			resultHandler(nil, fmt.Errorf("Unable to find ref %v", branchName))
-			return nil
+		controller.findRef(resultHandler, branchName, func(ref Ref) bool {
+			branch, isBranch := ref.(*LocalBranch)
+			return isBranch && branchName == branch.Shorthand()
 		})
 	}
 
 	return
 }
 
+// CreateTag uses git tag to create a new tag with the provided name
+func (controller *GitCommandRepoController) CreateTag(tagName string, oid *Oid) (err error) {
+	if err = controller.runGitCommand("tag", tagName, oid.String()); err == nil {
+		controller.repoData.LoadRefs(nil)
+	}
+
+	return
+}
+
+// CreateAnnotatedTag uses git tag -a to create a new annotated tag with the provided name
+func (controller *GitCommandRepoController) CreateAnnotatedTag(tagName string, oid *Oid, resultHandler RefOperationResultHandler) {
+	controller.runInteractiveGitCommand(func(commandErr error, exitStatus int) (err error) {
+		if commandErr != nil || exitStatus != 0 {
+			resultHandler(nil, fmt.Errorf("Failed to create tag. Command Status: %v, Error: %v", exitStatus, commandErr))
+			return
+		}
+
+		controller.findRef(resultHandler, tagName, func(ref Ref) bool {
+			tag, isTag := ref.(*Tag)
+			return isTag && tag.Shorthand() == tagName
+		})
+
+		return
+	}, "tag", "-a", tagName, oid.String())
+
+	return
+}
+
 // CheckoutPreviousRef uses git checkout - to checkout the previous ref
-func (controller *GitCommandRepoController) CheckoutPreviousRef(resultHandler CheckoutRefResultHandler) {
+func (controller *GitCommandRepoController) CheckoutPreviousRef(resultHandler RefOperationResultHandler) {
 	go func() {
 		var err error
 		if err = controller.runGitCommand("checkout", "-"); err == nil {
 			if err = controller.repoData.LoadHead(); err == nil {
 				head := controller.repoData.Head()
 
-				controller.repoData.LoadRefs(func(refs []Ref) error {
-					for _, ref := range refs {
-						if ref.Name() == head.Name() && ref.Oid().Equal(head.Oid()) {
-							resultHandler(ref, nil)
-							return nil
-						}
-					}
-
-					resultHandler(nil, fmt.Errorf("Unable to find ref %v", head.Name()))
-					return nil
+				controller.findRef(resultHandler, head.Name(), func(ref Ref) bool {
+					return ref.Name() == head.Name() && ref.Oid().Equal(head.Oid())
 				})
 			}
 		}
@@ -184,6 +196,20 @@ func (controller *GitCommandRepoController) onGitCommit(resultHandler CommitResu
 		resultHandler(oid, resultError)
 		return
 	}
+}
+
+func (controller *GitCommandRepoController) findRef(resultHandler RefOperationResultHandler, refName string, refPredicate func(Ref) bool) {
+	controller.repoData.LoadRefs(func(refs []Ref) error {
+		for _, ref := range refs {
+			if refPredicate(ref) {
+				resultHandler(ref, nil)
+				return nil
+			}
+		}
+
+		resultHandler(nil, fmt.Errorf("Unable to find ref %v", refName))
+		return nil
+	})
 }
 
 func (controller *GitCommandRepoController) gitBinary() string {

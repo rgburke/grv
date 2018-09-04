@@ -36,6 +36,7 @@ const (
 	ActionFilterPrompt
 	ActionQuestionPrompt
 	ActionBranchNamePrompt
+	ActionTagNamePrompt
 	ActionCustomPrompt
 	ActionSearch
 	ActionReverseSearch
@@ -81,6 +82,8 @@ const (
 	ActionCheckoutCommit
 	ActionCreateBranch
 	ActionCreateBranchAndCheckout
+	ActionCreateTag
+	ActionCreateAnnotatedTag
 	ActionCreateContextMenu
 	ActionCreateCommandOutputView
 	ActionCreateMessageBoxView
@@ -185,6 +188,11 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		actionCategory: ActionCategoryGeneral,
 		promptAction:   true,
 		description:    "Specify branch name",
+	},
+	ActionTagNamePrompt: {
+		actionCategory: ActionCategoryGeneral,
+		promptAction:   true,
+		description:    "Specify tag name",
 	},
 	ActionCustomPrompt: {
 		actionCategory: ActionCategoryGeneral,
@@ -495,6 +503,24 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		keyBindings: map[ViewID][]string{
 			ViewRef:    {"B"},
 			ViewCommit: {"B"},
+		},
+	},
+	ActionCreateTag: {
+		actionKey:      "<grv-create-tag>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Create a new tag",
+		keyBindings: map[ViewID][]string{
+			ViewRef:    {"t"},
+			ViewCommit: {"t"},
+		},
+	},
+	ActionCreateAnnotatedTag: {
+		actionKey:      "<grv-create-annotated-tag>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Create a new annotated tag",
+		keyBindings: map[ViewID][]string{
+			ViewRef:    {"T"},
+			ViewCommit: {"T"},
 		},
 	},
 	ActionCreateContextMenu: {

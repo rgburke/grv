@@ -5,8 +5,8 @@ import (
 	"os"
 )
 
-// CheckoutRefResultHandler is notified when the checkout is complete
-type CheckoutRefResultHandler func(Ref, error)
+// RefOperationResultHandler is notified when the checkout is complete
+type RefOperationResultHandler func(Ref, error)
 
 // CheckoutCommitResultHandler is notified when the checkout is complete
 type CheckoutCommitResultHandler func(err error)
@@ -24,11 +24,13 @@ var errReadOnly = errors.New("Invalid operation in read only mode")
 // and modifies repository state
 type RepoController interface {
 	Initialise(RepoSupplier)
-	CheckoutRef(Ref, CheckoutRefResultHandler)
+	CheckoutRef(Ref, RefOperationResultHandler)
 	CheckoutCommit(*Commit, CheckoutCommitResultHandler)
 	CreateBranch(branchName string, oid *Oid) error
-	CreateBranchAndCheckout(branchName string, oid *Oid, resultHandler CheckoutRefResultHandler)
-	CheckoutPreviousRef(CheckoutRefResultHandler)
+	CreateBranchAndCheckout(branchName string, oid *Oid, resultHandler RefOperationResultHandler)
+	CreateTag(tagName string, oid *Oid) error
+	CreateAnnotatedTag(tagName string, oid *Oid, resultHandler RefOperationResultHandler)
+	CheckoutPreviousRef(RefOperationResultHandler)
 	StageFiles(filePaths []string) error
 	UnstageFiles(filePaths []string) error
 	CheckoutFiles(filePaths []string) error
@@ -51,7 +53,7 @@ func NewReadOnlyRepositoryController() RepoController {
 func (repoController *ReadOnlyRepositoryController) Initialise(RepoSupplier) {}
 
 // CheckoutRef returns a read only error
-func (repoController *ReadOnlyRepositoryController) CheckoutRef(ref Ref, resultHandler CheckoutRefResultHandler) {
+func (repoController *ReadOnlyRepositoryController) CheckoutRef(ref Ref, resultHandler RefOperationResultHandler) {
 	go resultHandler(nil, errReadOnly)
 }
 
@@ -66,12 +68,22 @@ func (repoController *ReadOnlyRepositoryController) CreateBranch(string, *Oid) e
 }
 
 // CreateBranchAndCheckout returns a read only error
-func (repoController *ReadOnlyRepositoryController) CreateBranchAndCheckout(branchName string, oid *Oid, resultHandler CheckoutRefResultHandler) {
+func (repoController *ReadOnlyRepositoryController) CreateBranchAndCheckout(branchName string, oid *Oid, resultHandler RefOperationResultHandler) {
+	go resultHandler(nil, errReadOnly)
+}
+
+// CreateTag returns a read only error
+func (repoController *ReadOnlyRepositoryController) CreateTag(string, *Oid) error {
+	return errReadOnly
+}
+
+// CreateAnnotatedTag returns a read only error
+func (repoController *ReadOnlyRepositoryController) CreateAnnotatedTag(tagName string, oid *Oid, resultHandler RefOperationResultHandler) {
 	go resultHandler(nil, errReadOnly)
 }
 
 // CheckoutPreviousRef returns a read only error
-func (repoController *ReadOnlyRepositoryController) CheckoutPreviousRef(resultHandler CheckoutRefResultHandler) {
+func (repoController *ReadOnlyRepositoryController) CheckoutPreviousRef(resultHandler RefOperationResultHandler) {
 	go resultHandler(nil, errReadOnly)
 }
 

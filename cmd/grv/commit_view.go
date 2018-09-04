@@ -86,6 +86,8 @@ func NewCommitView(repoData RepoData, repoController RepoController, channels Ch
 			ActionCheckoutCommit:          checkoutCommit,
 			ActionCreateBranch:            createBranchFromCommit,
 			ActionCreateBranchAndCheckout: createBranchFromCommitAndCheckout,
+			ActionCreateTag:               createTagFromCommit,
+			ActionCreateAnnotatedTag:      createAnnotatedTagFromCommit,
 			ActionShowAvailableActions:    showActionsForCommit,
 		},
 	}
@@ -897,25 +899,35 @@ func (commitView *CommitView) checkoutCommit(commit *Commit) {
 	})
 }
 
-func createBranchFromCommit(commitView *CommitView, action Action) (err error) {
+func (commitView *CommitView) processRefNameAction(action Action, promptAction, nextAction ActionType) (commit *Commit, refName string, err error) {
 	if len(action.Args) == 0 {
 		commitView.channels.DoAction(Action{
-			ActionType: ActionBranchNamePrompt,
-			Args:       []interface{}{ActionCreateBranch},
+			ActionType: promptAction,
+			Args:       []interface{}{nextAction},
 		})
 
 		return
 	}
 
-	branchName, isString := action.Args[0].(string)
+	refName, isString := action.Args[0].(string)
 	if !isString {
-		return fmt.Errorf("Expected first argument to be branch name but found %T", action.Args[0])
+		err = fmt.Errorf("Expected first argument to be ref name but found %T", action.Args[0])
+		return
 	}
 
 	viewPos := commitView.viewPos()
 
-	commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.ActiveRowIndex())
+	commit, err = commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.ActiveRowIndex())
 	if err != nil {
+		return
+	}
+
+	return
+}
+
+func createBranchFromCommit(commitView *CommitView, action Action) (err error) {
+	commit, branchName, err := commitView.processRefNameAction(action, ActionBranchNamePrompt, ActionCreateBranch)
+	if commit == nil || branchName == "" || err != nil {
 		return
 	}
 
@@ -929,24 +941,8 @@ func createBranchFromCommit(commitView *CommitView, action Action) (err error) {
 }
 
 func createBranchFromCommitAndCheckout(commitView *CommitView, action Action) (err error) {
-	if len(action.Args) == 0 {
-		commitView.channels.DoAction(Action{
-			ActionType: ActionBranchNamePrompt,
-			Args:       []interface{}{ActionCreateBranchAndCheckout},
-		})
-
-		return
-	}
-
-	branchName, isString := action.Args[0].(string)
-	if !isString {
-		return fmt.Errorf("Expected first argument to be branch name but found %T", action.Args[0])
-	}
-
-	viewPos := commitView.viewPos()
-
-	commit, err := commitView.repoData.CommitByIndex(commitView.activeRef, viewPos.ActiveRowIndex())
-	if err != nil {
+	commit, branchName, err := commitView.processRefNameAction(action, ActionBranchNamePrompt, ActionCreateBranchAndCheckout)
+	if commit == nil || branchName == "" || err != nil {
 		return
 	}
 
@@ -957,6 +953,40 @@ func createBranchFromCommitAndCheckout(commitView *CommitView, action Action) (e
 		}
 
 		commitView.channels.ReportStatus("Created and checked out branch %v at %v", branchName, commit.oid.ShortID())
+	})
+
+	return
+}
+
+func createTagFromCommit(commitView *CommitView, action Action) (err error) {
+	commit, tagName, err := commitView.processRefNameAction(action, ActionTagNamePrompt, ActionCreateTag)
+	if commit == nil || tagName == "" || err != nil {
+		return
+	}
+
+	if err = commitView.repoController.CreateTag(tagName, commit.oid); err != nil {
+		err = fmt.Errorf("Failed to create tag at commit: %v", err)
+		return
+	}
+
+	commitView.channels.ReportStatus("Created tag %v at %v", tagName, commit.oid.ShortID())
+
+	return
+}
+
+func createAnnotatedTagFromCommit(commitView *CommitView, action Action) (err error) {
+	commit, tagName, err := commitView.processRefNameAction(action, ActionTagNamePrompt, ActionCreateAnnotatedTag)
+	if commit == nil || tagName == "" || err != nil {
+		return
+	}
+
+	commitView.repoController.CreateAnnotatedTag(tagName, commit.oid, func(ref Ref, err error) {
+		if err != nil {
+			commitView.channels.ReportError(fmt.Errorf("Failed to create annotated tag at commit: %v", err))
+			return
+		}
+
+		commitView.channels.ReportStatus("Created annotated tag %v at %v", tagName, commit.oid.ShortID())
 	})
 
 	return
@@ -996,6 +1026,14 @@ func showActionsForCommit(commitView *CommitView, action Action) (err error) {
 						{
 							DisplayName: "Create branch from commit and checkout",
 							Value:       Action{ActionType: ActionCreateBranchAndCheckout},
+						},
+						{
+							DisplayName: "Create tag at commit",
+							Value:       Action{ActionType: ActionCreateTag},
+						},
+						{
+							DisplayName: "Create annotated tag at commit",
+							Value:       Action{ActionType: ActionCreateAnnotatedTag},
 						},
 						{
 							DisplayName: fmt.Sprintf(`Filter commits by author "%v"`, commitAuthor),

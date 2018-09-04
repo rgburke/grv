@@ -55,6 +55,7 @@ const (
 	rlSearchHistoryFile     = "/search_history"
 	rlFilterHistoryFile     = "/filter_history"
 	rlBranchNameHistoryFile = "/branch_name_history"
+	rlTagNameHistoryFile    = "/tag_name_history"
 )
 
 var historyFilePrompts = map[string]string{
@@ -63,6 +64,7 @@ var historyFilePrompts = map[string]string{
 	ReverseSearchPromptText: rlSearchHistoryFile,
 	FilterPromptText:        rlFilterHistoryFile,
 	BranchNamePromptText:    rlBranchNameHistoryFile,
+	TagNamePromptText:       rlTagNameHistoryFile,
 }
 
 // PromptArgs contains arguments to configure the display of a prompt

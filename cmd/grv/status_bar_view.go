@@ -16,6 +16,7 @@ const (
 	ReverseSearchPromptText = "?"
 	FilterPromptText        = "query: "
 	BranchNamePromptText    = "branch name: "
+	TagNamePromptText       = "tag name: "
 )
 
 type promptType int
@@ -27,6 +28,7 @@ const (
 	ptFilter
 	ptQuestion
 	ptBranchName
+	ptTagName
 )
 
 // StatusBarView manages the display of the status bar
@@ -78,7 +80,9 @@ func (statusBarView *StatusBarView) HandleAction(action Action) (err error) {
 	case ActionQuestionPrompt:
 		statusBarView.showQuestionPrompt(action)
 	case ActionBranchNamePrompt:
-		statusBarView.showBranchNamePrompt(action)
+		statusBarView.showRefNamePrompt(action, ptBranchName, BranchNamePromptText)
+	case ActionTagNamePrompt:
+		statusBarView.showRefNamePrompt(action, ptTagName, TagNamePromptText)
 	case ActionCustomPrompt:
 		statusBarView.showCustomPrompt(action)
 	case ActionShowStatus:
@@ -199,7 +203,7 @@ func (statusBarView *StatusBarView) showQuestionPrompt(action Action) {
 	statusBarView.promptType = ptNone
 }
 
-func (statusBarView *StatusBarView) showBranchNamePrompt(action Action) {
+func (statusBarView *StatusBarView) showRefNamePrompt(action Action, promptType promptType, promptText string) {
 	if len(action.Args) == 0 {
 		log.Errorf("Expected ActionType argument")
 		return
@@ -211,8 +215,8 @@ func (statusBarView *StatusBarView) showBranchNamePrompt(action Action) {
 		return
 	}
 
-	statusBarView.promptType = ptFilter
-	input := statusBarView.showPrompt(&PromptArgs{Prompt: BranchNamePromptText}, action)
+	statusBarView.promptType = promptType
+	input := statusBarView.showPrompt(&PromptArgs{Prompt: promptText}, action)
 
 	if input != "" {
 		statusBarView.channels.DoAction(Action{
@@ -321,6 +325,8 @@ func (statusBarView *StatusBarView) RenderHelpBar(lineBuilder *LineBuilder) (err
 		message = "Enter an answer"
 	case ptBranchName:
 		message = "Enter the new branch name"
+	case ptTagName:
+		message = "Enter the new tag name"
 	}
 
 	if message != "" {
