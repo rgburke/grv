@@ -35,6 +35,7 @@ const (
 	ViewMessageBox
 	ViewHelp
 	ViewGRVVariable
+	ViewRemote
 
 	ViewCount // i.e. Number of views
 )
@@ -464,11 +465,9 @@ func (view *View) HandleAction(action Action) (err error) {
 		view.removeTab()
 		return
 	case ActionAddView:
-		view.lock.Lock()
-		defer view.lock.Unlock()
-
-		err = view.addView(action)
-		return
+		if action, err = view.addView(action); err != nil {
+			return
+		}
 	case ActionSplitView:
 		if action, err = view.splitView(action); err != nil {
 			return
@@ -718,17 +717,19 @@ func (view *View) createView(createViewArgs CreateViewArgs) (windowView WindowVi
 	return
 }
 
-func (view *View) addView(action Action) (err error) {
+func (view *View) addView(action Action) (newAction Action, err error) {
 	log.Debugf("Adding new view")
 	args := action.Args
 
 	if len(args) < 1 {
-		return fmt.Errorf("Expected ActionAddViewArgs argument")
+		err = fmt.Errorf("Expected ActionAddViewArgs argument")
+		return
 	}
 
 	actionAddViewArgs, ok := args[0].(ActionAddViewArgs)
 	if !ok {
-		return fmt.Errorf("Expected first argument to have type ActionAddViewArgs but found %T", args[0])
+		err = fmt.Errorf("Expected first argument to have type ActionAddViewArgs but found %T", args[0])
+		return
 	}
 
 	newView, err := view.createView(actionAddViewArgs.CreateViewArgs)
@@ -736,17 +737,10 @@ func (view *View) addView(action Action) (err error) {
 		return
 	}
 
-	activeChildView := view.views[view.activeViewPos]
-	containerView, ok := activeChildView.(*ContainerView)
-	if !ok {
-		return fmt.Errorf("This view can not be modified")
+	newAction = Action{
+		ActionType: ActionAddView,
+		Args:       []interface{}{newView},
 	}
-
-	log.Infof("Adding view %T to child with index %v", newView, view.activeViewPos)
-
-	containerView.AddChildViews(newView)
-	view.onActiveChange(true)
-	view.channels.UpdateDisplay()
 
 	return
 }

@@ -2,27 +2,36 @@ package main
 
 const (
 	hvMaxRefViewWidth = uint(35)
+	hvMenu            = "HistoryViewMenu"
+	hvRemoteViewRows  = uint(4)
 )
 
 // NewHistoryView creates a new instance of the history view
 func NewHistoryView(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter) *ContainerView {
 	refView := NewRefView(repoData, repoController, channels, config, variables)
+	remoteView := NewRemoteView(repoData, channels, config, variables)
 	commitView := NewCommitView(repoData, repoController, channels, config, variables)
 	diffView := NewDiffView(repoData, channels, config, variables)
 
 	refView.RegisterRefListener(commitView)
 	commitView.RegisterCommitViewListener(diffView)
 
-	subContainer := NewContainerView(channels, config)
-	subContainer.SetOrientation(CoDynamic)
-	subContainer.AddChildViews(commitView, diffView)
+	leftContainer := NewContainerView(channels, config)
+	leftContainer.SetTitle(hvMenu)
+	leftContainer.SetOrientation(CoHorizontal)
+	leftContainer.AddChildViews(refView, remoteView)
+	leftContainer.SetChildViewPositionCalculator(&historyViewMenuPositionCalculator{menuView: leftContainer})
+
+	rightContainer := NewContainerView(channels, config)
+	rightContainer.SetOrientation(CoVertical)
+	rightContainer.AddChildViews(commitView, diffView)
 
 	historyView := NewContainerView(channels, config)
 	historyView.SetTitle("History View")
 	historyView.SetOrientation(CoVertical)
 	historyView.SetViewID(ViewHistory)
 	historyView.SetChildViewPositionCalculator(&historyViewPositionCalculator{historyView: historyView})
-	historyView.AddChildViews(refView, subContainer)
+	historyView.AddChildViews(leftContainer, rightContainer)
 
 	return historyView
 }
@@ -37,7 +46,7 @@ func (calculator *historyViewPositionCalculator) CalculateChildViewPositions(vie
 	childPositionNum := uint(len(childPositions))
 
 	if !viewLayoutData.fullScreen && viewLayoutData.orientation == CoVertical && childPositionNum > 0 {
-		if _, isRefView := calculator.historyView.childViews[0].(*RefView); isRefView {
+		if containerView, isContainerView := calculator.historyView.childViews[0].(*ContainerView); isContainerView && containerView.Title() == hvMenu {
 			refViewPosition := childPositions[0]
 
 			if refViewPosition.viewDimension.cols > hvMaxRefViewWidth {
@@ -59,6 +68,33 @@ func (calculator *historyViewPositionCalculator) CalculateChildViewPositions(vie
 
 				refViewPosition.viewDimension.cols = hvMaxRefViewWidth
 			}
+		}
+	}
+
+	return
+}
+
+type historyViewMenuPositionCalculator struct {
+	menuView *ContainerView
+}
+
+// CalculateChildViewPositions calculates the child layout data for the history view menu
+func (calculator *historyViewMenuPositionCalculator) CalculateChildViewPositions(viewLayoutData *ViewLayoutData) (childPositions []*ChildViewPosition) {
+	childPositions = calculator.menuView.CalculateChildViewPositions(viewLayoutData)
+	childPositionNum := uint(len(childPositions))
+
+	if !viewLayoutData.fullScreen && viewLayoutData.orientation == CoHorizontal && childPositionNum == 2 {
+		_, isRefView := calculator.menuView.childViews[0].(*RefView)
+		_, isRemoteView := calculator.menuView.childViews[1].(*RemoteView)
+
+		if isRefView && isRemoteView {
+			refViewPosition := childPositions[0]
+			remoteViewPosition := childPositions[1]
+
+			offset := remoteViewPosition.viewDimension.rows - hvRemoteViewRows
+			remoteViewPosition.viewDimension.rows = hvRemoteViewRows
+			remoteViewPosition.startRow += offset
+			refViewPosition.viewDimension.rows += offset
 		}
 	}
 

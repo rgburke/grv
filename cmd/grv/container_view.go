@@ -76,6 +76,7 @@ func NewContainerView(channels Channels, config Config) *ContainerView {
 			ActionPrevView:         prevContainerChildView,
 			ActionFullScreenView:   toggleFullScreenChildView,
 			ActionToggleViewLayout: toggleViewOrientation,
+			ActionAddView:          addView,
 			ActionSplitView:        splitView,
 			ActionRemoveView:       removeView,
 			ActionMouseSelect:      childMouseClick,
@@ -98,13 +99,6 @@ func (containerView *ContainerView) AddChildViews(newViews ...BaseView) {
 }
 
 func (containerView *ContainerView) addChildView(newView BaseView) {
-	if !containerView.isEmpty() {
-		if childView, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
-			childView.AddChildViews(newView)
-			return
-		}
-	}
-
 	log.Debugf("Adding new view %T", newView)
 
 	containerView.childViews = append(containerView.childViews, newView)
@@ -626,6 +620,27 @@ func toggleViewOrientation(containerView *ContainerView, action Action) (err err
 	}
 
 	containerView.channels.UpdateDisplay()
+
+	return
+}
+
+func addView(containerView *ContainerView, action Action) (err error) {
+	if child, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
+		return child.HandleAction(action)
+	}
+
+	args := action.Args
+
+	if len(args) < 1 {
+		return fmt.Errorf("Execpted view but received: %v", args)
+	}
+
+	newView, ok := args[0].(BaseView)
+	if !ok {
+		return fmt.Errorf("Execpted second argument to be BaseView but got %T", args[0])
+	}
+
+	containerView.addChildView(newView)
 
 	return
 }

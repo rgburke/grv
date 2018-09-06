@@ -114,6 +114,10 @@ const (
 	CmpGRVVariableViewValue
 	CmpGRVVariableViewFooter
 
+	CmpRemoteViewTitle
+	CmpRemoteViewRemote
+	CmpRemoteViewFooter
+
 	CmpCount
 )
 

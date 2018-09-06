@@ -51,6 +51,7 @@ const (
 	cfMessageBoxView    = "MessageBoxView"
 	cfHelpView          = "HelpView"
 	cfGRVVariableView   = "GRVVariableView"
+	cfRemoteView        = "RemoteView"
 )
 
 // ConfigVariable stores a config variable name
@@ -108,6 +109,7 @@ var viewIDNames = map[string]ViewID{
 	cfMessageBoxView:    ViewMessageBox,
 	cfHelpView:          ViewHelp,
 	cfGRVVariableView:   ViewGRVVariable,
+	cfRemoteView:        ViewRemote,
 }
 
 var themeComponents = map[string]ThemeComponentID{
@@ -216,6 +218,10 @@ var themeComponents = map[string]ThemeComponentID{
 	cfGRVVariableView + ".Variable": CmpGRVVariableViewVariable,
 	cfGRVVariableView + ".Value":    CmpGRVVariableViewValue,
 	cfGRVVariableView + ".Footer":   CmpGRVVariableViewFooter,
+
+	cfRemoteView + ".Title":  CmpRemoteViewTitle,
+	cfRemoteView + ".Remote": CmpRemoteViewRemote,
+	cfRemoteView + ".Footer": CmpRemoteViewFooter,
 }
 
 var colorNumberPattern = regexp.MustCompile(`[0-9]{1,3}`)

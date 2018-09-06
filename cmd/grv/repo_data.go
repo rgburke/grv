@@ -18,6 +18,9 @@ const (
 // OnRefsLoaded is called when all refs have been loaded and processed
 type OnRefsLoaded func([]Ref) error
 
+// ReloadResult is called when a reload of cached repository data has been completed
+type ReloadResult func(err error)
+
 // CommitSetListener is notified of load and update events for commit sets
 type CommitSetListener interface {
 	OnCommitsLoaded(Ref)
@@ -55,6 +58,7 @@ type RepoData interface {
 	Workdir() string
 	UserEditor() (string, error)
 	GenerateGitCommandEnvironment() []string
+	Reload(ReloadResult)
 	LoadHead() error
 	LoadRefs(OnRefsLoaded)
 	LoadCommits(Ref) error
@@ -77,6 +81,8 @@ type RepoData interface {
 	DiffStage(statusType StatusType) (*Diff, error)
 	LoadStatus() (err error)
 	Status() *Status
+	LoadRemotes() error
+	Remotes() []string
 	RegisterStatusListener(StatusListener)
 	RegisterRefStateListener(RefStateListener)
 	RegisterCommitSetListener(CommitSetListener)
@@ -982,6 +988,29 @@ func (statusManager *statusManager) unregisterStatusListener(statusListener Stat
 	}
 }
 
+type remoteSet struct {
+	remotes []string
+	lock    sync.Mutex
+}
+
+func newRemoteSet() *remoteSet {
+	return &remoteSet{}
+}
+
+func (remoteSet *remoteSet) setRemotes(remotes []string) {
+	remoteSet.lock.Lock()
+	defer remoteSet.lock.Unlock()
+
+	remoteSet.remotes = remotes
+}
+
+func (remoteSet *remoteSet) getRemotes() []string {
+	remoteSet.lock.Lock()
+	defer remoteSet.lock.Unlock()
+
+	return remoteSet.remotes
+}
+
 // RepositoryData implements RepoData and stores all loaded repository data
 type RepositoryData struct {
 	channels       Channels
@@ -993,6 +1022,7 @@ type RepositoryData struct {
 	statusManager  *statusManager
 	refUpdateCh    chan *UpdatedRef
 	variables      *GRVVariables
+	remoteSet      *remoteSet
 	waitGroup      sync.WaitGroup
 }
 
@@ -1006,6 +1036,7 @@ func NewRepositoryData(repoDataLoader *RepoDataLoader, channels Channels, variab
 		statusManager:  newStatusManager(repoDataLoader),
 		refUpdateCh:    make(chan *UpdatedRef, updatedRefChannelSize),
 		variables:      variables,
+		remoteSet:      newRemoteSet(),
 	}
 
 	repoData.refSet = newRefSet(repoData)
@@ -1049,6 +1080,39 @@ func (repoData *RepositoryData) UserEditor() (string, error) {
 	return repoData.repoDataLoader.UserEditor()
 }
 
+// Reload cached repository data
+func (repoData *RepositoryData) Reload(reloadResult ReloadResult) {
+	notifyResult := func(err error) {
+		if reloadResult != nil {
+			reloadResult(err)
+		}
+	}
+
+	go func() {
+		if repoData.refSet.startRefUpdate() {
+			err := repoData.loadRefs(nil)
+			repoData.refSet.endRefUpdate()
+
+			if err != nil {
+				notifyResult(err)
+				return
+			}
+		}
+
+		if err := repoData.LoadStatus(); err != nil {
+			notifyResult(err)
+			return
+		}
+
+		if err := repoData.LoadRemotes(); err != nil {
+			notifyResult(err)
+			return
+		}
+
+		notifyResult(nil)
+	}()
+}
+
 // LoadHead attempts to load the HEAD reference
 func (repoData *RepositoryData) LoadHead() (err error) {
 	head, err := repoData.repoDataLoader.Head()
@@ -1080,36 +1144,36 @@ func (repoData *RepositoryData) LoadRefs(onRefsLoaded OnRefsLoaded) {
 
 	go func() {
 		defer refSet.endRefUpdate()
-
-		refs, err := repoData.repoDataLoader.LoadRefs()
-		if err != nil {
+		if err := repoData.loadRefs(onRefsLoaded); err != nil {
 			repoData.channels.ReportError(err)
-			return
 		}
-
-		if err = refSet.updateRefs(refs); err != nil {
-			repoData.channels.ReportError(err)
-			return
-		}
-
-		if err := repoData.LoadHead(); err != nil {
-			repoData.channels.ReportError(err)
-			return
-		}
-
-		log.Debug("Refs loaded")
-
-		if onRefsLoaded != nil {
-			if err = onRefsLoaded(refs); err != nil {
-				repoData.channels.ReportError(err)
-			}
-		}
-
-		repoData.mapRefsToCommits(refs)
-		repoData.channels.UpdateDisplay()
-
-		refSet.endRefUpdate()
 	}()
+}
+
+func (repoData *RepositoryData) loadRefs(onRefsLoaded OnRefsLoaded) (err error) {
+	refs, err := repoData.repoDataLoader.LoadRefs()
+	if err != nil {
+		return
+	}
+
+	if err = repoData.refSet.updateRefs(refs); err != nil {
+		return
+	}
+
+	if err = repoData.LoadHead(); err != nil {
+		return
+	}
+
+	log.Debug("Refs loaded")
+
+	if onRefsLoaded != nil {
+		err = onRefsLoaded(refs)
+	}
+
+	repoData.mapRefsToCommits(refs)
+	repoData.channels.UpdateDisplay()
+
+	return
 }
 
 // TODO Become RefStateListener and only update commitRefSet for refs that have changed
@@ -1344,6 +1408,22 @@ func (repoData *RepositoryData) LoadStatus() (err error) {
 // Status returns the current git status
 func (repoData *RepositoryData) Status() *Status {
 	return repoData.statusManager.getStatus()
+}
+
+// LoadRemotes loads remotes for the repository
+func (repoData *RepositoryData) LoadRemotes() (err error) {
+	remotes, err := repoData.repoDataLoader.Remotes()
+	if err != nil {
+		return
+	}
+
+	repoData.remoteSet.setRemotes(remotes)
+	return
+}
+
+// Remotes returns remotes for the repository
+func (repoData *RepositoryData) Remotes() []string {
+	return repoData.remoteSet.getRemotes()
 }
 
 // RegisterStatusListener registers a listener to be notified when git status changes

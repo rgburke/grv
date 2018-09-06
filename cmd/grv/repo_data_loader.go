@@ -1531,3 +1531,12 @@ func (repoDataLoader *RepoDataLoader) RepositoryState() RepositoryState {
 
 	return RepositoryStateUnknown
 }
+
+// Remotes loads remotes for the repository
+func (repoDataLoader *RepoDataLoader) Remotes() (remotes []string, err error) {
+	if remotes, err = repoDataLoader.repo.Remotes.List(); err != nil {
+		err = fmt.Errorf("Failed to determine remotes: %v", err)
+	}
+
+	return
+}

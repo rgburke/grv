@@ -661,13 +661,11 @@ func (grv *GRV) runFileSystemMonitorLoop(waitGroup *sync.WaitGroup, exitCh <-cha
 		case <-timer.C:
 			timerActive = false
 
-			if err := grv.repoData.LoadStatus(); err != nil {
-				channels.ReportError(err)
-			}
-
 			if gitDirModified {
-				grv.repoData.LoadRefs(nil)
+				grv.repoData.Reload(nil)
 				gitDirModified = false
+			} else if err := grv.repoData.LoadStatus(); err != nil {
+				channels.ReportError(err)
 			}
 		case _, ok := <-exitCh:
 			if !ok {

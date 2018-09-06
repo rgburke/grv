@@ -377,6 +377,18 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
 			},
+			CmpRemoteViewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpRemoteViewRemote: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpRemoteViewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
 		},
 	}
 }
@@ -755,6 +767,18 @@ func NewColdTheme() MutableTheme {
 				fgcolor: NewSystemColor(ColorNone),
 			},
 			CmpGRVVariableViewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpRemoteViewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorCyan),
+			},
+			CmpRemoteViewRemote: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
+			CmpRemoteViewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
 			},
@@ -1156,6 +1180,18 @@ func NewSolarizedTheme() MutableTheme {
 				fgcolor: NewColorNumber(solarizedYellow),
 			},
 			CmpGRVVariableViewFooter: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedCyan),
+			},
+			CmpRemoteViewTitle: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedCyan),
+			},
+			CmpRemoteViewRemote: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedBrightMagenta),
+			},
+			CmpRemoteViewFooter: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(solarizedCyan),
 			},

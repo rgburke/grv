@@ -48,6 +48,8 @@ func (windowViewFactory *WindowViewFactory) CreateWindowViewWithArgs(viewID View
 		windowView = windowViewFactory.createGitStatusView()
 	case ViewGRVVariable:
 		windowView = windowViewFactory.createGRVVariableView()
+	case ViewRemote:
+		windowView = windowViewFactory.createRemoteView()
 	default:
 		err = fmt.Errorf("Unsupported view type: %v", viewID)
 	}
@@ -118,6 +120,11 @@ func (windowViewFactory *WindowViewFactory) createGitStatusView() *GitStatusView
 func (windowViewFactory *WindowViewFactory) createGRVVariableView() *GRVVariableView {
 	log.Info("Created GRVVariableView instance")
 	return NewGRVVariableView(windowViewFactory.channels, windowViewFactory.config, windowViewFactory.variables)
+}
+
+func (windowViewFactory *WindowViewFactory) createRemoteView() *RemoteView {
+	log.Info("Created GRVVariableView instance")
+	return NewRemoteView(windowViewFactory.repoData, windowViewFactory.channels, windowViewFactory.config, windowViewFactory.variables)
 }
 
 func (windowViewFactory *WindowViewFactory) getRef(args []interface{}) (ref Ref, err error) {

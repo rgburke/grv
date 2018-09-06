@@ -546,6 +546,10 @@ RefView.Tag
 RefView.TagsHeader
 RefView.Title
 
+RemoteView.Footer
+RemoteView.Remote
+RemoteView.Title
+
 StatusBarView.Normal
 ```
 
