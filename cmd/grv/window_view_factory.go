@@ -124,7 +124,8 @@ func (windowViewFactory *WindowViewFactory) createGRVVariableView() *GRVVariable
 
 func (windowViewFactory *WindowViewFactory) createRemoteView() *RemoteView {
 	log.Info("Created GRVVariableView instance")
-	return NewRemoteView(windowViewFactory.repoData, windowViewFactory.channels, windowViewFactory.config, windowViewFactory.variables)
+	return NewRemoteView(windowViewFactory.repoData, windowViewFactory.repoController,
+		windowViewFactory.channels, windowViewFactory.config, windowViewFactory.variables)
 }
 
 func (windowViewFactory *WindowViewFactory) getRef(args []interface{}) (ref Ref, err error) {

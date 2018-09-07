@@ -44,7 +44,7 @@ func (controller *GitCommandRepoController) CheckoutRef(ref Ref, resultHandler R
 }
 
 // CheckoutCommit does a git checkout on the provided commit
-func (controller *GitCommandRepoController) CheckoutCommit(commit *Commit, resultHandler CheckoutCommitResultHandler) {
+func (controller *GitCommandRepoController) CheckoutCommit(commit *Commit, resultHandler RepoResultHandler) {
 	go func() {
 		err := controller.runGitCommand("checkout", commit.oid.String())
 		if err == nil {
@@ -196,6 +196,13 @@ func (controller *GitCommandRepoController) onGitCommit(resultHandler CommitResu
 		resultHandler(oid, resultError)
 		return
 	}
+}
+
+// Pull performs a git pull for the provided remote
+func (controller *GitCommandRepoController) Pull(remote string, resultHandler RepoResultHandler) {
+	go func() {
+		resultHandler(controller.runGitCommand("pull", remote))
+	}()
 }
 
 func (controller *GitCommandRepoController) findRef(resultHandler RefOperationResultHandler, refName string, refPredicate func(Ref) bool) {

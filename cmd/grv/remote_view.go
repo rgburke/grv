@@ -1,32 +1,42 @@
 package main
 
 import (
+	"strings"
 	"sync"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 )
+
+type remoteViewHandler func(*RemoteView, Action) error
 
 // RemoteView displays remotes
 type RemoteView struct {
 	*AbstractWindowView
 	channels          Channels
 	repoData          RepoData
+	repoController    RepoController
 	config            Config
 	activeViewPos     ViewPos
 	lastViewDimension ViewDimension
 	variables         GRVVariableSetter
+	handlers          map[ActionType]remoteViewHandler
 	remotes           []string
 	lock              sync.Mutex
 }
 
 // NewRemoteView creates a new remote view instance
-func NewRemoteView(repoData RepoData, channels Channels, config Config, variables GRVVariableSetter) *RemoteView {
+func NewRemoteView(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter) *RemoteView {
 	remoteView := &RemoteView{
-		repoData:      repoData,
-		channels:      channels,
-		config:        config,
-		activeViewPos: NewViewPosition(),
-		variables:     variables,
+		repoData:       repoData,
+		repoController: repoController,
+		channels:       channels,
+		config:         config,
+		activeViewPos:  NewViewPosition(),
+		variables:      variables,
+		handlers: map[ActionType]remoteViewHandler{
+			ActionPullRemote: gitPull,
+		},
 	}
 
 	remoteView.AbstractWindowView = NewAbstractWindowView(remoteView, channels, config, variables, &remoteView.lock, "remote")
@@ -97,6 +107,15 @@ func (remoteView *RemoteView) Render(win RenderWindow) (err error) {
 	return
 }
 
+// RenderHelpBar shows key bindings custom to the remote view
+func (remoteView *RemoteView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
+	RenderKeyBindingHelp(remoteView.ViewID(), lineBuilder, remoteView.config, []ActionMessage{
+		{action: ActionPullRemote, message: "Pull remote"},
+	})
+
+	return
+}
+
 // ViewID returns the diff views ID
 func (remoteView *RemoteView) ViewID() ViewID {
 	return ViewRemote
@@ -134,11 +153,52 @@ func (remoteView *RemoteView) HandleAction(action Action) (err error) {
 	defer remoteView.lock.Unlock()
 
 	var handled bool
-	if handled, err = remoteView.AbstractWindowView.HandleAction(action); handled {
+	if handler, ok := remoteView.handlers[action.ActionType]; ok {
+		log.Debugf("Action handled by RemoteView")
+		err = handler(remoteView, action)
+	} else if handled, err = remoteView.AbstractWindowView.HandleAction(action); handled {
 		log.Debugf("Action handled by AbstractWindowView")
 	} else {
 		log.Debugf("Action not handled")
 	}
+
+	return
+}
+
+func gitPull(remoteView *RemoteView, action Action) (err error) {
+	if remoteView.rows() == 0 {
+		return
+	}
+
+	remote := remoteView.remotes[remoteView.activeViewPos.ActiveRowIndex()]
+	remoteView.channels.ReportStatus("Running git pull")
+
+	go func() {
+		quit := make(chan bool)
+
+		remoteView.repoController.Pull(remote, func(err error) {
+			if err != nil {
+				remoteView.channels.ReportError(err)
+			} else {
+				close(quit)
+			}
+		})
+
+		ticker := time.NewTicker(time.Millisecond * 250)
+		dots := 0
+
+		for {
+			select {
+			case <-ticker.C:
+				dots = (dots + 1) % 4
+				remoteView.channels.ReportStatus("Running git pull%v", strings.Repeat(".", dots))
+			case <-quit:
+				ticker.Stop()
+				remoteView.channels.ReportStatus("git pull for remote %v complete", remote)
+				return
+			}
+		}
+	}()
 
 	return
 }

@@ -22,6 +22,7 @@ The sections below provide an overview of the ways to configure and interact wit
      * [CommitView Specific](#commitview-specific)
      * [GitStatusView Specific](#gitstatusview-specific)
      * [MessageBoxView Specific](#messageboxview-specific)
+     * [RemoteView Specific](#remoteview-specific)
  - [Configuration Variables](#configuration-variables)
  - [Configuration Commands](#configuration-commands)
      * [addtab](#addtab)
@@ -177,6 +178,14 @@ The following tables contain default and user configured key bindings
  -------------------+-------------------+----------------------------
  <Right>, l, <Tab>  | <grv-next-button> | Select the next button    
  <Left>, h, <S-Tab> | <grv-prev-button> | Select the previous button
+```
+
+### RemoteView Specific
+
+```
+ Key Bindings | Action            | Description
+ -------------+-------------------+-------------
+ p            | <grv-pull-remote> | Pull remote
 ```
 
 

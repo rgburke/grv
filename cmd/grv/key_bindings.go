@@ -93,6 +93,7 @@ const (
 	ActionCheckoutFile
 	ActionCommit
 	ActionAmendCommit
+	ActionPullRemote
 	ActionShowHelpView
 	ActionNextButton
 	ActionPrevButton
@@ -581,6 +582,14 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		description:    "Amend commit",
 		keyBindings: map[ViewID][]string{
 			ViewGitStatus: {"A"},
+		},
+	},
+	ActionPullRemote: {
+		actionKey:      "<grv-pull-remote>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Pull remote",
+		keyBindings: map[ViewID][]string{
+			ViewRemote: {"p"},
 		},
 	},
 	ActionShowHelpView: {

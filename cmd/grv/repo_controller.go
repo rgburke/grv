@@ -8,8 +8,8 @@ import (
 // RefOperationResultHandler is notified when the checkout is complete
 type RefOperationResultHandler func(Ref, error)
 
-// CheckoutCommitResultHandler is notified when the checkout is complete
-type CheckoutCommitResultHandler func(err error)
+// RepoResultHandler is notified when a repo operation completes
+type RepoResultHandler func(err error)
 
 // CommitResultHandler is notified when commit creation is complete
 type CommitResultHandler func(oid *Oid, err error)
@@ -25,7 +25,7 @@ var errReadOnly = errors.New("Invalid operation in read only mode")
 type RepoController interface {
 	Initialise(RepoSupplier)
 	CheckoutRef(Ref, RefOperationResultHandler)
-	CheckoutCommit(*Commit, CheckoutCommitResultHandler)
+	CheckoutCommit(*Commit, RepoResultHandler)
 	CreateBranch(branchName string, oid *Oid) error
 	CreateBranchAndCheckout(branchName string, oid *Oid, resultHandler RefOperationResultHandler)
 	CreateTag(tagName string, oid *Oid) error
@@ -37,6 +37,7 @@ type RepoController interface {
 	CommitMessageFile() (*os.File, error)
 	Commit(CommitResultHandler)
 	AmendCommit(CommitResultHandler)
+	Pull(remote string, resultHandler RepoResultHandler)
 }
 
 // ReadOnlyRepositoryController does not permit any
@@ -58,7 +59,7 @@ func (repoController *ReadOnlyRepositoryController) CheckoutRef(ref Ref, resultH
 }
 
 // CheckoutCommit returns a read only error
-func (repoController *ReadOnlyRepositoryController) CheckoutCommit(commit *Commit, resultHandler CheckoutCommitResultHandler) {
+func (repoController *ReadOnlyRepositoryController) CheckoutCommit(commit *Commit, resultHandler RepoResultHandler) {
 	go resultHandler(errReadOnly)
 }
 
@@ -115,4 +116,9 @@ func (repoController *ReadOnlyRepositoryController) Commit(resultHandler CommitR
 // AmendCommit returns a read only error
 func (repoController *ReadOnlyRepositoryController) AmendCommit(resultHandler CommitResultHandler) {
 	go resultHandler(nil, errReadOnly)
+}
+
+// Pull returns a read only error
+func (repoController *ReadOnlyRepositoryController) Pull(remote string, resultHandler RepoResultHandler) {
+	go resultHandler(errReadOnly)
 }

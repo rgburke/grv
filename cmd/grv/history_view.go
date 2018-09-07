@@ -9,7 +9,7 @@ const (
 // NewHistoryView creates a new instance of the history view
 func NewHistoryView(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter) *ContainerView {
 	refView := NewRefView(repoData, repoController, channels, config, variables)
-	remoteView := NewRemoteView(repoData, channels, config, variables)
+	remoteView := NewRemoteView(repoData, repoController, channels, config, variables)
 	commitView := NewCommitView(repoData, repoController, channels, config, variables)
 	diffView := NewDiffView(repoData, channels, config, variables)
 
