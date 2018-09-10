@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -219,6 +220,7 @@ func NewRefView(repoData RepoData, repoController RepoController, channels Chann
 			ActionCreateBranchAndCheckout: createBranchFromRefAndCheckout,
 			ActionCreateTag:               createTagFromRef,
 			ActionCreateAnnotatedTag:      createAnnotatedTagFromRef,
+			ActionPushRef:                 pushRef,
 			ActionShowAvailableActions:    showActionsForRef,
 		},
 	}
@@ -752,6 +754,19 @@ func (refView *RefView) removeRefListener(refListener RefListener) {
 	}
 }
 
+func (refView *RefView) selectedRef() (renderedRef *RenderedRef) {
+	selectedIndex := refView.activeViewPos.ActiveRowIndex()
+
+	if refView.rows() == 0 || selectedIndex >= refView.rows() {
+		return
+	}
+
+	renderedRefs := refView.renderedRefs.RenderedRefs()
+	renderedRef = renderedRefs[selectedIndex]
+
+	return
+}
+
 // HandleAction checks if the rev view supports an action and executes it if so
 func (refView *RefView) HandleAction(action Action) (err error) {
 	log.Debugf("RefView handling action %v", action)
@@ -1059,6 +1074,112 @@ func createAnnotatedTagFromRef(refView *RefView, action Action) (err error) {
 	return
 }
 
+func pushRef(refView *RefView, action Action) (err error) {
+	renderedRef := refView.selectedRef()
+	if renderedRef == nil || renderedRef.ref == nil {
+		return
+	}
+
+	ref := renderedRef.ref
+
+	var track bool
+
+	switch rawRef := ref.(type) {
+	case *LocalBranch:
+		track = !rawRef.IsTrackingBranch()
+	case *RemoteBranch:
+		return
+	case *HEAD:
+		return
+	}
+
+	remotes := refView.repoData.Remotes()
+	var remote string
+
+	if len(remotes) == 0 {
+		return fmt.Errorf("Cannot push ref: No remotes configured")
+	} else if len(remotes) > 1 {
+		if len(action.Args) == 0 {
+			refView.showRemotesMenu(action.ActionType)
+			return
+		} else if remoteName, ok := action.Args[0].(string); ok {
+			remote = remoteName
+		} else {
+			return fmt.Errorf("Expected to find remote argument")
+		}
+	} else {
+		remote = remotes[0]
+	}
+
+	refView.channels.ReportStatus("Running git push")
+
+	go func() {
+		quit := make(chan bool)
+
+		refView.repoController.Push(remote, ref, track, func(err error) {
+			if err != nil {
+				refView.channels.ReportError(err)
+				refView.channels.ReportStatus("git push failed")
+			} else {
+				refView.channels.ReportStatus("git push for remote %v and ref %v complete", remote, ref.Shorthand())
+			}
+
+			close(quit)
+		})
+
+		ticker := time.NewTicker(time.Millisecond * 250)
+		dots := 0
+
+		for {
+			select {
+			case <-ticker.C:
+				dots = (dots + 1) % 4
+				refView.channels.ReportStatus("Running git push%v", strings.Repeat(".", dots))
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+
+	return
+}
+
+func (refView *RefView) showRemotesMenu(nextAction ActionType) {
+	remotes := refView.repoData.Remotes()
+	contextMenuEntries := []ContextMenuEntry{}
+
+	for _, remote := range remotes {
+		contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
+			DisplayName: remote,
+			Value:       Action{ActionType: nextAction, Args: []interface{}{remote}},
+		})
+	}
+
+	refView.channels.DoAction(Action{
+		ActionType: ActionCreateContextMenu,
+		Args: []interface{}{
+			ActionCreateContextMenuArgs{
+				viewDimension: ViewDimension{
+					rows: 5,
+					cols: 40,
+				},
+				config: ContextMenuConfig{
+					Entity:  "Remote",
+					Entries: contextMenuEntries,
+					OnSelect: func(entry ContextMenuEntry, entryIndex uint) {
+						if selectedAction, ok := entry.Value.(Action); ok {
+							refView.channels.DoAction(selectedAction)
+						} else {
+							log.Errorf("Expected Action instance but found: %v", entry.Value)
+						}
+					},
+				},
+			},
+		},
+	})
+}
+
 func showActionsForRef(refView *RefView, action Action) (err error) {
 	if refView.rows() == 0 {
 		return
@@ -1102,6 +1223,16 @@ func showActionsForRef(refView *RefView, action Action) (err error) {
 			Value:       Action{ActionType: ActionCreateAnnotatedTag},
 		},
 	)
+
+	_, isLocalBranch := renderedRef.ref.(*LocalBranch)
+	_, isTag := renderedRef.ref.(*Tag)
+
+	if isLocalBranch || isTag {
+		contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
+			DisplayName: "Push ref to remote",
+			Value:       Action{ActionType: ActionPushRef},
+		})
+	}
 
 	refView.channels.DoAction(Action{
 		ActionType: ActionCreateContextMenu,

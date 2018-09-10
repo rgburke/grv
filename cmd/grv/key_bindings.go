@@ -94,6 +94,7 @@ const (
 	ActionCommit
 	ActionAmendCommit
 	ActionPullRemote
+	ActionPushRef
 	ActionShowHelpView
 	ActionNextButton
 	ActionPrevButton
@@ -590,6 +591,14 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		description:    "Pull remote",
 		keyBindings: map[ViewID][]string{
 			ViewRemote: {"p"},
+		},
+	},
+	ActionPushRef: {
+		actionKey:      "<grv-push-ref>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Push ref to remote",
+		keyBindings: map[ViewID][]string{
+			ViewRef: {"p"},
 		},
 	},
 	ActionShowHelpView: {

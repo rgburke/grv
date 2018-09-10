@@ -205,6 +205,21 @@ func (controller *GitCommandRepoController) Pull(remote string, resultHandler Re
 	}()
 }
 
+// Push performs a git push on the provided remote and ref
+func (controller *GitCommandRepoController) Push(remote string, ref Ref, track bool, resultHandler RepoResultHandler) {
+	go func() {
+		args := []string{"push"}
+
+		if track {
+			args = append(args, "-u")
+		}
+
+		args = append(args, remote, ref.Shorthand())
+
+		resultHandler(controller.runGitCommand(args...))
+	}()
+}
+
 func (controller *GitCommandRepoController) findRef(resultHandler RefOperationResultHandler, refName string, refPredicate func(Ref) bool) {
 	controller.repoData.LoadRefs(func(refs []Ref) error {
 		for _, ref := range refs {

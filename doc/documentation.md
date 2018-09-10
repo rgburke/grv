@@ -142,6 +142,7 @@ The following tables contain default and user configured key bindings
  b            | <grv-create-branch>              | Create a new branch             
  t            | <grv-create-tag>                 | Create a new tag                
  <C-q>        | <grv-filter-prompt>              | Add filter                      
+ p            | <grv-push-ref>                   | Push ref to remote              
  <C-r>        | <grv-remove-filter>              | Remove filter                   
 ```
 

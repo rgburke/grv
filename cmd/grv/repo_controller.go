@@ -38,6 +38,7 @@ type RepoController interface {
 	Commit(CommitResultHandler)
 	AmendCommit(CommitResultHandler)
 	Pull(remote string, resultHandler RepoResultHandler)
+	Push(remote string, ref Ref, track bool, resultHandler RepoResultHandler)
 }
 
 // ReadOnlyRepositoryController does not permit any
@@ -120,5 +121,10 @@ func (repoController *ReadOnlyRepositoryController) AmendCommit(resultHandler Co
 
 // Pull returns a read only error
 func (repoController *ReadOnlyRepositoryController) Pull(remote string, resultHandler RepoResultHandler) {
+	go resultHandler(errReadOnly)
+}
+
+// Push returns a read only error
+func (repoController *ReadOnlyRepositoryController) Push(remote string, ref Ref, track bool, resultHandler RepoResultHandler) {
 	go resultHandler(errReadOnly)
 }

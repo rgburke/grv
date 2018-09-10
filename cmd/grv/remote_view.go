@@ -179,9 +179,12 @@ func gitPull(remoteView *RemoteView, action Action) (err error) {
 		remoteView.repoController.Pull(remote, func(err error) {
 			if err != nil {
 				remoteView.channels.ReportError(err)
+				remoteView.channels.ReportStatus("git pull failed")
 			} else {
-				close(quit)
+				remoteView.channels.ReportStatus("git pull for remote %v complete", remote)
 			}
+
+			close(quit)
 		})
 
 		ticker := time.NewTicker(time.Millisecond * 250)
@@ -194,7 +197,6 @@ func gitPull(remoteView *RemoteView, action Action) (err error) {
 				remoteView.channels.ReportStatus("Running git pull%v", strings.Repeat(".", dots))
 			case <-quit:
 				ticker.Stop()
-				remoteView.channels.ReportStatus("git pull for remote %v complete", remote)
 				return
 			}
 		}

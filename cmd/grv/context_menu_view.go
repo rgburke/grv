@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -20,6 +21,7 @@ type ContextMenuEntry struct {
 // ContextMenuConfig is the configuration for the ContextMenuView
 // It contains all context menu contextMenuConfig and an observer
 type ContextMenuConfig struct {
+	Entity   string
 	Entries  []ContextMenuEntry
 	OnSelect OnContextMenuEntrySelected
 }
@@ -47,6 +49,10 @@ func NewContextMenuView(contextMenuConfig ContextMenuConfig, channels Channels, 
 	}
 
 	contextMenuView.AbstractWindowView = NewAbstractWindowView(contextMenuView, channels, config, variables, &contextMenuView.lock, "menu item")
+
+	if contextMenuConfig.Entity == "" {
+		contextMenuView.contextMenuConfig.Entity = "Action"
+	}
 
 	return contextMenuView
 }
@@ -89,12 +95,13 @@ func (contextMenuView *ContextMenuView) Render(win RenderWindow) (err error) {
 	}
 
 	win.DrawBorderWithStyle(CmpContextMenuContent)
+	entity := contextMenuView.contextMenuConfig.Entity
 
-	if err = win.SetTitle(CmpContextMenuTitle, "Select action"); err != nil {
+	if err = win.SetTitle(CmpContextMenuTitle, "Select %v", entity); err != nil {
 		return
 	}
 
-	if err = win.SetFooter(CmpContextMenuTitle, "Action %v of %v", viewPos.SelectedRowIndex()+1, viewRows); err != nil {
+	if err = win.SetFooter(CmpContextMenuTitle, "%v %v of %v", entity, viewPos.SelectedRowIndex()+1, viewRows); err != nil {
 		return
 	}
 
@@ -110,7 +117,8 @@ func (contextMenuView *ContextMenuView) RenderHelpBar(lineBuilder *LineBuilder) 
 		quitKeyText = fmt.Sprintf("(Press %v to close menu)", quitKeys[len(quitKeys)-1].keystring)
 	}
 
-	lineBuilder.AppendWithStyle(CmpHelpbarviewSpecial, " %v %v", "Select action to perform", quitKeyText)
+	entity := strings.ToLower(contextMenuView.contextMenuConfig.Entity)
+	lineBuilder.AppendWithStyle(CmpHelpbarviewSpecial, "Select %v %v", entity, quitKeyText)
 	return
 }
 
