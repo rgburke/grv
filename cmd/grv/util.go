@@ -8,6 +8,12 @@ import (
 	rw "github.com/mattn/go-runewidth"
 )
 
+// Runnable that can be run
+type Runnable func()
+
+// Consumer that consumes values
+type Consumer func(interface{})
+
 // MaxUInt returns the largest value of the supplied arguments
 func MaxUInt(x, y uint) uint {
 	if x > y {

@@ -141,6 +141,7 @@ The following tables contain default and user configured key bindings
  B            | <grv-create-branch-and-checkout> | Create a new branch and checkout
  b            | <grv-create-branch>              | Create a new branch             
  t            | <grv-create-tag>                 | Create a new tag                
+ D            | <grv-delete-ref>                 | Delete ref                      
  <C-q>        | <grv-filter-prompt>              | Add filter                      
  p            | <grv-push-ref>                   | Push ref to remote              
  <C-r>        | <grv-remove-filter>              | Remove filter                   

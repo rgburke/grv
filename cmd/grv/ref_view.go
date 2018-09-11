@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -221,6 +220,7 @@ func NewRefView(repoData RepoData, repoController RepoController, channels Chann
 			ActionCreateTag:               createTagFromRef,
 			ActionCreateAnnotatedTag:      createAnnotatedTagFromRef,
 			ActionPushRef:                 pushRef,
+			ActionDeleteRef:               deleteRef,
 			ActionShowAvailableActions:    showActionsForRef,
 		},
 	}
@@ -1100,7 +1100,12 @@ func pushRef(refView *RefView, action Action) (err error) {
 		return fmt.Errorf("Cannot push ref: No remotes configured")
 	} else if len(remotes) > 1 {
 		if len(action.Args) == 0 {
-			refView.showRemotesMenu(action.ActionType)
+			refView.showRemotesMenu(func(selectedValue interface{}) {
+				refView.channels.DoAction(Action{
+					ActionType: action.ActionType,
+					Args:       []interface{}{selectedValue},
+				})
+			})
 			return
 		} else if remoteName, ok := action.Args[0].(string); ok {
 			remote = remoteName
@@ -1111,11 +1116,7 @@ func pushRef(refView *RefView, action Action) (err error) {
 		remote = remotes[0]
 	}
 
-	refView.channels.ReportStatus("Running git push")
-
-	go func() {
-		quit := make(chan bool)
-
+	refView.runReportingTask("Running git push", func(quit chan bool) {
 		refView.repoController.Push(remote, ref, track, func(err error) {
 			if err != nil {
 				refView.channels.ReportError(err)
@@ -1126,33 +1127,93 @@ func pushRef(refView *RefView, action Action) (err error) {
 
 			close(quit)
 		})
-
-		ticker := time.NewTicker(time.Millisecond * 250)
-		dots := 0
-
-		for {
-			select {
-			case <-ticker.C:
-				dots = (dots + 1) % 4
-				refView.channels.ReportStatus("Running git push%v", strings.Repeat(".", dots))
-			case <-quit:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
+	})
 
 	return
 }
 
-func (refView *RefView) showRemotesMenu(nextAction ActionType) {
+func deleteRef(refView *RefView, action Action) (err error) {
+	renderedRef := refView.selectedRef()
+	if renderedRef == nil || renderedRef.ref == nil {
+		return
+	}
+
+	ref := renderedRef.ref
+	remote := false
+
+	switch rawRef := ref.(type) {
+	case *LocalBranch:
+		if refView.repoData.Head().Equal(ref) {
+			return fmt.Errorf("Cannot delete currently checked out branch")
+		}
+
+		if err = refView.repoController.DeleteLocalRef(ref); err != nil {
+			return
+		}
+
+		remote = rawRef.IsTrackingBranch()
+	case *Tag:
+		if err = refView.repoController.DeleteLocalRef(ref); err != nil {
+			return
+		}
+
+		remote = true
+	case *RemoteBranch:
+		refView.deleteRemoteRef(rawRef.remoteName, ref)
+		return
+	case *HEAD:
+		return
+	}
+
+	refView.channels.ReportStatus("Deleted ref %v", ref.Shorthand())
+
+	remotes := refView.repoData.Remotes()
+	if remote && len(remotes) > 0 {
+		question := "Do you want to delete the corresponding remote ref as well?"
+
+		refView.channels.DoAction(YesNoQuestion(question, func(response QuestionResponse) {
+			if response == ResponseYes {
+				if len(remotes) > 1 {
+					refView.showRemotesMenu(func(selectedValue interface{}) {
+						if remote, ok := selectedValue.(string); ok {
+							refView.deleteRemoteRef(remote, ref)
+						} else {
+							log.Debugf("Expected string value for remote but found: %T", selectedValue)
+						}
+					})
+				} else {
+					refView.deleteRemoteRef(remotes[0], ref)
+				}
+			}
+		}))
+	}
+
+	return
+}
+
+func (refView *RefView) deleteRemoteRef(remote string, ref Ref) {
+	refView.runReportingTask(fmt.Sprintf("Deleting ref %v on remote %v", ref.Shorthand(), remote), func(quit chan bool) {
+		refView.repoController.DeleteRemoteRef(remote, ref, func(err error) {
+			if err != nil {
+				refView.channels.ReportError(err)
+				refView.channels.ReportStatus("Deleting ref %v on remote %v failed", ref.Shorthand(), remote)
+			} else {
+				refView.channels.ReportStatus("Deleted ref %v on remote %v", ref.Shorthand(), remote)
+			}
+
+			close(quit)
+		})
+	})
+}
+
+func (refView *RefView) showRemotesMenu(consumer Consumer) {
 	remotes := refView.repoData.Remotes()
 	contextMenuEntries := []ContextMenuEntry{}
 
 	for _, remote := range remotes {
 		contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
 			DisplayName: remote,
-			Value:       Action{ActionType: nextAction, Args: []interface{}{remote}},
+			Value:       remote,
 		})
 	}
 
@@ -1168,11 +1229,7 @@ func (refView *RefView) showRemotesMenu(nextAction ActionType) {
 					Entity:  "Remote",
 					Entries: contextMenuEntries,
 					OnSelect: func(entry ContextMenuEntry, entryIndex uint) {
-						if selectedAction, ok := entry.Value.(Action); ok {
-							refView.channels.DoAction(selectedAction)
-						} else {
-							log.Errorf("Expected Action instance but found: %v", entry.Value)
-						}
+						consumer(entry.Value)
 					},
 				},
 			},
@@ -1194,7 +1251,8 @@ func showActionsForRef(refView *RefView, action Action) (err error) {
 
 	var contextMenuEntries []ContextMenuEntry
 
-	if _, isHead := renderedRef.ref.(*HEAD); !isHead {
+	_, isHead := renderedRef.ref.(*HEAD)
+	if !isHead {
 		contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
 			DisplayName: "Checkout ref",
 			Value:       Action{ActionType: ActionCheckoutRef},
@@ -1231,6 +1289,13 @@ func showActionsForRef(refView *RefView, action Action) (err error) {
 		contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
 			DisplayName: "Push ref to remote",
 			Value:       Action{ActionType: ActionPushRef},
+		})
+	}
+
+	if !isHead {
+		contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
+			DisplayName: "Delete ref",
+			Value:       Action{ActionType: ActionDeleteRef},
 		})
 	}
 

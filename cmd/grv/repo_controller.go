@@ -39,6 +39,8 @@ type RepoController interface {
 	AmendCommit(CommitResultHandler)
 	Pull(remote string, resultHandler RepoResultHandler)
 	Push(remote string, ref Ref, track bool, resultHandler RepoResultHandler)
+	DeleteLocalRef(ref Ref) error
+	DeleteRemoteRef(remote string, ref Ref, resultHandler RepoResultHandler)
 }
 
 // ReadOnlyRepositoryController does not permit any
@@ -126,5 +128,15 @@ func (repoController *ReadOnlyRepositoryController) Pull(remote string, resultHa
 
 // Push returns a read only error
 func (repoController *ReadOnlyRepositoryController) Push(remote string, ref Ref, track bool, resultHandler RepoResultHandler) {
+	go resultHandler(errReadOnly)
+}
+
+// DeleteLocalRef returns a read only error
+func (repoController *ReadOnlyRepositoryController) DeleteLocalRef(ref Ref) error {
+	return errReadOnly
+}
+
+// DeleteRemoteRef returns a read only error
+func (repoController *ReadOnlyRepositoryController) DeleteRemoteRef(remote string, ref Ref, resultHandler RepoResultHandler) {
 	go resultHandler(errReadOnly)
 }

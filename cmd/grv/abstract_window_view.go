@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -169,6 +171,30 @@ func (abstractWindowView *AbstractWindowView) renderEmptyView(win RenderWindow, 
 	win.DrawBorder()
 
 	return
+}
+
+func (abstractWindowView *AbstractWindowView) runReportingTask(message string, operation func(chan bool)) {
+	abstractWindowView.channels.ReportStatus(message)
+
+	go func() {
+		quit := make(chan bool)
+
+		operation(quit)
+
+		ticker := time.NewTicker(time.Millisecond * 250)
+		dots := 0
+
+		for {
+			select {
+			case <-ticker.C:
+				dots = (dots + 1) % 4
+				abstractWindowView.channels.ReportStatus("%v%v", message, strings.Repeat(".", dots))
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
 }
 
 func (abstractWindowView *AbstractWindowView) notifyChildRowSelected(rowIndex uint) (err error) {

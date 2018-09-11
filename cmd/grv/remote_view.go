@@ -1,9 +1,7 @@
 package main
 
 import (
-	"strings"
 	"sync"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -173,9 +171,7 @@ func gitPull(remoteView *RemoteView, action Action) (err error) {
 	remote := remoteView.remotes[remoteView.activeViewPos.ActiveRowIndex()]
 	remoteView.channels.ReportStatus("Running git pull")
 
-	go func() {
-		quit := make(chan bool)
-
+	remoteView.runReportingTask("Running git pull", func(quit chan bool) {
 		remoteView.repoController.Pull(remote, func(err error) {
 			if err != nil {
 				remoteView.channels.ReportError(err)
@@ -186,21 +182,7 @@ func gitPull(remoteView *RemoteView, action Action) (err error) {
 
 			close(quit)
 		})
-
-		ticker := time.NewTicker(time.Millisecond * 250)
-		dots := 0
-
-		for {
-			select {
-			case <-ticker.C:
-				dots = (dots + 1) % 4
-				remoteView.channels.ReportStatus("Running git pull%v", strings.Repeat(".", dots))
-			case <-quit:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
+	})
 
 	return
 }

@@ -220,6 +220,39 @@ func (controller *GitCommandRepoController) Push(remote string, ref Ref, track b
 	}()
 }
 
+// DeleteLocalRef uses git branch -D and git tag -d to delete a local branch or tag respectively
+func (controller *GitCommandRepoController) DeleteLocalRef(ref Ref) (err error) {
+	switch ref.(type) {
+	case *LocalBranch:
+		return controller.runGitCommand("branch", "-D", ref.Shorthand())
+	case *Tag:
+		return controller.runGitCommand("tag", "-d", ref.Shorthand())
+	}
+
+	return fmt.Errorf("Invalid ref type %T", ref)
+}
+
+// DeleteRemoteRef uses git push --delete to delete a remote branch or tag
+func (controller *GitCommandRepoController) DeleteRemoteRef(remote string, ref Ref, resultHandler RepoResultHandler) {
+	go func() {
+		var refName string
+
+		switch rawRef := ref.(type) {
+		case *RemoteBranch:
+			refName = rawRef.ShorthandWithoutRemote()
+		case *LocalBranch:
+			refName = ref.Shorthand()
+		case *Tag:
+			refName = ref.Shorthand()
+		default:
+			resultHandler(fmt.Errorf("Invalid ref type %T", ref))
+			return
+		}
+
+		resultHandler(controller.runGitCommand("push", "--delete", remote, refName))
+	}()
+}
+
 func (controller *GitCommandRepoController) findRef(resultHandler RefOperationResultHandler, refName string, refPredicate func(Ref) bool) {
 	controller.repoData.LoadRefs(func(refs []Ref) error {
 		for _, ref := range refs {
