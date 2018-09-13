@@ -61,6 +61,7 @@ const (
 	ActionToggleViewLayout
 	ActionNextTab
 	ActionPrevTab
+	ActionSelectTabByName
 	ActionRemoveView
 	ActionAddFilter
 	ActionRemoveFilter
@@ -370,6 +371,10 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		keyBindings: map[ViewID][]string{
 			ViewAll: {"gT"},
 		},
+	},
+	ActionSelectTabByName: {
+		actionCategory: ActionCategoryViewNavigation,
+		description:    "Select active tab by name",
 	},
 	ActionRemoveView: {
 		actionKey:      "<grv-remove-view>",

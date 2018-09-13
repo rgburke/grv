@@ -452,6 +452,12 @@ func (view *View) HandleAction(action Action) (err error) {
 
 		view.prevTab()
 		return
+	case ActionSelectTabByName:
+		view.lock.Lock()
+		defer view.lock.Unlock()
+
+		err = view.selectTabByName(action)
+		return
 	case ActionNewTab:
 		view.lock.Lock()
 		defer view.lock.Unlock()
@@ -643,6 +649,28 @@ func (view *View) prevTab() {
 
 	view.onActiveChange(true)
 	view.channels.UpdateDisplay()
+}
+
+func (view *View) selectTabByName(action Action) (err error) {
+	if len(action.Args) == 0 {
+		return fmt.Errorf("No tab name provided")
+	}
+
+	tabName, ok := action.Args[0].(string)
+	if !ok {
+		return fmt.Errorf("Expected tab name argument to be of type string, but got %T", action.Args[0])
+	}
+
+	for childIndex, child := range view.views {
+		if child.Title() == tabName {
+			view.activeViewPos = uint(childIndex)
+			view.onActiveChange(true)
+			view.channels.UpdateDisplay()
+			return
+		}
+	}
+
+	return fmt.Errorf("No tab with name %v", tabName)
 }
 
 func (view *View) newTab(action Action) (err error) {
