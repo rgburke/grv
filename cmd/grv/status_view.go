@@ -1,5 +1,10 @@
 package main
 
+const (
+	// StatusViewTitle is the title of the Status View
+	StatusViewTitle = "Status View"
+)
+
 // NewStatusView creates a new instance
 func NewStatusView(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter) *ContainerView {
 	gitStatusView := NewGitStatusView(repoData, repoController, channels, config, variables)
@@ -8,7 +13,7 @@ func NewStatusView(repoData RepoData, repoController RepoController, channels Ch
 	gitStatusView.RegisterGitStatusFileSelectedListener(diffView)
 
 	statusView := NewContainerView(channels, config)
-	statusView.SetTitle("Status View")
+	statusView.SetTitle(StatusViewTitle)
 	statusView.SetOrientation(CoDynamic)
 	statusView.SetViewID(ViewStatus)
 	statusView.AddChildViews(gitStatusView, diffView)

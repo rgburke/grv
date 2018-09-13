@@ -222,6 +222,7 @@ func NewRefView(repoData RepoData, repoController RepoController, channels Chann
 			ActionPushRef:                 pushRef,
 			ActionDeleteRef:               deleteRef,
 			ActionShowAvailableActions:    showActionsForRef,
+			ActionMergeRef:                mergeRef,
 		},
 	}
 
@@ -1237,6 +1238,28 @@ func (refView *RefView) showRemotesMenu(consumer Consumer) {
 	})
 }
 
+func mergeRef(refView *RefView, action Action) (err error) {
+	renderedRef := refView.selectedRef()
+	if renderedRef == nil || renderedRef.ref == nil {
+		return
+	}
+
+	ref := renderedRef.ref
+	head := refView.repoData.Head()
+
+	if refView.repoController.MergeRef(ref) == nil {
+		refView.channels.ReportStatus("Merged %v into %v", ref.Shorthand(), head.Shorthand())
+	} else {
+		refView.channels.ReportStatus("Merged failed")
+		refView.channels.DoAction(Action{
+			ActionType: ActionSelectTabByName,
+			Args:       []interface{}{StatusViewTitle},
+		})
+	}
+
+	return
+}
+
 func showActionsForRef(refView *RefView, action Action) (err error) {
 	if refView.rows() == 0 {
 		return
@@ -1292,11 +1315,20 @@ func showActionsForRef(refView *RefView, action Action) (err error) {
 		})
 	}
 
+	head := refView.repoData.Head()
+
 	if !isHead {
 		contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
 			DisplayName: "Delete ref",
 			Value:       Action{ActionType: ActionDeleteRef},
 		})
+
+		if !head.Equal(renderedRef.ref) {
+			contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
+				DisplayName: "Merge ref into current branch",
+				Value:       Action{ActionType: ActionMergeRef},
+			})
+		}
 	}
 
 	refView.channels.DoAction(Action{
@@ -1304,7 +1336,7 @@ func showActionsForRef(refView *RefView, action Action) (err error) {
 		Args: []interface{}{
 			ActionCreateContextMenuArgs{
 				viewDimension: ViewDimension{
-					rows: 10,
+					rows: 11,
 					cols: 60,
 				},
 				config: ContextMenuConfig{

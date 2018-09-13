@@ -143,6 +143,7 @@ The following tables contain default and user configured key bindings
  t            | <grv-create-tag>                 | Create a new tag                
  D            | <grv-delete-ref>                 | Delete ref                      
  <C-q>        | <grv-filter-prompt>              | Add filter                      
+ m            | <grv-merge-ref>                  | Merge ref into current branch   
  p            | <grv-push-ref>                   | Push ref to remote              
  <C-r>        | <grv-remove-filter>              | Remove filter                   
 ```

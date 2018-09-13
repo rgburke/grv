@@ -97,6 +97,7 @@ const (
 	ActionPullRemote
 	ActionPushRef
 	ActionDeleteRef
+	ActionMergeRef
 	ActionShowHelpView
 	ActionNextButton
 	ActionPrevButton
@@ -613,6 +614,14 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		description:    "Delete ref",
 		keyBindings: map[ViewID][]string{
 			ViewRef: {"D"},
+		},
+	},
+	ActionMergeRef: {
+		actionKey:      "<grv-merge-ref>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Merge ref into current branch",
+		keyBindings: map[ViewID][]string{
+			ViewRef: {"m"},
 		},
 	},
 	ActionShowHelpView: {

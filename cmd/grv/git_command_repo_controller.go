@@ -253,6 +253,11 @@ func (controller *GitCommandRepoController) DeleteRemoteRef(remote string, ref R
 	}()
 }
 
+// MergeRef uses git merge to merge a branch with the provided ref
+func (controller *GitCommandRepoController) MergeRef(ref Ref) (err error) {
+	return controller.runGitCommand("merge", "--no-edit", ref.Shorthand())
+}
+
 func (controller *GitCommandRepoController) findRef(resultHandler RefOperationResultHandler, refName string, refPredicate func(Ref) bool) {
 	controller.repoData.LoadRefs(func(refs []Ref) error {
 		for _, ref := range refs {
