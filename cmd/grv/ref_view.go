@@ -1137,57 +1137,70 @@ func deleteRef(refView *RefView, action Action) (err error) {
 	renderedRef := refView.selectedRef()
 	if renderedRef == nil || renderedRef.ref == nil {
 		return
+	} else if _, isDetached := renderedRef.ref.(*HEAD); isDetached {
+		return
 	}
 
 	ref := renderedRef.ref
 	remote := false
 
-	switch rawRef := ref.(type) {
-	case *LocalBranch:
-		if refView.repoData.Head().Equal(ref) {
-			return fmt.Errorf("Cannot delete currently checked out branch")
-		}
+	question := fmt.Sprintf("Are you sure you want to delete %v?", ref.Shorthand())
 
-		if err = refView.repoController.DeleteLocalRef(ref); err != nil {
+	refView.channels.DoAction(YesNoQuestion(question, func(deleteResponse QuestionResponse) {
+		if deleteResponse == ResponseNo {
 			return
 		}
 
-		remote = rawRef.IsTrackingBranch()
-	case *Tag:
-		if err = refView.repoController.DeleteLocalRef(ref); err != nil {
-			return
-		}
-
-		remote = true
-	case *RemoteBranch:
-		refView.deleteRemoteRef(rawRef.remoteName, ref)
-		return
-	case *HEAD:
-		return
-	}
-
-	refView.channels.ReportStatus("Deleted ref %v", ref.Shorthand())
-
-	remotes := refView.repoData.Remotes()
-	if remote && len(remotes) > 0 {
-		question := "Do you want to delete the corresponding remote ref as well?"
-
-		refView.channels.DoAction(YesNoQuestion(question, func(response QuestionResponse) {
-			if response == ResponseYes {
-				if len(remotes) > 1 {
-					refView.showRemotesMenu(func(selectedValue interface{}) {
-						if remote, ok := selectedValue.(string); ok {
-							refView.deleteRemoteRef(remote, ref)
-						} else {
-							log.Debugf("Expected string value for remote but found: %T", selectedValue)
-						}
-					})
-				} else {
-					refView.deleteRemoteRef(remotes[0], ref)
-				}
+		switch rawRef := ref.(type) {
+		case *LocalBranch:
+			if refView.repoData.Head().Equal(ref) {
+				refView.channels.ReportError(fmt.Errorf("Cannot delete currently checked out branch"))
+				return
 			}
-		}))
-	}
+
+			if err = refView.repoController.DeleteLocalRef(ref); err != nil {
+				refView.channels.ReportError(err)
+				return
+			}
+
+			remote = rawRef.IsTrackingBranch()
+		case *Tag:
+			if err = refView.repoController.DeleteLocalRef(ref); err != nil {
+				refView.channels.ReportError(err)
+				return
+			}
+
+			remote = true
+		case *RemoteBranch:
+			refView.deleteRemoteRef(rawRef.remoteName, ref)
+			return
+		default:
+			return
+		}
+
+		refView.channels.ReportStatus("Deleted ref %v", ref.Shorthand())
+
+		remotes := refView.repoData.Remotes()
+		if remote && len(remotes) > 0 {
+			question := "Do you want to delete the corresponding remote ref as well?"
+
+			refView.channels.DoAction(YesNoQuestion(question, func(deleteRemoteResponse QuestionResponse) {
+				if deleteRemoteResponse == ResponseYes {
+					if len(remotes) > 1 {
+						refView.showRemotesMenu(func(selectedValue interface{}) {
+							if remote, ok := selectedValue.(string); ok {
+								refView.deleteRemoteRef(remote, ref)
+							} else {
+								log.Debugf("Expected string value for remote but found: %T", selectedValue)
+							}
+						})
+					} else {
+						refView.deleteRemoteRef(remotes[0], ref)
+					}
+				}
+			}))
+		}
+	}))
 
 	return
 }
