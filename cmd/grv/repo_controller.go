@@ -42,6 +42,7 @@ type RepoController interface {
 	DeleteLocalRef(ref Ref) error
 	DeleteRemoteRef(remote string, ref Ref, resultHandler RepoResultHandler)
 	MergeRef(Ref) error
+	Rebase(Ref) error
 }
 
 // ReadOnlyRepositoryController does not permit any
@@ -144,5 +145,10 @@ func (repoController *ReadOnlyRepositoryController) DeleteRemoteRef(remote strin
 
 // MergeRef returns a read only error
 func (repoController *ReadOnlyRepositoryController) MergeRef(Ref) error {
+	return errReadOnly
+}
+
+// Rebase returns a read only error
+func (repoController *ReadOnlyRepositoryController) Rebase(Ref) error {
 	return errReadOnly
 }

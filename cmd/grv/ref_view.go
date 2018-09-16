@@ -223,6 +223,7 @@ func NewRefView(repoData RepoData, repoController RepoController, channels Chann
 			ActionDeleteRef:               deleteRef,
 			ActionShowAvailableActions:    showActionsForRef,
 			ActionMergeRef:                mergeRef,
+			ActionRebase:                  rebase,
 		},
 	}
 
@@ -1273,6 +1274,33 @@ func mergeRef(refView *RefView, action Action) (err error) {
 	return
 }
 
+func rebase(refView *RefView, action Action) (err error) {
+	renderedRef := refView.selectedRef()
+	head := refView.repoData.Head()
+
+	if renderedRef == nil || renderedRef.ref == nil {
+		return
+	} else if _, isLocalBranch := renderedRef.ref.(*LocalBranch); !isLocalBranch {
+		return fmt.Errorf("Selected ref is not a local branch")
+	} else if _, isHeadLocalBranch := head.(*LocalBranch); !isHeadLocalBranch {
+		return fmt.Errorf("HEAD is not a local branch")
+	}
+
+	ref := renderedRef.ref
+
+	if refView.repoController.Rebase(ref) == nil {
+		refView.channels.ReportStatus("Rebased %v onto %v", head.Shorthand(), ref.Shorthand())
+	} else {
+		refView.channels.ReportStatus("Rebase failed")
+		refView.channels.DoAction(Action{
+			ActionType: ActionSelectTabByName,
+			Args:       []interface{}{StatusViewTitle},
+		})
+	}
+
+	return
+}
+
 func showActionsForRef(refView *RefView, action Action) (err error) {
 	if refView.rows() == 0 {
 		return
@@ -1285,12 +1313,17 @@ func showActionsForRef(refView *RefView, action Action) (err error) {
 		return
 	}
 
+	refName := renderedRef.ref.Shorthand()
+	if StringWidth(refName) > 15 {
+		refName = refName[:15] + "..."
+	}
+
 	var contextMenuEntries []ContextMenuEntry
 
 	_, isHead := renderedRef.ref.(*HEAD)
 	if !isHead {
 		contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
-			DisplayName: "Checkout ref",
+			DisplayName: fmt.Sprintf("Checkout %v", refName),
 			Value:       Action{ActionType: ActionCheckoutRef},
 		})
 	}
@@ -1301,19 +1334,19 @@ func showActionsForRef(refView *RefView, action Action) (err error) {
 			Value:       Action{ActionType: ActionCheckoutPreviousRef},
 		},
 		ContextMenuEntry{
-			DisplayName: "Create branch from ref",
+			DisplayName: fmt.Sprintf("Create branch from %v", refName),
 			Value:       Action{ActionType: ActionCreateBranch},
 		},
 		ContextMenuEntry{
-			DisplayName: "Create branch from ref and checkout",
+			DisplayName: fmt.Sprintf("Create branch from %v and checkout", refName),
 			Value:       Action{ActionType: ActionCreateBranchAndCheckout},
 		},
 		ContextMenuEntry{
-			DisplayName: "Create tag at ref",
+			DisplayName: fmt.Sprintf("Create tag at %v", refName),
 			Value:       Action{ActionType: ActionCreateTag},
 		},
 		ContextMenuEntry{
-			DisplayName: "Create annotated tag at ref",
+			DisplayName: fmt.Sprintf("Create annotated tag at %v", refName),
 			Value:       Action{ActionType: ActionCreateAnnotatedTag},
 		},
 	)
@@ -1323,23 +1356,31 @@ func showActionsForRef(refView *RefView, action Action) (err error) {
 
 	if isLocalBranch || isTag {
 		contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
-			DisplayName: "Push ref to remote",
+			DisplayName: fmt.Sprintf("Push %v to remote", refName),
 			Value:       Action{ActionType: ActionPushRef},
 		})
 	}
 
 	head := refView.repoData.Head()
+	headName := head.Shorthand()
+	if StringWidth(headName) > 15 {
+		headName = headName[:15] + "..."
+	}
 
 	if !isHead {
 		contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
-			DisplayName: "Delete ref",
+			DisplayName: fmt.Sprintf("Delete %v", refName),
 			Value:       Action{ActionType: ActionDeleteRef},
 		})
 
 		if !head.Equal(renderedRef.ref) {
 			contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
-				DisplayName: "Merge ref into current branch",
+				DisplayName: fmt.Sprintf("Merge %v into %v", refName, headName),
 				Value:       Action{ActionType: ActionMergeRef},
+			})
+			contextMenuEntries = append(contextMenuEntries, ContextMenuEntry{
+				DisplayName: fmt.Sprintf("Rebase %v onto %v", headName, refName),
+				Value:       Action{ActionType: ActionRebase},
 			})
 		}
 	}
@@ -1349,7 +1390,7 @@ func showActionsForRef(refView *RefView, action Action) (err error) {
 		Args: []interface{}{
 			ActionCreateContextMenuArgs{
 				viewDimension: ViewDimension{
-					rows: 11,
+					rows: uint(MinInt(len(contextMenuEntries)+2, 15)),
 					cols: 60,
 				},
 				config: ContextMenuConfig{

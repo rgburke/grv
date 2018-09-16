@@ -134,18 +134,19 @@ The following tables contain default and user configured key bindings
 ### RefView Specific
 
 ```
- Key Bindings | Action                           | Description                     
- -------------+----------------------------------+----------------------------------
- c            | <grv-checkout-ref>               | Checkout ref                    
- T            | <grv-create-annotated-tag>       | Create a new annotated tag      
- B            | <grv-create-branch-and-checkout> | Create a new branch and checkout
- b            | <grv-create-branch>              | Create a new branch             
- t            | <grv-create-tag>                 | Create a new tag                
- D            | <grv-delete-ref>                 | Delete ref                      
- <C-q>        | <grv-filter-prompt>              | Add filter                      
- m            | <grv-merge-ref>                  | Merge ref into current branch   
- p            | <grv-push-ref>                   | Push ref to remote              
- <C-r>        | <grv-remove-filter>              | Remove filter                   
+ Key Bindings | Action                           | Description                               
+ -------------+----------------------------------+--------------------------------------------
+ c            | <grv-checkout-ref>               | Checkout ref                              
+ T            | <grv-create-annotated-tag>       | Create a new annotated tag                
+ B            | <grv-create-branch-and-checkout> | Create a new branch and checkout          
+ b            | <grv-create-branch>              | Create a new branch                       
+ t            | <grv-create-tag>                 | Create a new tag                          
+ D            | <grv-delete-ref>                 | Delete ref                                
+ <C-q>        | <grv-filter-prompt>              | Add filter                                
+ m            | <grv-merge-ref>                  | Merge ref into current branch             
+ p            | <grv-push-ref>                   | Push ref to remote                        
+ r            | <grv-rebase>                     | Rebase current branch onto selected branch
+ <C-r>        | <grv-remove-filter>              | Remove filter                             
 ```
 
 ### CommitView Specific

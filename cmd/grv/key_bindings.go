@@ -98,6 +98,7 @@ const (
 	ActionPushRef
 	ActionDeleteRef
 	ActionMergeRef
+	ActionRebase
 	ActionShowHelpView
 	ActionNextButton
 	ActionPrevButton
@@ -622,6 +623,14 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 		description:    "Merge ref into current branch",
 		keyBindings: map[ViewID][]string{
 			ViewRef: {"m"},
+		},
+	},
+	ActionRebase: {
+		actionKey:      "<grv-rebase>",
+		actionCategory: ActionCategoryViewSpecific,
+		description:    "Rebase current branch onto selected branch",
+		keyBindings: map[ViewID][]string{
+			ViewRef: {"r"},
 		},
 	},
 	ActionShowHelpView: {

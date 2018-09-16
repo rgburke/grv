@@ -258,6 +258,11 @@ func (controller *GitCommandRepoController) MergeRef(ref Ref) (err error) {
 	return controller.runGitCommand("merge", "--no-edit", ref.Shorthand())
 }
 
+// Rebase uses git rebase to rebase a branch onto the provided ref
+func (controller *GitCommandRepoController) Rebase(ref Ref) (err error) {
+	return controller.runGitCommand("rebase", ref.Shorthand())
+}
+
 func (controller *GitCommandRepoController) findRef(resultHandler RefOperationResultHandler, refName string, refPredicate func(Ref) bool) {
 	controller.repoData.LoadRefs(func(refs []Ref) error {
 		for _, ref := range refs {
