@@ -625,8 +625,10 @@ func toggleViewOrientation(containerView *ContainerView, action Action) (err err
 }
 
 func addView(containerView *ContainerView, action Action) (err error) {
-	if child, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
-		return child.HandleAction(action)
+	if !containerView.isEmpty() {
+		if child, isContainerView := containerView.activeChildView().(*ContainerView); isContainerView {
+			return child.HandleAction(action)
+		}
 	}
 
 	args := action.Args
