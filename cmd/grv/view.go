@@ -36,6 +36,7 @@ const (
 	ViewHelp
 	ViewGRVVariable
 	ViewRemote
+	ViewGitSummary
 
 	ViewCount // i.e. Number of views
 )

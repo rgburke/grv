@@ -52,6 +52,7 @@ const (
 	cfHelpView          = "HelpView"
 	cfGRVVariableView   = "GRVVariableView"
 	cfRemoteView        = "RemoteView"
+	cfGitSummaryView    = "SummaryView"
 )
 
 // ConfigVariable stores a config variable name
@@ -110,6 +111,7 @@ var viewIDNames = map[string]ViewID{
 	cfHelpView:          ViewHelp,
 	cfGRVVariableView:   ViewGRVVariable,
 	cfRemoteView:        ViewRemote,
+	cfGitSummaryView:    ViewGitSummary,
 }
 
 var themeComponents = map[string]ThemeComponentID{
