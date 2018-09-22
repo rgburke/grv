@@ -118,6 +118,11 @@ const (
 	CmpRemoteViewRemote
 	CmpRemoteViewFooter
 
+	CmpSummaryViewHeader
+	CmpSummaryViewNormal
+	CmpSummaryViewBranchAhead
+	CmpSummaryViewBranchBehind
+
 	CmpCount
 )
 

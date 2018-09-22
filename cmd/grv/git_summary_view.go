@@ -7,6 +7,10 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+const (
+	svIndentationSpace = "     "
+)
+
 type summaryViewHandler func(*SummaryView, Action) error
 
 type summaryViewLine interface {
@@ -28,7 +32,7 @@ type headerRenderer struct {
 }
 
 func (headerRenderer *headerRenderer) render(lineBuilder *LineBuilder) {
-	lineBuilder.AppendWithStyle(CmpNone, " %v", headerRenderer.header)
+	lineBuilder.AppendWithStyle(CmpSummaryViewHeader, "%v", headerRenderer.header)
 }
 
 func (headerRenderer *headerRenderer) renderString() string {
@@ -36,15 +40,30 @@ func (headerRenderer *headerRenderer) renderString() string {
 }
 
 type branchRenderer struct {
-	branchName  string
-	aheadBehind string
+	branchName string
+	ahead      string
+	behind     string
 }
 
 func (branchRenderer *branchRenderer) render(lineBuilder *LineBuilder) {
-	lineBuilder.AppendWithStyle(CmpNone, " %v", branchRenderer.branchName)
+	lineBuilder.AppendWithStyle(CmpNone, "%v", branchRenderer.branchName)
+
+	if branchRenderer.ahead != "" && branchRenderer.behind != "" {
+		lineBuilder.
+			AppendWithStyle(CmpSummaryViewNormal, " (").
+			AppendACSChar(AcsUarrow, CmpSummaryViewNormal).
+			AppendWithStyle(CmpSummaryViewBranchAhead, "%v ", branchRenderer.ahead).
+			AppendACSChar(AcsDarrow, CmpSummaryViewNormal).
+			AppendWithStyle(CmpSummaryViewBranchBehind, "%v", branchRenderer.behind).
+			AppendWithStyle(CmpSummaryViewNormal, ")")
+	}
 }
 
 func (branchRenderer *branchRenderer) renderString() string {
+	if branchRenderer.ahead != "" && branchRenderer.behind != "" {
+		return fmt.Sprintf("%v (^%v v%v)", branchRenderer.branchName, branchRenderer.ahead, branchRenderer.behind)
+	}
+
 	return branchRenderer.branchName
 }
 
@@ -85,9 +104,9 @@ func (summaryView *SummaryView) Initialise() (err error) {
 	summaryView.lock.Lock()
 	defer summaryView.lock.Unlock()
 
+	summaryView.repoData.RegisterRefStateListener(summaryView)
 	summaryView.generateRows()
-
-	return
+	return summaryView.selectNearestSelectableRow()
 }
 
 // Render generates and writes the summary view to the provided window
@@ -107,10 +126,11 @@ func (summaryView *SummaryView) Render(win RenderWindow) (err error) {
 	var lineBuilder *LineBuilder
 
 	for rowIndex := uint(0); rowIndex < rows && lineIndex < lineNum; rowIndex++ {
-		if lineBuilder, err = win.LineBuilder(rowIndex, startColumn); err != nil {
+		if lineBuilder, err = win.LineBuilder(rowIndex+1, startColumn); err != nil {
 			return
 		}
 
+		lineBuilder.Append(svIndentationSpace)
 		line := summaryView.lines[lineIndex]
 		line.render(lineBuilder)
 
@@ -149,7 +169,7 @@ func (summaryView *SummaryView) line(lineIndex uint) (line string) {
 		return
 	}
 
-	return
+	return summaryView.lines[lineIndex].renderString()
 }
 
 func (summaryView *SummaryView) rows() uint {
@@ -161,6 +181,7 @@ func (summaryView *SummaryView) viewDimension() ViewDimension {
 }
 
 func (summaryView *SummaryView) onRowSelected(rowIndex uint) (err error) {
+	summaryView.SelectableRowView.setVariables()
 	return
 }
 
@@ -197,10 +218,11 @@ func (summaryView *SummaryView) generateBranchRows() (rows []summaryViewLine) {
 		branchName = ref.Shorthand()
 	}
 
-	var aheadBehind string
+	var ahead, behind string
 
 	if branch, isLocalBranch := ref.(*LocalBranch); isLocalBranch && branch.IsTrackingBranch() {
-		aheadBehind = fmt.Sprintf(" (ahead: %v, behind: %v)", branch.ahead, branch.behind)
+		ahead = fmt.Sprintf("%v", branch.ahead)
+		behind = fmt.Sprintf("%v", branch.behind)
 	}
 
 	rows = append(rows,
@@ -209,13 +231,38 @@ func (summaryView *SummaryView) generateBranchRows() (rows []summaryViewLine) {
 			header: "Branch",
 		},
 		&branchRenderer{
-			branchName:  branchName,
-			aheadBehind: aheadBehind,
+			branchName: branchName,
+			ahead:      ahead,
+			behind:     behind,
 		},
 		emptyLine,
 	)
 
 	return
+}
+
+// OnRefsChanged regenerates the summary view
+func (summaryView *SummaryView) OnRefsChanged(addedRefs, removedRefs []Ref, updatedRefs []*UpdatedRef) {
+	summaryView.lock.Lock()
+	defer summaryView.lock.Unlock()
+
+	summaryView.generateRows()
+}
+
+// OnHeadChanged regenerates the summary view
+func (summaryView *SummaryView) OnHeadChanged(oldHead, newHead Ref) {
+	summaryView.lock.Lock()
+	defer summaryView.lock.Unlock()
+
+	summaryView.generateRows()
+}
+
+// OnTrackingBranchesUpdated regenerates the summary view
+func (summaryView *SummaryView) OnTrackingBranchesUpdated(trackingBranches []*LocalBranch) {
+	summaryView.lock.Lock()
+	defer summaryView.lock.Unlock()
+
+	summaryView.generateRows()
 }
 
 // HandleAction checks if the summary view supports the provided action and executes it if so
@@ -227,8 +274,8 @@ func (summaryView *SummaryView) HandleAction(action Action) (err error) {
 	if handler, ok := summaryView.handlers[action.ActionType]; ok {
 		log.Debugf("Action handled by SummaryView")
 		err = handler(summaryView, action)
-	} else if handled, err = summaryView.AbstractWindowView.HandleAction(action); handled {
-		log.Debugf("Action handled by AbstractWindowView")
+	} else if handled, err = summaryView.SelectableRowView.HandleAction(action); handled {
+		log.Debugf("Action handled by SelectableRowChildWindowView")
 	} else {
 		log.Debugf("Action not handled")
 	}

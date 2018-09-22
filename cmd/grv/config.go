@@ -226,6 +226,11 @@ var themeComponents = map[string]ThemeComponentID{
 	cfRemoteView + ".Title":  CmpRemoteViewTitle,
 	cfRemoteView + ".Remote": CmpRemoteViewRemote,
 	cfRemoteView + ".Footer": CmpRemoteViewFooter,
+
+	cfGitSummaryView + ".Header":       CmpSummaryViewHeader,
+	cfGitSummaryView + ".Normal":       CmpSummaryViewNormal,
+	cfGitSummaryView + ".BranchAhead":  CmpSummaryViewBranchAhead,
+	cfGitSummaryView + ".BranchBehind": CmpSummaryViewBranchBehind,
 }
 
 var colorNumberPattern = regexp.MustCompile(`[0-9]{1,3}`)

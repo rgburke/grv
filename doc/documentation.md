@@ -526,6 +526,11 @@ GitStatusView.UnstagedTitle
 GitStatusView.UntrackedFile
 GitStatusView.UntrackedTitle
 
+GitSummaryView.BranchAhead
+GitSummaryView.BranchBehind
+GitSummaryView.Header
+GitSummaryView.Normal
+
 HelpBarView.Normal
 HelpBarView.Special
 
