@@ -22,6 +22,7 @@ const (
 	ViewContainer
 	ViewHistory
 	ViewStatus
+	ViewSummary
 	ViewGRVStatus
 	ViewRef
 	ViewCommit
@@ -154,6 +155,7 @@ func NewView(repoData RepoData, repoController RepoController, channels Channels
 		views: []WindowViewCollection{
 			NewHistoryView(repoData, repoController, channels, config, variables),
 			NewStatusView(repoData, repoController, channels, config, variables),
+			//NewSummaryView(repoData, repoController, channels, config, variables),
 		},
 		channels:          channels,
 		config:            config,

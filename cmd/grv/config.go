@@ -38,6 +38,7 @@ const (
 	cfContainerView     = "ContainerView"
 	cfHistoryView       = "HistoryView"
 	cfStatusView        = "StatusView"
+	cfSummaryView       = "SummaryView"
 	cfGRVStatusView     = "GRVStatusView"
 	cfRefView           = "RefView"
 	cfCommitView        = "CommitView"
@@ -52,7 +53,7 @@ const (
 	cfHelpView          = "HelpView"
 	cfGRVVariableView   = "GRVVariableView"
 	cfRemoteView        = "RemoteView"
-	cfGitSummaryView    = "SummaryView"
+	cfGitSummaryView    = "GitSummaryView"
 )
 
 // ConfigVariable stores a config variable name
@@ -97,6 +98,7 @@ var viewIDNames = map[string]ViewID{
 	cfContainerView:     ViewContainer,
 	cfHistoryView:       ViewHistory,
 	cfStatusView:        ViewStatus,
+	cfSummaryView:       ViewSummary,
 	cfGRVStatusView:     ViewGRVStatus,
 	cfRefView:           ViewRef,
 	cfCommitView:        ViewCommit,

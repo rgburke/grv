@@ -63,8 +63,8 @@ type SummaryView struct {
 	lock              sync.Mutex
 }
 
-// NewSummaryView creates a new summary view instance
-func NewSummaryView(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter) *SummaryView {
+// NewGitSummaryView creates a new summary view instance
+func NewGitSummaryView(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter) *SummaryView {
 	summaryView := &SummaryView{
 		repoData:       repoData,
 		repoController: repoController,
