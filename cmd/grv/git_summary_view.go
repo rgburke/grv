@@ -16,27 +16,34 @@ type summaryViewHandler func(*SummaryView, Action) error
 type summaryViewLine interface {
 	render(*LineBuilder)
 	renderString() string
+	isSelectable() bool
 }
 
-type emptyLineRenderer struct{}
-
-func (emptyLineRenderer *emptyLineRenderer) render(lineBuilder *LineBuilder) {}
-func (emptyLineRenderer *emptyLineRenderer) renderString() string {
-	return ""
+type valueRenderer struct {
+	value            string
+	themeComponentID ThemeComponentID
+	selectable       bool
 }
 
-var emptyLine = &emptyLineRenderer{}
-
-type headerRenderer struct {
-	header string
+func (valueRenderer *valueRenderer) render(lineBuilder *LineBuilder) {
+	lineBuilder.AppendWithStyle(valueRenderer.themeComponentID, "%v", valueRenderer.value)
 }
 
-func (headerRenderer *headerRenderer) render(lineBuilder *LineBuilder) {
-	lineBuilder.AppendWithStyle(CmpSummaryViewHeader, "%v", headerRenderer.header)
+func (valueRenderer *valueRenderer) renderString() string {
+	return valueRenderer.value
 }
 
-func (headerRenderer *headerRenderer) renderString() string {
-	return headerRenderer.header
+func (valueRenderer *valueRenderer) isSelectable() bool {
+	return valueRenderer.selectable
+}
+
+var emptyLine = &valueRenderer{}
+
+func newHeaderRenderer(header string) summaryViewLine {
+	return &valueRenderer{
+		value:            header,
+		themeComponentID: CmpSummaryViewHeader,
+	}
 }
 
 type branchRenderer struct {
@@ -65,6 +72,10 @@ func (branchRenderer *branchRenderer) renderString() string {
 	}
 
 	return branchRenderer.branchName
+}
+
+func (branchRenderer *branchRenderer) isSelectable() bool {
+	return true
 }
 
 // SummaryView displays a summary view of repo state
@@ -190,16 +201,7 @@ func (summaryView *SummaryView) isSelectableRow(rowIndex uint) (isSelectable boo
 		return
 	}
 
-	switch summaryView.lines[rowIndex].(type) {
-	case *emptyLineRenderer:
-		isSelectable = false
-	case *headerRenderer:
-		isSelectable = false
-	default:
-		isSelectable = true
-	}
-
-	return
+	return summaryView.lines[rowIndex].isSelectable()
 }
 
 func (summaryView *SummaryView) generateRows() {
@@ -227,9 +229,7 @@ func (summaryView *SummaryView) generateBranchRows() (rows []summaryViewLine) {
 
 	rows = append(rows,
 		emptyLine,
-		&headerRenderer{
-			header: "Branch",
-		},
+		newHeaderRenderer("Branch"),
 		&branchRenderer{
 			branchName: branchName,
 			ahead:      ahead,
