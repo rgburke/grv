@@ -19,62 +19,68 @@ type summaryViewLine interface {
 	isSelectable() bool
 }
 
-type valueRenderer struct {
+type singleValueLine struct {
 	value            string
 	themeComponentID ThemeComponentID
 	selectable       bool
 }
 
-func (valueRenderer *valueRenderer) render(lineBuilder *LineBuilder) {
-	lineBuilder.AppendWithStyle(valueRenderer.themeComponentID, "%v", valueRenderer.value)
+func (singleValueLine *singleValueLine) render(lineBuilder *LineBuilder) {
+	lineBuilder.AppendWithStyle(singleValueLine.themeComponentID, "%v", singleValueLine.value)
 }
 
-func (valueRenderer *valueRenderer) renderString() string {
-	return valueRenderer.value
+func (singleValueLine *singleValueLine) renderString() string {
+	return singleValueLine.value
 }
 
-func (valueRenderer *valueRenderer) isSelectable() bool {
-	return valueRenderer.selectable
+func (singleValueLine *singleValueLine) isSelectable() bool {
+	return singleValueLine.selectable
 }
 
-var emptyLine = &valueRenderer{}
+var emptyLine = &singleValueLine{}
 
 func newHeaderRenderer(header string) summaryViewLine {
-	return &valueRenderer{
+	return &singleValueLine{
 		value:            header,
 		themeComponentID: CmpSummaryViewHeader,
 	}
 }
 
-type branchRenderer struct {
-	branchName string
-	ahead      string
-	behind     string
+type branchLine struct {
+	head Ref
 }
 
-func (branchRenderer *branchRenderer) render(lineBuilder *LineBuilder) {
-	lineBuilder.AppendWithStyle(CmpNone, "%v", branchRenderer.branchName)
+func (branchLine *branchLine) getBranchName() string {
+	if _, isDetached := branchLine.head.(*HEAD); isDetached {
+		return GetDetachedHeadDisplayValue(branchLine.head.Oid())
+	}
 
-	if branchRenderer.ahead != "" && branchRenderer.behind != "" {
+	return branchLine.head.Shorthand()
+}
+
+func (branchLine *branchLine) render(lineBuilder *LineBuilder) {
+	lineBuilder.AppendWithStyle(CmpNone, "%v", branchLine.getBranchName())
+
+	if branch, isLocalBranch := branchLine.head.(*LocalBranch); isLocalBranch && branch.IsTrackingBranch() {
 		lineBuilder.
 			AppendWithStyle(CmpSummaryViewNormal, " (").
 			AppendACSChar(AcsUarrow, CmpSummaryViewNormal).
-			AppendWithStyle(CmpSummaryViewBranchAhead, "%v ", branchRenderer.ahead).
+			AppendWithStyle(CmpSummaryViewBranchAhead, "%v ", branch.ahead).
 			AppendACSChar(AcsDarrow, CmpSummaryViewNormal).
-			AppendWithStyle(CmpSummaryViewBranchBehind, "%v", branchRenderer.behind).
+			AppendWithStyle(CmpSummaryViewBranchBehind, "%v", branch.behind).
 			AppendWithStyle(CmpSummaryViewNormal, ")")
 	}
 }
 
-func (branchRenderer *branchRenderer) renderString() string {
-	if branchRenderer.ahead != "" && branchRenderer.behind != "" {
-		return fmt.Sprintf("%v (^%v v%v)", branchRenderer.branchName, branchRenderer.ahead, branchRenderer.behind)
+func (branchLine *branchLine) renderString() string {
+	if branch, isLocalBranch := branchLine.head.(*LocalBranch); isLocalBranch && branch.IsTrackingBranch() {
+		return fmt.Sprintf("%v (^%v v%v)", branchLine.getBranchName(), branch.ahead, branch.behind)
 	}
 
-	return branchRenderer.branchName
+	return branchLine.getBranchName()
 }
 
-func (branchRenderer *branchRenderer) isSelectable() bool {
+func (branchLine *branchLine) isSelectable() bool {
 	return true
 }
 
@@ -212,29 +218,10 @@ func (summaryView *SummaryView) generateRows() {
 
 func (summaryView *SummaryView) generateBranchRows() (rows []summaryViewLine) {
 	ref := summaryView.repoData.Head()
-	var branchName string
-
-	if _, isDetached := ref.(*HEAD); isDetached {
-		GetDetachedHeadDisplayValue(ref.Oid())
-	} else {
-		branchName = ref.Shorthand()
-	}
-
-	var ahead, behind string
-
-	if branch, isLocalBranch := ref.(*LocalBranch); isLocalBranch && branch.IsTrackingBranch() {
-		ahead = fmt.Sprintf("%v", branch.ahead)
-		behind = fmt.Sprintf("%v", branch.behind)
-	}
-
 	rows = append(rows,
 		emptyLine,
 		newHeaderRenderer("Branch"),
-		&branchRenderer{
-			branchName: branchName,
-			ahead:      ahead,
-			behind:     behind,
-		},
+		&branchLine{head: ref},
 		emptyLine,
 	)
 
