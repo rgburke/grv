@@ -50,7 +50,7 @@ type branchLine struct {
 	head Ref
 }
 
-func (branchLine *branchLine) getBranchName() string {
+func (branchLine *branchLine) branchName() string {
 	if _, isDetached := branchLine.head.(*HEAD); isDetached {
 		return GetDetachedHeadDisplayValue(branchLine.head.Oid())
 	}
@@ -59,7 +59,7 @@ func (branchLine *branchLine) getBranchName() string {
 }
 
 func (branchLine *branchLine) render(lineBuilder *LineBuilder) {
-	lineBuilder.AppendWithStyle(CmpNone, "%v", branchLine.getBranchName())
+	lineBuilder.AppendWithStyle(CmpSummaryViewNormal, "%v", branchLine.branchName())
 
 	if branch, isLocalBranch := branchLine.head.(*LocalBranch); isLocalBranch && branch.IsTrackingBranch() {
 		lineBuilder.
@@ -74,13 +74,73 @@ func (branchLine *branchLine) render(lineBuilder *LineBuilder) {
 
 func (branchLine *branchLine) renderString() string {
 	if branch, isLocalBranch := branchLine.head.(*LocalBranch); isLocalBranch && branch.IsTrackingBranch() {
-		return fmt.Sprintf("%v (^%v v%v)", branchLine.getBranchName(), branch.ahead, branch.behind)
+		return fmt.Sprintf("%v (^%v v%v)", branchLine.branchName(), branch.ahead, branch.behind)
 	}
 
-	return branchLine.getBranchName()
+	return branchLine.branchName()
 }
 
 func (branchLine *branchLine) isSelectable() bool {
+	return true
+}
+
+type statusFileLine struct {
+	statusType  StatusType
+	statusEntry *StatusEntry
+}
+
+func (statusFileLine *statusFileLine) lineParts() (prefix, files string) {
+	statusType := statusFileLine.statusType
+	statusEntry := statusFileLine.statusEntry
+
+	switch statusEntry.statusEntryType {
+	case SetNew:
+		prefix = "?"
+		if statusType == StStaged {
+			prefix = "A"
+		}
+
+		files = statusEntry.NewFilePath()
+	case SetModified:
+		prefix = "M"
+		files = statusEntry.NewFilePath()
+	case SetDeleted:
+		prefix = "D"
+		files = statusEntry.NewFilePath()
+	case SetRenamed:
+		prefix = "R"
+		files = fmt.Sprintf("%v -> %v", statusEntry.OldFilePath(), statusEntry.NewFilePath())
+	case SetTypeChange:
+		prefix = "T"
+		files = statusEntry.NewFilePath()
+	case SetConflicted:
+		prefix = "U"
+		files = statusEntry.NewFilePath()
+	}
+
+	return
+}
+
+func (statusFileLine *statusFileLine) render(lineBuilder *LineBuilder) {
+	var themeComponentID ThemeComponentID
+	if statusFileLine.statusType == StStaged {
+		themeComponentID = CmpSummaryViewStagedFile
+	} else {
+		themeComponentID = CmpSummaryViewUnstagedFile
+	}
+
+	prefix, files := statusFileLine.lineParts()
+
+	lineBuilder.AppendWithStyle(themeComponentID, "%v", prefix).
+		AppendWithStyle(CmpSummaryViewNormal, " %v", files)
+}
+
+func (statusFileLine *statusFileLine) renderString() string {
+	prefix, files := statusFileLine.lineParts()
+	return fmt.Sprintf("%v %v", prefix, files)
+}
+
+func (statusFileLine *statusFileLine) isSelectable() bool {
 	return true
 }
 
@@ -122,6 +182,7 @@ func (summaryView *SummaryView) Initialise() (err error) {
 	defer summaryView.lock.Unlock()
 
 	summaryView.repoData.RegisterRefStateListener(summaryView)
+	summaryView.repoData.RegisterStatusListener(summaryView)
 	summaryView.generateRows()
 	return summaryView.selectNearestSelectableRow()
 }
@@ -212,6 +273,7 @@ func (summaryView *SummaryView) isSelectableRow(rowIndex uint) (isSelectable boo
 
 func (summaryView *SummaryView) generateRows() {
 	lines := summaryView.generateBranchRows()
+	lines = append(lines, summaryView.generateModifiedFiles()...)
 	summaryView.lines = lines
 	summaryView.channels.UpdateDisplay()
 }
@@ -224,6 +286,40 @@ func (summaryView *SummaryView) generateBranchRows() (rows []summaryViewLine) {
 		&branchLine{head: ref},
 		emptyLine,
 	)
+
+	return
+}
+
+func (summaryView *SummaryView) generateModifiedFiles() (rows []summaryViewLine) {
+	rows = append(rows,
+		emptyLine,
+		newHeaderRenderer("Modified Files"),
+	)
+
+	status := summaryView.repoData.Status()
+	if status == nil || status.IsEmpty() {
+		rows = append(rows, &singleValueLine{
+			value:            "None",
+			themeComponentID: CmpSummaryViewNoModifiedFiles,
+		})
+
+		return
+	}
+
+	statusTypes := status.StatusTypes()
+
+	for _, statusType := range statusTypes {
+		statusEntries := status.Entries(statusType)
+
+		for _, statusEntry := range statusEntries {
+			rows = append(rows, &statusFileLine{
+				statusType:  statusType,
+				statusEntry: statusEntry,
+			})
+		}
+	}
+
+	rows = append(rows, emptyLine)
 
 	return
 }
@@ -246,6 +342,14 @@ func (summaryView *SummaryView) OnHeadChanged(oldHead, newHead Ref) {
 
 // OnTrackingBranchesUpdated regenerates the summary view
 func (summaryView *SummaryView) OnTrackingBranchesUpdated(trackingBranches []*LocalBranch) {
+	summaryView.lock.Lock()
+	defer summaryView.lock.Unlock()
+
+	summaryView.generateRows()
+}
+
+// OnStatusChanged regenerates the summary view
+func (summaryView *SummaryView) OnStatusChanged(status *Status) {
 	summaryView.lock.Lock()
 	defer summaryView.lock.Unlock()
 

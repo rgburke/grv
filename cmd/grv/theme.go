@@ -122,6 +122,9 @@ const (
 	CmpSummaryViewNormal
 	CmpSummaryViewBranchAhead
 	CmpSummaryViewBranchBehind
+	CmpSummaryViewStagedFile
+	CmpSummaryViewUnstagedFile
+	CmpSummaryViewNoModifiedFiles
 
 	CmpCount
 )

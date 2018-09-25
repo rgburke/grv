@@ -227,10 +227,13 @@ var themeComponents = map[string]ThemeComponentID{
 	cfRemoteView + ".Remote": CmpRemoteViewRemote,
 	cfRemoteView + ".Footer": CmpRemoteViewFooter,
 
-	cfGitSummaryView + ".Header":       CmpSummaryViewHeader,
-	cfGitSummaryView + ".Normal":       CmpSummaryViewNormal,
-	cfGitSummaryView + ".BranchAhead":  CmpSummaryViewBranchAhead,
-	cfGitSummaryView + ".BranchBehind": CmpSummaryViewBranchBehind,
+	cfGitSummaryView + ".Header":          CmpSummaryViewHeader,
+	cfGitSummaryView + ".Normal":          CmpSummaryViewNormal,
+	cfGitSummaryView + ".BranchAhead":     CmpSummaryViewBranchAhead,
+	cfGitSummaryView + ".BranchBehind":    CmpSummaryViewBranchBehind,
+	cfGitSummaryView + ".StagedFile":      CmpSummaryViewStagedFile,
+	cfGitSummaryView + ".UnstagedFile":    CmpSummaryViewUnstagedFile,
+	cfGitSummaryView + ".NoModifiedFiles": CmpSummaryViewNoModifiedFiles,
 }
 
 var colorNumberPattern = regexp.MustCompile(`[0-9]{1,3}`)

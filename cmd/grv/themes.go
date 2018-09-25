@@ -405,6 +405,18 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorRed),
 			},
+			CmpSummaryViewStagedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorGreen),
+			},
+			CmpSummaryViewUnstagedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+			},
+			CmpSummaryViewNoModifiedFiles: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
 		},
 	}
 }
@@ -813,6 +825,18 @@ func NewColdTheme() MutableTheme {
 			CmpSummaryViewBranchBehind: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorRed),
+			},
+			CmpSummaryViewStagedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorGreen),
+			},
+			CmpSummaryViewUnstagedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+			},
+			CmpSummaryViewNoModifiedFiles: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
 			},
 		},
 	}
@@ -1233,7 +1257,7 @@ func NewSolarizedTheme() MutableTheme {
 			},
 			CmpSummaryViewNormal: {
 				bgcolor: NewSystemColor(ColorNone),
-				fgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedWhite),
 			},
 			CmpSummaryViewBranchAhead: {
 				bgcolor: NewSystemColor(ColorNone),
@@ -1242,6 +1266,18 @@ func NewSolarizedTheme() MutableTheme {
 			CmpSummaryViewBranchBehind: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(solarizedRed),
+			},
+			CmpSummaryViewStagedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedGreen),
+			},
+			CmpSummaryViewUnstagedFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedRed),
+			},
+			CmpSummaryViewNoModifiedFiles: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedBrightMagenta),
 			},
 		},
 	}
