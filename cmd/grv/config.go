@@ -33,27 +33,28 @@ const (
 	cfGitBinaryFilePathDefaultValue = ""
 	cfCommitLimitDefaultValue       = ""
 
-	cfAllView           = "All"
-	cfMainView          = "MainView"
-	cfContainerView     = "ContainerView"
-	cfHistoryView       = "HistoryView"
-	cfStatusView        = "StatusView"
-	cfSummaryView       = "SummaryView"
-	cfGRVStatusView     = "GRVStatusView"
-	cfRefView           = "RefView"
-	cfCommitView        = "CommitView"
-	cfDiffView          = "DiffView"
-	cfStatusBarView     = "StatusBarView"
-	cfHelpBarView       = "HelpBarView"
-	cfErrorView         = "ErrorView"
-	cfGitStatusView     = "GitStatusView"
-	cfContextMenuView   = "ContextMenuView"
-	cfCommandOutputView = "CommandOutputView"
-	cfMessageBoxView    = "MessageBoxView"
-	cfHelpView          = "HelpView"
-	cfGRVVariableView   = "GRVVariableView"
-	cfRemoteView        = "RemoteView"
-	cfGitSummaryView    = "GitSummaryView"
+	cfAllView             = "All"
+	cfMainView            = "MainView"
+	cfContainerView       = "ContainerView"
+	cfWindowContainerView = "WindowContainerView"
+	cfHistoryView         = "HistoryView"
+	cfStatusView          = "StatusView"
+	cfSummaryView         = "SummaryView"
+	cfGRVStatusView       = "GRVStatusView"
+	cfRefView             = "RefView"
+	cfCommitView          = "CommitView"
+	cfDiffView            = "DiffView"
+	cfStatusBarView       = "StatusBarView"
+	cfHelpBarView         = "HelpBarView"
+	cfErrorView           = "ErrorView"
+	cfGitStatusView       = "GitStatusView"
+	cfContextMenuView     = "ContextMenuView"
+	cfCommandOutputView   = "CommandOutputView"
+	cfMessageBoxView      = "MessageBoxView"
+	cfHelpView            = "HelpView"
+	cfGRVVariableView     = "GRVVariableView"
+	cfRemoteView          = "RemoteView"
+	cfGitSummaryView      = "GitSummaryView"
 )
 
 // ConfigVariable stores a config variable name
@@ -93,27 +94,28 @@ var systemColorValues = map[string]SystemColorValue{
 }
 
 var viewIDNames = map[string]ViewID{
-	cfAllView:           ViewAll,
-	cfMainView:          ViewMain,
-	cfContainerView:     ViewContainer,
-	cfHistoryView:       ViewHistory,
-	cfStatusView:        ViewStatus,
-	cfSummaryView:       ViewSummary,
-	cfGRVStatusView:     ViewGRVStatus,
-	cfRefView:           ViewRef,
-	cfCommitView:        ViewCommit,
-	cfDiffView:          ViewDiff,
-	cfStatusBarView:     ViewStatusBar,
-	cfHelpBarView:       ViewHelpBar,
-	cfErrorView:         ViewError,
-	cfGitStatusView:     ViewGitStatus,
-	cfContextMenuView:   ViewContextMenu,
-	cfCommandOutputView: ViewCommandOutput,
-	cfMessageBoxView:    ViewMessageBox,
-	cfHelpView:          ViewHelp,
-	cfGRVVariableView:   ViewGRVVariable,
-	cfRemoteView:        ViewRemote,
-	cfGitSummaryView:    ViewGitSummary,
+	cfAllView:             ViewAll,
+	cfMainView:            ViewMain,
+	cfContainerView:       ViewContainer,
+	cfWindowContainerView: ViewWindowContainer,
+	cfHistoryView:         ViewHistory,
+	cfStatusView:          ViewStatus,
+	cfSummaryView:         ViewSummary,
+	cfGRVStatusView:       ViewGRVStatus,
+	cfRefView:             ViewRef,
+	cfCommitView:          ViewCommit,
+	cfDiffView:            ViewDiff,
+	cfStatusBarView:       ViewStatusBar,
+	cfHelpBarView:         ViewHelpBar,
+	cfErrorView:           ViewError,
+	cfGitStatusView:       ViewGitStatus,
+	cfContextMenuView:     ViewContextMenu,
+	cfCommandOutputView:   ViewCommandOutput,
+	cfMessageBoxView:      ViewMessageBox,
+	cfHelpView:            ViewHelp,
+	cfGRVVariableView:     ViewGRVVariable,
+	cfRemoteView:          ViewRemote,
+	cfGitSummaryView:      ViewGitSummary,
 }
 
 var themeComponents = map[string]ThemeComponentID{

@@ -20,6 +20,7 @@ const (
 	ViewAll ViewID = iota
 	ViewMain
 	ViewContainer
+	ViewWindowContainer
 	ViewHistory
 	ViewStatus
 	ViewSummary
