@@ -7,13 +7,14 @@ const (
 
 // NewSummaryView creates a new instance
 func NewSummaryView(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter) *ContainerView {
-	gitSummaryView := NewGitSummaryView(repoData, repoController, channels, config, variables)
+	childViewContainer := NewWindowViewContainer(nil)
+	gitSummaryView := NewGitSummaryView(repoData, repoController, channels, config, variables, childViewContainer)
 
 	summaryView := NewContainerView(channels, config)
 	summaryView.SetTitle(SummaryViewTitle)
 	summaryView.SetOrientation(CoDynamic)
 	summaryView.SetViewID(ViewSummary)
-	summaryView.AddChildViews(gitSummaryView)
+	summaryView.AddChildViews(gitSummaryView, childViewContainer)
 
 	return summaryView
 }

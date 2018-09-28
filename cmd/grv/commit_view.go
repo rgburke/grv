@@ -63,6 +63,7 @@ type CommitView struct {
 	commitGraphLoadCh      chan commitGraphLoadRequest
 	commitSelectedCh       chan *Commit
 	variables              GRVVariableSetter
+	showBorder             bool
 	waitGroup              sync.WaitGroup
 	lock                   sync.Mutex
 }
@@ -79,6 +80,7 @@ func NewCommitView(repoData RepoData, repoController RepoController, channels Ch
 		refViewData:       make(map[string]*referenceViewData),
 		lastDotRenderTime: time.Now(),
 		variables:         variables,
+		showBorder:        true,
 		handlers: map[ActionType]commitViewHandler{
 			ActionAddFilter:               addCommitFilter,
 			ActionRemoveFilter:            removeCommitFilter,
@@ -203,36 +205,39 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 		}
 	}
 
-	win.DrawBorder()
+	if commitView.showBorder {
+		win.DrawBorder()
 
-	if err = win.SetTitle(CmpCommitviewTitle, "Commits for %v", commitView.activeRef.Shorthand()); err != nil {
-		return
-	}
-
-	var selectedCommit uint
-	if commitSetState.commitNum == 0 {
-		selectedCommit = 0
-	} else {
-		selectedCommit = viewPos.ActiveRowIndex() + 1
-	}
-
-	var footerText bytes.Buffer
-
-	footerText.WriteString(fmt.Sprintf("Commit %v of %v", selectedCommit, commitSetState.commitNum))
-
-	if commitSetState.filterState != nil {
-		filtersApplied := commitSetState.filterState.filtersApplied
-		filtersTextSuffix := ""
-
-		if filtersApplied > 1 {
-			filtersTextSuffix = "s"
+		if err = win.SetTitle(CmpCommitviewTitle, "Commits for %v", commitView.activeRef.Shorthand()); err != nil {
+			return
 		}
 
-		footerText.WriteString(fmt.Sprintf(" (%v filter%v applied)", commitSetState.filterState.filtersApplied, filtersTextSuffix))
-	}
+		var selectedCommit uint
+		if commitSetState.commitNum == 0 {
+			selectedCommit = 0
+		} else {
+			selectedCommit = viewPos.ActiveRowIndex() + 1
+		}
 
-	if err = win.SetFooter(CmpCommitviewFooter, "%v", footerText.String()); err != nil {
-		return
+		var footerText bytes.Buffer
+
+		footerText.WriteString(fmt.Sprintf("Commit %v of %v", selectedCommit, commitSetState.commitNum))
+
+		if commitSetState.filterState != nil {
+			filtersApplied := commitSetState.filterState.filtersApplied
+			filtersTextSuffix := ""
+
+			if filtersApplied > 1 {
+				filtersTextSuffix = "s"
+			}
+
+			footerText.WriteString(fmt.Sprintf(" (%v filter%v applied)", commitSetState.filterState.filtersApplied, filtersTextSuffix))
+		}
+
+		if err = win.SetFooter(CmpCommitviewFooter, "%v", footerText.String()); err != nil {
+			return
+		}
+
 	}
 
 	if searchActive, searchPattern, lastSearchFoundMatch := commitView.viewSearch.SearchActive(); searchActive && lastSearchFoundMatch {
@@ -299,6 +304,14 @@ func (commitView *CommitView) renderCommit(tableFormatter *TableFormatter, rowIn
 	}
 
 	return
+}
+
+// SetShowBorder controls whether a border is drawn around the view
+func (commitView *CommitView) SetShowBorder(showBorder bool) {
+	commitView.lock.Lock()
+	defer commitView.lock.Unlock()
+
+	commitView.showBorder = showBorder
 }
 
 // RenderHelpBar shows key bindings custom to the commit view

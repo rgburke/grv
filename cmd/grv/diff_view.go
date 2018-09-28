@@ -139,6 +139,7 @@ type DiffView struct {
 	handlers          map[ActionType]diffViewHandler
 	diffLoadRequestCh chan diffLoadRequest
 	variables         GRVVariableSetter
+	showBorder        bool
 	waitGroup         sync.WaitGroup
 	lock              sync.Mutex
 }
@@ -153,6 +154,7 @@ func NewDiffView(repoData RepoData, channels Channels, config Config, variables 
 		diffs:             make(map[diffID]*diffLines),
 		diffLoadRequestCh: make(chan diffLoadRequest, dvDiffLoadRequestChannelSize),
 		variables:         variables,
+		showBorder:        true,
 		handlers: map[ActionType]diffViewHandler{
 			ActionSelect: selectDiffLine,
 		},
@@ -269,14 +271,16 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 		return
 	}
 
-	win.DrawBorder()
+	if diffView.showBorder {
+		win.DrawBorder()
 
-	if err = win.SetTitle(CmpDiffviewTitle, "Diff for %v", diffView.activeDiff); err != nil {
-		return
-	}
+		if err = win.SetTitle(CmpDiffviewTitle, "Diff for %v", diffView.activeDiff); err != nil {
+			return
+		}
 
-	if err = win.SetFooter(CmpDiffviewFooter, "Line %v of %v", viewPos.ActiveRowIndex()+1, lineNum); err != nil {
-		return
+		if err = win.SetFooter(CmpDiffviewFooter, "Line %v of %v", viewPos.ActiveRowIndex()+1, lineNum); err != nil {
+			return
+		}
 	}
 
 	if searchActive, searchPattern, lastSearchFoundMatch := diffView.viewSearch.SearchActive(); searchActive && lastSearchFoundMatch {
@@ -286,6 +290,14 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 	}
 
 	return
+}
+
+// SetShowBorder controls whether a border is drawn around the view
+func (diffView *DiffView) SetShowBorder(showBorder bool) {
+	diffView.lock.Lock()
+	defer diffView.lock.Unlock()
+
+	diffView.showBorder = showBorder
 }
 
 // RenderHelpBar renders help information for the diff view

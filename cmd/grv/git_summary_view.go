@@ -19,6 +19,10 @@ type summaryViewLine interface {
 	isSelectable() bool
 }
 
+type selectableLine interface {
+	onSelected() error
+}
+
 type singleValueLine struct {
 	value            string
 	themeComponentID ThemeComponentID
@@ -47,7 +51,8 @@ func newHeaderRenderer(header string) summaryViewLine {
 }
 
 type branchLine struct {
-	head Ref
+	summaryView *SummaryView
+	head        Ref
 }
 
 func (branchLine *branchLine) branchName() string {
@@ -84,9 +89,27 @@ func (branchLine *branchLine) isSelectable() bool {
 	return true
 }
 
+func (branchLine *branchLine) onSelected() (err error) {
+	summaryView := branchLine.summaryView
+
+	if err = summaryView.commitView.OnRefSelect(branchLine.head); err != nil {
+		return
+	}
+
+	summaryView.child.SetChild(summaryView.commitView)
+	summaryView.channels.UpdateDisplay()
+
+	return
+}
+
 type statusFileLine struct {
+	summaryView *SummaryView
 	statusType  StatusType
 	statusEntry *StatusEntry
+}
+
+func (statusFileLine *statusFileLine) filePath() string {
+	return statusFileLine.statusEntry.NewFilePath()
 }
 
 func (statusFileLine *statusFileLine) lineParts() (prefix, files string) {
@@ -144,6 +167,16 @@ func (statusFileLine *statusFileLine) isSelectable() bool {
 	return true
 }
 
+func (statusFileLine *statusFileLine) onSelected() (err error) {
+	summaryView := statusFileLine.summaryView
+
+	summaryView.diffView.OnFileSelected(statusFileLine.statusType, statusFileLine.filePath())
+	summaryView.child.SetChild(summaryView.diffView)
+	summaryView.channels.UpdateDisplay()
+
+	return
+}
+
 // SummaryView displays a summary view of repo state
 type SummaryView struct {
 	*SelectableRowView
@@ -156,11 +189,14 @@ type SummaryView struct {
 	variables         GRVVariableSetter
 	handlers          map[ActionType]summaryViewHandler
 	lines             []summaryViewLine
+	child             ChildViewContainer
+	commitView        *CommitView
+	diffView          *DiffView
 	lock              sync.Mutex
 }
 
 // NewGitSummaryView creates a new summary view instance
-func NewGitSummaryView(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter) *SummaryView {
+func NewGitSummaryView(repoData RepoData, repoController RepoController, channels Channels, config Config, variables GRVVariableSetter, child ChildViewContainer) *SummaryView {
 	summaryView := &SummaryView{
 		repoData:       repoData,
 		repoController: repoController,
@@ -168,6 +204,9 @@ func NewGitSummaryView(repoData RepoData, repoController RepoController, channel
 		config:         config,
 		activeViewPos:  NewViewPosition(),
 		variables:      variables,
+		child:          child,
+		commitView:     NewCommitView(repoData, repoController, channels, config, variables),
+		diffView:       NewDiffView(repoData, channels, config, variables),
 		handlers:       map[ActionType]summaryViewHandler{},
 	}
 
@@ -181,10 +220,22 @@ func (summaryView *SummaryView) Initialise() (err error) {
 	summaryView.lock.Lock()
 	defer summaryView.lock.Unlock()
 
+	if err = summaryView.commitView.Initialise(); err != nil {
+		return
+	}
+
+	if err = summaryView.diffView.Initialise(); err != nil {
+		return
+	}
+
+	summaryView.commitView.SetShowBorder(false)
+	summaryView.diffView.SetShowBorder(false)
+
 	summaryView.repoData.RegisterRefStateListener(summaryView)
 	summaryView.repoData.RegisterStatusListener(summaryView)
 	summaryView.generateRows()
-	return summaryView.selectNearestSelectableRow()
+
+	return
 }
 
 // Render generates and writes the summary view to the provided window
@@ -260,6 +311,15 @@ func (summaryView *SummaryView) viewDimension() ViewDimension {
 
 func (summaryView *SummaryView) onRowSelected(rowIndex uint) (err error) {
 	summaryView.SelectableRowView.setVariables()
+
+	if rowIndex >= summaryView.rows() {
+		return
+	}
+
+	if line, isSelectable := summaryView.lines[rowIndex].(selectableLine); isSelectable {
+		err = line.onSelected()
+	}
+
 	return
 }
 
@@ -275,6 +335,10 @@ func (summaryView *SummaryView) generateRows() {
 	lines := summaryView.generateBranchRows()
 	lines = append(lines, summaryView.generateModifiedFiles()...)
 	summaryView.lines = lines
+
+	summaryView.selectNearestSelectableRow()
+	summaryView.onRowSelected(summaryView.viewPos().ActiveRowIndex())
+
 	summaryView.channels.UpdateDisplay()
 }
 
@@ -283,7 +347,10 @@ func (summaryView *SummaryView) generateBranchRows() (rows []summaryViewLine) {
 	rows = append(rows,
 		emptyLine,
 		newHeaderRenderer("Branch"),
-		&branchLine{head: ref},
+		&branchLine{
+			summaryView: summaryView,
+			head:        ref,
+		},
 		emptyLine,
 	)
 
@@ -313,6 +380,7 @@ func (summaryView *SummaryView) generateModifiedFiles() (rows []summaryViewLine)
 
 		for _, statusEntry := range statusEntries {
 			rows = append(rows, &statusFileLine{
+				summaryView: summaryView,
 				statusType:  statusType,
 				statusEntry: statusEntry,
 			})
