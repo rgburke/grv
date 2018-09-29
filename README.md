@@ -30,11 +30,11 @@ Documentation for GRV is available [here](doc/documentation.md)
 
 ### Linux
 
-Static binaries are available for Linux (amd64 and arm32). For example, to use
+Static binaries are available for Linux. For example, to use
 the amd64 binary run the following steps:
 
 ```
-wget -O grv https://github.com/rgburke/grv/releases/download/v0.2.0/grv_v0.2.0_linux64
+wget -O grv https://github.com/rgburke/grv/releases/download/v0.3.0/grv_v0.3.0_linux64
 chmod +x ./grv
 ./grv -repoFilePath /path/to/repo
 ```
@@ -93,7 +93,7 @@ make install BINARY=NewBinaryName
 where `NewBinaryName` is the alternative name to use instead.
 
 The steps above will install GRV to `$GOPATH/bin`. A static libgit2 will be built and
-included in GRV when built this way. Alternatively if libgit2 version 0.26 is
+included in GRV when built this way. Alternatively if libgit2 version 0.27 is
 installed on your system GRV can be built normally:
 
 ```
