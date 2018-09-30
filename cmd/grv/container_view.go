@@ -686,6 +686,7 @@ func splitView(containerView *ContainerView, action Action) (err error) {
 			containerView.orientation = orientation
 		} else {
 			newContainer := NewContainerView(containerView.channels, containerView.config)
+			newContainer.SetWindowStyleConfig(containerView.styleConfig)
 			newContainer.SetOrientation(orientation)
 			newContainer.AddChildViews(childView, newView)
 			containerView.childViews[containerView.activeViewIndex] = newContainer

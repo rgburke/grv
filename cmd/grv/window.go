@@ -453,13 +453,26 @@ func (win *Window) SetRow(rowIndex, startColumn uint, themeComponentID ThemeComp
 }
 
 // SetSelectedRow sets the row to be highlighted as the selected row
-func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
+func (win *Window) SetSelectedRow(rowIndex uint, active bool) (err error) {
 	log.Debugf("Set selected rowIndex for window %v to %v with active %v", win.id, rowIndex, active)
 
 	if rowIndex >= win.rows {
 		return fmt.Errorf("SetSelectedRow: Invalid row index: %v >= %v rows", rowIndex, win.rows)
 	}
 
+	switch win.styleConfig.SelectedRowStyleType() {
+	case SrsHighlight:
+		win.highlightSelectedRow(rowIndex, active)
+	case SrsUnderline:
+		win.underlineSelectedRow(rowIndex, active)
+	default:
+		log.Errorf("Unsupported SelectedRowStyle: %v", win.styleConfig.SelectedRowStyleType())
+	}
+
+	return
+}
+
+func (win *Window) highlightSelectedRow(rowIndex uint, active bool) {
 	var attr gc.Char = gc.A_REVERSE
 	var themeComponentID ThemeComponentID
 
@@ -476,8 +489,41 @@ func (win *Window) SetSelectedRow(rowIndex uint, active bool) error {
 		cell.style.attr |= attr
 		cell.style.themeComponentID = themeComponentID
 	}
+}
 
-	return nil
+func (win *Window) underlineSelectedRow(rowIndex uint, active bool) {
+	if !active {
+		return
+	}
+
+	line := win.lines[rowIndex]
+
+	firstNonBlackCellIndex := 0
+	lastNonBlankCellIndex := 0
+
+	for cellIndex, cell := range line.cells {
+		if cell.codePoints.String() != " " {
+			firstNonBlackCellIndex = cellIndex
+			break
+		}
+	}
+
+	for cellIndex := firstNonBlackCellIndex + 1; cellIndex < len(line.cells); cellIndex++ {
+		cell := line.cells[cellIndex]
+		if cell.codePoints.String() != " " {
+			lastNonBlankCellIndex = cellIndex
+		}
+	}
+
+	if firstNonBlackCellIndex > lastNonBlankCellIndex {
+		lastNonBlankCellIndex = firstNonBlackCellIndex
+	}
+
+	for cellIndex := firstNonBlackCellIndex; cellIndex <= lastNonBlankCellIndex; cellIndex++ {
+		cell := line.cells[cellIndex]
+		cell.style.attr |= gc.A_BOLD | gc.A_UNDERLINE
+		cell.style.themeComponentID = CmpAllviewActiveViewSelectedRow
+	}
 }
 
 // IsCursorSet returns true if a cursor position has been set
