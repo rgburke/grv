@@ -228,9 +228,6 @@ func (summaryView *SummaryView) Initialise() (err error) {
 		return
 	}
 
-	summaryView.commitView.SetShowBorder(false)
-	summaryView.diffView.SetShowBorder(false)
-
 	summaryView.repoData.RegisterRefStateListener(summaryView)
 	summaryView.repoData.RegisterStatusListener(summaryView)
 	summaryView.generateRows()

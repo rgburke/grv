@@ -81,6 +81,49 @@ var themeStyleMap = map[ThemeStyleType]AChar{
 	TstChartext:   Achartext,
 }
 
+// SelectedRowStyle specifies how the selected row is styled
+type SelectedRowStyle int
+
+// The set of supported selected row styles
+const (
+	SrsHighlight SelectedRowStyle = iota
+	SrsUnderline
+)
+
+// WindowStyleConfig is used to configure aspects of how a window is drawn
+type WindowStyleConfig interface {
+	ShowBorder() bool
+	SelectedRowStyleType() SelectedRowStyle
+}
+
+type windowStyleConfig struct {
+	showBorder       bool
+	selectedRowStyle SelectedRowStyle
+}
+
+func (styleConfig *windowStyleConfig) ShowBorder() bool {
+	return styleConfig.showBorder
+}
+
+func (styleConfig *windowStyleConfig) SelectedRowStyleType() SelectedRowStyle {
+	return styleConfig.selectedRowStyle
+}
+
+// NewWindowStyleConfig creates a new instance
+func NewWindowStyleConfig(showBorder bool, selectedRowStyle SelectedRowStyle) WindowStyleConfig {
+	return &windowStyleConfig{
+		showBorder:       showBorder,
+		selectedRowStyle: selectedRowStyle,
+	}
+}
+
+var defaultWindowStyleConfig = NewWindowStyleConfig(true, SrsHighlight)
+
+// DefaultWindowStyleConfig returns the default window style config
+func DefaultWindowStyleConfig() WindowStyleConfig {
+	return defaultWindowStyleConfig
+}
+
 // RenderWindow represents a window that will be drawn to the display
 type RenderWindow interface {
 	ID() string
@@ -141,15 +184,16 @@ type cursor struct {
 
 // Window implements the RenderWindow interface and contains all rendered data
 type Window struct {
-	id       string
-	rows     uint
-	cols     uint
-	lines    []*line
-	startRow uint
-	startCol uint
-	border   bool
-	config   Config
-	cursor   *cursor
+	id          string
+	rows        uint
+	cols        uint
+	lines       []*line
+	startRow    uint
+	startCol    uint
+	border      bool
+	config      Config
+	cursor      *cursor
+	styleConfig WindowStyleConfig
 }
 
 func newLine(cols uint) *line {
@@ -294,9 +338,15 @@ func (lineBuilder *LineBuilder) appendToPreviousCell(codePoint rune) {
 
 // NewWindow creates a new instance
 func NewWindow(id string, config Config) *Window {
+	return NewWindowWithStyleConfig(id, config, defaultWindowStyleConfig)
+}
+
+// NewWindowWithStyleConfig creates a new instance with the provided window style config
+func NewWindowWithStyleConfig(id string, config Config, styleConfig WindowStyleConfig) *Window {
 	return &Window{
-		id:     id,
-		config: config,
+		id:          id,
+		config:      config,
+		styleConfig: styleConfig,
 	}
 }
 
@@ -468,7 +518,9 @@ func (win *Window) SetFooter(themeComponentID ThemeComponentID, format string, a
 }
 
 func (win *Window) setHeader(rowIndex uint, rightJustified bool, themeComponentID ThemeComponentID, format string, args ...interface{}) (err error) {
-	if win.rows < 3 || win.cols < 3 {
+	if !win.styleConfig.ShowBorder() {
+		return
+	} else if win.rows < 3 || win.cols < 3 {
 		log.Errorf("Can't set header on window %v with %v rows and %v cols", win.id, win.rows, win.cols)
 		return
 	}
@@ -510,7 +562,9 @@ func (win *Window) DrawBorder() {
 // DrawBorderWithStyle draws a line of a single cells width around the edge of the window
 // using the style provided
 func (win *Window) DrawBorderWithStyle(themeComponentID ThemeComponentID) {
-	if win.rows < 3 || win.cols < 3 {
+	if !win.styleConfig.ShowBorder() {
+		return
+	} else if win.rows < 3 || win.cols < 3 {
 		return
 	}
 

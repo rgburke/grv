@@ -60,6 +60,7 @@ type ContainerView struct {
 	viewID                      ViewID
 	fullScreen                  bool
 	childPositions              []*ChildViewPosition
+	styleConfig                 WindowStyleConfig
 	lock                        sync.Mutex
 }
 
@@ -71,6 +72,7 @@ func NewContainerView(channels Channels, config Config) *ContainerView {
 		orientation: CoVertical,
 		viewID:      ViewContainer,
 		viewWins:    make(map[WindowView]*Window),
+		styleConfig: DefaultWindowStyleConfig(),
 		handlers: map[ActionType]containerViewHandler{
 			ActionNextView:         nextContainerChildView,
 			ActionPrevView:         prevContainerChildView,
@@ -107,7 +109,7 @@ func (containerView *ContainerView) addChildView(newView BaseView) {
 		log.Debugf("Creating window for new view %T", newView)
 		viewIndex := len(containerView.childViews) - 1
 		winID := fmt.Sprintf("%v-%T", viewIndex, windowView)
-		win := NewWindow(winID, containerView.config)
+		win := NewWindowWithStyleConfig(winID, containerView.config, containerView.styleConfig)
 		containerView.viewWins[windowView] = win
 	}
 }
@@ -142,6 +144,14 @@ func (containerView *ContainerView) SetViewID(viewID ViewID) {
 	defer containerView.lock.Unlock()
 
 	containerView.viewID = viewID
+}
+
+// SetWindowStyleConfig sets the window style config for the child views
+func (containerView *ContainerView) SetWindowStyleConfig(styleConfig WindowStyleConfig) {
+	containerView.lock.Lock()
+	defer containerView.lock.Unlock()
+
+	containerView.styleConfig = styleConfig
 }
 
 // Initialise initialises this containers child views
@@ -398,7 +408,7 @@ func (containerView *ContainerView) renderWindowView(childView WindowView, child
 
 func (containerView *ContainerView) renderEmptyView(viewDimension ViewDimension) *Window {
 	if containerView.emptyWin == nil {
-		containerView.emptyWin = NewWindow("empty", containerView.config)
+		containerView.emptyWin = NewWindowWithStyleConfig("empty", containerView.config, containerView.styleConfig)
 	}
 
 	win := containerView.emptyWin
