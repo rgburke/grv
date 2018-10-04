@@ -6,7 +6,7 @@
 
 ## Introduction
 
-GRV - Git Repository Viewer - is a TUI for viewing and modifying git repositories.
+GRV - Git Repository Viewer - is a TUI for viewing and modifying Git repositories.
 The sections below provide an overview of the ways to configure and interact with GRV.
 
 
