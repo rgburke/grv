@@ -3,7 +3,7 @@ if: tag != latest
 language: go
 
 go:
-  - "1.11"
+  - "1.x"
 
 os:
   - linux
