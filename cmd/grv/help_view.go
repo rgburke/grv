@@ -428,7 +428,7 @@ func GenerateHelpView(config Config) (helpSections []*HelpSection, helpViewIndex
 	introHelpSection := &HelpSection{
 		title: HelpSectionText{text: "Introduction"},
 		description: []HelpSectionText{
-			{text: "GRV - Git Repository Viewer - is a TUI for viewing and modifying git repositories."},
+			{text: "GRV - Git Repository Viewer - is a TUI for viewing and modifying Git repositories."},
 			{text: "The sections below provide an overview of the ways to configure and interact with GRV."},
 		},
 	}
