@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -897,12 +898,33 @@ func checkoutFile(gitStatusView *GitStatusView, action Action) (err error) {
 		return
 	}
 
-	if err = gitStatusView.repoController.CheckoutFiles(filePaths); err != nil {
+	performCheckout := func(paths []string) (err error) {
+		if err = gitStatusView.repoController.CheckoutFiles(paths); err != nil {
+			return
+		}
+
+		_, err = gitStatusView.SelectableRowView.HandleAction(Action{ActionType: ActionPrevLine})
+		gitStatusView.channels.UpdateDisplay()
+
 		return
 	}
 
-	_, err = gitStatusView.SelectableRowView.HandleAction(Action{ActionType: ActionPrevLine})
-	gitStatusView.channels.UpdateDisplay()
+	if gitStatusView.config.GetBool(CfConfirmCheckout) {
+		var question string
+		if len(filePaths) == 1 {
+			question = fmt.Sprintf("Are you sure you want to checkout %v?", filepath.Base(filePaths[0]))
+		} else {
+			question = fmt.Sprintf("Are you sure you want to checkout %v files?", len(filePaths))
+		}
+
+		gitStatusView.channels.DoAction(YesNoQuestion(question, func(response QuestionResponse) {
+			if response == ResponseYes {
+				gitStatusView.channels.ReportError(performCheckout(filePaths))
+			}
+		}))
+	} else {
+		err = performCheckout(filePaths)
+	}
 
 	return
 }
