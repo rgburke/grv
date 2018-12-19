@@ -903,9 +903,7 @@ func checkoutFile(gitStatusView *GitStatusView, action Action) (err error) {
 			return
 		}
 
-		_, err = gitStatusView.SelectableRowView.HandleAction(Action{ActionType: ActionPrevLine})
-		gitStatusView.channels.UpdateDisplay()
-
+		gitStatusView.channels.DoAction(Action{ActionType: ActionPrevLine})
 		return
 	}
 

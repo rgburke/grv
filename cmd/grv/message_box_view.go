@@ -60,9 +60,10 @@ func NewMessageBoxView(messageBoxConfig MessageBoxConfig, channels Channels, con
 		messageBoxConfig: messageBoxConfig,
 		activeViewPos:    NewViewPosition(),
 		handlers: map[ActionType]messageBoxViewHandler{
-			ActionSelect:     chooseMessageBoxButton,
-			ActionNextButton: selectNextMessageButton,
-			ActionPrevButton: selectPrevMessageButton,
+			ActionSelect:      chooseMessageBoxButton,
+			ActionNextButton:  selectNextMessageButton,
+			ActionPrevButton:  selectPrevMessageButton,
+			ActionMouseSelect: mouseSelectButton,
 		},
 	}
 
@@ -276,6 +277,15 @@ func (messageBoxView *MessageBoxView) buttonsWidth() (buttonsWidth uint) {
 	return
 }
 
+func (messageBoxView *MessageBoxView) selectButton(button MessageBoxButton) {
+	log.Debugf("Selected button: %v", button)
+	messageBoxView.channels.DoAction(Action{ActionType: ActionRemoveView})
+
+	if messageBoxView.messageBoxConfig.OnSelect != nil {
+		go messageBoxView.messageBoxConfig.OnSelect(button)
+	}
+}
+
 // HandleAction handles the action if supported
 func (messageBoxView *MessageBoxView) HandleAction(action Action) (err error) {
 	messageBoxView.lock.Lock()
@@ -293,14 +303,7 @@ func (messageBoxView *MessageBoxView) HandleAction(action Action) (err error) {
 
 func chooseMessageBoxButton(messageBoxView *MessageBoxView, action Action) (err error) {
 	button := messageBoxView.messageBoxConfig.Buttons[messageBoxView.selectedButtonIndex]
-	log.Debugf("Selected button: %v", button)
-
-	messageBoxView.channels.DoAction(Action{ActionType: ActionRemoveView})
-
-	if messageBoxView.messageBoxConfig.OnSelect != nil {
-		go messageBoxView.messageBoxConfig.OnSelect(button)
-	}
-
+	messageBoxView.selectButton(button)
 	return
 }
 
@@ -324,6 +327,39 @@ func selectPrevMessageButton(messageBoxView *MessageBoxView, action Action) (err
 	}
 
 	messageBoxView.channels.UpdateDisplay()
+
+	return
+}
+
+func mouseSelectButton(messageBoxView *MessageBoxView, action Action) (err error) {
+	mouseEvent, err := GetMouseEventFromAction(action)
+	if err != nil {
+		return
+	}
+
+	if mouseEvent.row != messageBoxView.lastViewDimension.rows-2 {
+		return
+	}
+
+	buttonsWidth := messageBoxView.buttonsWidth()
+	startColumn := messageBoxView.lastViewDimension.cols - (buttonsWidth + 2)
+
+	if mouseEvent.col < startColumn {
+		return
+	}
+
+	currentColumn := startColumn
+
+	for _, button := range messageBoxView.messageBoxConfig.Buttons {
+		buttonLength := uint(len(button)) + 2
+		if mouseEvent.col >= currentColumn && mouseEvent.col < currentColumn+buttonLength {
+			log.Debugf("Mouse click on button: %v", button)
+			messageBoxView.selectButton(button)
+			break
+		}
+
+		currentColumn += buttonLength + 1
+	}
 
 	return
 }

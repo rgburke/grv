@@ -374,6 +374,11 @@ func (win *Window) SetPosition(startRow, startCol uint) {
 	win.startCol = startCol
 }
 
+// Position returns the coordintates the window is displayed at
+func (win *Window) Position() (startRow, startCol uint) {
+	return win.startRow, win.startCol
+}
+
 // OffsetPosition applies the provided offsets to the windows position
 func (win *Window) OffsetPosition(rowOffset, colOffset int) {
 	win.startRow = applyOffset(win.startRow, rowOffset)

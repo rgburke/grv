@@ -960,9 +960,39 @@ func (view *View) handlePopupViewAction(action Action) (err error) {
 	if action.ActionType == ActionRemoveView {
 		view.removePopupView()
 		return
+	} else if action.ActionType == ActionMouseSelect {
+		var handled bool
+		if handled, err = view.processMouseEventForPopupView(action); handled || err != nil {
+			return
+		}
 	}
 
 	return view.activeView().HandleAction(action)
+}
+
+func (view *View) processMouseEventForPopupView(action Action) (handled bool, err error) {
+	mouseEvent, err := GetMouseEventFromAction(action)
+	if err != nil {
+		return
+	}
+
+	popupView := view.popupViews[len(view.popupViews)-1]
+	win := popupView.window()
+	startRow, startCol := win.Position()
+
+	if startRow > mouseEvent.row ||
+		startCol > mouseEvent.col ||
+		mouseEvent.row >= startRow+win.Rows() ||
+		mouseEvent.col >= startCol+win.Cols() {
+		handled = true
+		return
+	}
+
+	mouseEvent.row -= startRow
+	mouseEvent.col -= startCol
+	action.Args[0] = mouseEvent
+
+	return
 }
 
 func (view *View) showHelpView() (err error) {
