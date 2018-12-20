@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -171,6 +172,7 @@ type View struct {
 	errorView         *ErrorView
 	errorViewWin      *Window
 	activeViewWin     *Window
+	emptyViewWin      *Window
 	errors            []error
 	windowViewFactory *WindowViewFactory
 	tabTitles         []string
@@ -185,7 +187,6 @@ func NewView(repoData RepoData, repoController RepoController, channels Channels
 			NewHistoryView(repoData, repoController, channels, config, variables),
 			NewStatusView(repoData, repoController, channels, config, variables),
 		},
-
 		channels:          channels,
 		config:            config,
 		variables:         variables,
@@ -196,6 +197,7 @@ func NewView(repoData RepoData, repoController RepoController, channels Channels
 	view.errorView = NewErrorView()
 	view.errorViewWin = NewWindow("errorView", config)
 	view.activeViewWin = NewWindow("activeView", config)
+	view.emptyViewWin = NewWindow("emptyView", config)
 
 	return
 }
@@ -265,6 +267,8 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 				return
 			}
 		}
+	} else if activeViewWins, err = view.renderEmptyView(activeViewDim); err != nil {
+		return
 	}
 
 	for _, win := range activeViewWins {
@@ -410,6 +414,27 @@ func (view *View) renderPopupViews(availableViewDimension ViewDimension) (wins [
 
 		wins = append(wins, win)
 	}
+
+	return
+}
+
+func (view *View) renderEmptyView(viewDimension ViewDimension) (wins []*Window, err error) {
+	win := view.emptyViewWin
+	win.SetPosition(0, 0)
+	win.Resize(viewDimension)
+	win.Clear()
+
+	message := "No tabs defined to display"
+	messageWidth := uint(StringWidth(message))
+
+	messageStartRow := viewDimension.rows / 2
+	messageStartCol := (viewDimension.cols - messageWidth) / 2
+
+	if err = win.SetRow(messageStartRow, 1, CmpNone, "%v%v", strings.Repeat(" ", int(messageStartCol)), message); err != nil {
+		return
+	}
+
+	wins = append(wins, win)
 
 	return
 }
