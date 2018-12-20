@@ -129,6 +129,34 @@ func (dynamicSizePopupView *dynamicSizePopupView) ViewDimension() ViewDimension 
 	return dynamicSizePopupView.viewDimensionSupplier.ViewDimension()
 }
 
+type activeView struct {
+	childView BaseView
+}
+
+func (activeView *activeView) isPresent() bool {
+	return activeView.childView != nil
+}
+
+func (activeView *activeView) get() BaseView {
+	return activeView.childView
+}
+
+func (activeView *activeView) ifPresent(onPresent func(childView BaseView)) *activeView {
+	if activeView.isPresent() {
+		onPresent(activeView.childView)
+	}
+
+	return activeView
+}
+
+func (activeView *activeView) orElse(defaultChildView BaseView) (childView BaseView) {
+	if activeView.isPresent() {
+		return activeView.childView
+	}
+
+	return defaultChildView
+}
+
 // View is the top level view in grv
 // All views in grv are children of this view
 type View struct {
@@ -156,8 +184,8 @@ func NewView(repoData RepoData, repoController RepoController, channels Channels
 		views: []WindowViewCollection{
 			NewHistoryView(repoData, repoController, channels, config, variables),
 			NewStatusView(repoData, repoController, channels, config, variables),
-			//NewSummaryView(repoData, repoController, channels, config, variables),
 		},
+
 		channels:          channels,
 		config:            config,
 		variables:         variables,
@@ -218,7 +246,7 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 	}
 
 	view.lock.Lock()
-	childView := view.views[view.activeViewPos]
+	activeView := view.activeTabView()
 	view.activeViewDim = activeViewDim
 	view.lock.Unlock()
 
@@ -230,9 +258,13 @@ func (view *View) Render(viewDimension ViewDimension) (wins []*Window, err error
 	wins = append(wins, view.activeViewWin)
 	startRow++
 
-	activeViewWins, err := childView.Render(activeViewDim)
-	if err != nil {
-		return
+	var activeViewWins []*Window
+	if activeView.isPresent() {
+		if childView, ok := activeView.get().(WindowViewCollection); ok {
+			if activeViewWins, err = childView.Render(activeViewDim); err != nil {
+				return
+			}
+		}
 	}
 
 	for _, win := range activeViewWins {
@@ -307,7 +339,7 @@ func (view *View) renderErrorView(wins []*Window, errorViewDim, activeViewDim Vi
 }
 
 func (view *View) renderActiveView(availableCols uint) (err error) {
-	tabTitles := make([]string, len(view.views))
+	tabTitles := make([]string, view.childViewNum())
 	cols := uint(0)
 
 	for index, childView := range view.views {
@@ -396,7 +428,10 @@ func (view *View) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 		})
 	}
 
-	err = view.ActiveView().RenderHelpBar(lineBuilder)
+	childView := view.ActiveView()
+	if childView != view {
+		err = childView.RenderHelpBar(lineBuilder)
+	}
 
 	return
 }
@@ -537,7 +572,9 @@ func (view *View) OnActiveChange(active bool) {
 }
 
 func (view *View) onActiveChange(active bool) {
-	view.activeView().OnActiveChange(active)
+	view.activeView().ifPresent(func(childView BaseView) {
+		childView.OnActiveChange(active)
+	})
 }
 
 // ViewID returns the view ID of this view
@@ -583,17 +620,35 @@ func (view *View) ActiveView() BaseView {
 	view.lock.Lock()
 	defer view.lock.Unlock()
 
-	return view.activeView()
+	return view.activeView().orElse(view)
 }
 
-func (view *View) activeView() BaseView {
+func (view *View) activeView() *activeView {
+	var childView BaseView
+
 	if view.popupViewsActive() {
-		return view.popupViews[len(view.popupViews)-1].windowView()
+		childView = view.popupViews[len(view.popupViews)-1].windowView()
 	} else if view.promptActive {
-		return view.grvStatusView
+		childView = view.grvStatusView
+	} else if view.childViewNum() > 0 {
+		childView = view.views[view.activeViewPos]
 	}
 
-	return view.views[view.activeViewPos]
+	return &activeView{childView: childView}
+}
+
+func (view *View) activeTabView() *activeView {
+	var childView BaseView
+
+	if view.childViewNum() > 0 {
+		childView = view.views[view.activeViewPos]
+	}
+
+	return &activeView{childView: childView}
+}
+
+func (view *View) childViewNum() uint {
+	return uint(len(view.views))
 }
 
 // SetErrors sets errors to be displayed in the error view
@@ -619,7 +674,9 @@ func (view *View) ReportStatus(status string) error {
 
 func (view *View) prompt(action Action) (err error) {
 	view.lock.Lock()
-	view.views[view.activeViewPos].OnActiveChange(false)
+	view.activeView().ifPresent(func(childView BaseView) {
+		childView.OnActiveChange(false)
+	})
 	view.grvStatusView.OnActiveChange(true)
 	view.promptActive = true
 	view.lock.Unlock()
@@ -629,7 +686,9 @@ func (view *View) prompt(action Action) (err error) {
 	view.lock.Lock()
 	view.promptActive = false
 	view.grvStatusView.OnActiveChange(false)
-	view.views[view.activeViewPos].OnActiveChange(true)
+	view.activeView().ifPresent(func(childView BaseView) {
+		childView.OnActiveChange(true)
+	})
 	view.lock.Unlock()
 
 	view.channels.UpdateDisplay()
@@ -638,15 +697,23 @@ func (view *View) prompt(action Action) (err error) {
 }
 
 func (view *View) nextTab() {
+	if view.childViewNum() < 1 {
+		return
+	}
+
 	view.activeViewPos++
-	view.activeViewPos %= uint(len(view.views))
+	view.activeViewPos %= view.childViewNum()
 	view.onActiveChange(true)
 	view.channels.UpdateDisplay()
 }
 
 func (view *View) prevTab() {
+	if view.childViewNum() < 1 {
+		return
+	}
+
 	if view.activeViewPos == 0 {
-		view.activeViewPos = uint(len(view.views)) - 1
+		view.activeViewPos = view.childViewNum() - 1
 	} else {
 		view.activeViewPos--
 	}
@@ -693,10 +760,15 @@ func (view *View) addTab(tabName string) *ContainerView {
 	containerView := NewContainerView(view.channels, view.config)
 	containerView.SetTitle(tabName)
 
-	view.activeViewPos++
-	view.views = append(view.views, nil)
-	copy(view.views[view.activeViewPos+1:], view.views[view.activeViewPos:])
-	view.views[view.activeViewPos] = containerView
+	if view.childViewNum() > 0 {
+		view.activeViewPos++
+		view.views = append(view.views, nil)
+		copy(view.views[view.activeViewPos+1:], view.views[view.activeViewPos:])
+		view.views[view.activeViewPos] = containerView
+	} else {
+		view.views = append(view.views, containerView)
+		view.activeViewPos = 0
+	}
 
 	view.channels.UpdateDisplay()
 
@@ -704,7 +776,7 @@ func (view *View) addTab(tabName string) *ContainerView {
 }
 
 func (view *View) removeTab() {
-	if len(view.views) <= 1 {
+	if view.childViewNum() <= 1 {
 		log.Info("No more tabs left. Exiting GRV")
 		view.channels.DoAction(Action{ActionType: ActionExit})
 		return
@@ -713,8 +785,8 @@ func (view *View) removeTab() {
 	index := view.activeViewPos
 	view.views = append(view.views[:index], view.views[index+1:]...)
 
-	if index >= uint(len(view.views)) {
-		view.activeViewPos = uint(len(view.views) - 1)
+	if index >= view.childViewNum() {
+		view.activeViewPos = view.childViewNum() - 1
 	} else if index > 0 {
 		view.activeViewPos--
 	}
@@ -726,9 +798,11 @@ func (view *View) removeTab() {
 }
 
 func (view *View) removeTabIfEmpty() {
-	if containerView, isContainerView := view.activeView().(*ContainerView); isContainerView && containerView.IsEmpty() {
-		view.removeTab()
-	}
+	view.activeView().ifPresent(func(childView BaseView) {
+		if containerView, isContainerView := childView.(*ContainerView); isContainerView && containerView.IsEmpty() {
+			view.removeTab()
+		}
+	})
 }
 
 func (view *View) createView(createViewArgs CreateViewArgs) (windowView WindowView, err error) {
@@ -967,7 +1041,11 @@ func (view *View) handlePopupViewAction(action Action) (err error) {
 		}
 	}
 
-	return view.activeView().HandleAction(action)
+	view.activeView().ifPresent(func(childView BaseView) {
+		err = childView.HandleAction(action)
+	})
+
+	return
 }
 
 func (view *View) processMouseEventForPopupView(action Action) (handled bool, err error) {
