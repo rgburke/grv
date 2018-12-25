@@ -125,12 +125,13 @@ type ShellCommand struct {
 func (shellCommand *ShellCommand) configCommand() {}
 
 type commandHelpGenerator func(config Config) []*HelpSection
+type commandCustomParser func(parser *ConfigParser, commandDescriptor *commandDescriptor, commandToken *ConfigToken) (command ConfigCommand, eof bool, err error)
 
 type commandDescriptor struct {
 	tokenTypes           []ConfigTokenType
-	varArgs              bool
 	constructor          commandConstructor
 	commandHelpGenerator commandHelpGenerator
+	customParser         commandCustomParser
 }
 
 var commandDescriptors = map[string]*commandDescriptor{
@@ -168,32 +169,32 @@ var commandDescriptors = map[string]*commandDescriptor{
 		commandHelpGenerator: GenerateRmTabCommandHelpSections,
 	},
 	addviewCommand: {
-		varArgs:              true,
+		customParser:         parseVarArgsCommand,
 		constructor:          addViewCommandConstructor,
 		commandHelpGenerator: GenerateAddViewCommandHelpSections,
 	},
 	vsplitCommand: {
-		varArgs:              true,
+		customParser:         parseVarArgsCommand,
 		constructor:          splitViewCommandConstructor,
 		commandHelpGenerator: GenerateVSplitCommandHelpSections,
 	},
 	hsplitCommand: {
-		varArgs:              true,
+		customParser:         parseVarArgsCommand,
 		constructor:          splitViewCommandConstructor,
 		commandHelpGenerator: GenerateHSplitCommandHelpSections,
 	},
 	splitCommand: {
-		varArgs:              true,
+		customParser:         parseVarArgsCommand,
 		constructor:          splitViewCommandConstructor,
 		commandHelpGenerator: GenerateSplitCommandHelpSections,
 	},
 	gitCommand: {
-		varArgs:              true,
+		customParser:         parseVarArgsCommand,
 		constructor:          gitCommandConstructor,
 		commandHelpGenerator: GenerateGitCommandHelpSections,
 	},
 	gitInteractiveCommand: {
-		varArgs:              true,
+		customParser:         parseVarArgsCommand,
 		constructor:          gitCommandConstructor,
 		commandHelpGenerator: GenerateGitiCommandHelpSections,
 	},
@@ -354,8 +355,8 @@ func (parser *ConfigParser) parseCommand(commandToken *ConfigToken) (command Con
 		return
 	}
 
-	if commandDescriptor.varArgs {
-		return parser.parseVarArgsCommand(commandDescriptor, commandToken)
+	if commandDescriptor.customParser != nil {
+		return commandDescriptor.customParser(parser, commandDescriptor, commandToken)
 	}
 
 	var tokens []*ConfigToken
@@ -389,7 +390,7 @@ func (parser *ConfigParser) parseCommand(commandToken *ConfigToken) (command Con
 	return
 }
 
-func (parser *ConfigParser) parseVarArgsCommand(commandDescriptor *commandDescriptor, commandToken *ConfigToken) (command ConfigCommand, eof bool, err error) {
+func parseVarArgsCommand(parser *ConfigParser, commandDescriptor *commandDescriptor, commandToken *ConfigToken) (command ConfigCommand, eof bool, err error) {
 	var tokens []*ConfigToken
 
 OuterLoop:
