@@ -141,6 +141,14 @@ type DefCommand struct {
 
 func (defCommand *DefCommand) configCommand() {}
 
+// CustomCommand represents an invocation of a user defined command
+type CustomCommand struct {
+	commandName string
+	args        []string
+}
+
+func (customCommand *CustomCommand) configCommand() {}
+
 type commandHelpGenerator func(config Config) []*HelpSection
 type commandCustomParser func(parser *ConfigParser) (tokens []*ConfigToken, err error)
 
@@ -149,6 +157,33 @@ type commandDescriptor struct {
 	constructor          commandConstructor
 	commandHelpGenerator commandHelpGenerator
 	customParser         commandCustomParser
+	userDefined          bool
+}
+
+// DefineCustomCommand allows a custom command to be parsed
+func DefineCustomCommand(commandName string) (err error) {
+	if existingDescriptor, ok := commandDescriptors[commandName]; ok && !existingDescriptor.userDefined {
+		return fmt.Errorf("Cannot override built in command %v", commandName)
+	}
+
+	commandDescriptors[commandName] = &commandDescriptor{
+		customParser: parseVarArgsCommand,
+		constructor:  customCommandConstructor,
+		userDefined:  true,
+	}
+
+	return
+}
+
+// UndefineCustomCommand invalidates a custom command
+func UndefineCustomCommand(commandName string) (err error) {
+	if existingDescriptor, ok := commandDescriptors[commandName]; ok && !existingDescriptor.userDefined {
+		return fmt.Errorf("Cannot undefine built in command %v", commandName)
+	}
+
+	delete(commandDescriptors, commandName)
+
+	return
 }
 
 var commandDescriptors = map[string]*commandDescriptor{
@@ -632,4 +667,17 @@ func defCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, toke
 	}
 
 	return
+}
+
+func customCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (configCommand ConfigCommand, err error) {
+	var args []string
+
+	for _, token := range tokens {
+		args = append(args, token.value)
+	}
+
+	return &CustomCommand{
+		commandName: commandToken.value,
+		args:        args,
+	}, nil
 }

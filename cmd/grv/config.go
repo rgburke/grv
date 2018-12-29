@@ -315,14 +315,16 @@ type Configuration struct {
 	grvConfigDir    string
 	channels        Channels
 	variables       GRVVariableGetter
+	customCommands  map[string]string
 }
 
 // NewConfiguration creates a Configuration instance with default values
 func NewConfiguration(keyBindings KeyBindings, channels Channels, variables GRVVariableGetter) *Configuration {
 	config := &Configuration{
-		keyBindings: keyBindings,
-		channels:    channels,
-		variables:   variables,
+		keyBindings:    keyBindings,
+		channels:       channels,
+		variables:      variables,
+		customCommands: map[string]string{},
 		themes: map[string]MutableTheme{
 			cfClassicThemeName:   NewClassicTheme(),
 			cfColdThemeName:      NewColdTheme(),
@@ -515,6 +517,10 @@ func (config *Configuration) processCommand(command ConfigCommand, inputSource s
 		config.processHelpCommand()
 	case *ShellCommand:
 		err = config.processShellCommand(command, inputSource)
+	case *DefCommand:
+		err = config.processDefCommand(command)
+	case *CustomCommand:
+		err = config.processCustomCommand(command)
 	default:
 		log.Errorf("Unknown command type %T", command)
 	}
@@ -829,6 +835,29 @@ func (config *Configuration) processShellCommand(shellCommand *ShellCommand, inp
 	command = command[1:]
 
 	config.runCommand(command, outputType)
+
+	return
+}
+
+func (config *Configuration) processDefCommand(defCommand *DefCommand) (err error) {
+	if err = DefineCustomCommand(defCommand.commandName); err != nil {
+		return
+	}
+
+	config.customCommands[defCommand.commandName] = defCommand.functionBody
+	return
+}
+
+func (config *Configuration) processCustomCommand(customCommand *CustomCommand) (err error) {
+	commandBody, ok := config.customCommands[customCommand.commandName]
+	if !ok {
+		return fmt.Errorf("No command with name %v exists", customCommand.commandName)
+	}
+
+	if errs := config.Evaluate(commandBody); len(errs) > 0 {
+		config.channels.ReportErrors(errs)
+		err = fmt.Errorf("Command %v generated errors", customCommand.commandName)
+	}
 
 	return
 }
