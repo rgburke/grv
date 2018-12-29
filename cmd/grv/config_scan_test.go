@@ -16,6 +16,7 @@ func TestScanSingleConfigToken(t *testing.T) {
 			expectedToken: ConfigToken{
 				tokenType: CtkWord,
 				value:     "-!\"word1世界",
+				rawValue:  "-!\"word1世界",
 				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
@@ -31,6 +32,7 @@ func TestScanSingleConfigToken(t *testing.T) {
 			expectedToken: ConfigToken{
 				tokenType: CtkWord,
 				value:     "word \t\"with\"\n spaces",
+				rawValue:  "\"word \\t\\\"with\\\"\\n spaces\"",
 				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
@@ -46,6 +48,7 @@ func TestScanSingleConfigToken(t *testing.T) {
 			expectedToken: ConfigToken{
 				tokenType: CtkWhiteSpace,
 				value:     " \t\r\v\f",
+				rawValue:  " \t\r\v\f",
 				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
@@ -61,6 +64,7 @@ func TestScanSingleConfigToken(t *testing.T) {
 			expectedToken: ConfigToken{
 				tokenType: CtkComment,
 				value:     "# Comment",
+				rawValue:  "# Comment",
 				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
@@ -76,6 +80,7 @@ func TestScanSingleConfigToken(t *testing.T) {
 			expectedToken: ConfigToken{
 				tokenType: CtkOption,
 				value:     "--option",
+				rawValue:  "--option",
 				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
@@ -91,6 +96,7 @@ func TestScanSingleConfigToken(t *testing.T) {
 			expectedToken: ConfigToken{
 				tokenType: CtkShellCommand,
 				value:     "!git status",
+				rawValue:  "!git status",
 				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
@@ -106,6 +112,7 @@ func TestScanSingleConfigToken(t *testing.T) {
 			expectedToken: ConfigToken{
 				tokenType: CtkShellCommand,
 				value:     "@git status",
+				rawValue:  "@git status",
 				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
@@ -121,6 +128,7 @@ func TestScanSingleConfigToken(t *testing.T) {
 			expectedToken: ConfigToken{
 				tokenType: CtkTerminator,
 				value:     "\n",
+				rawValue:  "\n",
 				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
@@ -150,6 +158,7 @@ func TestScanSingleConfigToken(t *testing.T) {
 			expectedToken: ConfigToken{
 				tokenType: CtkInvalid,
 				value:     "\"Unterminated string",
+				rawValue:  "\"Unterminated string",
 				startPos: ConfigScannerPos{
 					line: 1,
 					col:  1,
@@ -186,6 +195,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "theme",
+					rawValue:  "theme",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  1,
@@ -198,6 +208,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  6,
@@ -210,6 +221,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkOption,
 					value:     "--create",
+					rawValue:  "--create",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  7,
@@ -222,6 +234,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  15,
@@ -234,6 +247,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "my theme",
+					rawValue:  "\"my theme\"",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  16,
@@ -246,6 +260,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkTerminator,
 					value:     "\n",
+					rawValue:  "\n",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  26,
@@ -274,6 +289,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "set",
+					rawValue:  "set",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  1,
@@ -286,6 +302,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  4,
@@ -298,6 +315,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "theme",
+					rawValue:  "theme",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  5,
@@ -310,6 +328,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  10,
@@ -322,6 +341,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "mytheme",
+					rawValue:  "mytheme",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  11,
@@ -334,6 +354,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkTerminator,
 					value:     "\n",
+					rawValue:  "\n",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  18,
@@ -346,6 +367,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "set",
+					rawValue:  "set",
 					startPos: ConfigScannerPos{
 						line: 2,
 						col:  1,
@@ -358,6 +380,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     "\t",
+					rawValue:  "\t",
 					startPos: ConfigScannerPos{
 						line: 2,
 						col:  4,
@@ -370,6 +393,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "CommitView.dateformat",
+					rawValue:  "CommitView.dateformat",
 					startPos: ConfigScannerPos{
 						line: 2,
 						col:  5,
@@ -382,6 +406,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 2,
 						col:  26,
@@ -394,6 +419,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "%yyyy-mm-dd HH:MM",
+					rawValue:  "\"%yyyy-mm-dd HH:MM\"",
 					startPos: ConfigScannerPos{
 						line: 2,
 						col:  27,
@@ -406,6 +432,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkTerminator,
 					value:     "\n",
+					rawValue:  "\n",
 					startPos: ConfigScannerPos{
 						line: 2,
 						col:  46,
@@ -434,6 +461,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "theme",
+					rawValue:  "theme",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  1,
@@ -446,6 +474,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  6,
@@ -458,6 +487,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkOption,
 					value:     "--create",
+					rawValue:  "--create",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  7,
@@ -470,6 +500,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " \t",
+					rawValue:  " \\\n\t",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  15,
@@ -482,6 +513,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "mytheme",
+					rawValue:  "mytheme",
 					startPos: ConfigScannerPos{
 						line: 2,
 						col:  2,
@@ -494,6 +526,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkTerminator,
 					value:     "\n",
+					rawValue:  "\n",
 					startPos: ConfigScannerPos{
 						line: 2,
 						col:  9,
@@ -522,6 +555,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "theme",
+					rawValue:  "theme",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  1,
@@ -534,6 +568,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  6,
@@ -546,6 +581,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkOption,
 					value:     "--create",
+					rawValue:  "--create",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  7,
@@ -558,6 +594,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  15,
@@ -570,6 +607,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkInvalid,
 					value:     "\"my theme\nset theme mytheme\n",
+					rawValue:  "\"my theme\nset theme mytheme\n",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  16,
@@ -599,6 +637,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "set",
+					rawValue:  "set",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  1,
@@ -611,6 +650,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  4,
@@ -623,6 +663,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "theme",
+					rawValue:  "theme",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  5,
@@ -635,6 +676,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  10,
@@ -647,6 +689,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "mytheme",
+					rawValue:  "mytheme",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  11,
@@ -659,6 +702,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  18,
@@ -671,6 +715,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkComment,
 					value:     "# Set theme ",
+					rawValue:  "# Set theme ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  19,
@@ -683,6 +728,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkTerminator,
 					value:     "\n",
+					rawValue:  "\n",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  31,
@@ -695,6 +741,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 2,
 						col:  1,
@@ -707,6 +754,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkComment,
 					value:     "# set theme again",
+					rawValue:  "# set theme again",
 					startPos: ConfigScannerPos{
 						line: 2,
 						col:  2,
@@ -719,6 +767,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkTerminator,
 					value:     "\n",
+					rawValue:  "\n",
 					startPos: ConfigScannerPos{
 						line: 2,
 						col:  19,
@@ -731,6 +780,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "set",
+					rawValue:  "set",
 					startPos: ConfigScannerPos{
 						line: 3,
 						col:  1,
@@ -743,6 +793,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 3,
 						col:  4,
@@ -755,6 +806,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "theme",
+					rawValue:  "theme",
 					startPos: ConfigScannerPos{
 						line: 3,
 						col:  5,
@@ -767,6 +819,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 3,
 						col:  10,
@@ -779,6 +832,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "mytheme",
+					rawValue:  "mytheme",
 					startPos: ConfigScannerPos{
 						line: 3,
 						col:  11,
@@ -791,6 +845,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 3,
 						col:  18,
@@ -803,6 +858,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkComment,
 					value:     "#EOF",
+					rawValue:  "#EOF",
 					startPos: ConfigScannerPos{
 						line: 3,
 						col:  19,
@@ -831,6 +887,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "map",
+					rawValue:  "map",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  1,
@@ -843,6 +900,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  4,
@@ -855,6 +913,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "All",
+					rawValue:  "All",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  5,
@@ -867,6 +926,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  8,
@@ -879,6 +939,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWord,
 					value:     "a",
+					rawValue:  "a",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  9,
@@ -891,6 +952,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkWhiteSpace,
 					value:     " ",
+					rawValue:  " ",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  10,
@@ -903,6 +965,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkShellCommand,
 					value:     "!git add \"$FILE\"",
+					rawValue:  "!git add \"$FILE\"",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  11,
@@ -915,6 +978,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkTerminator,
 					value:     "\n",
+					rawValue:  "\n",
 					startPos: ConfigScannerPos{
 						line: 1,
 						col:  27,
@@ -927,6 +991,7 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 				{
 					tokenType: CtkComment,
 					value:     "#EOF",
+					rawValue:  "#EOF",
 					startPos: ConfigScannerPos{
 						line: 2,
 						col:  1,

@@ -49,6 +49,7 @@ type ConfigScannerPos struct {
 type ConfigToken struct {
 	tokenType ConfigTokenType
 	value     string
+	rawValue  string
 	startPos  ConfigScannerPos
 	endPos    ConfigScannerPos
 	err       error
@@ -159,6 +160,7 @@ func (scanner *ConfigScanner) Scan() (token *ConfigToken, err error) {
 		token = &ConfigToken{
 			tokenType: CtkTerminator,
 			value:     string(char),
+			rawValue:  string(char),
 			endPos:    scanner.pos,
 		}
 	case unicode.IsSpace(char):
@@ -224,6 +226,7 @@ func (scanner *ConfigScanner) Scan() (token *ConfigToken, err error) {
 
 func (scanner *ConfigScanner) scanWhiteSpace() (token *ConfigToken, err error) {
 	var buffer bytes.Buffer
+	var rawBuffer bytes.Buffer
 	var char rune
 	var eof bool
 
@@ -239,6 +242,10 @@ OuterLoop:
 		case eof:
 			break OuterLoop
 		case char == '\\':
+			if _, err = rawBuffer.WriteRune(char); err != nil {
+				return
+			}
+
 			var nextBytes []byte
 			nextBytes, err = scanner.reader.Peek(1)
 
@@ -255,7 +262,11 @@ OuterLoop:
 
 			break OuterLoop
 		case char == '\n':
-			if !escape {
+			if escape {
+				if _, err = rawBuffer.WriteRune(char); err != nil {
+					return
+				}
+			} else {
 				if err = scanner.unread(); err != nil {
 					return
 				}
@@ -269,6 +280,10 @@ OuterLoop:
 
 			break OuterLoop
 		default:
+			if _, err = rawBuffer.WriteRune(char); err != nil {
+				return
+			}
+
 			if _, err = buffer.WriteRune(char); err != nil {
 				return
 			}
@@ -280,6 +295,7 @@ OuterLoop:
 	token = &ConfigToken{
 		tokenType: CtkWhiteSpace,
 		value:     buffer.String(),
+		rawValue:  rawBuffer.String(),
 		endPos:    scanner.pos,
 	}
 
@@ -321,9 +337,12 @@ OuterLoop:
 		}
 	}
 
+	value := buffer.String()
+
 	token = &ConfigToken{
 		tokenType: tokenType,
-		value:     buffer.String(),
+		value:     value,
+		rawValue:  value,
 		endPos:    scanner.pos,
 	}
 
@@ -357,9 +376,12 @@ OuterLoop:
 		}
 	}
 
+	value := buffer.String()
+
 	token = &ConfigToken{
 		tokenType: CtkWord,
-		value:     buffer.String(),
+		value:     value,
+		rawValue:  value,
 		endPos:    scanner.pos,
 	}
 
@@ -419,22 +441,26 @@ OuterLoop:
 		escape = false
 	}
 
+	rawValue := buffer.String()
+
 	if closingQuoteFound {
-		var word string
-		word, err = scanner.processStringWord(buffer.String())
+		var value string
+		value, err = scanner.processStringWord(rawValue)
 		if err != nil {
 			return
 		}
 
 		token = &ConfigToken{
 			tokenType: CtkWord,
-			value:     word,
+			value:     value,
+			rawValue:  rawValue,
 			endPos:    scanner.pos,
 		}
 	} else {
 		token = &ConfigToken{
 			tokenType: CtkInvalid,
-			value:     buffer.String(),
+			value:     rawValue,
+			rawValue:  rawValue,
 			endPos:    scanner.pos,
 			err:       errors.New("Unterminated string"),
 		}
