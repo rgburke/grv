@@ -34,6 +34,15 @@ const (
 )
 
 var isIdentifier = regexp.MustCompile(`[[:alnum:]]+`).MatchString
+var whiteSpaceTokens = map[ConfigTokenType]bool{
+	CtkWhiteSpace: true,
+	CtkComment:    true,
+}
+var whiteSpaceAndTerminatorTokens = map[ConfigTokenType]bool{
+	CtkWhiteSpace: true,
+	CtkComment:    true,
+	CtkTerminator: true,
+}
 
 type commandConstructor func(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error)
 
@@ -355,19 +364,25 @@ func (parser *ConfigParser) InputSource() string {
 	return parser.inputSource
 }
 
-func (parser *ConfigParser) scan() (token *ConfigToken, err error) {
+func (parser *ConfigParser) scanAndIgnore(ignoreTokens map[ConfigTokenType]bool) (token *ConfigToken, err error) {
 	for {
 		token, err = parser.scanner.Scan()
 		if err != nil {
 			return
-		}
-
-		if token.tokenType != CtkWhiteSpace && token.tokenType != CtkComment {
+		} else if _, ignore := ignoreTokens[token.tokenType]; !ignore {
 			break
 		}
 	}
 
 	return
+}
+
+func (parser *ConfigParser) scan() (token *ConfigToken, err error) {
+	return parser.scanAndIgnore(whiteSpaceTokens)
+}
+
+func (parser *ConfigParser) scanIgnoringTerminators() (token *ConfigToken, err error) {
+	return parser.scanAndIgnore(whiteSpaceAndTerminatorTokens)
 }
 
 func (parser *ConfigParser) scanRaw() (token *ConfigToken, err error) {
@@ -478,7 +493,7 @@ OuterLoop:
 }
 
 func parseDefCommand(parser *ConfigParser) (tokens []*ConfigToken, err error) {
-	commandNameToken, err := parser.scan()
+	commandNameToken, err := parser.scanIgnoringTerminators()
 	if err != nil {
 		return
 	} else if commandNameToken.err != nil {
@@ -494,7 +509,7 @@ func parseDefCommand(parser *ConfigParser) (tokens []*ConfigToken, err error) {
 
 	tokens = append(tokens, commandNameToken)
 
-	openingBraceToken, err := parser.scan()
+	openingBraceToken, err := parser.scanIgnoringTerminators()
 	if err != nil {
 		return
 	} else if openingBraceToken.err != nil {
@@ -656,7 +671,7 @@ func defCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, toke
 	var functionBodyBuffer bytes.Buffer
 
 	for i := 2; i < len(tokens)-1; i++ {
-		functionBodyBuffer.WriteString(tokens[i].value)
+		functionBodyBuffer.WriteString(tokens[i].rawValue)
 	}
 
 	functionBody := functionBodyBuffer.String()
