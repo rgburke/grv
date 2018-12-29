@@ -254,6 +254,25 @@ func (shellCommandValues *ShellCommandValues) Equal(command ConfigCommand) bool 
 	return shellCommandValues.command == other.command.value
 }
 
+type DefCommandValues struct {
+	commandName  string
+	functionBody string
+}
+
+func (defCommandValues *DefCommandValues) Equal(command ConfigCommand) bool {
+	if command == nil {
+		return false
+	}
+
+	other, ok := command.(*DefCommand)
+	if !ok {
+		return false
+	}
+
+	return defCommandValues.commandName == other.commandName &&
+		defCommandValues.functionBody == other.functionBody
+}
+
 func TestParseSingleCommand(t *testing.T) {
 	var singleCommandTests = []struct {
 		input           string
@@ -357,6 +376,27 @@ func TestParseSingleCommand(t *testing.T) {
 			input: "!git add -A",
 			expectedCommand: &ShellCommandValues{
 				command: "!git add -A",
+			},
+		},
+		{
+			input: "def myFunc { addview RefView }",
+			expectedCommand: &DefCommandValues{
+				commandName:  "myFunc",
+				functionBody: " addview RefView ",
+			},
+		},
+		{
+			input: "def myFunc {\n\taddview CommitView master\n\taddview RefView\n}",
+			expectedCommand: &DefCommandValues{
+				commandName:  "myFunc",
+				functionBody: "\n\taddview CommitView master\n\taddview RefView\n",
+			},
+		},
+		{
+			input: "def nop { }",
+			expectedCommand: &DefCommandValues{
+				commandName:  "nop",
+				functionBody: " ",
 			},
 		},
 	}
@@ -494,6 +534,22 @@ func TestErrorsAreReceivedForInvalidConfigTokenSequences(t *testing.T) {
 		{
 			input:                "addtab",
 			expectedErrorMessage: ConfigFile + ":1:6 Unexpected EOF",
+		},
+		{
+			input:                "def --name",
+			expectedErrorMessage: ConfigFile + ":1:5 Expected function name but found --name",
+		},
+		{
+			input:                "def {",
+			expectedErrorMessage: ConfigFile + ":1:5 Invalid function identifier {",
+		},
+		{
+			input:                "def myfunc (",
+			expectedErrorMessage: ConfigFile + ":1:12 Expected { but found (",
+		},
+		{
+			input:                "def myfunc { addview RefView ",
+			expectedErrorMessage: ConfigFile + ":1:29 Expected } but reached EOF",
 		},
 	}
 

@@ -375,3 +375,30 @@ func GenerateHelpCommandHelpSections(config Config) (helpSections []*HelpSection
 		},
 	}
 }
+
+// GenerateDefCommandHelpSections generates help documentation for the def command
+func GenerateDefCommandHelpSections(config Config) (helpSections []*HelpSection) {
+	description := []HelpSectionText{
+		{text: "def", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The def command allows a custom GRV command to be defined. It has the form:"},
+		{},
+		{text: "def NAME {", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "\tBODY", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "}", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "where NAME is the name of the new command and BODY is a sequence of commands to execute."},
+		{text: "For example, to define a command \"maintab\" to open a new tab containing the CommitView for master:"},
+		{},
+		{text: "def maintab {", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "\taddtab Main", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "\taddview CommitView master", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{text: "}", themeComponentID: CmpHelpViewSectionCodeBlock},
+	}
+
+	return []*HelpSection{
+		{
+			description: description,
+		},
+	}
+}

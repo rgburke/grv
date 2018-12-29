@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 
 	slice "github.com/bradfitz/slice"
 )
@@ -24,7 +25,15 @@ const (
 	gitCommand            = "git"
 	gitInteractiveCommand = "giti"
 	helpCommand           = "help"
+	defCommand            = "def"
 )
+
+const (
+	openingBrace = "{"
+	closingBrace = "}"
+)
+
+var isIdentifier = regexp.MustCompile(`[[:alnum:]]+`).MatchString
 
 type commandConstructor func(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error)
 
@@ -124,8 +133,16 @@ type ShellCommand struct {
 
 func (shellCommand *ShellCommand) configCommand() {}
 
+// DefCommand represents a function definition command
+type DefCommand struct {
+	commandName  string
+	functionBody string
+}
+
+func (defCommand *DefCommand) configCommand() {}
+
 type commandHelpGenerator func(config Config) []*HelpSection
-type commandCustomParser func(parser *ConfigParser, commandDescriptor *commandDescriptor, commandToken *ConfigToken) (command ConfigCommand, eof bool, err error)
+type commandCustomParser func(parser *ConfigParser) (tokens []*ConfigToken, err error)
 
 type commandDescriptor struct {
 	tokenTypes           []ConfigTokenType
@@ -201,6 +218,11 @@ var commandDescriptors = map[string]*commandDescriptor{
 	helpCommand: {
 		constructor:          helpCommandConstructor,
 		commandHelpGenerator: GenerateHelpCommandHelpSections,
+	},
+	defCommand: {
+		customParser:         parseDefCommand,
+		constructor:          defCommandConstructor,
+		commandHelpGenerator: GenerateDefCommandHelpSections,
 	},
 }
 
@@ -313,6 +335,10 @@ func (parser *ConfigParser) scan() (token *ConfigToken, err error) {
 	return
 }
 
+func (parser *ConfigParser) scanRaw() (token *ConfigToken, err error) {
+	return parser.scanner.Scan()
+}
+
 func (parser *ConfigParser) generateParseError(token *ConfigToken, errorMessage string, args ...interface{}) error {
 	return generateConfigError(parser.inputSource, token, errorMessage, args...)
 }
@@ -355,34 +381,36 @@ func (parser *ConfigParser) parseCommand(commandToken *ConfigToken) (command Con
 		return
 	}
 
-	if commandDescriptor.customParser != nil {
-		return commandDescriptor.customParser(parser, commandDescriptor, commandToken)
-	}
-
 	var tokens []*ConfigToken
 
-	for i := 0; i < len(commandDescriptor.tokenTypes); i++ {
-		var token *ConfigToken
-		token, err = parser.scan()
-		expectedConfigTokenType := commandDescriptor.tokenTypes[i]
-
-		switch {
-		case err != nil:
-			return
-		case token.err != nil:
-			err = parser.generateParseError(token, "Syntax Error")
-			return
-		case token.tokenType == CtkEOF:
-			err = parser.generateParseError(token, "Unexpected EOF")
-			eof = true
-			return
-		case (token.tokenType & expectedConfigTokenType) == 0:
-			err = parser.generateParseError(token, "Expected %v but got %v: \"%v\"",
-				ConfigTokenName(expectedConfigTokenType), ConfigTokenName(token.tokenType), token.value)
+	if commandDescriptor.customParser != nil {
+		if tokens, err = commandDescriptor.customParser(parser); err != nil {
 			return
 		}
+	} else {
+		for i := 0; i < len(commandDescriptor.tokenTypes); i++ {
+			var token *ConfigToken
+			token, err = parser.scan()
+			expectedConfigTokenType := commandDescriptor.tokenTypes[i]
 
-		tokens = append(tokens, token)
+			switch {
+			case err != nil:
+				return
+			case token.err != nil:
+				err = parser.generateParseError(token, "Syntax Error")
+				return
+			case token.tokenType == CtkEOF:
+				err = parser.generateParseError(token, "Unexpected EOF")
+				eof = true
+				return
+			case (token.tokenType & expectedConfigTokenType) == 0:
+				err = parser.generateParseError(token, "Expected %v but got %v: \"%v\"",
+					ConfigTokenName(expectedConfigTokenType), ConfigTokenName(token.tokenType), token.value)
+				return
+			}
+
+			tokens = append(tokens, token)
+		}
 	}
 
 	command, err = commandDescriptor.constructor(parser, commandToken, tokens)
@@ -390,9 +418,7 @@ func (parser *ConfigParser) parseCommand(commandToken *ConfigToken) (command Con
 	return
 }
 
-func parseVarArgsCommand(parser *ConfigParser, commandDescriptor *commandDescriptor, commandToken *ConfigToken) (command ConfigCommand, eof bool, err error) {
-	var tokens []*ConfigToken
-
+func parseVarArgsCommand(parser *ConfigParser) (tokens []*ConfigToken, err error) {
 OuterLoop:
 	for {
 		var token *ConfigToken
@@ -413,7 +439,58 @@ OuterLoop:
 		tokens = append(tokens, token)
 	}
 
-	command, err = commandDescriptor.constructor(parser, commandToken, tokens)
+	return
+}
+
+func parseDefCommand(parser *ConfigParser) (tokens []*ConfigToken, err error) {
+	commandNameToken, err := parser.scan()
+	if err != nil {
+		return
+	} else if commandNameToken.err != nil {
+		err = commandNameToken.err
+		return
+	} else if commandNameToken.tokenType != CtkWord {
+		err = parser.generateParseError(commandNameToken, "Expected function name but found %v", commandNameToken.value)
+		return
+	} else if !isIdentifier(commandNameToken.value) {
+		err = parser.generateParseError(commandNameToken, "Invalid function identifier %v", commandNameToken.value)
+		return
+	}
+
+	tokens = append(tokens, commandNameToken)
+
+	openingBraceToken, err := parser.scan()
+	if err != nil {
+		return
+	} else if openingBraceToken.err != nil {
+		err = openingBraceToken.err
+		return
+	} else if openingBraceToken.tokenType != CtkWord || openingBraceToken.value != openingBrace {
+		err = parser.generateParseError(openingBraceToken, "Expected %v but found %v", openingBrace, openingBraceToken.value)
+		return
+	}
+
+	tokens = append(tokens, openingBraceToken)
+
+	for {
+		var token *ConfigToken
+		if token, err = parser.scanRaw(); err != nil {
+			return
+		} else if token.err != nil {
+			err = token.err
+			return
+		}
+
+		tokens = append(tokens, token)
+
+		if token.tokenType == CtkWord && token.value == closingBrace {
+			break
+		} else if token.tokenType == CtkEOF {
+			err = parser.generateParseError(token, "Expected %v but reached EOF", closingBrace)
+			return
+		}
+	}
+
 	return
 }
 
@@ -532,4 +609,27 @@ func gitCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, toke
 
 func helpCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
 	return &HelpCommand{}, nil
+}
+
+func defCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (configCommand ConfigCommand, err error) {
+	if len(tokens) < 4 {
+		err = parser.generateParseError(commandToken, "Too few tokens (%v) for function definition", len(tokens))
+		return
+	}
+
+	commandName := tokens[0].value
+	var functionBodyBuffer bytes.Buffer
+
+	for i := 2; i < len(tokens)-1; i++ {
+		functionBodyBuffer.WriteString(tokens[i].value)
+	}
+
+	functionBody := functionBodyBuffer.String()
+
+	configCommand = &DefCommand{
+		commandName:  commandName,
+		functionBody: functionBody,
+	}
+
+	return
 }

@@ -27,6 +27,7 @@ The sections below provide an overview of the ways to configure and interact wit
  - [Configuration Commands](#configuration-commands)
      * [addtab](#addtab)
      * [addview](#addview)
+     * [def](#def)
      * [git](#git)
      * [giti](#giti)
      * [help](#help)
@@ -270,6 +271,26 @@ addview CommitView origin/master
 addview DiffView 4882ca9044661b49a26ae03ceb1be3a70d00c6a2
 addview GitStatusView
 addview RefView
+```
+
+### def
+
+The def command allows a custom GRV command to be defined. It has the form:
+
+```
+def NAME {
+	BODY
+}
+```
+
+where NAME is the name of the new command and BODY is a sequence of commands to execute.
+For example, to define a command "maintab" to open a new tab containing the CommitView for master:
+
+```
+def maintab {
+	addtab Main
+	addview CommitView master
+}
 ```
 
 ### git
