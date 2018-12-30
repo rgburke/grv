@@ -61,6 +61,7 @@ type ContainerView struct {
 	fullScreen                  bool
 	childPositions              []*ChildViewPosition
 	styleConfig                 WindowStyleConfig
+	active                      bool
 	lock                        sync.Mutex
 }
 
@@ -111,6 +112,7 @@ func (containerView *ContainerView) addChildView(newView BaseView) {
 		winID := fmt.Sprintf("%v-%T", viewIndex, windowView)
 		win := NewWindowWithStyleConfig(winID, containerView.config, containerView.styleConfig)
 		containerView.viewWins[windowView] = win
+		containerView.onActiveChange(containerView.active)
 	}
 }
 
@@ -217,6 +219,8 @@ func (containerView *ContainerView) OnActiveChange(active bool) {
 }
 
 func (containerView *ContainerView) onActiveChange(active bool) {
+	containerView.active = active
+
 	for index, childView := range containerView.childViews {
 		if uint(index) == containerView.activeViewIndex {
 			childView.OnActiveChange(active)

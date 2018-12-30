@@ -32,6 +32,7 @@ const (
 	cfPromptHistorySizeDefaultValue = 1000
 	cfGitBinaryFilePathDefaultValue = ""
 	cfCommitLimitDefaultValue       = ""
+	cfDefaultViewDefaultValue       = ""
 
 	cfAllView             = "All"
 	cfMainView            = "MainView"
@@ -79,6 +80,8 @@ const (
 	CfGitBinaryFilePath ConfigVariable = "git-binary-file-path"
 	// CfCommitLimit stores the limit on the number of commits to load
 	CfCommitLimit ConfigVariable = "commit-limit"
+	// CfDefaultView stores the command to generate the default view
+	CfDefaultView ConfigVariable = "default-view"
 )
 
 var systemColorValues = map[string]SystemColorValue{
@@ -382,7 +385,12 @@ func NewConfiguration(keyBindings KeyBindings, channels Channels, variables GRVV
 		},
 		CfCommitLimit: {
 			defaultValue: cfCommitLimitDefaultValue,
-			description:  "Limit the numer of commits loaded. Allowed values: number, date, oid or tag",
+			description:  "Limit the number of commits loaded. Allowed values: number, date, oid or tag",
+		},
+		CfDefaultView: {
+			defaultValue: cfDefaultViewDefaultValue,
+			validator:    &defaultViewValidator{config: config},
+			description:  "Command to generate a custom default view on start up",
 		},
 	}
 
@@ -1085,6 +1093,20 @@ func (promptHistorySizeValidator promptHistorySizeValidator) validate(value stri
 		err = fmt.Errorf("%v must be greater than or equal to 0", CfPromptHistorySize)
 	} else {
 		processedValue = promptHistorySize
+	}
+
+	return
+}
+
+type defaultViewValidator struct {
+	config *Configuration
+}
+
+func (defaultViewValidator *defaultViewValidator) validate(value string) (processedValue interface{}, err error) {
+	if _, exists := defaultViewValidator.config.customCommands[value]; !exists {
+		err = fmt.Errorf("No user defined command with name \"%v\" exists", value)
+	} else {
+		processedValue = value
 	}
 
 	return

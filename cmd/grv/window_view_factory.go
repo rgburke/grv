@@ -74,10 +74,12 @@ func (windowViewFactory *WindowViewFactory) createCommitView(args []interface{})
 
 	log.Info("Created CommitView instance")
 
-	if ref != nil {
-		log.Debugf("Providing Ref to CommitView instance %v:%v", ref.Name(), ref.Oid())
-		err = commitView.OnRefSelect(ref)
+	if ref == nil {
+		ref = windowViewFactory.repoData.Head()
 	}
+
+	log.Debugf("Providing Ref to CommitView instance %v:%v", ref.Name(), ref.Oid())
+	err = commitView.OnRefSelect(ref)
 
 	return
 }

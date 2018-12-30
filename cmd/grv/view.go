@@ -166,8 +166,10 @@ type View struct {
 	activeViewPos     uint
 	grvStatusView     WindowViewCollection
 	channels          Channels
-	config            Config
+	config            ConfigSetter
 	variables         GRVVariableSetter
+	repoData          RepoData
+	repoController    RepoController
 	promptActive      bool
 	errorView         *ErrorView
 	errorViewWin      *Window
@@ -183,13 +185,11 @@ type View struct {
 // NewView creates a new instance
 func NewView(repoData RepoData, repoController RepoController, channels Channels, config ConfigSetter, variables GRVVariableSetter) (view *View) {
 	view = &View{
-		views: []WindowViewCollection{
-			NewHistoryView(repoData, repoController, channels, config, variables),
-			NewStatusView(repoData, repoController, channels, config, variables),
-		},
 		channels:          channels,
 		config:            config,
 		variables:         variables,
+		repoData:          repoData,
+		repoController:    repoController,
 		windowViewFactory: NewWindowViewFactory(repoData, repoController, channels, config, variables),
 	}
 
@@ -204,9 +204,21 @@ func NewView(repoData RepoData, repoController RepoController, channels Channels
 
 // Initialise sets up all child views
 func (view *View) Initialise() (err error) {
-	for _, childView := range view.views {
-		if err = childView.Initialise(); err != nil {
-			break
+	if defaultViewGenerator := view.config.GetString(CfDefaultView); defaultViewGenerator != "" {
+		if errs := view.config.Evaluate(defaultViewGenerator); len(errs) > 0 {
+			log.Errorf("Errors when executing default view command %v", defaultViewGenerator)
+			view.channels.ReportErrors(errs)
+		}
+	} else {
+		view.views = append(view.views,
+			NewHistoryView(view.repoData, view.repoController, view.channels, view.config, view.variables),
+			NewStatusView(view.repoData, view.repoController, view.channels, view.config, view.variables),
+		)
+
+		for _, childView := range view.views {
+			if err = childView.Initialise(); err != nil {
+				break
+			}
 		}
 	}
 
@@ -795,6 +807,7 @@ func (view *View) addTab(tabName string) *ContainerView {
 		view.activeViewPos = 0
 	}
 
+	containerView.OnActiveChange(true)
 	view.channels.UpdateDisplay()
 
 	return containerView

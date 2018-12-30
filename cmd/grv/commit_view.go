@@ -605,6 +605,9 @@ func (commitView *CommitView) viewPos() ViewPos {
 
 func (commitView *CommitView) line(lineIndex uint) (line string) {
 	rows := commitView.rows()
+	if rows == 0 {
+		return
+	}
 
 	if lineIndex >= rows {
 		log.Errorf("Invalid lineIndex: %v", lineIndex)
