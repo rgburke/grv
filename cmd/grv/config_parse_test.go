@@ -273,6 +273,25 @@ func (defCommandValues *DefCommandValues) Equal(command ConfigCommand) bool {
 		defCommandValues.functionBody == other.functionBody
 }
 
+type CustomCommandValues struct {
+	commandName string
+	args        []string
+}
+
+func (customCommandValues *CustomCommandValues) Equal(command ConfigCommand) bool {
+	if command == nil {
+		return false
+	}
+
+	other, ok := command.(*CustomCommand)
+	if !ok {
+		return false
+	}
+
+	return customCommandValues.commandName == other.commandName &&
+		reflect.DeepEqual(customCommandValues.args, other.args)
+}
+
 func TestParseSingleCommand(t *testing.T) {
 	var singleCommandTests = []struct {
 		input           string
@@ -648,5 +667,28 @@ func TestCommandDescriptorsHaveRequiredFieldsSet(t *testing.T) {
 		if commandDescriptor.commandHelpGenerator == nil {
 			t.Errorf("Command \"%v\" has no help generator specified", command)
 		}
+	}
+}
+
+func TestCustomCommandIsReturnedWhenUserDefinedCommandIsInvoked(t *testing.T) {
+	if err := DefineCustomCommand("customcommand"); err != nil {
+		t.Errorf("Failed to defined custom command %v", err)
+	}
+
+	parser := NewConfigParser(strings.NewReader("customcommand arg1 arg2 \"arg 3\""), "")
+
+	expectedCommand := &CustomCommandValues{
+		commandName: "customcommand",
+		args:        []string{"arg1", "arg2", "arg 3"},
+	}
+
+	configCommand, _, err := parser.Parse()
+
+	if err != nil {
+		t.Errorf("Failed to parse command invocation %v", err)
+	}
+
+	if !expectedCommand.Equal(configCommand) {
+		t.Errorf("CustomCommand does not match expected value. Expected: %v, Actual: %v", expectedCommand, configCommand)
 	}
 }
