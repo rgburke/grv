@@ -245,6 +245,9 @@ var colorNumberPattern = regexp.MustCompile(`[0-9]{1,3}`)
 var hexColorPattern = regexp.MustCompile(`[a-fA-F0-9]{6}`)
 var systemColorPattern = regexp.MustCompile(`[a-zA-Z]+`)
 
+var commandBodyVariablePattern = regexp.MustCompile(`\$(\d+|\{\d+\}|@|\{@\})`)
+var argBracketsPattern = regexp.MustCompile(`\{|\}`)
+
 var viewNames = map[ViewID]string{}
 
 func init() {
@@ -862,12 +865,63 @@ func (config *Configuration) processCustomCommand(customCommand *CustomCommand) 
 		return fmt.Errorf("No command with name %v exists", customCommand.commandName)
 	}
 
+	commandBody = config.processConfigCommandBody(commandBody, customCommand.args)
+
 	if errs := config.Evaluate(commandBody); len(errs) > 0 {
 		config.channels.ReportErrors(errs)
 		err = fmt.Errorf("Command %v generated errors", customCommand.commandName)
 	}
 
 	return
+}
+
+func (config *Configuration) processConfigCommandBody(commandBody string, args []string) string {
+	allMatchIndexes := commandBodyVariablePattern.FindAllStringSubmatchIndex(commandBody, -1)
+	if len(allMatchIndexes) == 0 {
+		return commandBody
+	}
+
+	var processedCommandBody bytes.Buffer
+	lastMatchIndex := 0
+
+	for _, matchIndexes := range allMatchIndexes {
+		matchStartIndex := matchIndexes[0]
+		matchEndIndex := matchIndexes[1]
+
+		escapeCount := 0
+		for bodyIndex := matchStartIndex - 1; bodyIndex > -1 && commandBody[bodyIndex] == '$'; bodyIndex-- {
+			escapeCount++
+		}
+
+		processedCommandBody.WriteString(commandBody[lastMatchIndex : matchStartIndex-escapeCount])
+
+		if escapeCount > 0 && escapeCount%2 != 0 {
+			processedCommandBody.WriteString(strings.Repeat("$", (escapeCount-1)/2))
+			processedCommandBody.WriteString(commandBody[matchStartIndex:matchEndIndex])
+		} else {
+			if escapeCount > 0 {
+				processedCommandBody.WriteString(strings.Repeat("$", escapeCount/2))
+			}
+
+			argString := argBracketsPattern.ReplaceAllString(commandBody[matchIndexes[2]:matchIndexes[3]], "")
+
+			if argString == "@" {
+				processedCommandBody.WriteString(strings.Join(args, " "))
+			} else if argNumber, err := strconv.Atoi(argString); err == nil {
+				if argNumber > 0 && argNumber-1 < len(args) {
+					processedCommandBody.WriteString(args[argNumber-1])
+				}
+			} else {
+				log.Errorf("Failed to parse argument placeholder %v: %v", argString, err)
+			}
+		}
+
+		lastMatchIndex = matchEndIndex
+	}
+
+	processedCommandBody.WriteString(commandBody[lastMatchIndex:])
+
+	return processedCommandBody.String()
 }
 
 func (config *Configuration) runCommand(command string, outputType ShellCommandOutputType) {

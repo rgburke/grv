@@ -38,3 +38,44 @@ func TestViewNamesContainsEntriesForAllViews(t *testing.T) {
 		}
 	}
 }
+
+func TestCommandBodyArgumentsAreExpanded(t *testing.T) {
+	config := NewConfiguration(&MockKeyBindings{}, &MockChannels{}, &MockGRVVariableSetter{})
+
+	args := []string{"do", "re", "mi"}
+
+	commandBody := `
+	123
+	abc
+	$1
+	$1 "$2"
+	${1}2
+	"12${3}45"
+	$@
+	"${@}"
+	$$1
+	$$$1
+	$$$$1
+	$$$$$1
+	`
+	expectedProcessedCommandBody := `
+	123
+	abc
+	do
+	do "re"
+	do2
+	"12mi45"
+	do re mi
+	"do re mi"
+	$1
+	$do
+	$$1
+	$$do
+	`
+
+	actualProcessedCommandBody := config.processConfigCommandBody(commandBody, args)
+
+	if expectedProcessedCommandBody != actualProcessedCommandBody {
+		t.Errorf("Command body did not match expected value. Expected: %v, Actual: %v", expectedProcessedCommandBody, actualProcessedCommandBody)
+	}
+}

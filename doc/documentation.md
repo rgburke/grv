@@ -294,6 +294,45 @@ def maintab {
 }
 ```
 
+This command can be invoked at the command prompt with:
+
+```
+:maintab
+```
+
+The command body can contain argument placeholders that will be substituted on invocation.
+Argument placeholders have the form $n or ${n} where n is an integer greater than zero corresponding to the argument to substitute.
+For example, the "maintab" command defined earlier can be altered to accept the branch in as an argument:
+
+```
+def maintab {
+	addtab Main
+	addview CommitView $1
+}
+```
+
+To invoke this command for the branch "feature-branch" and open a new tab containing the commit view for this branch:
+
+```
+:maintab feature-branch
+```
+
+All arguments can be substituted using the placeholder $@ or ${@}
+For example, the following command acts as an alias for the vsplit command:
+
+```
+def vs { vsplit $@ }
+```
+
+and can be invoked with:
+
+```
+:vs CommitView master
+```
+
+Argument placeholders can be escaped by prepending a dollar sign.
+For example, to specify the literal string $1 in a command body specify $$1.
+
 ### git
 
 The git command is an alias to the git cli command.
