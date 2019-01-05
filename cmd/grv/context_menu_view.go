@@ -44,7 +44,9 @@ func NewContextMenuView(contextMenuConfig ContextMenuConfig, channels Channels, 
 		contextMenuConfig: contextMenuConfig,
 		activeViewPos:     NewViewPosition(),
 		handlers: map[ActionType]contextMenuViewHandler{
-			ActionSelect: selectContextMenuEntry,
+			ActionSelect:   selectContextMenuEntry,
+			ActionPrevLine: moveUpContextEntry,
+			ActionNextLine: moveDownContextEntry,
 		},
 	}
 
@@ -175,6 +177,31 @@ func selectContextMenuEntry(contextMenuView *ContextMenuView, action Action) (er
 
 	if contextMenuView.contextMenuConfig.OnSelect != nil {
 		go contextMenuView.contextMenuConfig.OnSelect(selectedEntry, selectedIndex)
+	}
+
+	return
+}
+
+func moveUpContextEntry(contextMenuView *ContextMenuView, action Action) (err error) {
+	viewPos := contextMenuView.viewPos()
+
+	if viewPos.ActiveRowIndex() == 0 {
+		_, err = contextMenuView.AbstractWindowView.HandleAction(Action{ActionType: ActionLastLine})
+	} else {
+		_, err = contextMenuView.AbstractWindowView.HandleAction(action)
+	}
+
+	return
+}
+
+func moveDownContextEntry(contextMenuView *ContextMenuView, action Action) (err error) {
+	rows := contextMenuView.rows()
+	viewPos := contextMenuView.viewPos()
+
+	if viewPos.ActiveRowIndex() == rows-1 {
+		_, err = contextMenuView.AbstractWindowView.HandleAction(Action{ActionType: ActionFirstLine})
+	} else {
+		_, err = contextMenuView.AbstractWindowView.HandleAction(action)
 	}
 
 	return
