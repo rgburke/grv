@@ -158,6 +158,13 @@ func (activeView *activeView) orElse(defaultChildView BaseView) (childView BaseV
 	return defaultChildView
 }
 
+var popupViewPassThroughActions = map[ActionType]bool{
+	ActionShowStatus:              true,
+	ActionCreateContextMenu:       true,
+	ActionCreateCommandOutputView: true,
+	ActionCreateMessageBoxView:    true,
+}
+
 // View is the top level view in grv
 // All views in grv are children of this view
 type View struct {
@@ -501,7 +508,7 @@ func (view *View) HandleEvent(event Event) (err error) {
 func (view *View) HandleAction(action Action) (err error) {
 	log.Debugf("View handling action %v", action)
 
-	if view.popupViewsActive() {
+	if view.popupViewsActive() && !isPopupViewPassThroughAction(action) {
 		return view.handlePopupViewAction(action)
 	}
 
@@ -1062,6 +1069,11 @@ func (view *View) removePopupView() {
 
 func (view *View) popupViewsActive() bool {
 	return len(view.popupViews) > 0
+}
+
+func isPopupViewPassThroughAction(action Action) (passThrough bool) {
+	_, passThrough = popupViewPassThroughActions[action.ActionType]
+	return
 }
 
 func (view *View) handlePopupViewAction(action Action) (err error) {
