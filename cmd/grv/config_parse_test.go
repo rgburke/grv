@@ -550,15 +550,15 @@ func TestErrorsAreReceivedForInvalidConfigTokenSequences(t *testing.T) {
 		},
 		{
 			input:                "set theme",
-			expectedErrorMessage: ConfigFile + ":1:9 Unexpected EOF",
+			expectedErrorMessage: ConfigFile + ":1:9 Unexpected EOF when parsing set command",
 		},
 		{
 			input:                "set theme --name mytheme",
-			expectedErrorMessage: ConfigFile + ":1:11 Expected Word but got Option: \"--name\"",
+			expectedErrorMessage: ConfigFile + ":1:11 Invalid argument for set command: Expected Word but got Option: \"--name\"",
 		},
 		{
 			input:                "set theme\nmytheme",
-			expectedErrorMessage: ConfigFile + ":1:10 Expected Word but got Terminator: \"\n\"",
+			expectedErrorMessage: ConfigFile + ":1:10 Invalid argument for set command: Expected Word but got Terminator: \"\n\"",
 		},
 		{
 			input:                "theme --name mytheme --component CommitView.CommitDate --bgcolour NONE --fgcolour YELLOW\n",
@@ -566,7 +566,7 @@ func TestErrorsAreReceivedForInvalidConfigTokenSequences(t *testing.T) {
 		},
 		{
 			input:                "addtab",
-			expectedErrorMessage: ConfigFile + ":1:6 Unexpected EOF",
+			expectedErrorMessage: ConfigFile + ":1:6 Unexpected EOF when parsing addtab command",
 		},
 		{
 			input:                "def --name",

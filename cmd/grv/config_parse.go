@@ -460,15 +460,15 @@ func (parser *ConfigParser) parseCommand(commandToken *ConfigToken) (command Con
 			case err != nil:
 				return
 			case token.err != nil:
-				err = parser.generateParseError(token, "Syntax Error")
+				err = parser.generateParseError(token, "Syntax Error when parsing %v command", commandToken.value)
 				return
 			case token.tokenType == CtkEOF:
-				err = parser.generateParseError(token, "Unexpected EOF")
+				err = parser.generateParseError(token, "Unexpected EOF when parsing %v command", commandToken.value)
 				eof = true
 				return
 			case (token.tokenType & expectedConfigTokenType) == 0:
-				err = parser.generateParseError(token, "Expected %v but got %v: \"%v\"",
-					ConfigTokenName(expectedConfigTokenType), ConfigTokenName(token.tokenType), token.value)
+				err = parser.generateParseError(token, "Invalid argument for %v command: Expected %v but got %v: \"%v\"",
+					commandToken.value, ConfigTokenName(expectedConfigTokenType), ConfigTokenName(token.tokenType), token.value)
 				return
 			}
 
