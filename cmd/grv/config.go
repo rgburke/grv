@@ -530,6 +530,8 @@ func (config *Configuration) processCommand(command ConfigCommand, inputSource s
 		err = config.processShellCommand(command, inputSource)
 	case *DefCommand:
 		err = config.processDefCommand(command)
+	case *UndefCommand:
+		err = config.processUndefCommand(command, inputSource)
 	case *CustomCommand:
 		err = config.processCustomCommand(command)
 	default:
@@ -855,7 +857,28 @@ func (config *Configuration) processDefCommand(defCommand *DefCommand) (err erro
 		return
 	}
 
+	if _, exists := config.customCommands[defCommand.commandName]; exists {
+		log.Debugf("Overriding previous command definition for command %v", defCommand.commandName)
+	}
+
 	config.customCommands[defCommand.commandName] = defCommand.functionBody
+	config.channels.ReportStatus("Defined user comamnd %v", defCommand.commandName)
+
+	return
+}
+
+func (config *Configuration) processUndefCommand(undefCommand *UndefCommand, inputSource string) (err error) {
+	if err = UndefineCustomCommand(undefCommand.commandName.value); err != nil {
+		return generateConfigError(inputSource, undefCommand.commandName, "%v", err)
+	}
+
+	if _, exists := config.customCommands[undefCommand.commandName.value]; exists {
+		delete(config.customCommands, undefCommand.commandName.value)
+		config.channels.ReportStatus("Undefined user comamnd %v", undefCommand.commandName.value)
+	} else {
+		log.Warnf("No user defined command %v exists", undefCommand.commandName.value)
+	}
+
 	return
 }
 
@@ -865,6 +888,7 @@ func (config *Configuration) processCustomCommand(customCommand *CustomCommand) 
 		return fmt.Errorf("No command with name %v exists", customCommand.commandName)
 	}
 
+	log.Infof("Executing user defined command %v with args: %v", customCommand.commandName, customCommand.args)
 	commandBody = config.processConfigCommandBody(commandBody, customCommand.args)
 
 	if errs := config.Evaluate(commandBody); len(errs) > 0 {

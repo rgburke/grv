@@ -431,3 +431,25 @@ func GenerateDefCommandHelpSections(config Config) (helpSections []*HelpSection)
 		},
 	}
 }
+
+// GenerateUndefCommandHelpSections generates help documentation for the addtab command
+func GenerateUndefCommandHelpSections(config Config) (helpSections []*HelpSection) {
+	description := []HelpSectionText{
+		{text: "undef", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The undef command removes a user defined command."},
+		{text: "The format of the command is:"},
+		{},
+		{text: "undef commandname", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "For example, to undefine a comamnd \"mycustomcommand\" the following can be used:"},
+		{},
+		{text: "undef mycustomcommand", themeComponentID: CmpHelpViewSectionCodeBlock},
+	}
+
+	return []*HelpSection{
+		{
+			description: description,
+		},
+	}
+}

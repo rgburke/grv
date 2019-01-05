@@ -26,6 +26,7 @@ const (
 	gitInteractiveCommand = "giti"
 	helpCommand           = "help"
 	defCommand            = "def"
+	undefCommand          = "undef"
 )
 
 const (
@@ -150,6 +151,13 @@ type DefCommand struct {
 
 func (defCommand *DefCommand) configCommand() {}
 
+// UndefCommand represents the command to undefine a command
+type UndefCommand struct {
+	commandName *ConfigToken
+}
+
+func (undefCommand *UndefCommand) configCommand() {}
+
 // CustomCommand represents an invocation of a user defined command
 type CustomCommand struct {
 	commandName string
@@ -267,6 +275,11 @@ var commandDescriptors = map[string]*commandDescriptor{
 		customParser:         parseDefCommand,
 		constructor:          defCommandConstructor,
 		commandHelpGenerator: GenerateDefCommandHelpSections,
+	},
+	undefCommand: {
+		tokenTypes:           []ConfigTokenType{CtkWord},
+		constructor:          undefCommandConstructor,
+		commandHelpGenerator: GenerateUndefCommandHelpSections,
 	},
 }
 
@@ -682,6 +695,12 @@ func defCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, toke
 	}
 
 	return
+}
+
+func undefCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (configCommand ConfigCommand, err error) {
+	return &UndefCommand{
+		commandName: tokens[0],
+	}, nil
 }
 
 func customCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (configCommand ConfigCommand, err error) {

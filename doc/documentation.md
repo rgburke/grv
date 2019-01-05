@@ -38,6 +38,7 @@ The sections below provide an overview of the ways to configure and interact wit
      * [set](#set)
      * [split](#split)
      * [theme](#theme)
+     * [undef](#undef)
      * [unmap](#unmap)
      * [vsplit](#vsplit)
  - [Shell Commands](#shell-commands)
@@ -633,6 +634,21 @@ RemoteView.Remote
 RemoteView.Title
 
 StatusBarView.Normal
+```
+
+### undef
+
+The undef command removes a user defined command.
+The format of the command is:
+
+```
+undef commandname
+```
+
+For example, to undefine a comamnd "mycustomcommand" the following can be used:
+
+```
+undef mycustomcommand
 ```
 
 ### unmap
