@@ -509,15 +509,12 @@ func parseDefCommand(parser *ConfigParser) (tokens []*ConfigToken, err error) {
 	commandNameToken, err := parser.scanIgnoringTerminators()
 	if err != nil {
 		return
-	} else if commandNameToken.err != nil {
-		err = commandNameToken.err
+	} else if err = commandNameToken.err; err != nil {
 		return
 	} else if commandNameToken.tokenType != CtkWord {
-		err = parser.generateParseError(commandNameToken, "Expected function name but found %v", commandNameToken.value)
-		return
+		return tokens, parser.generateParseError(commandNameToken, "Expected function name but found %v", commandNameToken.value)
 	} else if !isIdentifier(commandNameToken.value) {
-		err = parser.generateParseError(commandNameToken, "Invalid function identifier %v", commandNameToken.value)
-		return
+		return tokens, parser.generateParseError(commandNameToken, "Invalid function identifier %v", commandNameToken.value)
 	}
 
 	tokens = append(tokens, commandNameToken)
@@ -525,32 +522,40 @@ func parseDefCommand(parser *ConfigParser) (tokens []*ConfigToken, err error) {
 	openingBraceToken, err := parser.scanIgnoringTerminators()
 	if err != nil {
 		return
-	} else if openingBraceToken.err != nil {
-		err = openingBraceToken.err
+	} else if err = openingBraceToken.err; err != nil {
 		return
 	} else if openingBraceToken.tokenType != CtkWord || openingBraceToken.value != openingBrace {
-		err = parser.generateParseError(openingBraceToken, "Expected %v but found %v", openingBrace, openingBraceToken.value)
-		return
+		return tokens, parser.generateParseError(openingBraceToken, "Expected %v but found %v", openingBrace, openingBraceToken.value)
 	}
 
 	tokens = append(tokens, openingBraceToken)
 
-	for {
+	closingBracesRemaining := 1
+	wordsSinceTerminator := 0
+
+	for closingBracesRemaining > 0 {
 		var token *ConfigToken
 		if token, err = parser.scanRaw(); err != nil {
 			return
-		} else if token.err != nil {
-			err = token.err
+		} else if err = token.err; err != nil {
 			return
 		}
 
 		tokens = append(tokens, token)
 
-		if token.tokenType == CtkWord && token.value == closingBrace {
-			break
-		} else if token.tokenType == CtkEOF {
-			err = parser.generateParseError(token, "Expected %v but reached EOF", closingBrace)
-			return
+		switch token.tokenType {
+		case CtkEOF:
+			return nil, parser.generateParseError(token, "Expected %v but reached EOF", closingBrace)
+		case CtkWord:
+			if token.value == defCommand && wordsSinceTerminator == 0 {
+				closingBracesRemaining++
+			} else if token.value == closingBrace {
+				closingBracesRemaining--
+			}
+
+			wordsSinceTerminator++
+		case CtkTerminator:
+			wordsSinceTerminator = 0
 		}
 	}
 
