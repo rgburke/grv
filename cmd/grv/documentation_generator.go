@@ -14,7 +14,7 @@ const (
 
 // GenerateDocumentation generates grv markdown documentation
 func GenerateDocumentation() (err error) {
-	helpSections, _, err := GenerateHelpView(NewConfiguration(NewKeyBindingManager(), nil, nil))
+	helpSections, _, err := GenerateHelpView(NewConfiguration(NewKeyBindingManager(), nil, nil, nil))
 	if err != nil {
 		return
 	}

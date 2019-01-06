@@ -453,3 +453,26 @@ func GenerateUndefCommandHelpSections(config Config) (helpSections []*HelpSectio
 		},
 	}
 }
+
+// GenerateEvalKeysCommandHelpSections generates help documentation for the addtab command
+func GenerateEvalKeysCommandHelpSections(config Config) (helpSections []*HelpSection) {
+	description := []HelpSectionText{
+		{text: "evalkeys", themeComponentID: CmpHelpViewSectionSubTitle},
+		{},
+		{text: "The evalkeys command executes the provided key string sequence."},
+		{text: "The format of the command is:"},
+		{},
+		{text: "evalkeys keys", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "For example, running the following will switch to the next tab:"},
+		{},
+		{text: "evalkeys <grv-next-tab>", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+	}
+
+	return []*HelpSection{
+		{
+			description: description,
+		},
+	}
+}

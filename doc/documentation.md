@@ -28,6 +28,7 @@ The sections below provide an overview of the ways to configure and interact wit
      * [addtab](#addtab)
      * [addview](#addview)
      * [def](#def)
+     * [evalkeys](#evalkeys)
      * [git](#git)
      * [giti](#giti)
      * [help](#help)
@@ -333,6 +334,22 @@ and can be invoked with:
 
 Argument placeholders can be escaped by prepending a dollar sign.
 For example, to specify the literal string $1 in a command body specify $$1.
+
+### evalkeys
+
+The evalkeys command executes the provided key string sequence.
+The format of the command is:
+
+```
+evalkeys keys
+```
+
+For example, running the following will switch to the next tab:
+
+```
+evalkeys <grv-next-tab>
+```
+
 
 ### git
 

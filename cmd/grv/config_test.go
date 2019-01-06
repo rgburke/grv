@@ -2,10 +2,20 @@ package main
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/mock"
 )
 
+type MockInputConsumer struct {
+	mock.Mock
+}
+
+func (inputConsumer *MockInputConsumer) ProcessInput(input string) {
+	inputConsumer.Called(input)
+}
+
 func TestConfigVariablesHaveRequiredFieldsSet(t *testing.T) {
-	config := NewConfiguration(&MockKeyBindings{}, &MockChannels{}, &MockGRVVariableSetter{})
+	config := NewConfiguration(&MockKeyBindings{}, &MockChannels{}, &MockGRVVariableSetter{}, &MockInputConsumer{})
 
 	for configVariableName, configVariable := range config.configVariables {
 		if configVariable.defaultValue == nil {
@@ -40,7 +50,7 @@ func TestViewNamesContainsEntriesForAllViews(t *testing.T) {
 }
 
 func TestCommandBodyArgumentsAreExpanded(t *testing.T) {
-	config := NewConfiguration(&MockKeyBindings{}, &MockChannels{}, &MockGRVVariableSetter{})
+	config := NewConfiguration(&MockKeyBindings{}, &MockChannels{}, &MockGRVVariableSetter{}, &MockInputConsumer{})
 
 	args := []string{"do", "re", "mi"}
 

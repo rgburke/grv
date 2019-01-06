@@ -36,13 +36,14 @@ type gRVChannels struct {
 	errorCh    chan error
 }
 
-func (grvChannels gRVChannels) Channels() Channels {
+func (grvChannels gRVChannels) Channels() *channels {
 	return &channels{
-		displayCh: grvChannels.displayCh,
-		exitCh:    grvChannels.exitCh,
-		errorCh:   grvChannels.errorCh,
-		actionCh:  grvChannels.actionCh,
-		eventCh:   grvChannels.eventCh,
+		displayCh:  grvChannels.displayCh,
+		exitCh:     grvChannels.exitCh,
+		errorCh:    grvChannels.errorCh,
+		actionCh:   grvChannels.actionCh,
+		eventCh:    grvChannels.eventCh,
+		inputKeyCh: grvChannels.inputKeyCh,
 	}
 }
 
@@ -58,11 +59,17 @@ type Channels interface {
 }
 
 type channels struct {
-	displayCh chan<- bool
-	exitCh    <-chan bool
-	errorCh   chan<- error
-	actionCh  chan<- Action
-	eventCh   chan<- Event
+	displayCh  chan<- bool
+	exitCh     <-chan bool
+	errorCh    chan<- error
+	actionCh   chan<- Action
+	eventCh    chan<- Event
+	inputKeyCh chan<- string
+}
+
+// InputConsumer can consumer and process key string input
+type InputConsumer interface {
+	ProcessInput(input string)
 }
 
 // EventType identifies a type of event
@@ -162,6 +169,15 @@ func (channels *channels) ReportStatus(format string, args ...interface{}) {
 	}
 }
 
+// ProcessInput sends the provided input to be processed
+func (channels *channels) ProcessInput(input string) {
+	select {
+	case channels.inputKeyCh <- input:
+	default:
+		log.Errorf("Unable to add input \"%v\" to input channel", input)
+	}
+}
+
 // NewGRV creates a new instace of GRV
 func NewGRV(readOnly bool) *GRV {
 	grvChannels := gRVChannels{
@@ -176,7 +192,7 @@ func NewGRV(readOnly bool) *GRV {
 	channels := grvChannels.Channels()
 	keyBindings := NewKeyBindingManager()
 	variables := NewGRVVariables()
-	config := NewConfiguration(keyBindings, channels, variables)
+	config := NewConfiguration(keyBindings, channels, variables, channels)
 
 	repoDataLoader := NewRepoDataLoader(channels, config)
 	repoData := NewRepositoryData(repoDataLoader, channels, variables)

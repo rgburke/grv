@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
+	"unicode"
 
 	slice "github.com/bradfitz/slice"
 )
@@ -27,6 +29,7 @@ const (
 	helpCommand           = "help"
 	defCommand            = "def"
 	undefCommand          = "undef"
+	evalkeysCommand       = "evalkeys"
 )
 
 const (
@@ -35,6 +38,9 @@ const (
 )
 
 var isIdentifier = regexp.MustCompile(`[[:alnum:]]+`).MatchString
+var commentTokens = map[ConfigTokenType]bool{
+	CtkComment: true,
+}
 var whiteSpaceTokens = map[ConfigTokenType]bool{
 	CtkWhiteSpace: true,
 	CtkComment:    true,
@@ -166,6 +172,13 @@ type CustomCommand struct {
 
 func (customCommand *CustomCommand) configCommand() {}
 
+// EvalKeysCommand represents a key evaluation command
+type EvalKeysCommand struct {
+	keys string
+}
+
+func (evalKeysCommand *EvalKeysCommand) configCommand() {}
+
 type commandHelpGenerator func(config Config) []*HelpSection
 type commandCustomParser func(parser *ConfigParser) (tokens []*ConfigToken, err error)
 
@@ -184,7 +197,7 @@ func DefineCustomCommand(commandName string) (err error) {
 	}
 
 	commandDescriptors[commandName] = &commandDescriptor{
-		customParser: parseVarArgsCommand,
+		customParser: parseVarArgsCommand(),
 		constructor:  customCommandConstructor,
 		userDefined:  true,
 	}
@@ -238,32 +251,32 @@ var commandDescriptors = map[string]*commandDescriptor{
 		commandHelpGenerator: GenerateRmTabCommandHelpSections,
 	},
 	addviewCommand: {
-		customParser:         parseVarArgsCommand,
+		customParser:         parseVarArgsCommand(),
 		constructor:          addViewCommandConstructor,
 		commandHelpGenerator: GenerateAddViewCommandHelpSections,
 	},
 	vsplitCommand: {
-		customParser:         parseVarArgsCommand,
+		customParser:         parseVarArgsCommand(),
 		constructor:          splitViewCommandConstructor,
 		commandHelpGenerator: GenerateVSplitCommandHelpSections,
 	},
 	hsplitCommand: {
-		customParser:         parseVarArgsCommand,
+		customParser:         parseVarArgsCommand(),
 		constructor:          splitViewCommandConstructor,
 		commandHelpGenerator: GenerateHSplitCommandHelpSections,
 	},
 	splitCommand: {
-		customParser:         parseVarArgsCommand,
+		customParser:         parseVarArgsCommand(),
 		constructor:          splitViewCommandConstructor,
 		commandHelpGenerator: GenerateSplitCommandHelpSections,
 	},
 	gitCommand: {
-		customParser:         parseVarArgsCommand,
+		customParser:         parseVarArgsCommand(),
 		constructor:          gitCommandConstructor,
 		commandHelpGenerator: GenerateGitCommandHelpSections,
 	},
 	gitInteractiveCommand: {
-		customParser:         parseVarArgsCommand,
+		customParser:         parseVarArgsCommand(),
 		constructor:          gitCommandConstructor,
 		commandHelpGenerator: GenerateGitiCommandHelpSections,
 	},
@@ -280,6 +293,11 @@ var commandDescriptors = map[string]*commandDescriptor{
 		tokenTypes:           []ConfigTokenType{CtkWord},
 		constructor:          undefCommandConstructor,
 		commandHelpGenerator: GenerateUndefCommandHelpSections,
+	},
+	evalkeysCommand: {
+		customParser:         parseVarArgsParserGenerator(false),
+		constructor:          evalKeysCommandConstructor,
+		commandHelpGenerator: GenerateEvalKeysCommandHelpSections,
 	},
 }
 
@@ -481,28 +499,41 @@ func (parser *ConfigParser) parseCommand(commandToken *ConfigToken) (command Con
 	return
 }
 
-func parseVarArgsCommand(parser *ConfigParser) (tokens []*ConfigToken, err error) {
-OuterLoop:
-	for {
-		var token *ConfigToken
-		token, err = parser.scan()
+func parseVarArgsCommand() commandCustomParser {
+	return parseVarArgsParserGenerator(true)
+}
 
-		switch {
-		case err != nil:
-			return
-		case token.err != nil:
-			err = parser.generateParseError(token, "Syntax Error")
-			return
-		case token.tokenType == CtkEOF:
-			break OuterLoop
-		case token.tokenType == CtkTerminator:
-			break OuterLoop
-		}
-
-		tokens = append(tokens, token)
+func parseVarArgsParserGenerator(ignoreWhitespace bool) commandCustomParser {
+	var ignoreTokens map[ConfigTokenType]bool
+	if ignoreWhitespace {
+		ignoreTokens = whiteSpaceTokens
+	} else {
+		ignoreTokens = commentTokens
 	}
 
-	return
+	return func(parser *ConfigParser) (tokens []*ConfigToken, err error) {
+	OuterLoop:
+		for {
+			var token *ConfigToken
+			token, err = parser.scanAndIgnore(ignoreTokens)
+
+			switch {
+			case err != nil:
+				return
+			case token.err != nil:
+				err = parser.generateParseError(token, "Syntax Error")
+				return
+			case token.tokenType == CtkEOF:
+				break OuterLoop
+			case token.tokenType == CtkTerminator:
+				break OuterLoop
+			}
+
+			tokens = append(tokens, token)
+		}
+
+		return
+	}
 }
 
 func parseDefCommand(parser *ConfigParser) (tokens []*ConfigToken, err error) {
@@ -718,5 +749,23 @@ func customCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, t
 	return &CustomCommand{
 		commandName: commandToken.value,
 		args:        args,
+	}, nil
+}
+
+func evalKeysCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (configCommand ConfigCommand, err error) {
+	if len(tokens) == 0 {
+		return nil, parser.generateParseError(commandToken, "No keys specified for %v command", evalkeysCommand)
+	}
+
+	var buffer bytes.Buffer
+
+	for _, token := range tokens {
+		buffer.WriteString(token.value)
+	}
+
+	keys := strings.TrimLeftFunc(buffer.String(), unicode.IsSpace)
+
+	return &EvalKeysCommand{
+		keys: keys,
 	}, nil
 }

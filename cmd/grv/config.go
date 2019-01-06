@@ -322,14 +322,16 @@ type Configuration struct {
 	channels        Channels
 	variables       GRVVariableGetter
 	customCommands  map[string]string
+	inputConsumer   InputConsumer
 }
 
 // NewConfiguration creates a Configuration instance with default values
-func NewConfiguration(keyBindings KeyBindings, channels Channels, variables GRVVariableGetter) *Configuration {
+func NewConfiguration(keyBindings KeyBindings, channels Channels, variables GRVVariableGetter, inputConsumer InputConsumer) *Configuration {
 	config := &Configuration{
 		keyBindings:    keyBindings,
 		channels:       channels,
 		variables:      variables,
+		inputConsumer:  inputConsumer,
 		customCommands: map[string]string{},
 		themes: map[string]MutableTheme{
 			cfClassicThemeName:   NewClassicTheme(),
@@ -534,6 +536,8 @@ func (config *Configuration) processCommand(command ConfigCommand, inputSource s
 		err = config.processUndefCommand(command, inputSource)
 	case *CustomCommand:
 		err = config.processCustomCommand(command)
+	case *EvalKeysCommand:
+		err = config.processEvalKeysCommand(command)
 	default:
 		log.Errorf("Unknown command type %T", command)
 	}
@@ -946,6 +950,12 @@ func (config *Configuration) processConfigCommandBody(commandBody string, args [
 	processedCommandBody.WriteString(commandBody[lastMatchIndex:])
 
 	return processedCommandBody.String()
+}
+
+func (config *Configuration) processEvalKeysCommand(evalKeysCommand *EvalKeysCommand) (err error) {
+	log.Debugf("Processing keys: %v", evalKeysCommand.keys)
+	config.inputConsumer.ProcessInput(evalKeysCommand.keys)
+	return
 }
 
 func (config *Configuration) runCommand(command string, outputType ShellCommandOutputType) {

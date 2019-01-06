@@ -292,6 +292,23 @@ func (customCommandValues *CustomCommandValues) Equal(command ConfigCommand) boo
 		reflect.DeepEqual(customCommandValues.args, other.args)
 }
 
+type EvalKeysCommandValues struct {
+	keys string
+}
+
+func (evalKeysCommandValues *EvalKeysCommandValues) Equal(command ConfigCommand) bool {
+	if command == nil {
+		return false
+	}
+
+	other, ok := command.(*EvalKeysCommand)
+	if !ok {
+		return false
+	}
+
+	return evalKeysCommandValues.keys == other.keys
+}
+
 func TestParseSingleCommand(t *testing.T) {
 	var singleCommandTests = []struct {
 		input           string
@@ -437,6 +454,12 @@ func TestParseSingleCommand(t *testing.T) {
 			expectedCommand: &DefCommandValues{
 				commandName:  "myFunc",
 				functionBody: " addtab \"}\" ",
+			},
+		},
+		{
+			input: "evalkeys <grv-next-tab><grv-search-prompt>Untracked files<Enter>",
+			expectedCommand: &EvalKeysCommandValues{
+				keys: "<grv-next-tab><grv-search-prompt>Untracked files<Enter>",
 			},
 		},
 	}
