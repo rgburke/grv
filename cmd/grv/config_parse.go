@@ -524,7 +524,7 @@ func parseDefCommand(parser *ConfigParser) (tokens []*ConfigToken, err error) {
 		return
 	} else if err = openingBraceToken.err; err != nil {
 		return
-	} else if openingBraceToken.tokenType != CtkWord || openingBraceToken.value != openingBrace {
+	} else if openingBraceToken.tokenType != CtkWord || openingBraceToken.rawValue != openingBrace {
 		return tokens, parser.generateParseError(openingBraceToken, "Expected %v but found %v", openingBrace, openingBraceToken.value)
 	}
 
@@ -549,7 +549,7 @@ func parseDefCommand(parser *ConfigParser) (tokens []*ConfigToken, err error) {
 		case CtkWord:
 			if token.value == defCommand && wordsSinceTerminator == 0 {
 				closingBracesRemaining++
-			} else if token.value == closingBrace {
+			} else if token.rawValue == closingBrace {
 				closingBracesRemaining--
 			}
 

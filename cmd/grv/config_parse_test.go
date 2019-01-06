@@ -432,6 +432,13 @@ func TestParseSingleCommand(t *testing.T) {
 				functionBody: " addtab Main ",
 			},
 		},
+		{
+			input: "def\n myFunc \n{ addtab \"}\" }",
+			expectedCommand: &DefCommandValues{
+				commandName:  "myFunc",
+				functionBody: " addtab \"}\" ",
+			},
+		},
 	}
 
 	for _, singleCommandTest := range singleCommandTests {
