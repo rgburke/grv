@@ -721,6 +721,10 @@ func selectDiffLine(diffView *DiffView, action Action) (err error) {
 	}
 
 	lineIndex := diffView.activeViewPos.ActiveRowIndex()
+	if lineIndex >= diffView.rows() {
+		return
+	}
+
 	diffLine := diffLines.lines[lineIndex]
 
 	if diffLine.lineType != dltDiffStatsFile {

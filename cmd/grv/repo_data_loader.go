@@ -1177,12 +1177,16 @@ func (repoDataLoader *RepoDataLoader) DiffStage(statusType StatusType) (diff *Di
 	diff = &Diff{}
 
 	rawDiff, err := repoDataLoader.generateRawDiff(statusType)
+	if err != nil {
+		if diffErrorRegex.MatchString(err.Error()) {
+			log.Infof("Falling back to git cli after encountering error: %v", err)
+			repoDataLoader.diffErrorPresent = true
+			return repoDataLoader.generateStageDiffUsingCLI(statusType)
+		}
 
-	if err != nil && diffErrorRegex.MatchString(err.Error()) {
-		log.Infof("Falling back to git cli after encountering error: %v", err)
-		repoDataLoader.diffErrorPresent = true
-		return repoDataLoader.generateStageDiffUsingCLI(statusType)
-	} else if err != nil || rawDiff == nil {
+		return
+	} else if rawDiff == nil {
+		err = fmt.Errorf("Failed to generate diff for %v files", StatusTypeDisplayName(statusType))
 		return
 	}
 	defer rawDiff.Free()
@@ -1201,11 +1205,16 @@ func (repoDataLoader *RepoDataLoader) DiffFile(statusType StatusType, path strin
 	diff = &Diff{}
 
 	rawDiff, err := repoDataLoader.generateRawDiff(statusType)
-	if err != nil && diffErrorRegex.MatchString(err.Error()) {
-		log.Infof("Falling back to git cli after encountering error: %v", err)
-		repoDataLoader.diffErrorPresent = true
-		return repoDataLoader.generateFileDiffUsingCLI(statusType, path)
-	} else if err != nil || rawDiff == nil {
+	if err != nil {
+		if diffErrorRegex.MatchString(err.Error()) {
+			log.Infof("Falling back to git cli after encountering error: %v", err)
+			repoDataLoader.diffErrorPresent = true
+			return repoDataLoader.generateFileDiffUsingCLI(statusType, path)
+		}
+
+		return
+	} else if rawDiff == nil {
+		err = fmt.Errorf("Failed to generate diff for %v file %v", StatusTypeDisplayName(statusType), path)
 		return
 	}
 	defer rawDiff.Free()
@@ -1249,13 +1258,12 @@ func (repoDataLoader *RepoDataLoader) DiffFile(statusType StatusType, path strin
 func (repoDataLoader *RepoDataLoader) generateRawDiff(statusType StatusType) (rawDiff *git.Diff, err error) {
 	var index *git.Index
 	var options git.DiffOptions
+	var head Ref
+	var commit *Commit
+	var tree *git.Tree
 
 	switch statusType {
 	case StStaged:
-		var head Ref
-		var commit *Commit
-		var tree *git.Tree
-
 		if head, err = repoDataLoader.Head(); err != nil {
 			return
 		}
@@ -1289,6 +1297,26 @@ func (repoDataLoader *RepoDataLoader) generateRawDiff(statusType StatusType) (ra
 		}
 
 		if rawDiff, err = repoDataLoader.repo.DiffIndexToWorkdir(index, &options); err != nil {
+			return
+		}
+	case StConflicted:
+		if head, err = repoDataLoader.Head(); err != nil {
+			return
+		}
+
+		if commit, err = repoDataLoader.Commit(head.Oid()); err != nil {
+			return
+		}
+
+		if tree, err = commit.commit.Tree(); err != nil {
+			return
+		}
+
+		if options, err = git.DefaultDiffOptions(); err != nil {
+			return
+		}
+
+		if rawDiff, err = repoDataLoader.repo.DiffTreeToWorkdir(tree, &options); err != nil {
 			return
 		}
 	}
