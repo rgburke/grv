@@ -485,6 +485,10 @@ func (grv *GRV) runHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bool, in
 				if err := grv.runCommand(action); err != nil {
 					errorCh <- err
 				}
+			case ActionSleep:
+				if err := grv.sleep(action); err != nil {
+					errorCh <- err
+				}
 			default:
 				if err := grv.view.HandleAction(action); err != nil {
 					errorCh <- err
@@ -581,6 +585,23 @@ func (grv *GRV) runCommand(action Action) (err error) {
 	if arg.onComplete != nil {
 		err = arg.onComplete(cmdError, exitStatus)
 	}
+
+	return
+}
+
+func (grv *GRV) sleep(action Action) (err error) {
+	if len(action.Args) == 0 {
+		return fmt.Errorf("Expected sleep seconds argument")
+	}
+
+	sleepSeconds, ok := action.Args[0].(float64)
+	if !ok {
+		return fmt.Errorf("Expected sleep seconds of type float64 but found type %T", action.Args[0])
+	}
+
+	log.Infof("Sleeping for %v seconds", sleepSeconds)
+	time.Sleep(time.Duration(sleepSeconds*1000) * time.Millisecond)
+	log.Infof("Finished sleeping")
 
 	return
 }

@@ -309,6 +309,23 @@ func (evalKeysCommandValues *EvalKeysCommandValues) Equal(command ConfigCommand)
 	return evalKeysCommandValues.keys == other.keys
 }
 
+type SleepCommandValues struct {
+	sleepSeconds float64
+}
+
+func (sleepCommandValues *SleepCommandValues) Equal(command ConfigCommand) bool {
+	if command == nil {
+		return false
+	}
+
+	other, ok := command.(*SleepCommand)
+	if !ok {
+		return false
+	}
+
+	return sleepCommandValues.sleepSeconds == other.sleepSeconds
+}
+
 func TestParseSingleCommand(t *testing.T) {
 	var singleCommandTests = []struct {
 		input           string
@@ -462,6 +479,12 @@ func TestParseSingleCommand(t *testing.T) {
 				keys: "<grv-next-tab><grv-search-prompt>Untracked files<Enter>",
 			},
 		},
+		{
+			input: "sleep 0.5",
+			expectedCommand: &SleepCommandValues{
+				sleepSeconds: 0.5,
+			},
+		},
 	}
 
 	for _, singleCommandTest := range singleCommandTests {
@@ -613,6 +636,10 @@ func TestErrorsAreReceivedForInvalidConfigTokenSequences(t *testing.T) {
 		{
 			input:                "def myfunc { addview RefView ",
 			expectedErrorMessage: ConfigFile + ":1:29 Expected } but reached EOF",
+		},
+		{
+			input:                "sleep -5",
+			expectedErrorMessage: ConfigFile + ":1:7 Invalid sleep time: -5. Must be a positive integer",
 		},
 	}
 

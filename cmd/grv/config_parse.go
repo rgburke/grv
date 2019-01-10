@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -30,6 +31,7 @@ const (
 	defCommand            = "def"
 	undefCommand          = "undef"
 	evalkeysCommand       = "evalkeys"
+	sleepCommand          = "sleep"
 )
 
 const (
@@ -179,6 +181,13 @@ type EvalKeysCommand struct {
 
 func (evalKeysCommand *EvalKeysCommand) configCommand() {}
 
+// SleepCommand represents a command to sleep
+type SleepCommand struct {
+	sleepSeconds float64
+}
+
+func (sleepCommand *SleepCommand) configCommand() {}
+
 type commandHelpGenerator func(config Config) []*HelpSection
 type commandCustomParser func(parser *ConfigParser) (tokens []*ConfigToken, err error)
 
@@ -298,6 +307,11 @@ var commandDescriptors = map[string]*commandDescriptor{
 		customParser:         parseVarArgsParserGenerator(false),
 		constructor:          evalKeysCommandConstructor,
 		commandHelpGenerator: GenerateEvalKeysCommandHelpSections,
+	},
+	sleepCommand: {
+		tokenTypes:           []ConfigTokenType{CtkWord},
+		constructor:          sleepCommandConstructor,
+		commandHelpGenerator: GenerateSleepCommandHelpSections,
 	},
 }
 
@@ -767,5 +781,21 @@ func evalKeysCommandConstructor(parser *ConfigParser, commandToken *ConfigToken,
 
 	return &EvalKeysCommand{
 		keys: keys,
+	}, nil
+}
+
+func sleepCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (configCommand ConfigCommand, err error) {
+	if len(tokens) < 1 {
+		return nil, parser.generateParseError(commandToken, "No sleep time specified")
+	}
+
+	sleepToken := tokens[0]
+	sleepSeconds, err := strconv.ParseFloat(sleepToken.value, 64)
+	if err != nil || sleepSeconds <= 0.0 {
+		return nil, parser.generateParseError(sleepToken, "Invalid sleep time: %v. Must be a positive integer", sleepToken.value)
+	}
+
+	return &SleepCommand{
+		sleepSeconds: sleepSeconds,
 	}, nil
 }

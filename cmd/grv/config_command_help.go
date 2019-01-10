@@ -467,7 +467,28 @@ func GenerateEvalKeysCommandHelpSections(config Config) (helpSections []*HelpSec
 		{text: "For example, running the following will switch to the next tab:"},
 		{},
 		{text: "evalkeys <grv-next-tab>", themeComponentID: CmpHelpViewSectionCodeBlock},
+	}
+
+	return []*HelpSection{
+		{
+			description: description,
+		},
+	}
+}
+
+// GenerateSleepCommandHelpSections generates help documentation for the addtab command
+func GenerateSleepCommandHelpSections(config Config) (helpSections []*HelpSection) {
+	description := []HelpSectionText{
+		{text: "sleep", themeComponentID: CmpHelpViewSectionSubTitle},
 		{},
+		{text: "The sleep command causes grv to pause execution for the provided number of seconds."},
+		{text: "The format of the command is:"},
+		{},
+		{text: "sleep seconds", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "For example, running the following will pause execution for 0.5 seconds:"},
+		{},
+		{text: "sleep 0.5", themeComponentID: CmpHelpViewSectionCodeBlock},
 	}
 
 	return []*HelpSection{

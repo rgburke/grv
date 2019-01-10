@@ -30,6 +30,7 @@ const (
 	ActionExit
 	ActionSuspend
 	ActionRunCommand
+	ActionSleep
 	ActionPrompt
 	ActionSearchPrompt
 	ActionReverseSearchPrompt
@@ -147,6 +148,10 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 	ActionRunCommand: {
 		actionCategory: ActionCategoryGeneral,
 		description:    "Run a shell command",
+	},
+	ActionSleep: {
+		actionCategory: ActionCategoryGeneral,
+		description:    "Sleep for a specified time",
 	},
 	ActionPrompt: {
 		actionKey:      "<grv-prompt>",

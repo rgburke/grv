@@ -37,6 +37,7 @@ The sections below provide an overview of the ways to configure and interact wit
      * [q](#q)
      * [rmtab](#rmtab)
      * [set](#set)
+     * [sleep](#sleep)
      * [split](#split)
      * [theme](#theme)
      * [undef](#undef)
@@ -350,7 +351,6 @@ For example, running the following will switch to the next tab:
 evalkeys <grv-next-tab>
 ```
 
-
 ### git
 
 The git command is an alias to the git cli command.
@@ -466,6 +466,21 @@ GRV currently has the following themes available:
 
 The solarized theme is the default theme for GRV and does not respect the terminals colour palette.
 The classic and cold themes do respect the terminals colour palette.
+
+### sleep
+
+The sleep command causes grv to pause execution for the provided number of seconds.
+The format of the command is:
+
+```
+sleep seconds
+```
+
+For example, running the following will pause execution for 0.5 seconds:
+
+```
+sleep 0.5
+```
 
 ### split
 

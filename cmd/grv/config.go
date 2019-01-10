@@ -538,6 +538,8 @@ func (config *Configuration) processCommand(command ConfigCommand, inputSource s
 		err = config.processCustomCommand(command)
 	case *EvalKeysCommand:
 		err = config.processEvalKeysCommand(command)
+	case *SleepCommand:
+		err = config.processSleepCommand(command)
 	default:
 		log.Errorf("Unknown command type %T", command)
 	}
@@ -955,6 +957,15 @@ func (config *Configuration) processConfigCommandBody(commandBody string, args [
 func (config *Configuration) processEvalKeysCommand(evalKeysCommand *EvalKeysCommand) (err error) {
 	log.Debugf("Processing keys: %v", evalKeysCommand.keys)
 	config.inputConsumer.ProcessInput(evalKeysCommand.keys)
+	return
+}
+
+func (config *Configuration) processSleepCommand(sleepCommand *SleepCommand) (err error) {
+	config.channels.DoAction(Action{
+		ActionType: ActionSleep,
+		Args:       []interface{}{sleepCommand.sleepSeconds},
+	})
+
 	return
 }
 
