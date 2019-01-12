@@ -789,9 +789,10 @@ func generateDateCommitLimitTester(dateString string, dateFormat string, timeZon
 // NewRepoDataLoader creates a new instance
 func NewRepoDataLoader(channels Channels, config Config) *RepoDataLoader {
 	return &RepoDataLoader{
-		cache:    newInstanceCache(),
-		channels: channels,
-		config:   config,
+		cache:            newInstanceCache(),
+		channels:         channels,
+		config:           config,
+		diffErrorPresent: true,
 	}
 }
 
