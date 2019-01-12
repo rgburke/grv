@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
@@ -151,9 +152,10 @@ type HelpViewSection struct {
 
 // HelpViewIndex is an index of help view sections
 type HelpViewIndex struct {
-	sections  []*HelpViewSection
-	rowMap    map[uint]uint
-	totalRows uint
+	sections    []*HelpViewSection
+	rowMap      map[uint]uint
+	titleRowMap map[string]uint
+	totalRows   uint
 }
 
 // NewHelpViewIndex creates a new instance
@@ -163,6 +165,7 @@ func NewHelpViewIndex(helpSections []*HelpSection) *HelpViewIndex {
 	totalRows := uint(0)
 	indexRowIndex := uint(2)
 	rowMap := map[uint]uint{}
+	titleRowMap := map[string]uint{}
 
 	for _, helpSection := range helpSections {
 		if helpSection.title.text != "" {
@@ -183,7 +186,9 @@ func NewHelpViewIndex(helpSections []*HelpSection) *HelpViewIndex {
 					title: descriptionLine.text,
 				})
 
-				rowMap[indexRowIndex] = totalRows + helpSection.titleRows() + uint(descriptionLineIndex)
+				rowIndex := totalRows + helpSection.titleRows() + uint(descriptionLineIndex)
+				titleRowMap[strings.ToLower(descriptionLine.text)] = rowIndex
+				rowMap[indexRowIndex] = rowIndex
 				indexRowIndex++
 			}
 		}
@@ -192,9 +197,10 @@ func NewHelpViewIndex(helpSections []*HelpSection) *HelpViewIndex {
 	}
 
 	return &HelpViewIndex{
-		sections:  sections,
-		rowMap:    rowMap,
-		totalRows: totalRows,
+		sections:    sections,
+		rowMap:      rowMap,
+		titleRowMap: titleRowMap,
+		totalRows:   totalRows,
 	}
 }
 
@@ -206,7 +212,13 @@ func (helpViewIndex *HelpViewIndex) applyOffset(preOffset, postOffset uint) {
 		rowMap[index+preOffset] = rowIndex + postOffset
 	}
 
+	titleRowMap := map[string]uint{}
+	for title, rowIndex := range helpViewIndex.titleRowMap {
+		titleRowMap[title] = rowIndex + postOffset
+	}
+
 	helpViewIndex.rowMap = rowMap
+	helpViewIndex.titleRowMap = titleRowMap
 }
 
 func (helpViewIndex *HelpViewIndex) generateHelpSection() *HelpSection {
@@ -234,6 +246,30 @@ func (helpViewIndex *HelpViewIndex) generateHelpSection() *HelpSection {
 
 func (helpViewIndex *HelpViewIndex) mappedRow(rowIndex uint) (mappedIndex uint, exists bool) {
 	mappedIndex, exists = helpViewIndex.rowMap[rowIndex]
+	return
+}
+
+func (helpViewIndex *HelpViewIndex) findSection(section string) (rowIndex uint) {
+	section = strings.ToLower(section)
+	rowIndex, exists := helpViewIndex.titleRowMap[section]
+	if exists {
+		return
+	}
+
+	matches := []uint{}
+
+	for title, mappedRowIndex := range helpViewIndex.titleRowMap {
+		if strings.HasPrefix(title, section) {
+			return mappedRowIndex
+		} else if strings.Contains(title, section) {
+			matches = append(matches, mappedRowIndex)
+		}
+	}
+
+	if len(matches) > 0 {
+		return matches[0]
+	}
+
 	return
 }
 
@@ -268,6 +304,28 @@ func NewHelpView(channels Channels, config Config, variables GRVVariableSetter) 
 func (helpView *HelpView) Initialise() (err error) {
 	helpView.helpSections, helpView.helpViewIndex, err = GenerateHelpView(helpView.config)
 	return
+}
+
+// SearchHelp will attempt to find a section or part of the help
+// that matches the provided search term
+func (helpView *HelpView) SearchHelp(searchTerm string) {
+	if searchTerm == "" {
+		return
+	}
+
+	helpView.lock.Lock()
+	defer helpView.lock.Unlock()
+
+	if rowIndex := helpView.helpViewIndex.findSection(searchTerm); rowIndex > 0 {
+		helpView.viewPos().SetActiveRowIndex(rowIndex)
+		helpView.viewPos().ScrollActiveRowTop()
+		return
+	}
+
+	helpView.AbstractWindowView.HandleAction(Action{
+		ActionType: ActionSearch,
+		Args:       []interface{}{searchTerm},
+	})
 }
 
 // ViewID returns the ViewID of the help view

@@ -226,15 +226,21 @@ func (gitCommandValues *GitCommandValues) Equal(command ConfigCommand) bool {
 		reflect.DeepEqual(gitCommandValues.args, otherArgs)
 }
 
-type HelpCommandValues struct{}
+type HelpCommandValues struct {
+	searchTerm string
+}
 
 func (helpCommandValues *HelpCommandValues) Equal(command ConfigCommand) bool {
 	if command == nil {
 		return false
 	}
 
-	_, ok := command.(*HelpCommand)
-	return ok
+	other, ok := command.(*HelpCommand)
+	if !ok {
+		return false
+	}
+
+	return helpCommandValues.searchTerm == other.searchTerm
 }
 
 type ShellCommandValues struct {
@@ -424,6 +430,12 @@ func TestParseSingleCommand(t *testing.T) {
 		{
 			input:           "help",
 			expectedCommand: &HelpCommandValues{},
+		},
+		{
+			input: "help vsplit",
+			expectedCommand: &HelpCommandValues{
+				searchTerm: "vsplit",
+			},
 		},
 		{
 			input: "!git add -A",

@@ -379,6 +379,13 @@ For example, to run 'git rebase -i HEAD~2' use the following key sequence:
 ### help
 
 The help command opens a tab containing documentation for GRV.
+A search term can be provided as an argument. For example:
+
+```
+help vsplit
+```
+
+will display the section for the command vsplit in the help tab
 
 ### hsplit
 

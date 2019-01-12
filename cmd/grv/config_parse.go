@@ -140,7 +140,9 @@ type GitCommand struct {
 func (gitCommand *GitCommand) configCommand() {}
 
 // HelpCommand represents the command to show the help view
-type HelpCommand struct{}
+type HelpCommand struct {
+	searchTerm string
+}
 
 func (helpCommand *HelpCommand) configCommand() {}
 
@@ -290,6 +292,7 @@ var commandDescriptors = map[string]*commandDescriptor{
 		commandHelpGenerator: GenerateGitiCommandHelpSections,
 	},
 	helpCommand: {
+		customParser:         parseVarArgsCommand(),
 		constructor:          helpCommandConstructor,
 		commandHelpGenerator: GenerateHelpCommandHelpSections,
 	},
@@ -721,7 +724,14 @@ func gitCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, toke
 }
 
 func helpCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (ConfigCommand, error) {
-	return &HelpCommand{}, nil
+	var searchTerm string
+	if len(tokens) > 0 {
+		searchTerm = tokens[0].value
+	}
+
+	return &HelpCommand{
+		searchTerm: searchTerm,
+	}, nil
 }
 
 func defCommandConstructor(parser *ConfigParser, commandToken *ConfigToken, tokens []*ConfigToken) (configCommand ConfigCommand, err error) {

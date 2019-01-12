@@ -367,6 +367,11 @@ func GenerateHelpCommandHelpSections(config Config) (helpSections []*HelpSection
 		{text: "help", themeComponentID: CmpHelpViewSectionSubTitle},
 		{},
 		{text: "The help command opens a tab containing documentation for GRV."},
+		{text: "A search term can be provided as an argument. For example:"},
+		{},
+		{text: "help vsplit", themeComponentID: CmpHelpViewSectionCodeBlock},
+		{},
+		{text: "will display the section for the command vsplit in the help tab"},
 	}
 
 	return []*HelpSection{

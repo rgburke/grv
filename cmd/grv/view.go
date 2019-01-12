@@ -600,7 +600,7 @@ func (view *View) HandleAction(action Action) (err error) {
 		view.lock.Lock()
 		defer view.lock.Unlock()
 
-		return view.showHelpView()
+		return view.showHelpView(action)
 	}
 
 	return view.ActiveView().HandleAction(action)
@@ -1123,7 +1123,7 @@ func (view *View) processMouseEventForPopupView(action Action) (handled bool, er
 	return
 }
 
-func (view *View) showHelpView() (err error) {
+func (view *View) showHelpView(action Action) (err error) {
 	for childViewIndex, childView := range view.views {
 		if childView.Title() == viewHelpViewTitle {
 			view.activeViewPos = uint(childViewIndex)
@@ -1139,6 +1139,12 @@ func (view *View) showHelpView() (err error) {
 	}
 
 	view.addTab(viewHelpViewTitle).AddChildViews(helpView)
+
+	if len(action.Args) > 0 {
+		if searchTerm, ok := action.Args[0].(string); ok {
+			helpView.SearchHelp(searchTerm)
+		}
+	}
 
 	return
 }

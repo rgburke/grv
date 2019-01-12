@@ -527,7 +527,7 @@ func (config *Configuration) processCommand(command ConfigCommand, inputSource s
 	case *GitCommand:
 		config.processGitCommand(command)
 	case *HelpCommand:
-		config.processHelpCommand()
+		config.processHelpCommand(command)
 	case *ShellCommand:
 		err = config.processShellCommand(command, inputSource)
 	case *DefCommand:
@@ -973,8 +973,16 @@ func (config *Configuration) runCommand(command string, outputType ShellCommandO
 	NewShellCommandProcessor(config.channels, config.variables, command, outputType).Execute()
 }
 
-func (config *Configuration) processHelpCommand() {
-	config.channels.DoAction(Action{ActionType: ActionShowHelpView})
+func (config *Configuration) processHelpCommand(helpCommand *HelpCommand) {
+	args := []interface{}{}
+	if helpCommand.searchTerm != "" {
+		args = append(args, helpCommand.searchTerm)
+	}
+
+	config.channels.DoAction(Action{
+		ActionType: ActionShowHelpView,
+		Args:       args,
+	})
 }
 
 // AddOnChangeListener adds a listener to be notified when a configuration variable changes value
