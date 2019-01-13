@@ -1124,27 +1124,33 @@ func (view *View) processMouseEventForPopupView(action Action) (handled bool, er
 }
 
 func (view *View) showHelpView(action Action) (err error) {
+	var helpView *HelpView
+
 	for childViewIndex, childView := range view.views {
 		if childView.Title() == viewHelpViewTitle {
+			helpView, _ = childView.ActiveView().(*HelpView)
 			view.activeViewPos = uint(childViewIndex)
 			view.onActiveChange(true)
-			view.channels.UpdateDisplay()
-			return
+			break
 		}
 	}
 
-	helpView := NewHelpView(view.channels, view.config, view.variables)
-	if err = helpView.Initialise(); err != nil {
-		return
-	}
+	if helpView == nil {
+		helpView = NewHelpView(view.channels, view.config, view.variables)
+		if err = helpView.Initialise(); err != nil {
+			return
+		}
 
-	view.addTab(viewHelpViewTitle).AddChildViews(helpView)
+		view.addTab(viewHelpViewTitle).AddChildViews(helpView)
+	}
 
 	if len(action.Args) > 0 {
 		if searchTerm, ok := action.Args[0].(string); ok {
 			helpView.SearchHelp(searchTerm)
 		}
 	}
+
+	view.channels.UpdateDisplay()
 
 	return
 }
