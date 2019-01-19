@@ -764,6 +764,7 @@ func selectDiffLine(diffView *DiffView, action Action) (err error) {
 	}
 
 	diffView.activeViewPos.SetActiveRowIndex(lineIndex)
+	diffView.setVariables()
 	defer diffView.channels.UpdateDisplay()
 
 	_, err = diffView.AbstractWindowView.HandleAction(Action{ActionType: ActionCenterView})
