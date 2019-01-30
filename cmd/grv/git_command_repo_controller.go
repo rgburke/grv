@@ -290,7 +290,7 @@ func (controller *GitCommandRepoController) runGitCommand(args ...string) (err e
 	log.Debugf("Running command: %v %v", gitBinary, strings.Join(args, " "))
 
 	cmd := exec.Command(gitBinary, args...)
-	cmd.Env = controller.repoData.GenerateGitCommandEnvironment()
+	cmd.Env, cmd.Dir = controller.repoData.GenerateGitCommandEnvironment()
 
 	if err = cmd.Run(); err != nil {
 		err = fmt.Errorf("Git command failed: %v", err)

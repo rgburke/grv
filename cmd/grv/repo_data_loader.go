@@ -28,6 +28,8 @@ const (
 	rdlCommitLimitDateFormat         = "2006-01-02"
 	rdlCommitLimitDateTimeFormat     = "2006-01-02 15:04:05"
 	rdlCommitLimitDateTimeZoneFormat = "2006-01-02 15:04:05-0700"
+	// GitRepositoryDirectoryName is the name of the git directory in a git repository
+	GitRepositoryDirectoryName = ".git"
 )
 
 var diffErrorRegex = regexp.MustCompile(`Invalid (regexp|collation character)`)
@@ -1435,7 +1437,7 @@ func (repoDataLoader *RepoDataLoader) runGitCLIDiff(gitCommand []string, diffTyp
 	}
 
 	cmd := exec.Command(repoDataLoader.gitBinary(), gitCommand...)
-	cmd.Env = repoDataLoader.GenerateGitCommandEnvironment()
+	cmd.Env, cmd.Dir = repoDataLoader.GenerateGitCommandEnvironment()
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -1534,8 +1536,8 @@ func (repoDataLoader *RepoDataLoader) UserEditor() (editor string, err error) {
 
 // GenerateGitCommandEnvironment populates git environment variables for
 // the current repository
-func (repoDataLoader *RepoDataLoader) GenerateGitCommandEnvironment() []string {
-	env := os.Environ()
+func (repoDataLoader *RepoDataLoader) GenerateGitCommandEnvironment() (env []string, rootDir string) {
+	env = os.Environ()
 
 	gitDir := repoDataLoader.Path()
 	if gitDir != "" {
@@ -1545,9 +1547,12 @@ func (repoDataLoader *RepoDataLoader) GenerateGitCommandEnvironment() []string {
 	workdir := repoDataLoader.Workdir()
 	if workdir != "" {
 		env = append(env, fmt.Sprintf("GIT_WORK_TREE=%v", workdir))
+		rootDir = workdir
+	} else {
+		rootDir = strings.TrimSuffix(gitDir, GitRepositoryDirectoryName)
 	}
 
-	return env
+	return
 }
 
 // RepositoryState returns the current repository state

@@ -10,9 +10,7 @@ import (
 )
 
 const (
-	// GitRepositoryDirectoryName is the name of the git directory in a git repository
-	GitRepositoryDirectoryName = ".git"
-	updatedRefChannelSize      = 256
+	updatedRefChannelSize = 256
 )
 
 // OnRefsLoaded is called when all refs have been loaded and processed
@@ -55,9 +53,10 @@ type RefStateListener interface {
 type RepoData interface {
 	EventListener
 	Path() string
+	RepositoryRootPath() string
 	Workdir() string
 	UserEditor() (string, error)
-	GenerateGitCommandEnvironment() []string
+	GenerateGitCommandEnvironment() (env []string, rootDir string)
 	Reload(ReloadResult)
 	LoadHead() error
 	LoadRefs(OnRefsLoaded)
@@ -1065,9 +1064,15 @@ func (repoData *RepositoryData) Initialise(repoSupplier RepoSupplier) (err error
 	return repoData.LoadHead()
 }
 
-// Path returns the file patch location of the repository
+// Path returns the file path location of the repository
 func (repoData *RepositoryData) Path() string {
 	return repoData.repoDataLoader.Path()
+}
+
+// RepositoryRootPath returns the root working directory of the repository
+func (repoData *RepositoryData) RepositoryRootPath() string {
+	_, rootDir := repoData.GenerateGitCommandEnvironment()
+	return rootDir
 }
 
 // Workdir returns working directory file path for the repository
@@ -1561,6 +1566,6 @@ func (repoData *RepositoryData) handleViewRemovedEvent(event Event) {
 
 // GenerateGitCommandEnvironment populates git environment variables for
 // the current repository
-func (repoData *RepositoryData) GenerateGitCommandEnvironment() []string {
+func (repoData *RepositoryData) GenerateGitCommandEnvironment() (env []string, rootDir string) {
 	return repoData.repoDataLoader.GenerateGitCommandEnvironment()
 }
