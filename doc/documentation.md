@@ -469,10 +469,9 @@ GRV currently has the following themes available:
 
  - solarized
  - classic
- - cold
 
 The solarized theme is the default theme for GRV and does not respect the terminals colour palette.
-The classic and cold themes do respect the terminals colour palette.
+The classic theme respects the terminals colour palette.
 
 ### sleep
 

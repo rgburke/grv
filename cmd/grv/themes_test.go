@@ -20,5 +20,4 @@ func testThemeHasAllThemeComponentsSet(themeName string, theme Theme, t *testing
 func TestThemesHaveAllThemeComponentsSet(t *testing.T) {
 	testThemeHasAllThemeComponentsSet("solarized", NewSolarizedTheme(), t)
 	testThemeHasAllThemeComponentsSet("classic", NewClassicTheme(), t)
-	testThemeHasAllThemeComponentsSet("cold", NewColdTheme(), t)
 }

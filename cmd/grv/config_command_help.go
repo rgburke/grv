@@ -23,10 +23,9 @@ func GenerateSetCommandHelpSections(config Config) (helpSections []*HelpSection)
 		{},
 		{text: " - solarized"},
 		{text: " - classic"},
-		{text: " - cold"},
 		{},
 		{text: "The solarized theme is the default theme for GRV and does not respect the terminals colour palette."},
-		{text: "The classic and cold themes do respect the terminals colour palette."},
+		{text: "The classic theme respects the terminals colour palette."},
 	}
 
 	return []*HelpSection{

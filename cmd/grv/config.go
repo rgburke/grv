@@ -23,7 +23,6 @@ const (
 	cfTabWidthMinValue              = 1
 	cfTabWidthDefaultValue          = 8
 	cfClassicThemeName              = "classic"
-	cfColdThemeName                 = "cold"
 	cfSolarizedThemeName            = "solarized"
 	cfMouseDefaultValue             = false
 	cfMouseScrollRowsDefaultValue   = 3
@@ -335,7 +334,6 @@ func NewConfiguration(keyBindings KeyBindings, channels Channels, variables GRVV
 		customCommands: map[string]string{},
 		themes: map[string]MutableTheme{
 			cfClassicThemeName:   NewClassicTheme(),
-			cfColdThemeName:      NewColdTheme(),
 			cfSolarizedThemeName: NewSolarizedTheme(),
 		},
 	}
