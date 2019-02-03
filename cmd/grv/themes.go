@@ -164,6 +164,49 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorRed),
 			},
+			CmpDiffviewFancyDiffLineSeparator: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorYellow),
+			},
+			CmpDiffviewFancyDiffLineFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorYellow),
+			},
+			CmpDiffviewFancyDifflineLineAdded: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorGreen),
+				style:   ThemeStyle{styleTypes: TstBold},
+			},
+			CmpDiffviewFancyDifflineLineRemoved: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+				style:   ThemeStyle{styleTypes: TstBold},
+			},
+			CmpDiffviewFancyDifflineLineAddedChange: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorGreen),
+				style:   ThemeStyle{styleTypes: TstBold | TstReverse},
+			},
+			CmpDiffviewFancyDifflineLineRemovedChange: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+				style:   ThemeStyle{styleTypes: TstBold | TstReverse},
+			},
+			CmpDiffviewFancyDifflineEmptyLineAdded: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorGreen),
+				style:   ThemeStyle{styleTypes: TstReverse},
+			},
+			CmpDiffviewFancyDifflineEmptyLineRemoved: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+				style:   ThemeStyle{styleTypes: TstReverse},
+			},
+			CmpDiffviewFancyDifflineTrailingWhitespace: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorRed),
+				style:   ThemeStyle{styleTypes: TstReverse},
+			},
 			CmpRefviewTitle: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
@@ -604,6 +647,49 @@ func NewSolarizedTheme() MutableTheme {
 			CmpDiffviewDifflineLineRemoved: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewColorNumber(solarizedRed),
+			},
+			CmpDiffviewFancyDiffLineSeparator: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedYellow),
+			},
+			CmpDiffviewFancyDiffLineFile: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedYellow),
+			},
+			CmpDiffviewFancyDifflineLineAdded: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedGreen),
+				style:   ThemeStyle{styleTypes: TstBold},
+			},
+			CmpDiffviewFancyDifflineLineRemoved: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedRed),
+				style:   ThemeStyle{styleTypes: TstBold},
+			},
+			CmpDiffviewFancyDifflineLineAddedChange: {
+				bgcolor: NewColorNumber(22),
+				fgcolor: NewColorNumber(10),
+				style:   ThemeStyle{styleTypes: TstBold},
+			},
+			CmpDiffviewFancyDifflineLineRemovedChange: {
+				bgcolor: NewColorNumber(52),
+				fgcolor: NewColorNumber(9),
+				style:   ThemeStyle{styleTypes: TstBold},
+			},
+			CmpDiffviewFancyDifflineEmptyLineAdded: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedGreen),
+				style:   ThemeStyle{styleTypes: TstReverse},
+			},
+			CmpDiffviewFancyDifflineEmptyLineRemoved: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedRed),
+				style:   ThemeStyle{styleTypes: TstReverse},
+			},
+			CmpDiffviewFancyDifflineTrailingWhitespace: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewColorNumber(solarizedRed),
+				style:   ThemeStyle{styleTypes: TstReverse},
 			},
 			CmpRefviewTitle: {
 				bgcolor: NewSystemColor(ColorNone),

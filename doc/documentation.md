@@ -209,6 +209,7 @@ They are specified using the set command in the grvrc file or at the command pro
  commit-limit         | string |               | Limit the number of commits loaded. Allowed values: number, date, oid or tag
  confirm-checkout     | bool   | true          | Confirm before performing git checkout                                      
  default-view         | string |               | Command to generate a custom default view on start up                       
+ diff-display         | string | fancy         | Diff display format                                                         
  git-binary-file-path | string |               | File path to git binary. Required only when git binary is not in $PATH      
  mouse                | bool   | false         | Mouse support enabled                                                       
  mouse-scroll-rows    | int    | 3             | Number of rows scrolled for each mouse event                                
@@ -596,6 +597,15 @@ DiffView.CommitAuthorDate
 DiffView.CommitCommitter
 DiffView.CommitCommitterDate
 DiffView.CommitMessage
+DiffView.FancyEmptyLineAdded
+DiffView.FancyEmptyLineRemoved
+DiffView.FancyFile
+DiffView.FancyLineAdded
+DiffView.FancyLineAddedChange
+DiffView.FancyLineRemoved
+DiffView.FancyLineRemovedChange
+DiffView.FancySeparator
+DiffView.FancyTrailingWhitespace
 DiffView.Footer
 DiffView.GitDiffExtendedHeader
 DiffView.GitDiffHeader

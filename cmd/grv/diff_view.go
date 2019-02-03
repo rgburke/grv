@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -23,9 +24,19 @@ const (
 	dltDiffCommitCommitterDate
 	dltDiffCommitMessage
 	dltDiffStatsFile
-	dltGitDiffHeader
-	dltGitDiffExtendedHeader
-	dltUnifiedDiffHeader
+	dltDiffStatsSummary
+	dltGitDiffHeaderDiff
+	dltGitDiffHeaderIndex
+	dltGitDiffHeaderNewFile
+	dltGitDiffHeaderOldFile
+	dltGitDiffHeaderNewMode
+	dltGitDiffHeaderOldMode
+	dltGitDiffHeaderNewFileMode
+	dltGitDiffHeaderDeletedFileMode
+	dltGitDiffHeaderSimilarityIndex
+	dltGitDiffHeaderRenameFrom
+	dltGitDiffHeaderRenameTo
+	dltGitDiffHeaderBinaryFile
 	dltHunkStart
 	dltLineAdded
 	dltLineRemoved
@@ -36,8 +47,11 @@ const (
 	dvDiffLoadRequestChannelSize = 100
 )
 
+var diffStatsSummaryRegex = regexp.MustCompile(`^\d+\sfiles?\schanged,`)
+
 type diffLineSection struct {
 	text             string
+	char             AcsChar
 	themeComponentID ThemeComponentID
 }
 
@@ -82,8 +96,10 @@ func newSectionedDiffLineData(sections []*diffLineSection, lineType diffLineType
 }
 
 type diffLines struct {
-	lines   []*diffLineData
-	viewPos ViewPos
+	rawLines []*diffLineData
+	lines    []*diffLineData
+	diffType diffProcessorType
+	viewPos  ViewPos
 }
 
 type diffLoadRequest interface {
@@ -116,6 +132,40 @@ func (stageDiffLoadRequest *stageDiffLoadRequest) diffID() diffID {
 }
 
 type diffID string
+
+type diffProcessor interface {
+	processDiff([]*diffLineData) ([]*diffLineData, error)
+}
+
+type gitDiffProcessor struct{}
+
+func (gitDiffProcessor *gitDiffProcessor) processDiff(lines []*diffLineData) ([]*diffLineData, error) {
+	return lines, nil
+}
+
+type diffProcessorType int
+
+const (
+	dptGit diffProcessorType = iota
+	dptFancy
+)
+
+var diffProcessorNames = map[string]diffProcessorType{
+	"git":   dptGit,
+	"fancy": dptFancy,
+}
+
+var diffProcessors = map[diffProcessorType]diffProcessor{
+	dptGit:   &gitDiffProcessor{},
+	dptFancy: &fancyDiffProcessor{},
+}
+
+// IsValidDiffProcessorName returns true if there exists a diff processor with the
+// specified name
+func IsValidDiffProcessorName(diffProcessorName string) (isValid bool) {
+	_, isValid = diffProcessorNames[diffProcessorName]
+	return
+}
 
 // DiffView contains all state for the diff view
 type DiffView struct {
@@ -164,6 +214,8 @@ func (diffView *DiffView) Initialise() (err error) {
 
 	diffView.waitGroup.Add(1)
 	go diffView.processDiffLoadRequests()
+
+	diffView.config.AddOnChangeListener(CfDiffDisplay, diffView)
 
 	return
 }
@@ -217,7 +269,11 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 
 		lineBuilder.Append(" ")
 		for _, section := range diffLine.sections {
-			lineBuilder.AppendWithStyle(section.themeComponentID, section.text)
+			if section.char != 0 {
+				lineBuilder.AppendACSChar(section.char, section.themeComponentID)
+			} else {
+				lineBuilder.AppendWithStyle(section.themeComponentID, section.text)
+			}
 		}
 
 		lineIndex++
@@ -289,11 +345,7 @@ func (diffView *DiffView) OnCommitSelected(commit *Commit) (err error) {
 	diffView.lock.Lock()
 	diffView.lastRequestedDiff = diffID
 
-	if diffLines, ok := diffView.diffs[diffID]; ok {
-		diffView.activeDiff = diffID
-		diffView.activeViewPos = diffLines.viewPos
-		diffView.setVariables()
-		diffView.channels.UpdateDisplay()
+	if diffView.switchToDiffIfExists(diffID) {
 		diffView.lock.Unlock()
 		return
 	}
@@ -303,6 +355,32 @@ func (diffView *DiffView) OnCommitSelected(commit *Commit) (err error) {
 	diffView.addDiffLoadRequest(&commitDiffLoadRequest{
 		commit: commit,
 	})
+
+	return
+}
+
+func (diffView *DiffView) switchToDiffIfExists(diffID diffID) (exists bool) {
+	diffLines, exists := diffView.diffs[diffID]
+	if exists {
+		if diffLines.diffType != diffView.currentDiffProcessorType() {
+			diffProcessor, diffType := diffView.currentDiffProcessor()
+			lines, err := diffProcessor.processDiff(diffLines.rawLines)
+
+			if err != nil {
+				log.Errorf("Failed to convert diff to format %v: %v", diffType, err)
+				diffLines.diffType = dptGit
+				diffLines.lines = diffLines.rawLines
+			} else {
+				diffLines.diffType = diffType
+				diffLines.lines = lines
+			}
+		}
+
+		diffView.activeDiff = diffID
+		diffView.activeViewPos = diffLines.viewPos
+		diffView.setVariables()
+		diffView.channels.UpdateDisplay()
+	}
 
 	return
 }
@@ -454,9 +532,19 @@ func (diffView *DiffView) storeDiff(diffID diffID, lines []*diffLineData) {
 	diffView.lock.Lock()
 	defer diffView.lock.Unlock()
 
+	rawLines := lines
+	diffProcessor, diffType := diffView.currentDiffProcessor()
+	lines, err := diffProcessor.processDiff(lines)
+	if err != nil {
+		log.Errorf("Failed to convert diff to format %v: %v", diffType, err)
+		lines = rawLines
+	}
+
 	diffLines := &diffLines{
-		lines:   lines,
-		viewPos: NewViewPosition(),
+		rawLines: rawLines,
+		lines:    lines,
+		diffType: diffType,
+		viewPos:  NewViewPosition(),
 	}
 
 	diffView.diffs[diffID] = diffLines
@@ -470,6 +558,20 @@ func (diffView *DiffView) storeDiff(diffID diffID, lines []*diffLineData) {
 	diffView.setVariables()
 
 	return
+}
+
+func (diffView *DiffView) currentDiffProcessorType() diffProcessorType {
+	diffDisplay := diffView.config.GetString(CfDiffDisplay)
+	if diffType, exists := diffProcessorNames[diffDisplay]; exists {
+		return diffType
+	}
+
+	return dptGit
+}
+
+func (diffView *DiffView) currentDiffProcessor() (diffProcessor, diffProcessorType) {
+	diffType := diffView.currentDiffProcessorType()
+	return diffProcessors[diffType], diffType
 }
 
 func (diffView *DiffView) generateDiffLinesForCommit(commit *Commit) (lines []*diffLineData, err error) {
@@ -533,9 +635,14 @@ func (diffView *DiffView) generateDiffLinesForDiff(diff *Diff) (lines []*diffLin
 	for scanner.Scan() {
 		line := scanner.Text()
 
+		if diffStatsSummaryRegex.MatchString(line) {
+			lines = append(lines, newDiffLineData(line, dltDiffStatsSummary, CmpDiffviewDifflineNormal))
+			continue
+		}
+
 		filePart, changePart, err := diffView.splitDiffStatsFileLine(line)
 		if err != nil {
-			lines = append(lines, newNormalDiffLineData(line))
+			log.Warnf("Diff stats line in unexpected format: %v - %v", line, err)
 			continue
 		}
 
@@ -546,23 +653,30 @@ func (diffView *DiffView) generateDiffLinesForDiff(diff *Diff) (lines []*diffLin
 			},
 		}
 
-		for _, char := range changePart {
-			switch char {
-			case '+':
-				sections = append(sections, &diffLineSection{
-					text:             "+",
-					themeComponentID: CmpDiffviewDifflineLineAdded,
-				})
-			case '-':
-				sections = append(sections, &diffLineSection{
-					text:             "-",
-					themeComponentID: CmpDiffviewDifflineLineRemoved,
-				})
-			default:
-				sections = append(sections, &diffLineSection{
-					text:             fmt.Sprintf("%c", char),
-					themeComponentID: CmpDiffviewDifflineNormal,
-				})
+		if strings.Contains(changePart, " -> ") {
+			sections = append(sections, &diffLineSection{
+				text:             changePart,
+				themeComponentID: CmpDiffviewDifflineNormal,
+			})
+		} else {
+			for _, char := range changePart {
+				switch char {
+				case '+':
+					sections = append(sections, &diffLineSection{
+						text:             "+",
+						themeComponentID: CmpDiffviewDifflineLineAdded,
+					})
+				case '-':
+					sections = append(sections, &diffLineSection{
+						text:             "-",
+						themeComponentID: CmpDiffviewDifflineLineRemoved,
+					})
+				default:
+					sections = append(sections, &diffLineSection{
+						text:             fmt.Sprintf("%c", char),
+						themeComponentID: CmpDiffviewDifflineNormal,
+					})
+				}
 			}
 		}
 
@@ -581,11 +695,29 @@ func (diffView *DiffView) generateDiffLinesForDiff(diff *Diff) (lines []*diffLin
 
 		switch {
 		case strings.HasPrefix(line, "diff --git"):
-			diffLine = newDiffLineData(line, dltGitDiffHeader, CmpDiffviewDifflineGitDiffHeader)
+			diffLine = newDiffLineData(line, dltGitDiffHeaderDiff, CmpDiffviewDifflineGitDiffHeader)
+		case strings.HasPrefix(line, "new mode"):
+			diffLine = newDiffLineData(line, dltGitDiffHeaderNewMode, CmpDiffviewDifflineNormal)
+		case strings.HasPrefix(line, "old mode"):
+			diffLine = newDiffLineData(line, dltGitDiffHeaderOldMode, CmpDiffviewDifflineNormal)
+		case strings.HasPrefix(line, "new file mode"):
+			diffLine = newDiffLineData(line, dltGitDiffHeaderNewFileMode, CmpDiffviewDifflineNormal)
+		case strings.HasPrefix(line, "deleted file mode"):
+			diffLine = newDiffLineData(line, dltGitDiffHeaderDeletedFileMode, CmpDiffviewDifflineNormal)
+		case strings.HasPrefix(line, "similarity index"):
+			diffLine = newDiffLineData(line, dltGitDiffHeaderSimilarityIndex, CmpDiffviewDifflineNormal)
+		case strings.HasPrefix(line, "rename from"):
+			diffLine = newDiffLineData(line, dltGitDiffHeaderRenameFrom, CmpDiffviewDifflineNormal)
+		case strings.HasPrefix(line, "rename to"):
+			diffLine = newDiffLineData(line, dltGitDiffHeaderRenameTo, CmpDiffviewDifflineNormal)
+		case strings.HasPrefix(line, "Binary files"):
+			diffLine = newDiffLineData(line, dltGitDiffHeaderBinaryFile, CmpDiffviewDifflineNormal)
 		case strings.HasPrefix(line, "index"):
-			diffLine = newDiffLineData(line, dltGitDiffExtendedHeader, CmpDiffviewDifflineGitDiffExtendedHeader)
-		case strings.HasPrefix(line, "--- ") || strings.HasPrefix(line, "+++ "):
-			diffLine = newDiffLineData(line, dltUnifiedDiffHeader, CmpDiffviewDifflineUnifiedDiffHeader)
+			diffLine = newDiffLineData(line, dltGitDiffHeaderIndex, CmpDiffviewDifflineGitDiffExtendedHeader)
+		case strings.HasPrefix(line, "+++"):
+			diffLine = newDiffLineData(line, dltGitDiffHeaderNewFile, CmpDiffviewDifflineUnifiedDiffHeader)
+		case strings.HasPrefix(line, "---"):
+			diffLine = newDiffLineData(line, dltGitDiffHeaderOldFile, CmpDiffviewDifflineUnifiedDiffHeader)
 		case strings.HasPrefix(line, "@@"):
 			if lineParts := strings.SplitAfter(line, "@@"); len(lineParts) != 3 {
 				log.Warnf("Unable to handle hunk header line: %v", line)
@@ -625,6 +757,16 @@ func (diffView *DiffView) HandleEvent(event Event) (err error) {
 
 func (diffView *DiffView) viewPos() ViewPos {
 	return diffView.activeViewPos
+}
+
+func (diffView *DiffView) onConfigVariableChange(configVariable ConfigVariable) {
+	diffView.lock.Lock()
+	defer diffView.lock.Unlock()
+
+	switch configVariable {
+	case CfDiffDisplay:
+		diffView.switchToDiffIfExists(diffView.activeDiff)
+	}
 }
 
 // HandleAction checks if the diff view supports the provided action and executes it if so
@@ -749,12 +891,11 @@ func selectDiffLine(diffView *DiffView, action Action) (err error) {
 	}
 
 	filePart = strings.TrimRight(filePart, " ")
-	pattern := fmt.Sprintf("diff --git a/%v b/%v", filePart, filePart)
 
 	for lineIndex++; lineIndex < uint(len(diffLines.lines)); lineIndex++ {
 		diffLine = diffLines.lines[lineIndex]
 
-		if strings.HasPrefix(diffLine.line, pattern) {
+		if diffLine.lineType == dltGitDiffHeaderDiff && strings.Contains(diffLine.line, filePart) {
 			break
 		}
 	}

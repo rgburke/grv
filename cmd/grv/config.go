@@ -32,6 +32,7 @@ const (
 	cfGitBinaryFilePathDefaultValue = ""
 	cfCommitLimitDefaultValue       = ""
 	cfDefaultViewDefaultValue       = ""
+	cfDiffDisplayDefaultValue       = "fancy"
 
 	cfAllView             = "All"
 	cfMainView            = "MainView"
@@ -81,6 +82,8 @@ const (
 	CfCommitLimit ConfigVariable = "commit-limit"
 	// CfDefaultView stores the command to generate the default view
 	CfDefaultView ConfigVariable = "default-view"
+	// CfDiffDisplay stores the way diffs are displayed
+	CfDiffDisplay ConfigVariable = "diff-display"
 )
 
 var systemColorValues = map[string]SystemColorValue{
@@ -158,22 +161,31 @@ var themeComponents = map[string]ThemeComponentID{
 	cfCommitView + ".CommitGraphBranch6":     CmpCommitviewGraphBranch6,
 	cfCommitView + ".CommitGraphBranch7":     CmpCommitviewGraphBranch7,
 
-	cfDiffView + ".Title":                 CmpDiffviewTitle,
-	cfDiffView + ".Footer":                CmpDiffviewFooter,
-	cfDiffView + ".Normal":                CmpDiffviewDifflineNormal,
-	cfDiffView + ".CommitAuthor":          CmpDiffviewDifflineDiffCommitAuthor,
-	cfDiffView + ".CommitAuthorDate":      CmpDiffviewDifflineDiffCommitAuthorDate,
-	cfDiffView + ".CommitCommitter":       CmpDiffviewDifflineDiffCommitCommitter,
-	cfDiffView + ".CommitCommitterDate":   CmpDiffviewDifflineDiffCommitCommitterDate,
-	cfDiffView + ".CommitMessage":         CmpDiffviewDifflineDiffCommitMessage,
-	cfDiffView + ".StatsFile":             CmpDiffviewDifflineDiffStatsFile,
-	cfDiffView + ".GitDiffHeader":         CmpDiffviewDifflineGitDiffHeader,
-	cfDiffView + ".GitDiffExtendedHeader": CmpDiffviewDifflineGitDiffExtendedHeader,
-	cfDiffView + ".UnifiedDiffHeader":     CmpDiffviewDifflineUnifiedDiffHeader,
-	cfDiffView + ".HunkStart":             CmpDiffviewDifflineHunkStart,
-	cfDiffView + ".HunkHeader":            CmpDiffviewDifflineHunkHeader,
-	cfDiffView + ".AddedLine":             CmpDiffviewDifflineLineAdded,
-	cfDiffView + ".RemovedLine":           CmpDiffviewDifflineLineRemoved,
+	cfDiffView + ".Title":                   CmpDiffviewTitle,
+	cfDiffView + ".Footer":                  CmpDiffviewFooter,
+	cfDiffView + ".Normal":                  CmpDiffviewDifflineNormal,
+	cfDiffView + ".CommitAuthor":            CmpDiffviewDifflineDiffCommitAuthor,
+	cfDiffView + ".CommitAuthorDate":        CmpDiffviewDifflineDiffCommitAuthorDate,
+	cfDiffView + ".CommitCommitter":         CmpDiffviewDifflineDiffCommitCommitter,
+	cfDiffView + ".CommitCommitterDate":     CmpDiffviewDifflineDiffCommitCommitterDate,
+	cfDiffView + ".CommitMessage":           CmpDiffviewDifflineDiffCommitMessage,
+	cfDiffView + ".StatsFile":               CmpDiffviewDifflineDiffStatsFile,
+	cfDiffView + ".GitDiffHeader":           CmpDiffviewDifflineGitDiffHeader,
+	cfDiffView + ".GitDiffExtendedHeader":   CmpDiffviewDifflineGitDiffExtendedHeader,
+	cfDiffView + ".UnifiedDiffHeader":       CmpDiffviewDifflineUnifiedDiffHeader,
+	cfDiffView + ".HunkStart":               CmpDiffviewDifflineHunkStart,
+	cfDiffView + ".HunkHeader":              CmpDiffviewDifflineHunkHeader,
+	cfDiffView + ".AddedLine":               CmpDiffviewDifflineLineAdded,
+	cfDiffView + ".RemovedLine":             CmpDiffviewDifflineLineRemoved,
+	cfDiffView + ".FancySeparator":          CmpDiffviewFancyDiffLineSeparator,
+	cfDiffView + ".FancyFile":               CmpDiffviewFancyDiffLineFile,
+	cfDiffView + ".FancyLineAdded":          CmpDiffviewFancyDifflineLineAdded,
+	cfDiffView + ".FancyLineRemoved":        CmpDiffviewFancyDifflineLineRemoved,
+	cfDiffView + ".FancyLineAddedChange":    CmpDiffviewFancyDifflineLineAddedChange,
+	cfDiffView + ".FancyLineRemovedChange":  CmpDiffviewFancyDifflineLineRemovedChange,
+	cfDiffView + ".FancyEmptyLineAdded":     CmpDiffviewFancyDifflineEmptyLineAdded,
+	cfDiffView + ".FancyEmptyLineRemoved":   CmpDiffviewFancyDifflineEmptyLineRemoved,
+	cfDiffView + ".FancyTrailingWhitespace": CmpDiffviewFancyDifflineTrailingWhitespace,
 
 	cfGitStatusView + ".Message":         CmpGitStatusMessage,
 	cfGitStatusView + ".StagedTitle":     CmpGitStatusStagedTitle,
@@ -394,6 +406,11 @@ func NewConfiguration(keyBindings KeyBindings, channels Channels, variables GRVV
 			defaultValue: cfDefaultViewDefaultValue,
 			validator:    &defaultViewValidator{config: config},
 			description:  "Command to generate a custom default view on start up",
+		},
+		CfDiffDisplay: {
+			defaultValue: cfDiffDisplayDefaultValue,
+			validator:    &diffDisplayValidator{},
+			description:  "Diff display format",
 		},
 	}
 
@@ -1212,6 +1229,18 @@ func (defaultViewValidator *defaultViewValidator) validate(value string) (proces
 		err = fmt.Errorf("No user defined command with name \"%v\" exists", value)
 	} else {
 		processedValue = value
+	}
+
+	return
+}
+
+type diffDisplayValidator struct{}
+
+func (diffDisplayValidator *diffDisplayValidator) validate(value string) (processedValue interface{}, err error) {
+	if IsValidDiffProcessorName(value) {
+		processedValue = value
+	} else {
+		err = fmt.Errorf("Invalid %v value %v", CfDiffDisplay, value)
 	}
 
 	return
