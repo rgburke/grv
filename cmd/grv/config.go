@@ -1071,6 +1071,31 @@ func (config *Configuration) KeyStrings(actionType ActionType, viewHierarchy Vie
 	return
 }
 
+// HandleEvent reacts to an event
+func (config *Configuration) HandleEvent(event Event) (err error) {
+	switch event.EventType {
+	case ViewRemovedEvent:
+		for _, view := range event.Args {
+			if listener, ok := view.(ConfigVariableOnChangeListener); ok {
+				config.removeOnChangeListener(listener)
+			}
+		}
+	}
+
+	return
+}
+
+func (config *Configuration) removeOnChangeListener(onChangeListener ConfigVariableOnChangeListener) {
+	for _, variable := range config.configVariables {
+		for index, listener := range variable.onChangeListeners {
+			if onChangeListener == listener {
+				variable.onChangeListeners = append(variable.onChangeListeners[:index], variable.onChangeListeners[index+1:]...)
+				break
+			}
+		}
+	}
+}
+
 // GenerateHelpSections generates all help tables related to configuration
 func (config *Configuration) GenerateHelpSections() (helpSections []*HelpSection) {
 	helpSections = append(helpSections, config.keyBindings.GenerateHelpSections(config)...)

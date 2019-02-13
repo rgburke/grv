@@ -218,7 +218,7 @@ func NewGRV(readOnly bool) *GRV {
 		config:          config,
 		inputBuffer:     NewInputBuffer(keyBindings),
 		input:           NewInputKeyMapper(ui),
-		eventListeners:  []EventListener{view, repoData},
+		eventListeners:  []EventListener{view, repoData, config},
 		variables:       variables,
 	}
 }
