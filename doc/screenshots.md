@@ -6,6 +6,9 @@
 ### Commit Graph
 ![Screenshot](./grv-commit-graph.png)
 
+### Fancy Diff Format
+![Screenshot](./grv-fancy-diff.png)
+
 ### Modify Repository
 ![Screenshot](./grv-available-actions.png)
 
