@@ -520,14 +520,13 @@ func (ui *NCursesUI) GetInput(force bool) (key Key, err error) {
 			fdSet(pipeFd, rfds)
 			nullPointer := uintptr(unsafe.Pointer(nil))
 
-			if _, _, errno := syscall.Syscall6(SelectSyscallID(), uintptr(pipeFd+1), uintptr(unsafe.Pointer(rfds)),
-				nullPointer, nullPointer, nullPointer, 0); errno != 0 {
-				err = errno
-			}
+			_, _, errno := syscall.Syscall6(SelectSyscallID(), uintptr(pipeFd+1), uintptr(unsafe.Pointer(rfds)),
+				nullPointer, nullPointer, nullPointer, 0)
 
 			switch {
-			case err != nil:
-				err = fmt.Errorf("Select system call failed: %v", err)
+			case errno == syscall.EINTR:
+			case errno != 0:
+				err = fmt.Errorf("Select system call failed: %v", errno.Error())
 				return
 			case fdIsset(pipeFd, rfds):
 				if _, err := ui.pipe.read.Read(make([]byte, 8)); err != nil {
