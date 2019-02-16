@@ -95,6 +95,7 @@ func (fancyDiffProcessor *fancyDiffProcessor) processDiff(lines []*diffLineData)
 func (fancyDiffProcessor *fancyDiffProcessor) processDiffHeader(lines []*diffLineData, diffHeaderIndex int) (generatedLines []*diffLineData, currentFile string, err error) {
 	var oldFile, newFile, oldFileMode, newFileMode string
 	var isBinary bool
+	var headerSeen bool
 	status := fileModified
 
 OuterLoop:
@@ -103,6 +104,10 @@ OuterLoop:
 
 		switch line.lineType {
 		case dltGitDiffHeaderDiff:
+			if headerSeen {
+				break OuterLoop
+			}
+
 			matches := diffHeaderRegex.FindStringSubmatch(line.line)
 			if len(matches) != 3 {
 				err = fmt.Errorf("line: \"%v\" doesn't have expected diff header format: %v", line.line, matches)
@@ -110,6 +115,7 @@ OuterLoop:
 			}
 
 			newFile = matches[1]
+			headerSeen = true
 		case dltGitDiffHeaderNewFile:
 			newFile = oldNewFileRegex.ReplaceAllString(line.line, "")
 		case dltGitDiffHeaderOldFile:
