@@ -14,16 +14,21 @@ package main
 //
 // extern void grvReadlineUpdateDisplay(void);
 // extern int grvReadlineStartUpHook(void);
+// extern int grvReadlineEventHook(void);
+// extern int grvReadlineEscapeHandler(int, int);
 //
 // static void grv_init_readline(void) {
 // 	rl_redisplay_function = grvReadlineUpdateDisplay;
 //	rl_startup_hook = grvReadlineStartUpHook;
+//	rl_event_hook = grvReadlineEventHook;
 //	rl_catch_signals = 0;
 //	rl_catch_sigwinch = 0;
 //#if RL_READLINE_VERSION >= 0x0603
 //	rl_change_environment = 0;
 //#endif
 //	rl_bind_key('\t', NULL);
+//	rl_bind_key(0x1B, grvReadlineEscapeHandler);
+// 	rl_set_keyboard_input_timeout(250000);
 //
 //	history_write_timestamps = 1;
 //	history_comment_char = '#';
@@ -198,6 +203,17 @@ func ReadLineActive() bool {
 	return readLine.active
 }
 
+// CancelReadline cancels the current readline invocation
+func CancelReadline() {
+	readLine.lock.Lock()
+	defer readLine.lock.Unlock()
+
+	if readLine.active {
+		C.rl_delete_text(0, C.rl_end)
+		C.rl_done = 1
+	}
+}
+
 func readLineSetActive(active bool) {
 	readLine.lock.Lock()
 	defer readLine.lock.Unlock()
@@ -294,5 +310,16 @@ func grvReadlineStartUpHook() C.int {
 		C.free(unsafe.Pointer(cInitialBufferText))
 	}
 
+	return 0
+}
+
+//export grvReadlineEventHook
+func grvReadlineEventHook() C.int {
+	return 0
+}
+
+//export grvReadlineEscapeHandler
+func grvReadlineEscapeHandler(C.int, C.int) C.int {
+	CancelReadline()
 	return 0
 }

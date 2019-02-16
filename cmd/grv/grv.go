@@ -622,8 +622,13 @@ func (grv *GRV) runSignalHandlerLoop(waitGroup *sync.WaitGroup, exitCh <-chan bo
 
 			switch signal {
 			case syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP:
-				grv.End()
-				return
+				if signal == syscall.SIGINT && ReadLineActive() {
+					log.Debugf("Readline is active - cancelling readline")
+					CancelReadline()
+				} else {
+					grv.End()
+					return
+				}
 			case syscall.SIGCONT:
 				grv.Resume()
 			case syscall.SIGWINCH:
