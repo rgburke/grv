@@ -206,7 +206,7 @@ They are specified using the set command in the grvrc file or at the command pro
  Variable             | Type   | Default Value | Description                                                                 
  ---------------------+--------+---------------+------------------------------------------------------------------------------
  commit-graph         | bool   | false         | Commit graph visible                                                        
- commit-limit         | string |               | Limit the number of commits loaded. Allowed values: number, date, oid or tag
+ commit-limit         | string | 100000        | Limit the number of commits loaded. Allowed values: number, date, oid or tag
  confirm-checkout     | bool   | true          | Confirm before performing git checkout                                      
  default-view         | string |               | Command to generate a custom default view on start up                       
  diff-display         | string | fancy         | Diff display format                                                         

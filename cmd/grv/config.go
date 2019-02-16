@@ -30,7 +30,7 @@ const (
 	cfConfirmCheckoutDefaultValue   = true
 	cfPromptHistorySizeDefaultValue = 1000
 	cfGitBinaryFilePathDefaultValue = ""
-	cfCommitLimitDefaultValue       = ""
+	cfCommitLimitDefaultValue       = "100000"
 	cfDefaultViewDefaultValue       = ""
 	cfDiffDisplayDefaultValue       = "fancy"
 
