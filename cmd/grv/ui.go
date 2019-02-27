@@ -164,17 +164,15 @@ type NCursesUI struct {
 	maxColorPairs int
 	suspended     bool
 	suspendedLock *sync.Cond
-	mouseMask     gc.MouseButton
 	colorPairs    map[ThemeComponentID]int16
 }
 
 // NewNCursesDisplay creates a new NCursesUI instance
 func NewNCursesDisplay(channels Channels, config Config) *NCursesUI {
 	ui := &NCursesUI{
-		windows:   make(map[*Window]*nCursesWindow),
-		channels:  channels,
-		config:    config,
-		mouseMask: gc.M_ALL,
+		windows:  make(map[*Window]*nCursesWindow),
+		channels: channels,
+		config:   config,
 	}
 
 	ui.suspendedLock = sync.NewCond(&ui.lock)
@@ -266,9 +264,7 @@ func (ui *NCursesUI) initialiseNCurses() (err error) {
 	gc.Raw(true)
 	gc.MouseInterval(0)
 
-	if ui.config.GetBool(CfMouse) {
-		ui.toggleMouse()
-	}
+	ui.updateMouseState()
 
 	if gc.Cursor(0) != nil {
 		log.Debugf("Unable to hide cursor")
@@ -652,15 +648,20 @@ func (ui *NCursesUI) onConfigVariableChange(configVariable ConfigVariable) {
 		theme := ui.config.GetTheme()
 		ui.initialiseColorPairsFromTheme(theme)
 	case CfMouse:
-		ui.toggleMouse()
+		ui.updateMouseState()
 	default:
 		log.Warnf("Received notification for variable I didn't register for: %v", configVariable)
 	}
 }
 
-func (ui *NCursesUI) toggleMouse() {
-	log.Infof("Toggling mouse enabled")
-	gc.MouseMask(ui.mouseMask, &ui.mouseMask)
+func (ui *NCursesUI) updateMouseState() {
+	if ui.config.GetBool(CfMouse) {
+		log.Infof("Mouse enabled")
+		gc.MouseMask(gc.M_ALL, nil)
+	} else {
+		log.Infof("Mouse disabled")
+		gc.MouseMask(0, nil)
+	}
 }
 
 func (ui *NCursesUI) initialiseColorPairsFromTheme(theme Theme) {
