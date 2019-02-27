@@ -615,7 +615,7 @@ func (ui *NCursesUI) getMouseEventType(mouseEvent *gc.MouseEvent) (mouseEventTyp
 	case (button & gc.M_B1_PRESSED) != 0:
 		mouseEventType = MetLeftClick
 		exists = true
-	case (button & (gc.M_B4_PRESSED | gc.M_B4_TPL_CLICKED)) != 0:
+	case (button & (gc.M_B4_PRESSED | gc.M_B4_TPL_CLICKED | gc.M_B4_DBL_CLICKED)) != 0:
 		mouseEventType = MetScrollUp
 		exists = true
 	case C.grv_is_scroll_down(C.long(button)) != 0:
