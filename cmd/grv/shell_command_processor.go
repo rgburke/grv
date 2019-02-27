@@ -25,7 +25,7 @@ const (
 
 var shellCommandPrefixOutputType = map[rune]ShellCommandOutputType{
 	'@': NoOutput,
-	'!': WindowOutput,
+	'!': TerminalOutput,
 }
 
 // OutputType returns the ShellCommandOutputType the provided shell command prefix maps to
