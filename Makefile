@@ -46,7 +46,7 @@ update:
 
 .PHONY: update-test
 update-test:
-	$(GOCMD) get github.com/golang/lint/golint
+	$(GOCMD) get golang.org/x/lint/golint
 	$(GOCMD) get github.com/stretchr/testify/mock
 	$(GOCMD) get github.com/stretchr/testify/assert
 
