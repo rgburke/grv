@@ -203,19 +203,20 @@ Configuration variables allow features to be enabled, disabled and configured.
 They are specified using the set command in the grvrc file or at the command prompt
 
 ```
- Variable             | Type   | Default Value | Description                                                                 
- ---------------------+--------+---------------+------------------------------------------------------------------------------
- commit-graph         | bool   | false         | Commit graph visible                                                        
- commit-limit         | string | 100000        | Limit the number of commits loaded. Allowed values: number, date, oid or tag
- confirm-checkout     | bool   | true          | Confirm before performing git checkout                                      
- default-view         | string |               | Command to generate a custom default view on start up                       
- diff-display         | string | fancy         | Diff display format                                                         
- git-binary-file-path | string |               | File path to git binary. Required only when git binary is not in $PATH      
- mouse                | bool   | false         | Mouse support enabled                                                       
- mouse-scroll-rows    | int    | 3             | Number of rows scrolled for each mouse event                                
- prompt-history-size  | int    | 1000          | Maximum number of prompt entries retained                                   
- tabwidth             | int    | 8             | Tab character screen width (minimum value: 1)                               
- theme                | string | solarized     | The currently active theme                                                  
+ Variable                   | Type   | Default Value | Description                                                                 
+ ---------------------------+--------+---------------+------------------------------------------------------------------------------
+ commit-graph               | bool   | false         | Commit graph visible                                                        
+ commit-limit               | string | 100000        | Limit the number of commits loaded. Allowed values: number, date, oid or tag
+ confirm-checkout           | bool   | true          | Confirm before performing git checkout                                      
+ default-view               | string |               | Command to generate a custom default view on start up                       
+ diff-display               | string | fancy         | Diff display format                                                         
+ git-binary-file-path       | string |               | File path to git binary. Required only when git binary is not in $PATH      
+ input-prompt-after-command | bool   | true          | Display "Press any key to continue" after executing external command        
+ mouse                      | bool   | false         | Mouse support enabled                                                       
+ mouse-scroll-rows          | int    | 3             | Number of rows scrolled for each mouse event                                
+ prompt-history-size        | int    | 1000          | Maximum number of prompt entries retained                                   
+ tabwidth                   | int    | 8             | Tab character screen width (minimum value: 1)                               
+ theme                      | string | solarized     | The currently active theme                                                  
 ```
 
 

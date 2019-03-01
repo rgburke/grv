@@ -17,22 +17,23 @@ import (
 )
 
 const (
-	cfDefaultConfigHomeDir          = "/.config"
-	cfGrvConfigDir                  = "/grv"
-	cfGrvrcFile                     = "/grvrc"
-	cfTabWidthMinValue              = 1
-	cfTabWidthDefaultValue          = 8
-	cfClassicThemeName              = "classic"
-	cfSolarizedThemeName            = "solarized"
-	cfMouseDefaultValue             = false
-	cfMouseScrollRowsDefaultValue   = 3
-	cfCommitGraphDefaultValue       = false
-	cfConfirmCheckoutDefaultValue   = true
-	cfPromptHistorySizeDefaultValue = 1000
-	cfGitBinaryFilePathDefaultValue = ""
-	cfCommitLimitDefaultValue       = "100000"
-	cfDefaultViewDefaultValue       = ""
-	cfDiffDisplayDefaultValue       = "fancy"
+	cfDefaultConfigHomeDir                = "/.config"
+	cfGrvConfigDir                        = "/grv"
+	cfGrvrcFile                           = "/grvrc"
+	cfTabWidthMinValue                    = 1
+	cfTabWidthDefaultValue                = 8
+	cfClassicThemeName                    = "classic"
+	cfSolarizedThemeName                  = "solarized"
+	cfMouseDefaultValue                   = false
+	cfMouseScrollRowsDefaultValue         = 3
+	cfCommitGraphDefaultValue             = false
+	cfConfirmCheckoutDefaultValue         = true
+	cfPromptHistorySizeDefaultValue       = 1000
+	cfGitBinaryFilePathDefaultValue       = ""
+	cfCommitLimitDefaultValue             = "100000"
+	cfDefaultViewDefaultValue             = ""
+	cfDiffDisplayDefaultValue             = "fancy"
+	cfInputPromptAfterCommandDefaultValue = true
 
 	cfAllView             = "All"
 	cfMainView            = "MainView"
@@ -84,6 +85,8 @@ const (
 	CfDefaultView ConfigVariable = "default-view"
 	// CfDiffDisplay stores the way diffs are displayed
 	CfDiffDisplay ConfigVariable = "diff-display"
+	// CfInputPromptAfterCommand stores whether the user is prompted for input after a command
+	CfInputPromptAfterCommand ConfigVariable = "input-prompt-after-command"
 )
 
 var systemColorValues = map[string]SystemColorValue{
@@ -411,6 +414,13 @@ func NewConfiguration(keyBindings KeyBindings, channels Channels, variables GRVV
 			defaultValue: cfDiffDisplayDefaultValue,
 			validator:    &diffDisplayValidator{},
 			description:  "Diff display format",
+		},
+		CfInputPromptAfterCommand: {
+			defaultValue: cfInputPromptAfterCommandDefaultValue,
+			validator: booleanValueValidator{
+				variableName: string(CfInputPromptAfterCommand),
+			},
+			description: `Display "Press any key to continue" after executing external command`,
 		},
 	}
 

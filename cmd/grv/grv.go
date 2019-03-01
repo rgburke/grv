@@ -560,7 +560,7 @@ func (grv *GRV) runCommand(action Action) (err error) {
 	}
 
 	if arg.interactive {
-		if arg.promptForInput {
+		if arg.promptForInput && grv.config.GetBool(CfInputPromptAfterCommand) {
 			cmd.Stdout.Write([]byte("\nPress any key to continue"))
 			bufio.NewReader(cmd.Stdin).ReadByte()
 		}
