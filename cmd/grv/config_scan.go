@@ -27,6 +27,10 @@ const (
 	CtkCount
 )
 
+const (
+	configScannerLookAhead = 2
+)
+
 var configTokenNames = map[ConfigTokenType]string{
 	CtkInvalid:      "Invalid",
 	CtkWord:         "Word",
@@ -36,6 +40,49 @@ var configTokenNames = map[ConfigTokenType]string{
 	CtkShellCommand: "Shell Command",
 	CtkTerminator:   "Terminator",
 	CtkEOF:          "EOF",
+}
+
+type configReader struct {
+	reader      *bufio.Reader
+	buffer      []rune
+	bufferIndex int
+	unreadCount int
+}
+
+func newConfigReader(reader io.Reader, bufferSize int) *configReader {
+	return &configReader{
+		reader: bufio.NewReader(reader),
+		buffer: make([]rune, bufferSize, bufferSize),
+	}
+}
+
+func (configReader *configReader) readRune() (char rune, err error) {
+	if configReader.unreadCount > 0 {
+		char = configReader.buffer[configReader.bufferIndex]
+		configReader.bufferIndex = (configReader.bufferIndex + 1) % len(configReader.buffer)
+		configReader.unreadCount--
+	} else if char, _, err = configReader.reader.ReadRune(); err == nil {
+		configReader.buffer[configReader.bufferIndex] = char
+		configReader.bufferIndex = (configReader.bufferIndex + 1) % len(configReader.buffer)
+	}
+
+	return
+}
+
+func (configReader *configReader) unreadRune() (err error) {
+	if configReader.unreadCount+1 > len(configReader.buffer) {
+		return fmt.Errorf("Only %v consecutive unreads can be performed", len(configReader.buffer))
+	}
+
+	configReader.unreadCount++
+
+	if configReader.bufferIndex == 0 {
+		configReader.bufferIndex = len(configReader.buffer) - 1
+	} else {
+		configReader.bufferIndex--
+	}
+
+	return
 }
 
 // ConfigScannerPos represents a position in the config scanner input stream
@@ -57,7 +104,7 @@ type ConfigToken struct {
 
 // ConfigScanner scans an input stream and generates a stream of config tokens
 type ConfigScanner struct {
-	reader          *bufio.Reader
+	reader          *configReader
 	pos             ConfigScannerPos
 	lastCharLineEnd bool
 	lastLineEndCol  uint
@@ -71,6 +118,7 @@ func (token *ConfigToken) Equal(other *ConfigToken) bool {
 
 	return token.tokenType == other.tokenType &&
 		token.value == other.value &&
+		token.rawValue == other.rawValue &&
 		token.startPos == other.startPos &&
 		token.endPos == other.endPos &&
 		((token.err == nil && other.err == nil) ||
@@ -94,7 +142,7 @@ func ConfigTokenName(tokenType ConfigTokenType) string {
 // NewConfigScanner creates a new scanner which uses the provided reader
 func NewConfigScanner(reader io.Reader) *ConfigScanner {
 	return &ConfigScanner{
-		reader: bufio.NewReader(reader),
+		reader: newConfigReader(reader, configScannerLookAhead),
 		pos: ConfigScannerPos{
 			line: 1,
 			col:  0,
@@ -103,7 +151,7 @@ func NewConfigScanner(reader io.Reader) *ConfigScanner {
 }
 
 func (scanner *ConfigScanner) read() (char rune, eof bool, err error) {
-	char, _, err = scanner.reader.ReadRune()
+	char, err = scanner.reader.readRune()
 
 	if err == io.EOF {
 		eof = true
@@ -127,8 +175,18 @@ func (scanner *ConfigScanner) read() (char rune, eof bool, err error) {
 	return
 }
 
+func (scanner *ConfigScanner) unreadRunes(runeNum int) (err error) {
+	for i := 0; i < runeNum; i++ {
+		if err = scanner.unread(); err != nil {
+			return
+		}
+	}
+
+	return
+}
+
 func (scanner *ConfigScanner) unread() (err error) {
-	if err = scanner.reader.UnreadRune(); err != nil {
+	if err = scanner.reader.unreadRune(); err != nil {
 		return
 	}
 
@@ -182,23 +240,27 @@ func (scanner *ConfigScanner) Scan() (token *ConfigToken, err error) {
 
 		token, err = scanner.scanShellCommand()
 	case char == '-':
-		var nextBytes []byte
-		nextBytes, err = scanner.reader.Peek(1)
+		unreadCount := 2
+		var nextChar rune
+		nextChar, eof, err = scanner.read()
 
 		if err != nil {
 			break
-		} else if len(nextBytes) == 1 && nextBytes[0] == '-' {
+		} else if eof {
+			unreadCount = 1
+		} else if nextChar == '-' {
 			token, err = scanner.scanWord()
 
 			if token != nil && token.tokenType != CtkInvalid {
 				token.tokenType = CtkOption
-				token.value = "-" + token.value
+				token.value = "--" + token.value
+				token.rawValue = "--" + token.rawValue
 			}
 
 			break
 		}
 
-		if err = scanner.unread(); err != nil {
+		if err = scanner.unreadRunes(unreadCount); err != nil {
 			break
 		}
 
@@ -242,21 +304,28 @@ OuterLoop:
 		case eof:
 			break OuterLoop
 		case char == '\\':
-			if _, err = rawBuffer.WriteRune(char); err != nil {
-				return
-			}
-
-			var nextBytes []byte
-			nextBytes, err = scanner.reader.Peek(1)
+			unreadCount := 2
+			var nextChar rune
+			nextChar, eof, err = scanner.read()
 
 			if err != nil {
 				return
-			} else if len(nextBytes) == 1 && nextBytes[0] == '\n' {
+			} else if eof {
+				unreadCount = 1
+			} else if !eof && nextChar == '\n' {
 				escape = true
+				if err = scanner.unread(); err != nil {
+					return
+				}
+
+				if _, err = rawBuffer.WriteRune(char); err != nil {
+					return
+				}
+
 				continue
 			}
 
-			if err = scanner.unread(); err != nil {
+			if err = scanner.unreadRunes(unreadCount); err != nil {
 				return
 			}
 

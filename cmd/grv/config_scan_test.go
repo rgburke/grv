@@ -170,6 +170,22 @@ func TestScanSingleConfigToken(t *testing.T) {
 				err: errors.New("Unterminated string"),
 			},
 		},
+		{
+			input: " \\\n ",
+			expectedToken: ConfigToken{
+				tokenType: CtkWhiteSpace,
+				value:     "  ",
+				rawValue:  " \\\n ",
+				startPos: ConfigScannerPos{
+					line: 1,
+					col:  1,
+				},
+				endPos: ConfigScannerPos{
+					line: 2,
+					col:  1,
+				},
+			},
+		},
 	}
 
 	for _, singleTokenTest := range singleTokenTests {
@@ -999,6 +1015,37 @@ func TestScanMultipleConfigTokens(t *testing.T) {
 					endPos: ConfigScannerPos{
 						line: 2,
 						col:  4,
+					},
+				},
+			},
+		},
+		{
+			input: ` \test`,
+			expectedTokens: []ConfigToken{
+				{
+					tokenType: CtkWhiteSpace,
+					value:     " ",
+					rawValue:  " ",
+					startPos: ConfigScannerPos{
+						line: 1,
+						col:  1,
+					},
+					endPos: ConfigScannerPos{
+						line: 1,
+						col:  1,
+					},
+				},
+				{
+					tokenType: CtkWord,
+					value:     `\test`,
+					rawValue:  `\test`,
+					startPos: ConfigScannerPos{
+						line: 1,
+						col:  2,
+					},
+					endPos: ConfigScannerPos{
+						line: 1,
+						col:  6,
 					},
 				},
 			},
