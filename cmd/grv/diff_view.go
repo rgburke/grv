@@ -279,7 +279,7 @@ func (diffView *DiffView) Render(win RenderWindow) (err error) {
 		lineIndex++
 	}
 
-	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, diffView.active); err != nil {
+	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, diffView.viewState); err != nil {
 		return
 	}
 
@@ -848,7 +848,7 @@ func (diffView *DiffView) setVariables() {
 		}
 
 		filePart = strings.TrimRight(filePart, " ")
-		diffView.variables.SetViewVariable(VarFile, filePart, diffView.active)
+		diffView.variables.SetViewVariable(VarFile, filePart, diffView.viewState)
 	}
 
 	return

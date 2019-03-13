@@ -33,7 +33,7 @@ type AbstractWindowView struct {
 	config        Config
 	variables     GRVVariableSetter
 	viewSearch    *ViewSearch
-	active        bool
+	viewState     ViewState
 	borderWidth   uint
 	rowDescriptor string
 	handlers      map[ActionType]abstractWindowViewHandler
@@ -98,14 +98,14 @@ func (abstractWindowView *AbstractWindowView) RenderHelpBar(lineBuilder *LineBui
 	return
 }
 
-// OnActiveChange updates the active state of the view
-func (abstractWindowView *AbstractWindowView) OnActiveChange(active bool) {
+// OnStateChange updates the active state of the view
+func (abstractWindowView *AbstractWindowView) OnStateChange(viewState ViewState) {
 	abstractWindowView.lock.Lock()
 	defer abstractWindowView.lock.Unlock()
 
-	abstractWindowView.active = active
+	abstractWindowView.viewState = viewState
 
-	if active {
+	if viewState == ViewStateActive {
 		abstractWindowView.setVariables()
 	}
 }
@@ -207,13 +207,13 @@ func (abstractWindowView *AbstractWindowView) notifyChildRowSelected(rowIndex ui
 func (abstractWindowView *AbstractWindowView) setVariables() {
 	rowIndex := abstractWindowView.child.viewPos().ActiveRowIndex()
 	rows := abstractWindowView.child.rows()
-	active := abstractWindowView.active
+	viewState := abstractWindowView.viewState
 
-	abstractWindowView.variables.SetViewVariable(VarLineNumer, fmt.Sprintf("%v", rowIndex+1), active)
-	abstractWindowView.variables.SetViewVariable(VarLineCount, fmt.Sprintf("%v", rows), active)
+	abstractWindowView.variables.SetViewVariable(VarLineNumer, fmt.Sprintf("%v", rowIndex+1), viewState)
+	abstractWindowView.variables.SetViewVariable(VarLineCount, fmt.Sprintf("%v", rows), viewState)
 
 	line := abstractWindowView.child.line(rowIndex)
-	abstractWindowView.variables.SetViewVariable(VarLineText, line, active)
+	abstractWindowView.variables.SetViewVariable(VarLineText, line, viewState)
 }
 
 // HandleAction checks if this action is supported by the AbstractWindowView

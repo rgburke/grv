@@ -63,7 +63,7 @@ func (grvVariableView *GRVVariableView) Render(win RenderWindow) (err error) {
 		viewRowIndex++
 	}
 
-	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, grvVariableView.active); err != nil {
+	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, grvVariableView.viewState); err != nil {
 		return
 	}
 

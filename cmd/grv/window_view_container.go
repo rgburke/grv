@@ -66,10 +66,10 @@ func (container *WindowViewContainer) HandleAction(action Action) (err error) {
 	return
 }
 
-// OnActiveChange is forwarded onto the child view
-func (container *WindowViewContainer) OnActiveChange(active bool) {
+// OnStateChange is forwarded onto the child view
+func (container *WindowViewContainer) OnStateChange(viewState ViewState) {
 	if container.child != nil {
-		container.child.OnActiveChange(active)
+		container.child.OnStateChange(viewState)
 	}
 }
 

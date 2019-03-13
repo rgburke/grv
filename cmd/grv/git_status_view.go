@@ -186,7 +186,7 @@ func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 	}
 
 	if !gitStatusView.status.IsEmpty() {
-		if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, gitStatusView.active); err != nil {
+		if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, gitStatusView.viewState); err != nil {
 			return
 		}
 	}
@@ -237,14 +237,14 @@ func (gitStatusView *GitStatusView) removeGitStatusViewListener(gitStatusViewLis
 	}
 }
 
-// OnActiveChange updates whether this view is currently active
-func (gitStatusView *GitStatusView) OnActiveChange(active bool) {
-	gitStatusView.AbstractWindowView.OnActiveChange(active)
+// OnStateChange updates whether this view is currently active
+func (gitStatusView *GitStatusView) OnStateChange(viewState ViewState) {
+	gitStatusView.AbstractWindowView.OnStateChange(viewState)
 
 	gitStatusView.lock.Lock()
 	defer gitStatusView.lock.Unlock()
 
-	if active {
+	if viewState == ViewStateActive {
 		if err := gitStatusView.selectEntry(gitStatusView.activeViewPos.ActiveRowIndex()); err != nil {
 			gitStatusView.channels.ReportError(err)
 		}
@@ -515,7 +515,7 @@ func (gitStatusView *GitStatusView) setVariables() {
 	}
 
 	filePath := gitStatusView.renderedStatus[rowIndex].filePath
-	gitStatusView.variables.SetViewVariable(VarFile, filePath, gitStatusView.active)
+	gitStatusView.variables.SetViewVariable(VarFile, filePath, gitStatusView.viewState)
 }
 
 func (gitStatusView *GitStatusView) rows() uint {

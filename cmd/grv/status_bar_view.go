@@ -36,7 +36,7 @@ type StatusBarView struct {
 	repoData      RepoData
 	channels      Channels
 	config        ConfigSetter
-	active        bool
+	viewState     ViewState
 	promptType    promptType
 	pendingStatus string
 	lock          sync.Mutex
@@ -260,13 +260,12 @@ func (statusBarView *StatusBarView) showPrompt(promptArgs *PromptArgs, action Ac
 	return Prompt(promptArgs)
 }
 
-// OnActiveChange updates the active state of this view
-func (statusBarView *StatusBarView) OnActiveChange(active bool) {
+// OnStateChange updates the active state of this view
+func (statusBarView *StatusBarView) OnStateChange(viewState ViewState) {
 	statusBarView.lock.Lock()
 	defer statusBarView.lock.Unlock()
 
-	log.Debugf("StatusBarView active: %v", active)
-	statusBarView.active = active
+	statusBarView.viewState = viewState
 }
 
 // ViewID returns the view ID of the status bar view
@@ -285,7 +284,7 @@ func (statusBarView *StatusBarView) Render(win RenderWindow) (err error) {
 		return
 	}
 
-	if statusBarView.active {
+	if statusBarView.viewState == ViewStateActive {
 		promptText, promptInput, promptPoint := PromptState()
 		lineBuilder.Append("%v%v", promptText, promptInput)
 		bytes := 0

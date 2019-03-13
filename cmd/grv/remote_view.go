@@ -82,7 +82,7 @@ func (remoteView *RemoteView) Render(win RenderWindow) (err error) {
 		lineIndex++
 	}
 
-	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, remoteView.active); err != nil {
+	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, remoteView.viewState); err != nil {
 		return
 	}
 

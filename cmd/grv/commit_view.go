@@ -182,7 +182,7 @@ func (commitView *CommitView) Render(win RenderWindow) (err error) {
 	}
 
 	if commitSetState.commitNum > 0 {
-		if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, commitView.active); err != nil {
+		if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, commitView.viewState); err != nil {
 			return
 		}
 	} else {
@@ -491,7 +491,7 @@ func (commitView *CommitView) ViewID() ViewID {
 
 func (commitView *CommitView) setVariables(commit *Commit) {
 	commitView.AbstractWindowView.setVariables()
-	commitView.variables.SetViewVariable(VarCommit, commit.oid.String(), commitView.active)
+	commitView.variables.SetViewVariable(VarCommit, commit.oid.String(), commitView.viewState)
 }
 
 // RegisterCommitViewListener accepts a listener to be notified when a commit is selected

@@ -61,7 +61,7 @@ type ContainerView struct {
 	fullScreen                  bool
 	childPositions              []*ChildViewPosition
 	styleConfig                 WindowStyleConfig
-	active                      bool
+	viewState                   ViewState
 	lock                        sync.Mutex
 }
 
@@ -112,7 +112,7 @@ func (containerView *ContainerView) addChildView(newView BaseView) {
 		winID := fmt.Sprintf("%v-%T", viewIndex, windowView)
 		win := NewWindowWithStyleConfig(winID, containerView.config, containerView.styleConfig)
 		containerView.viewWins[windowView] = win
-		containerView.onActiveChange(containerView.active)
+		containerView.onStateChange(containerView.viewState)
 	}
 }
 
@@ -175,8 +175,8 @@ func (containerView *ContainerView) Dispose() {
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
-	for _, childView := range containerView.childViews {
-		childView.Dispose()
+	for !containerView.isEmpty() {
+		removeView(containerView, Action{ActionType: ActionRemoveView})
 	}
 }
 
@@ -210,22 +210,29 @@ func (containerView *ContainerView) HandleAction(action Action) (err error) {
 	return
 }
 
-// OnActiveChange updates the active state of this container and its child views
-func (containerView *ContainerView) OnActiveChange(active bool) {
+// OnStateChange updates the active state of this container and its child views
+func (containerView *ContainerView) OnStateChange(viewState ViewState) {
 	containerView.lock.Lock()
 	defer containerView.lock.Unlock()
 
-	containerView.onActiveChange(active)
+	containerView.onStateChange(viewState)
 }
 
-func (containerView *ContainerView) onActiveChange(active bool) {
-	containerView.active = active
+func (containerView *ContainerView) onStateChange(viewState ViewState) {
+	containerView.viewState = viewState
+
+	var inactiveChildViewState ViewState
+	if viewState == ViewStateActive {
+		inactiveChildViewState = ViewStateInactiveAndVisible
+	} else {
+		inactiveChildViewState = viewState
+	}
 
 	for index, childView := range containerView.childViews {
 		if uint(index) == containerView.activeViewIndex {
-			childView.OnActiveChange(active)
+			childView.OnStateChange(viewState)
 		} else {
-			childView.OnActiveChange(false)
+			childView.OnStateChange(inactiveChildViewState)
 		}
 	}
 }
@@ -580,7 +587,7 @@ func nextContainerChildView(containerView *ContainerView, action Action) (err er
 		}
 	}
 
-	containerView.onActiveChange(true)
+	containerView.onStateChange(containerView.viewState)
 	containerView.channels.UpdateDisplay()
 
 	return
@@ -595,7 +602,7 @@ func prevContainerChildView(containerView *ContainerView, action Action) (err er
 		}
 	}
 
-	containerView.onActiveChange(true)
+	containerView.onStateChange(containerView.viewState)
 	containerView.channels.UpdateDisplay()
 
 	return
@@ -694,7 +701,7 @@ func splitView(containerView *ContainerView, action Action) (err error) {
 			newContainer.SetOrientation(orientation)
 			newContainer.AddChildViews(childView, newView)
 			containerView.childViews[containerView.activeViewIndex] = newContainer
-			newContainer.OnActiveChange(true)
+			newContainer.OnStateChange(containerView.viewState)
 		}
 
 		containerView.channels.UpdateDisplay()
@@ -726,7 +733,7 @@ func removeView(containerView *ContainerView, action Action) (err error) {
 		})
 	}
 
-	containerView.onActiveChange(true)
+	containerView.onStateChange(containerView.viewState)
 	containerView.channels.UpdateDisplay()
 
 	return
@@ -754,7 +761,7 @@ func childMouseClick(containerView *ContainerView, action Action) (err error) {
 		}
 	}
 
-	containerView.onActiveChange(true)
+	containerView.onStateChange(containerView.viewState)
 	containerView.channels.UpdateDisplay()
 
 	return

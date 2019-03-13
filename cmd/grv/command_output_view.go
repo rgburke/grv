@@ -94,7 +94,7 @@ func (commandOutputView *CommandOutputView) Render(win RenderWindow) (err error)
 		viewRowIndex++
 	}
 
-	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, true); err != nil {
+	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, ViewStateActive); err != nil {
 		return
 	}
 

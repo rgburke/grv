@@ -2,8 +2,6 @@ package main
 
 import (
 	"sync"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 // GRVStatusView manages the status bar view and help view displayed at the bottom of grv
@@ -12,7 +10,7 @@ type GRVStatusView struct {
 	helpBarView   WindowView
 	statusBarWin  *Window
 	helpBarWin    *Window
-	active        bool
+	viewState     ViewState
 	lock          sync.Mutex
 }
 
@@ -58,16 +56,14 @@ func (grvStatusView *GRVStatusView) HandleAction(action Action) (err error) {
 	return
 }
 
-// OnActiveChange updates the active state of this view and its child views
-func (grvStatusView *GRVStatusView) OnActiveChange(active bool) {
+// OnStateChange updates the active state of this view and its child views
+func (grvStatusView *GRVStatusView) OnStateChange(viewState ViewState) {
 	grvStatusView.lock.Lock()
 	defer grvStatusView.lock.Unlock()
 
-	log.Debugf("GRVStatusView active: %v", active)
-
-	grvStatusView.active = active
-	grvStatusView.statusBarView.OnActiveChange(active)
-	grvStatusView.helpBarView.OnActiveChange(active)
+	grvStatusView.viewState = viewState
+	grvStatusView.statusBarView.OnStateChange(viewState)
+	grvStatusView.helpBarView.OnStateChange(viewState)
 }
 
 // ViewID returns the view ID of the status view

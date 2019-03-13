@@ -132,7 +132,7 @@ type RenderWindow interface {
 	ViewDimensions() ViewDimension
 	Clear()
 	SetRow(rowIndex, startColumn uint, themeComponentID ThemeComponentID, format string, args ...interface{}) error
-	SetSelectedRow(rowIndex uint, active bool) error
+	SetSelectedRow(rowIndex uint, viewState ViewState) error
 	SetCursor(rowIndex, colIndex uint) error
 	SetTitle(themeComponentID ThemeComponentID, format string, args ...interface{}) error
 	SetFooter(themeComponentID ThemeComponentID, format string, args ...interface{}) error
@@ -458,7 +458,8 @@ func (win *Window) SetRow(rowIndex, startColumn uint, themeComponentID ThemeComp
 }
 
 // SetSelectedRow sets the row to be highlighted as the selected row
-func (win *Window) SetSelectedRow(rowIndex uint, active bool) (err error) {
+func (win *Window) SetSelectedRow(rowIndex uint, viewState ViewState) (err error) {
+	active := viewState == ViewStateActive
 	log.Debugf("Set selected rowIndex for window %v to %v with active %v", win.id, rowIndex, active)
 
 	if rowIndex >= win.rows {

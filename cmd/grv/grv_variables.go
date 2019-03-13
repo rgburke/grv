@@ -122,7 +122,7 @@ type GRVVariableGetter interface {
 // GRVVariableSetter sets the value of a GRV variable
 type GRVVariableSetter interface {
 	GRVVariableGetter
-	SetViewVariable(variable GRVVariable, value string, isActiveView bool)
+	SetViewVariable(variable GRVVariable, value string, viewState ViewState)
 }
 
 // GRVVariables stores the values of all variables
@@ -147,8 +147,8 @@ func (grvVariables *GRVVariables) SetVariable(variable GRVVariable, value string
 }
 
 // SetViewVariable sets the value of a GRV variable for a view
-func (grvVariables *GRVVariables) SetViewVariable(variable GRVVariable, value string, isActiveView bool) {
-	if !activeViewOnlyVariables[variable] || isActiveView {
+func (grvVariables *GRVVariables) SetViewVariable(variable GRVVariable, value string, viewState ViewState) {
+	if !activeViewOnlyVariables[variable] || viewState == ViewStateActive {
 		grvVariables.SetVariable(variable, value)
 	}
 }

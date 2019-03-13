@@ -263,7 +263,7 @@ func (summaryView *SummaryView) Render(win RenderWindow) (err error) {
 		lineIndex++
 	}
 
-	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, summaryView.active); err != nil {
+	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, summaryView.viewState); err != nil {
 		return
 	}
 

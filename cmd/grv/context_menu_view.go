@@ -92,7 +92,7 @@ func (contextMenuView *ContextMenuView) Render(win RenderWindow) (err error) {
 
 	win.ApplyStyle(CmpContextMenuContent)
 
-	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, true); err != nil {
+	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, ViewStateActive); err != nil {
 		return
 	}
 

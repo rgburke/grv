@@ -233,8 +233,8 @@ type MockGRVVariableSetter struct {
 	mock.Mock
 }
 
-func (variables *MockGRVVariableSetter) SetViewVariable(variable GRVVariable, value string, isActiveView bool) {
-	variables.Called(variable, value, isActiveView)
+func (variables *MockGRVVariableSetter) SetViewVariable(variable GRVVariable, value string, viewState ViewState) {
+	variables.Called(variable, value, viewState)
 }
 
 func (variables *MockGRVVariableSetter) VariableValues() map[GRVVariable]string {
@@ -292,9 +292,9 @@ func setupAbstractWindowView() (*AbstractWindowView, *abstractWindowViewMocks) {
 
 	mocks.config.On("GetInt", CfMouseScrollRows).Return(3)
 
-	mocks.variables.On("SetViewVariable", VarLineNumer, "1", false)
-	mocks.variables.On("SetViewVariable", VarLineCount, "24", false)
-	mocks.variables.On("SetViewVariable", VarLineText, "", false)
+	mocks.variables.On("SetViewVariable", VarLineNumer, "1", ViewStateInvisible)
+	mocks.variables.On("SetViewVariable", VarLineCount, "24", ViewStateInvisible)
+	mocks.variables.On("SetViewVariable", VarLineText, "", ViewStateInvisible)
 
 	mocks.lock.On("Lock").Return()
 	mocks.lock.On("Unlock").Return()
@@ -789,33 +789,48 @@ func TestActionMouseScrollUpIsHandledAndUpdatesResultWhenScrollUpReturnsTrue(t *
 	assertChildViewAndDisplayUpdated(t, mocks)
 }
 
-func TestOnActiveChangeSetsActiveAndCallsSetVariablesWhenTrue(t *testing.T) {
+func TestOnStateChangeSetsViewStateAndCallsSetVariablesWhenViewStateIsActive(t *testing.T) {
 	abstractWindowView, mocks := setupAbstractWindowView()
 
-	mocks.variables.On("SetViewVariable", VarLineNumer, "1", true).Return()
-	mocks.variables.On("SetViewVariable", VarLineCount, "24", true).Return()
-	mocks.variables.On("SetViewVariable", VarLineText, "", true).Return()
+	mocks.variables.On("SetViewVariable", VarLineNumer, "1", ViewStateActive).Return()
+	mocks.variables.On("SetViewVariable", VarLineCount, "24", ViewStateActive).Return()
+	mocks.variables.On("SetViewVariable", VarLineText, "", ViewStateActive).Return()
 
-	abstractWindowView.OnActiveChange(true)
+	abstractWindowView.OnStateChange(ViewStateActive)
 
 	mocks.lock.AssertCalled(t, "Lock")
 	mocks.lock.AssertCalled(t, "Unlock")
-	assert.Equal(t, abstractWindowView.active, true, "active should be true")
+	assert.Equal(t, abstractWindowView.viewState, ViewStateActive, "viewState should be ViewStateActive")
 }
 
-func TestOnActiveChangeSetsActiveAndDoesNotCallSetVariablesWhenFalse(t *testing.T) {
+func TestOnStateChangeSetsViewStateAndDoesNotCallSetVariablesWhenViewStateIsInactive(t *testing.T) {
 	abstractWindowView, mocks := setupAbstractWindowView()
 
-	abstractWindowView.OnActiveChange(false)
+	abstractWindowView.OnStateChange(ViewStateInactiveAndVisible)
 
 	mocks.lock.AssertCalled(t, "Lock")
 	mocks.lock.AssertCalled(t, "Unlock")
 
-	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineNumer, "1", true)
-	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineCount, "24", true)
-	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineText, "", true)
+	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineNumer, "1", ViewStateActive)
+	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineCount, "24", ViewStateActive)
+	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineText, "", ViewStateActive)
 
-	assert.Equal(t, abstractWindowView.active, false, "active should be true")
+	assert.Equal(t, abstractWindowView.viewState, ViewStateInactiveAndVisible, "viewState should be ViewStateInactiveAndVisible")
+}
+
+func TestOnStateChangeSetsViewStateAndDoesNotCallSetVariablesWhenViewStateIsInvisible(t *testing.T) {
+	abstractWindowView, mocks := setupAbstractWindowView()
+
+	abstractWindowView.OnStateChange(ViewStateInvisible)
+
+	mocks.lock.AssertCalled(t, "Lock")
+	mocks.lock.AssertCalled(t, "Unlock")
+
+	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineNumer, "1", ViewStateActive)
+	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineCount, "24", ViewStateActive)
+	mocks.variables.AssertNotCalled(t, "SetViewVariable", VarLineText, "", ViewStateActive)
+
+	assert.Equal(t, abstractWindowView.viewState, ViewStateInvisible, "viewState should be ViewStateInvisible")
 }
 
 func TestWhenNotifyChildRowSelectedIsCalledThenSetVariablesIsAsWell(t *testing.T) {
@@ -823,9 +838,9 @@ func TestWhenNotifyChildRowSelectedIsCalledThenSetVariablesIsAsWell(t *testing.T
 
 	abstractWindowView.notifyChildRowSelected(0)
 
-	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineNumer, "1", false)
-	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineCount, "24", false)
-	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineText, "", false)
+	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineNumer, "1", ViewStateInvisible)
+	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineCount, "24", ViewStateInvisible)
+	mocks.variables.AssertCalled(t, "SetViewVariable", VarLineText, "", ViewStateInvisible)
 }
 
 func TestLineNumberReturnsTheNumberOfRowsInTheView(t *testing.T) {

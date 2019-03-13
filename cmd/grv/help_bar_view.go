@@ -42,8 +42,8 @@ func (helpBarView *HelpBarView) HandleAction(Action) (err error) {
 	return
 }
 
-// OnActiveChange does nothing
-func (helpBarView *HelpBarView) OnActiveChange(active bool) {
+// OnStateChange does nothing
+func (helpBarView *HelpBarView) OnStateChange(viewState ViewState) {
 
 }
 

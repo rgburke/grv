@@ -401,7 +401,7 @@ func (refView *RefView) Render(win RenderWindow) (err error) {
 		refIndex++
 	}
 
-	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, refView.active); err != nil {
+	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, refView.viewState); err != nil {
 		return
 	}
 
@@ -720,8 +720,8 @@ func (refView *RefView) setVariables() {
 	}
 
 	if branch != "" || tag != "" {
-		refView.variables.SetViewVariable(VarBranch, branch, refView.active)
-		refView.variables.SetViewVariable(VarTag, tag, refView.active)
+		refView.variables.SetViewVariable(VarBranch, branch, refView.viewState)
+		refView.variables.SetViewVariable(VarTag, tag, refView.viewState)
 	}
 }
 

@@ -96,8 +96,8 @@ func (errorView *ErrorView) HandleAction(Action) (err error) {
 	return
 }
 
-// OnActiveChange does nothing
-func (errorView *ErrorView) OnActiveChange(bool) {
+// OnStateChange does nothing
+func (errorView *ErrorView) OnStateChange(ViewState) {
 
 }
 

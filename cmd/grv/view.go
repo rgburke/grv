@@ -44,6 +44,16 @@ const (
 	ViewCount // i.e. Number of views
 )
 
+// ViewState represents the current state of the view
+type ViewState int
+
+// The set of view states
+const (
+	ViewStateInvisible ViewState = iota
+	ViewStateInactiveAndVisible
+	ViewStateActive
+)
+
 // HelpRenderer renders help information
 type HelpRenderer interface {
 	RenderHelpBar(*LineBuilder) error
@@ -56,7 +66,7 @@ type BaseView interface {
 	Initialise() error
 	Dispose()
 	HandleAction(Action) error
-	OnActiveChange(bool)
+	OnStateChange(ViewState)
 	ViewID() ViewID
 }
 
@@ -229,7 +239,7 @@ func (view *View) Initialise() (err error) {
 		}
 	}
 
-	view.OnActiveChange(true)
+	view.OnStateChange(ViewStateActive)
 
 	return
 }
@@ -606,18 +616,18 @@ func (view *View) HandleAction(action Action) (err error) {
 	return view.ActiveView().HandleAction(action)
 }
 
-// OnActiveChange updates the active state of the currently active child view
-func (view *View) OnActiveChange(active bool) {
+// OnStateChange updates the active state of the currently active child view
+func (view *View) OnStateChange(viewState ViewState) {
 	view.lock.Lock()
 	defer view.lock.Unlock()
 
-	log.Debugf("View active %v", active)
-	view.onActiveChange(active)
+	log.Debugf("View state %v", viewState)
+	view.onStateChange(viewState)
 }
 
-func (view *View) onActiveChange(active bool) {
+func (view *View) onStateChange(viewState ViewState) {
 	view.activeView().ifPresent(func(childView BaseView) {
-		childView.OnActiveChange(active)
+		childView.OnStateChange(viewState)
 	})
 }
 
@@ -719,9 +729,9 @@ func (view *View) ReportStatus(status string) error {
 func (view *View) prompt(action Action) (err error) {
 	view.lock.Lock()
 	view.activeView().ifPresent(func(childView BaseView) {
-		childView.OnActiveChange(false)
+		childView.OnStateChange(ViewStateInactiveAndVisible)
 	})
-	view.grvStatusView.OnActiveChange(true)
+	view.grvStatusView.OnStateChange(ViewStateActive)
 	view.promptActive = true
 	view.lock.Unlock()
 
@@ -729,9 +739,9 @@ func (view *View) prompt(action Action) (err error) {
 
 	view.lock.Lock()
 	view.promptActive = false
-	view.grvStatusView.OnActiveChange(false)
+	view.grvStatusView.OnStateChange(ViewStateInactiveAndVisible)
 	view.activeView().ifPresent(func(childView BaseView) {
-		childView.OnActiveChange(true)
+		childView.OnStateChange(ViewStateActive)
 	})
 	view.lock.Unlock()
 
@@ -745,9 +755,10 @@ func (view *View) nextTab() {
 		return
 	}
 
+	view.onStateChange(ViewStateInvisible)
 	view.activeViewPos++
 	view.activeViewPos %= view.childViewNum()
-	view.onActiveChange(true)
+	view.onStateChange(ViewStateActive)
 	view.channels.UpdateDisplay()
 }
 
@@ -756,13 +767,15 @@ func (view *View) prevTab() {
 		return
 	}
 
+	view.onStateChange(ViewStateInvisible)
+
 	if view.activeViewPos == 0 {
 		view.activeViewPos = view.childViewNum() - 1
 	} else {
 		view.activeViewPos--
 	}
 
-	view.onActiveChange(true)
+	view.onStateChange(ViewStateActive)
 	view.channels.UpdateDisplay()
 }
 
@@ -778,8 +791,9 @@ func (view *View) selectTabByName(action Action) (err error) {
 
 	for childIndex, child := range view.views {
 		if child.Title() == tabName {
+			view.onStateChange(ViewStateInvisible)
 			view.activeViewPos = uint(childIndex)
-			view.onActiveChange(true)
+			view.onStateChange(ViewStateActive)
 			view.channels.UpdateDisplay()
 			return
 		}
@@ -803,6 +817,7 @@ func (view *View) newTab(action Action) (err error) {
 func (view *View) addTab(tabName string) *ContainerView {
 	containerView := NewContainerView(view.channels, view.config)
 	containerView.SetTitle(tabName)
+	view.onStateChange(ViewStateInvisible)
 
 	if view.childViewNum() > 0 {
 		view.activeViewPos++
@@ -814,7 +829,7 @@ func (view *View) addTab(tabName string) *ContainerView {
 		view.activeViewPos = 0
 	}
 
-	containerView.OnActiveChange(true)
+	view.onStateChange(ViewStateActive)
 	view.channels.UpdateDisplay()
 
 	return containerView
@@ -827,6 +842,11 @@ func (view *View) removeTab() {
 		return
 	}
 
+	view.onStateChange(ViewStateInvisible)
+	view.activeView().ifPresent(func(childView BaseView) {
+		childView.Dispose()
+	})
+
 	index := view.activeViewPos
 	view.views = append(view.views[:index], view.views[index+1:]...)
 
@@ -836,7 +856,7 @@ func (view *View) removeTab() {
 		view.activeViewPos--
 	}
 
-	view.onActiveChange(true)
+	view.onStateChange(ViewStateActive)
 	view.channels.UpdateDisplay()
 
 	return
@@ -952,8 +972,9 @@ func (view *View) handleTabClick(col uint) {
 
 		if col >= cols && col < cols+width {
 			log.Debugf("Tab at index %v selected", tabIndex)
+			view.onStateChange(ViewStateInvisible)
 			view.activeViewPos = uint(tabIndex)
-			view.onActiveChange(true)
+			view.onStateChange(ViewStateActive)
 			view.channels.UpdateDisplay()
 			return
 		}
@@ -1041,7 +1062,7 @@ func (view *View) createMessageBoxView(action Action) (err error) {
 
 func (view *View) addPopupView(popupView popupView) {
 	if !view.popupViewsActive() {
-		view.onActiveChange(false)
+		view.onStateChange(ViewStateInactiveAndVisible)
 	}
 
 	view.popupViews = append(view.popupViews, popupView)
@@ -1061,7 +1082,7 @@ func (view *View) removePopupView() {
 	})
 
 	if !view.popupViewsActive() {
-		view.onActiveChange(true)
+		view.onStateChange(ViewStateActive)
 	}
 
 	view.channels.UpdateDisplay()
@@ -1129,8 +1150,9 @@ func (view *View) showHelpView(action Action) (err error) {
 	for childViewIndex, childView := range view.views {
 		if childView.Title() == viewHelpViewTitle {
 			helpView, _ = childView.ActiveView().(*HelpView)
+			view.onStateChange(ViewStateInvisible)
 			view.activeViewPos = uint(childViewIndex)
-			view.onActiveChange(true)
+			view.onStateChange(ViewStateActive)
 			break
 		}
 	}
