@@ -760,18 +760,19 @@ These variables represent the current state of the visible views.
 The set of variables available is:
 
 ```
- Variable     | Description                       
- -------------+------------------------------------
- head         | Value of HEAD                     
- branch       | Selected branch                   
- tag          | Selected tag                      
- commit       | Selected commit                   
- file         | Selected file                     
- line-text    | Selected lines content            
- line-number  | Selected line number              
- line-count   | Number of lines in the active view
- repo-path    | Repository file path              
- repo-workdir | Work directory path               
+ Variable       | Description                       
+ ---------------+------------------------------------
+ head           | Value of HEAD                     
+ branch         | Selected branch                   
+ tag            | Selected tag                      
+ commit         | Selected commit                   
+ file           | Selected file                     
+ diff-view-file | Selected DiffView file            
+ line-text      | Selected lines content            
+ line-number    | Selected line number              
+ line-count     | Number of lines in the active view
+ repo-path      | Repository file path              
+ repo-workdir   | Work directory path               
 ```
 
 Variables can be specified in shell commands using the syntax:

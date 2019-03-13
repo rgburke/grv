@@ -14,6 +14,7 @@ const (
 	VarTag
 	VarCommit
 	VarFile
+	VarDiffViewFile
 	VarLineText
 	VarLineNumer
 	VarLineCount
@@ -55,6 +56,11 @@ var variableDescriptors = []variableDescriptor{
 		variable:    VarFile,
 		name:        "file",
 		description: "Selected file",
+	},
+	{
+		variable:    VarDiffViewFile,
+		name:        "diff-view-file",
+		description: "Selected DiffView file",
 	},
 	{
 		variable:       VarLineText,
@@ -123,6 +129,7 @@ type GRVVariableGetter interface {
 type GRVVariableSetter interface {
 	GRVVariableGetter
 	SetViewVariable(variable GRVVariable, value string, viewState ViewState)
+	ClearViewVariable(variable GRVVariable, viewState ViewState)
 }
 
 // GRVVariables stores the values of all variables
@@ -151,6 +158,11 @@ func (grvVariables *GRVVariables) SetViewVariable(variable GRVVariable, value st
 	if !activeViewOnlyVariables[variable] || viewState == ViewStateActive {
 		grvVariables.SetVariable(variable, value)
 	}
+}
+
+// ClearViewVariable clears the value of a GRV variable for a view
+func (grvVariables *GRVVariables) ClearViewVariable(variable GRVVariable, viewState ViewState) {
+	grvVariables.SetViewVariable(variable, "", viewState)
 }
 
 // VariableValues returns the current values of all variables

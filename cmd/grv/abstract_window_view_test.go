@@ -237,6 +237,10 @@ func (variables *MockGRVVariableSetter) SetViewVariable(variable GRVVariable, va
 	variables.Called(variable, value, viewState)
 }
 
+func (variables *MockGRVVariableSetter) ClearViewVariable(variable GRVVariable, viewState ViewState) {
+	variables.Called(variable, viewState)
+}
+
 func (variables *MockGRVVariableSetter) VariableValues() map[GRVVariable]string {
 	args := variables.Called()
 	return args.Get(0).(map[GRVVariable]string)

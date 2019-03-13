@@ -331,6 +331,18 @@ func (diffView *DiffView) RenderHelpBar(lineBuilder *LineBuilder) (err error) {
 	return
 }
 
+// OnStateChange updates whether this view is currently active
+func (diffView *DiffView) OnStateChange(viewState ViewState) {
+	diffView.AbstractWindowView.OnStateChange(viewState)
+
+	diffView.lock.Lock()
+	defer diffView.lock.Unlock()
+
+	if viewState != ViewStateInvisible {
+		diffView.setVariables()
+	}
+}
+
 // ViewID returns the diff views ID
 func (diffView *DiffView) ViewID() ViewID {
 	return ViewDiff
@@ -849,6 +861,12 @@ func (diffView *DiffView) setVariables() {
 
 		filePart = strings.TrimRight(filePart, " ")
 		diffView.variables.SetViewVariable(VarFile, filePart, diffView.viewState)
+
+		if diffView.viewState != ViewStateInvisible {
+			diffView.variables.SetViewVariable(VarDiffViewFile, filePart, diffView.viewState)
+		}
+	} else if diffView.viewState != ViewStateInvisible {
+		diffView.variables.ClearViewVariable(VarDiffViewFile, diffView.viewState)
 	}
 
 	return
