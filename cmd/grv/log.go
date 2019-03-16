@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"runtime"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -19,35 +18,17 @@ const (
 
 var logFile string
 
-type fileHook struct{}
-
-func (hook fileHook) Fire(entry *log.Entry) (err error) {
-	pc := make([]uintptr, 5)
-	cnt := runtime.Callers(6, pc)
-
-	for i := 0; i < cnt; i++ {
-		fu := runtime.FuncForPC(pc[i] - 1)
-		name := fu.Name()
-
-		if !strings.Contains(name, logLogrusRepo) {
-			file, line := fu.FileLine(pc[i] - 1)
-			entry.Data["file"] = fmt.Sprintf("%v:%v", path.Base(file), line)
-			break
-		}
-	}
-
-	return
-}
-
-func (hook fileHook) Levels() []log.Level {
-	return log.AllLevels
-}
-
 type logFormatter struct{}
 
 func (formatter logFormatter) Format(entry *log.Entry) ([]byte, error) {
 	var buffer bytes.Buffer
-	file, _ := entry.Data["file"].(string)
+	var file string
+
+	if entry.HasCaller() {
+		file = fmt.Sprintf("%v:%v", path.Base(entry.Caller.File), entry.Caller.Line)
+	} else {
+		file = "Unknown"
+	}
 
 	formatter.formatBracketEntry(&buffer, entry.Time.Format(logFileDateFormat))
 	formatter.formatBracketEntry(&buffer, strings.ToUpper(entry.Level.String()))
@@ -113,7 +94,7 @@ func InitialiseLogging(logLevel, logFilePath string) {
 
 	log.SetOutput(file)
 
-	log.SetFormatter(logFormatter{})
+	log.SetReportCaller(true)
 
-	log.AddHook(fileHook{})
+	log.SetFormatter(logFormatter{})
 }
