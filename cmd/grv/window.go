@@ -418,7 +418,7 @@ func (win *Window) ViewDimensions() ViewDimension {
 
 // Clear resets all cells in the window
 func (win *Window) Clear() {
-	log.Debugf("Clearing window %v", win.id)
+	log.Tracef("Clearing window %v", win.id)
 
 	for _, line := range win.lines {
 		for _, cell := range line.cells {
@@ -460,7 +460,7 @@ func (win *Window) SetRow(rowIndex, startColumn uint, themeComponentID ThemeComp
 // SetSelectedRow sets the row to be highlighted as the selected row
 func (win *Window) SetSelectedRow(rowIndex uint, viewState ViewState) (err error) {
 	active := viewState == ViewStateActive
-	log.Debugf("Set selected rowIndex for window %v to %v with active %v", win.id, rowIndex, active)
+	log.Tracef("Set selected rowIndex for window %v to %v with active %v", win.id, rowIndex, active)
 
 	if rowIndex >= win.rows {
 		return fmt.Errorf("SetSelectedRow: Invalid row index: %v >= %v rows", rowIndex, win.rows)

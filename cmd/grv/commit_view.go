@@ -133,7 +133,6 @@ func (commitView *CommitView) Dispose() {
 
 // Render generates and draws the commit view to the provided window
 func (commitView *CommitView) Render(win RenderWindow) (err error) {
-	log.Debug("Rendering CommitView")
 	commitView.lock.Lock()
 	defer commitView.lock.Unlock()
 

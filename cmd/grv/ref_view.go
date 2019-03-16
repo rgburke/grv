@@ -360,7 +360,6 @@ func (refView *RefView) OnTrackingBranchesUpdated(trackingBranches []*LocalBranc
 
 // Render generates and writes the ref view to the provided window
 func (refView *RefView) Render(win RenderWindow) (err error) {
-	log.Debug("Rendering RefView")
 	refView.lock.Lock()
 	defer refView.lock.Unlock()
 

@@ -79,6 +79,7 @@ func InitialiseLogging(logLevel, logFilePath string) {
 		"WARN":  log.WarnLevel,
 		"INFO":  log.InfoLevel,
 		"DEBUG": log.DebugLevel,
+		"TRACE": log.TraceLevel,
 	}
 
 	if level, ok := logLevels[logLevel]; ok {

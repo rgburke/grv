@@ -75,7 +75,7 @@ func main() {
 func parseArgs() *grvArgs {
 	repoFilePathPtr := flag.String("repoFilePath", mnRepoFilePathDefault, "Repository file path")
 	workTreeFilePathPtr := flag.String("workTreeFilePath", mnWorkTreeFilePathDefault, "Work tree file path")
-	logLevelPtr := flag.String("logLevel", MnLogLevelDefault, "Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG]")
+	logLevelPtr := flag.String("logLevel", MnLogLevelDefault, "Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG|TRACE]")
 	logFilePathPtr := flag.String("logFile", mnLogFilePathDefault, "Log file path")
 	versionPtr := flag.Bool("version", false, "Print version")
 	readOnlyPtr := flag.Bool("readOnly", false, "Run grv in read only mode")

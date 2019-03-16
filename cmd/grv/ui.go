@@ -367,7 +367,7 @@ func (ui *NCursesUI) Update(wins []*Window) (err error) {
 }
 
 func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
-	log.Debug("Creating and updating NCurses windows")
+	log.Trace("Creating and updating NCurses windows")
 
 	winMap := make(map[*Window]bool)
 
@@ -380,13 +380,13 @@ func (ui *NCursesUI) createAndUpdateWindows(wins []*Window) (err error) {
 			nwin.Resize(int(win.rows), int(win.cols))
 			nwin.MoveWindow(int(win.startRow), int(win.startCol))
 			nwin.setHidden(false)
-			log.Debugf("Moving NCurses window %v to row:%v,col:%v", win.ID(), win.startRow, win.startCol)
+			log.Tracef("Moving NCurses window %v to row:%v,col:%v", win.ID(), win.startRow, win.startCol)
 		} else if !nwin.hidden() {
 			nwin.Erase()
 			nwin.Resize(0, 0)
 			nwin.NoutRefresh()
 			nwin.setHidden(true)
-			log.Debugf("Hiding NCurses window %v", win.ID())
+			log.Tracef("Hiding NCurses window %v", win.ID())
 		}
 	}
 
@@ -451,7 +451,7 @@ func (ui *NCursesUI) drawWindows(wins []*Window) (err error) {
 }
 
 func (ui *NCursesUI) drawWindow(win *Window, nwin *nCursesWindow) {
-	log.Debugf("Drawing window %v", win.ID())
+	log.Tracef("Drawing window %v", win.ID())
 
 	nwin.SetBackground(gc.ColorPair(ui.colorPair(CmpAllviewDefault)))
 

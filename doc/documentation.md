@@ -55,7 +55,7 @@ GRV accepts the following command line arguments:
 -logFile string
 	Log file path (default "grv.log")
 -logLevel string
-	Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG] (default "NONE")
+	Logging level [NONE|PANIC|FATAL|ERROR|WARN|INFO|DEBUG|TRACE] (default "NONE")
 -readOnly
 	Run grv in read only mode
 -repoFilePath string

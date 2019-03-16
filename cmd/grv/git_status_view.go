@@ -157,8 +157,6 @@ func (gitStatusView *GitStatusView) Render(win RenderWindow) (err error) {
 	gitStatusView.lock.Lock()
 	defer gitStatusView.lock.Unlock()
 
-	log.Debug("Rendering GitStatusView")
-
 	gitStatusView.lastViewDimension = win.ViewDimensions()
 
 	if gitStatusView.status == nil {

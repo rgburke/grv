@@ -1,9 +1,5 @@
 package main
 
-import (
-	log "github.com/Sirupsen/logrus"
-)
-
 // HelpBarView manages displaying help information in the help bar
 type HelpBarView struct {
 	helpRenderer HelpRenderer
@@ -54,8 +50,6 @@ func (helpBarView *HelpBarView) ViewID() ViewID {
 
 // Render generates and writes the help view to the provided window
 func (helpBarView *HelpBarView) Render(win RenderWindow) (err error) {
-	log.Debug("Rendering HelpBarView")
-
 	lineBuilder, err := win.LineBuilder(0, 1)
 	if err != nil {
 		return

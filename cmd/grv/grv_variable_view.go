@@ -33,8 +33,6 @@ func (grvVariableView *GRVVariableView) Render(win RenderWindow) (err error) {
 	grvVariableView.lock.Lock()
 	defer grvVariableView.lock.Unlock()
 
-	log.Debug("Rendering GRVVariableView")
-
 	grvVariableView.lastViewDimension = win.ViewDimensions()
 
 	variables := grvVariableView.variables.VariableValues()
