@@ -235,10 +235,15 @@ func (lineBuilder *LineBuilder) Append(format string, args ...interface{}) *Line
 
 // AppendWithStyle adds the provided text with style information to the end of the line
 func (lineBuilder *LineBuilder) AppendWithStyle(themeComponentID ThemeComponentID, format string, args ...interface{}) *LineBuilder {
-	str := fmt.Sprintf(format, args...)
 	line := lineBuilder.line
+	var text string
+	if len(args) > 0 {
+		text = fmt.Sprintf(format, args...)
+	} else {
+		text = format
+	}
 
-	for _, codePoint := range str {
+	for _, codePoint := range text {
 		renderedCodePoints := DetermineRenderedCodePoint(codePoint, lineBuilder.column, lineBuilder.config)
 
 		for _, renderedCodePoint := range renderedCodePoints {
