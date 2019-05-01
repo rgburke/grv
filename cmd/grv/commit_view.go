@@ -1016,6 +1016,7 @@ func showActionsForCommit(commitView *CommitView, action Action) (err error) {
 					cols: 60,
 				},
 				config: ContextMenuConfig{
+					ActionView: ViewCommit,
 					Entries: []ContextMenuEntry{
 						{
 							DisplayName: "Checkout commit",

@@ -222,9 +222,10 @@ var themeComponents = map[string]ThemeComponentID{
 	cfErrorView + ".Footer": CmpErrorViewFooter,
 	cfErrorView + ".Errors": CmpErrorViewErrors,
 
-	cfContextMenuView + ".Title":   CmpContextMenuTitle,
-	cfContextMenuView + ".Content": CmpContextMenuContent,
-	cfContextMenuView + ".Footer":  CmpContextMenuFooter,
+	cfContextMenuView + ".Title":      CmpContextMenuTitle,
+	cfContextMenuView + ".Content":    CmpContextMenuContent,
+	cfContextMenuView + ".KeyMapping": CmpContextMenuKeyMapping,
+	cfContextMenuView + ".Footer":     CmpContextMenuFooter,
 
 	cfCommandOutputView + ".Title":   CmpCommandOutputTitle,
 	cfCommandOutputView + ".Command": CmpCommandOutputCommand,

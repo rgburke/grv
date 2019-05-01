@@ -311,6 +311,10 @@ func NewClassicTheme() MutableTheme {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorNone),
 			},
+			CmpContextMenuKeyMapping: {
+				bgcolor: NewSystemColor(ColorNone),
+				fgcolor: NewSystemColor(ColorBlue),
+			},
 			CmpContextMenuFooter: {
 				bgcolor: NewSystemColor(ColorNone),
 				fgcolor: NewSystemColor(ColorCyan),
@@ -794,6 +798,10 @@ func NewSolarizedTheme() MutableTheme {
 			CmpContextMenuContent: {
 				bgcolor: NewColorNumber(solarizedBlack),
 				fgcolor: NewColorNumber(solarizedWhite),
+			},
+			CmpContextMenuKeyMapping: {
+				bgcolor: NewColorNumber(solarizedBlack),
+				fgcolor: NewColorNumber(solarizedBlue),
 			},
 			CmpContextMenuFooter: {
 				bgcolor: NewColorNumber(solarizedBlack),

@@ -491,8 +491,11 @@ var actionDescriptors = map[ActionType]ActionDescriptor{
 	},
 	ActionCheckoutPreviousRef: {
 		actionKey:      "<grv-checkout-previous-ref>",
-		actionCategory: ActionCategoryGeneral,
+		actionCategory: ActionCategoryViewSpecific,
 		description:    "Checkout previous ref",
+		keyBindings: map[ViewID][]string{
+			ViewRef: {"-"},
+		},
 	},
 	ActionCheckoutCommit: {
 		actionKey:      "<grv-checkout-commit>",

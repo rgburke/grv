@@ -125,7 +125,6 @@ The following tables contain default and user configured key bindings
 ```
  Key Bindings | Action                       | Description                                     
  -------------+------------------------------+--------------------------------------------------
- None         | <grv-checkout-previous-ref>  | Checkout previous ref                           
  None         | <grv-exit>                   | Exit GRV                                        
  :            | <grv-prompt>                 | GRV Command prompt                              
  None         | <grv-remove-tab>             | Remove the active tab                           
@@ -140,6 +139,7 @@ The following tables contain default and user configured key bindings
 ```
  Key Bindings | Action                           | Description                               
  -------------+----------------------------------+--------------------------------------------
+ -            | <grv-checkout-previous-ref>      | Checkout previous ref                     
  c            | <grv-checkout-ref>               | Checkout ref                              
  T            | <grv-create-annotated-tag>       | Create a new annotated tag                
  B            | <grv-create-branch-and-checkout> | Create a new branch and checkout          
@@ -590,6 +590,7 @@ CommitView.Title
 
 ContextMenuView.Content
 ContextMenuView.Footer
+ContextMenuView.KeyMapping
 ContextMenuView.Title
 
 DiffView.AddedLine

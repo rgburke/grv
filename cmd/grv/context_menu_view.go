@@ -21,9 +21,10 @@ type ContextMenuEntry struct {
 // ContextMenuConfig is the configuration for the ContextMenuView
 // It contains all context menu contextMenuConfig and an observer
 type ContextMenuConfig struct {
-	Entity   string
-	Entries  []ContextMenuEntry
-	OnSelect OnContextMenuEntrySelected
+	Entity     string
+	Entries    []ContextMenuEntry
+	OnSelect   OnContextMenuEntrySelected
+	ActionView ViewID
 }
 
 type contextMenuViewHandler func(*ContextMenuView, Action) error
@@ -51,16 +52,65 @@ func NewContextMenuView(contextMenuConfig ContextMenuConfig, channels Channels, 
 	}
 
 	contextMenuView.AbstractWindowView = NewAbstractWindowView(contextMenuView, channels, config, variables, &contextMenuView.lock, "menu item")
-
-	if contextMenuConfig.Entity == "" {
-		contextMenuView.contextMenuConfig.Entity = "Action"
-	}
+	contextMenuView.processConfig()
 
 	return contextMenuView
 }
 
+func (contextMenuView *ContextMenuView) processConfig() {
+	contextMenuConfig := &contextMenuView.contextMenuConfig
+
+	if contextMenuConfig.Entity == "" {
+		contextMenuConfig.Entity = "Action"
+	}
+
+	if contextMenuConfig.ActionView != ViewAll {
+		var keys []string
+		maxKeyWidth := 0
+
+		for i := uint(0); i < contextMenuView.rows(); i++ {
+			entry := &contextMenuConfig.Entries[i]
+			var key string
+
+			if action, ok := entry.Value.(Action); ok {
+				mappings := contextMenuView.config.KeyStrings(action.ActionType, ViewHierarchy{contextMenuConfig.ActionView})
+
+				if len(mappings) > 0 {
+					key = mappings[len(mappings)-1].keystring
+				}
+			}
+
+			if key == "" {
+				key = "None"
+			}
+
+			keys = append(keys, key)
+
+			width := StringWidth(key)
+			if width > maxKeyWidth {
+				maxKeyWidth = width
+			}
+		}
+
+		for keyIndex, key := range keys {
+			if width := StringWidth(key); width < maxKeyWidth {
+				key = fmt.Sprintf("%v%v", key, strings.Repeat(" ", maxKeyWidth-width))
+			}
+
+			entry := &contextMenuConfig.Entries[keyIndex]
+			entry.DisplayName = fmt.Sprintf("%v  %v", key, entry.DisplayName)
+		}
+	}
+
+	return
+}
+
 // ViewID returns the ViewID of the context menu view
 func (contextMenuView *ContextMenuView) ViewID() ViewID {
+	if contextMenuView.contextMenuConfig.ActionView != ViewAll {
+		return contextMenuView.contextMenuConfig.ActionView
+	}
+
 	return ViewContextMenu
 }
 
@@ -80,17 +130,28 @@ func (contextMenuView *ContextMenuView) Render(win RenderWindow) (err error) {
 	viewRowIndex := viewPos.ViewStartRowIndex()
 	startColumn := viewPos.ViewStartColumn()
 
-	for rowIndex := uint(0); rowIndex < winRows && viewRowIndex < viewRows; rowIndex++ {
-		entry := contextMenuView.contextMenuConfig.Entries[viewRowIndex]
+	win.ApplyStyle(CmpContextMenuContent)
 
-		if err = win.SetRow(rowIndex+1, startColumn, CmpNone, " %v", entry.DisplayName); err != nil {
+	var lineBuilder *LineBuilder
+	for rowIndex := uint(0); rowIndex < winRows && viewRowIndex < viewRows; rowIndex++ {
+		if lineBuilder, err = win.LineBuilder(rowIndex+1, startColumn); err != nil {
 			return
+		}
+
+		entry := contextMenuView.contextMenuConfig.Entries[viewRowIndex]
+		if contextMenuView.contextMenuConfig.ActionView != ViewAll {
+			if displayParts := strings.SplitN(entry.DisplayName, " ", 2); len(displayParts) == 2 {
+				lineBuilder.AppendWithStyle(CmpContextMenuKeyMapping, " %v ", displayParts[0]).
+					AppendWithStyle(CmpContextMenuContent, "%v", displayParts[1])
+			} else {
+				return fmt.Errorf(`Expected entry of format "key  DisplayText" but found %v`, entry.DisplayName)
+			}
+		} else {
+			lineBuilder.AppendWithStyle(CmpContextMenuContent, " %v", entry.DisplayName)
 		}
 
 		viewRowIndex++
 	}
-
-	win.ApplyStyle(CmpContextMenuContent)
 
 	if err = win.SetSelectedRow(viewPos.SelectedRowIndex()+1, ViewStateActive); err != nil {
 		return
@@ -159,8 +220,27 @@ func (contextMenuView *ContextMenuView) HandleAction(action Action) (err error) 
 		err = handler(contextMenuView, action)
 	} else if handled, err = contextMenuView.AbstractWindowView.HandleAction(action); handled {
 		log.Debugf("Action handled by AbstractWindowView")
+	} else if handled, err = contextMenuView.handleMenuAction(action); handled {
+		log.Debugf("Menu action handled")
 	} else {
 		log.Debugf("Action not handled")
+	}
+
+	return
+}
+
+func (contextMenuView *ContextMenuView) handleMenuAction(action Action) (handled bool, err error) {
+	if contextMenuView.contextMenuConfig.ActionView == ViewAll {
+		return
+	}
+
+	for entryIndex, entry := range contextMenuView.contextMenuConfig.Entries {
+		if entryAction, ok := entry.Value.(Action); ok && entryAction.ActionType == action.ActionType {
+			contextMenuView.viewPos().SetActiveRowIndex(uint(entryIndex))
+			err = selectContextMenuEntry(contextMenuView, Action{ActionType: ActionSelect})
+			handled = true
+			break
+		}
 	}
 
 	return

@@ -105,6 +105,7 @@ const (
 
 	CmpContextMenuTitle
 	CmpContextMenuContent
+	CmpContextMenuKeyMapping
 	CmpContextMenuFooter
 
 	CmpCommandOutputTitle
