@@ -1,3 +1,4 @@
 /grv
 /grv.log
 .*.sw*
+/build/

@@ -1,7 +1,7 @@
 package main
 
 import (
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // SelectableRowChildWindowView extends ChildWindowView to handle

@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
-
-	slice "github.com/bradfitz/slice"
 )
 
 const (
@@ -341,7 +340,7 @@ func GenerateConfigCommandHelpSections(config Config) (helpSections []*HelpSecti
 		commands = append(commands, command)
 	}
 
-	slice.Sort(commands, func(i, j int) bool {
+	sort.Slice(commands, func(i, j int) bool {
 		return commands[i] < commands[j]
 	})
 

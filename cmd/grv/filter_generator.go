@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	glob "github.com/gobwas/glob"
+	log "github.com/sirupsen/logrus"
 )
 
 // Filter is a function which returns true if the argument matches the filter and false otherwise

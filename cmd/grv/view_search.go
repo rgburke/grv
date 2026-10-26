@@ -3,7 +3,7 @@ package main
 import (
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // SearchableView is a view that supports searching functionality

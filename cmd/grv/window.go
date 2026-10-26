@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"unicode"
 
-	log "github.com/Sirupsen/logrus"
 	rw "github.com/mattn/go-runewidth"
 	gc "github.com/rgburke/goncurses"
+	log "github.com/sirupsen/logrus"
 )
 
 // AcsChar is an Alternative Character set character

@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
-	slice "github.com/bradfitz/slice"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -493,23 +493,23 @@ func (refSet *refSet) updateRefs(refs []Ref) (err error) {
 		}
 	}
 
-	slice.Sort(localBranches, func(i, j int) bool {
+	sort.Slice(localBranches, func(i, j int) bool {
 		return localBranches[i].Name() < localBranches[j].Name()
 	})
-	slice.Sort(remoteBranches, func(i, j int) bool {
+	sort.Slice(remoteBranches, func(i, j int) bool {
 		return remoteBranches[i].Name() < remoteBranches[j].Name()
 	})
-	slice.Sort(tags, func(i, j int) bool {
+	sort.Slice(tags, func(i, j int) bool {
 		return tags[i].Name() < tags[j].Name()
 	})
 
-	slice.Sort(addedRefs, func(i, j int) bool {
+	sort.Slice(addedRefs, func(i, j int) bool {
 		return addedRefs[i].Name() < addedRefs[j].Name()
 	})
-	slice.Sort(removedRefs, func(i, j int) bool {
+	sort.Slice(removedRefs, func(i, j int) bool {
 		return removedRefs[i].Name() < removedRefs[j].Name()
 	})
-	slice.Sort(updatedRefs, func(i, j int) bool {
+	sort.Slice(updatedRefs, func(i, j int) bool {
 		return updatedRefs[i].NewRef.Name() < updatedRefs[j].NewRef.Name()
 	})
 

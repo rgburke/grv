@@ -8,11 +8,11 @@ import (
 	"path"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
-	logLogrusRepo     = "github.com/Sirupsen/logrus"
+	logLogrusRepo     = "github.com/sirupsen/logrus"
 	logFileDateFormat = "2006-01-02 15:04:05.000-0700"
 )
 

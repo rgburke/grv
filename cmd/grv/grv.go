@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	fs "github.com/rjeczalik/notify"
+	log "github.com/sirupsen/logrus"
 )
 
 const (

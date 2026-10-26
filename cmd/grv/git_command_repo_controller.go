@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // GitCommandRepoController uses git shell commands

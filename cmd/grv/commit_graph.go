@@ -4,7 +4,7 @@ import (
 	"math"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // TODO: Rewrite this mess

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // The different prompt types grv uses
@@ -329,7 +329,7 @@ func (statusBarView *StatusBarView) RenderHelpBar(lineBuilder *LineBuilder) (err
 	}
 
 	if message != "" {
-		lineBuilder.AppendWithStyle(CmpHelpbarviewSpecial, message)
+		lineBuilder.AppendWithStyle(CmpHelpbarviewSpecial, "%v", message)
 	}
 
 	return

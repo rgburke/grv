@@ -12,8 +12,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	log "github.com/Sirupsen/logrus"
-	slice "github.com/bradfitz/slice"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -283,7 +282,7 @@ func ThemeComponentNames() (themeComponentNames []string) {
 		themeComponentNames = append(themeComponentNames, themeComponent)
 	}
 
-	slice.Sort(themeComponentNames, func(i, j int) bool {
+	sort.Slice(themeComponentNames, func(i, j int) bool {
 		return themeComponentNames[i] < themeComponentNames[j]
 	})
 
@@ -1075,9 +1074,9 @@ func (config *Configuration) KeyStrings(actionType ActionType, viewHierarchy Vie
 		keystrings = append(keystrings, config.keyBindings.KeyStrings(actionType, viewHierarchy[i])...)
 	}
 
-	sort.Stable(slice.SortInterface(keystrings, func(i, j int) bool {
+	sort.SliceStable(keystrings, func(i, j int) bool {
 		return !keystrings[i].userDefinedBinding && keystrings[j].userDefinedBinding
-	}))
+	})
 
 	return
 }
@@ -1141,7 +1140,7 @@ func (config *Configuration) generateConfigVariableHelpSection() (helpSection *H
 		configVariableNames = append(configVariableNames, configVariableName)
 	}
 
-	slice.Sort(configVariableNames, func(i, j int) bool {
+	sort.Slice(configVariableNames, func(i, j int) bool {
 		return configVariableNames[i] < configVariableNames[j]
 	})
 

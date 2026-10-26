@@ -1,9 +1,8 @@
 package main
 
 import (
+	"sort"
 	"strings"
-
-	slice "github.com/bradfitz/slice"
 )
 
 // CreateCommitFilter constructs a commit filter from the provided query
@@ -143,7 +142,7 @@ func GenerateCommitFieldHelpSection(config Config) *HelpSection {
 		commitFieldNames = append(commitFieldNames, commitFieldName)
 	}
 
-	slice.Sort(commitFieldNames, func(i, j int) bool {
+	sort.Slice(commitFieldNames, func(i, j int) bool {
 		return commitFieldNames[i] < commitFieldNames[j]
 	})
 

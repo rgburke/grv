@@ -1,3 +1,8 @@
+//go:build ignore
+
+// Release helper for the upstream rgburke/grv repository. Not part of the grv
+// build; its dependencies are intentionally not tracked in go.mod.
+
 package main
 
 import (

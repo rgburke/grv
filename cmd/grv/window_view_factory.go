@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // WindowViewFactory provides a generic interface

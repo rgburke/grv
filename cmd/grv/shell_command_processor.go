@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // ShellCommandOutputType represents a way command output can be handled

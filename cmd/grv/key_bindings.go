@@ -5,10 +5,10 @@ import (
 	"io"
 	"os/exec"
 	"regexp"
+	"sort"
 	"strings"
 
-	slice "github.com/bradfitz/slice"
-	pt "github.com/tchap/go-patricia/patricia"
+	pt "github.com/tchap/go-patricia/v2/patricia"
 )
 
 // QuestionResponse represents a response to a question
@@ -1042,7 +1042,7 @@ func (keyBindingManager *KeyBindingManager) generateViewSpecificKeyBindingHelpSe
 		viewSpecificIDs = append(viewSpecificIDs, viewID)
 	}
 
-	slice.Sort(viewSpecificIDs, func(i, j int) bool {
+	sort.Slice(viewSpecificIDs, func(i, j int) bool {
 		return viewSpecificIDs[i] < viewSpecificIDs[j]
 	})
 
@@ -1096,7 +1096,7 @@ func (keyBindingManager *KeyBindingManager) generateKeyBindingsTable(config Conf
 		}
 	}
 
-	slice.Sort(matchingActionDescriptors, func(i, j int) bool {
+	sort.Slice(matchingActionDescriptors, func(i, j int) bool {
 		return matchingActionDescriptors[i].actionDescriptor.actionKey < matchingActionDescriptors[j].actionDescriptor.actionKey
 	})
 

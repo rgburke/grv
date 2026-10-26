@@ -9,14 +9,14 @@ import (
 	"os/exec"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
-	slice "github.com/bradfitz/slice"
-	git "gopkg.in/libgit2/git2go.v27"
+	git "github.com/libgit2/git2go/v27"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -502,7 +502,7 @@ func (status *Status) StatusTypes() (statusTypes []StatusType) {
 		statusTypes = append(statusTypes, statusType)
 	}
 
-	slice.Sort(statusTypes, func(i, j int) bool {
+	sort.Slice(statusTypes, func(i, j int) bool {
 		return statusTypes[i] < statusTypes[j]
 	})
 

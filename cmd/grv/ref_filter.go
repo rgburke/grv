@@ -1,9 +1,8 @@
 package main
 
 import (
+	"sort"
 	"strings"
-
-	slice "github.com/bradfitz/slice"
 )
 
 // CreateRefFilter creates a ref filter from the provided query
@@ -88,7 +87,7 @@ func GenerateRefFieldHelpSection(config Config) *HelpSection {
 		refFieldNames = append(refFieldNames, refFieldName)
 	}
 
-	slice.Sort(refFieldNames, func(i, j int) bool {
+	sort.Slice(refFieldNames, func(i, j int) bool {
 		return refFieldNames[i] < refFieldNames[j]
 	})
 

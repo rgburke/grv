@@ -3,7 +3,7 @@ package main
 import (
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type remoteViewHandler func(*RemoteView, Action) error

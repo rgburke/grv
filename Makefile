@@ -1,83 +1,72 @@
 GRV_VERSION=$(shell git describe --long --tags --dirty --always --match=v*.*.* 2>/dev/null || echo 'Unknown')
 GRV_BUILD_DATETIME=$(shell date '+%Y-%m-%d %H:%M:%S %Z')
 
-GOCMD=go
-GOLINT=golint
+GOCMD?=go
 
 BINARY?=grv
 GRV_SOURCE_DIR=./cmd/grv
-GRV_LDFLAGS=-X 'main.version=$(GRV_VERSION)' -X 'main.buildDateTime=$(GRV_BUILD_DATETIME)'
-GRV_STATIC_LDFLAGS=-extldflags '-lncurses -ltinfo -lgpm -static'
-GRV_BUILD_FLAGS=--tags static -ldflags "$(GRV_LDFLAGS)"
-GRV_STATIC_BUILD_FLAGS=--tags static -ldflags "$(GRV_LDFLAGS) $(GRV_STATIC_LDFLAGS)"
-
 GRV_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-GOPATH_DIR:=$(shell go env GOPATH)
-GOBIN_DIR:=$(GOPATH_DIR)/bin
+GOBIN_DIR:=$(shell $(GOCMD) env GOPATH)/bin
 
-GIT2GO_VERSION=27
-GIT2GO_DIR:=$(GRV_SOURCE_DIR)/vendor/gopkg.in/libgit2/git2go.v$(GIT2GO_VERSION)
-LIBGIT2_DIR=$(GIT2GO_DIR)/vendor/libgit2
-GIT2GO_PATCH=git2go.v$(GIT2GO_VERSION).patch
+# libgit2 v0.27 (required by git2go v27) is built from source and linked
+# statically. pkg-config is pointed at the local install so git2go finds it.
+LIBGIT2_VERSION?=0.27.10
+LIBGIT2_PREFIX?=$(GRV_DIR)build/libgit2
+LIBGIT2_PC=$(LIBGIT2_PREFIX)/lib/pkgconfig/libgit2.pc
+export PKG_CONFIG_PATH:=$(LIBGIT2_PREFIX)/lib/pkgconfig$(if $(PKG_CONFIG_PATH),:$(PKG_CONFIG_PATH))
+
+GRV_TAGS=static system_libgit2
+GRV_LDFLAGS=-X 'main.version=$(GRV_VERSION)' -X 'main.buildDateTime=$(GRV_BUILD_DATETIME)'
+GRV_STATIC_LDFLAGS=-linkmode external -extldflags '-static'
+GRV_BUILD_FLAGS=-tags '$(GRV_TAGS)' -ldflags "$(GRV_LDFLAGS)"
+GRV_STATIC_BUILD_FLAGS=-tags '$(GRV_TAGS)' -ldflags "$(GRV_LDFLAGS) $(GRV_STATIC_LDFLAGS)"
+
+# On macOS readline comes from Homebrew (the system one is libedit)
+ifeq ($(shell uname -s),Darwin)
+BREW_READLINE:=$(shell brew --prefix readline 2>/dev/null)
+ifneq ($(BREW_READLINE),)
+export CGO_CFLAGS:=$(CGO_CFLAGS) -I$(BREW_READLINE)/include
+export CGO_LDFLAGS:=$(CGO_LDFLAGS) -L$(BREW_READLINE)/lib
+endif
+endif
 
 all: $(BINARY)
 
-$(BINARY): build-libgit2
+.PHONY: $(BINARY)
+$(BINARY): $(LIBGIT2_PC)
 	$(GOCMD) build $(GRV_BUILD_FLAGS) -o $(BINARY) $(GRV_SOURCE_DIR)
 
-.PHONY: build-only
-build-only:
-	make -C $(GIT2GO_DIR) install-static
-	$(GOCMD) build $(GRV_BUILD_FLAGS) -o $(BINARY) $(GRV_SOURCE_DIR)
+$(LIBGIT2_PC):
+	LIBGIT2_VERSION=$(LIBGIT2_VERSION) ./script/build-libgit2.sh "$(LIBGIT2_PREFIX)"
 
 .PHONY: build-libgit2
-build-libgit2: apply-patches
-	make -C $(GIT2GO_DIR) install-static
+build-libgit2: $(LIBGIT2_PC)
 
 .PHONY: install
 install: $(BINARY)
 	install -m755 -d $(GOBIN_DIR)
 	install -m755 $(BINARY) $(GOBIN_DIR)
 
-.PHONY: update
-update:
-	git submodule -q foreach --recursive git reset -q --hard
-	git submodule update --init --recursive
-
-.PHONY: update-test
-update-test:
-	$(GOCMD) get golang.org/x/lint/golint
-	$(GOCMD) get github.com/stretchr/testify/mock
-	$(GOCMD) get github.com/stretchr/testify/assert
-
-.PHONY: apply-patches
-apply-patches: update
-	if patch --dry-run -N -d $(GIT2GO_DIR) -p1 < $(GIT2GO_PATCH) >/dev/null; then \
-		patch -d $(GIT2GO_DIR) -p1 < $(GIT2GO_PATCH); \
-	fi
-
-# Only tested on Ubuntu.
-# Requires dependencies static library versions to be present alongside dynamic ones
+# Fully static binary. Linux only: requires the static versions of
+# ncurses, readline and gpm to be installed (e.g. the -dev packages on Ubuntu).
 .PHONY: static
-static: build-libgit2
-	$(GOCMD) build $(GRV_STATIC_BUILD_FLAGS) -o $(BINARY) $(GRV_SOURCE_DIR)
+static: $(LIBGIT2_PC)
+	CGO_LDFLAGS="$(CGO_LDFLAGS) -lncursesw -ltinfo" \
+		$(GOCMD) build $(GRV_STATIC_BUILD_FLAGS) -o $(BINARY) $(GRV_SOURCE_DIR)
 
 .PHONY: test
-test: $(BINARY) doc update-test
-	$(GOCMD) test $(GRV_BUILD_FLAGS) $(GRV_SOURCE_DIR)
-	# $(GOCMD) vet $(GRV_SOURCE_DIR)
-	$(GOLINT) -set_exit_status $(GRV_SOURCE_DIR)
+test: $(LIBGIT2_PC)
+	$(GOCMD) vet -tags '$(GRV_TAGS)' $(GRV_SOURCE_DIR)
+	$(GOCMD) test -tags '$(GRV_TAGS)' $(GRV_SOURCE_DIR)
 
 .PHONY: doc
 doc: $(BINARY)
 	@GRV_GENERATE_DOCUMENTATION=1 ./$(BINARY)
 
-.PHONY: update-latest-github-release
-update-latest-github-release:
-	$(GOCMD) get github.com/google/go-github/github
-	$(GOCMD) get golang.org/x/oauth2
-	$(GOCMD) run util/update_latest_release.go
-
 .PHONY: clean
 clean:
 	rm -f $(BINARY)
+
+.PHONY: distclean
+distclean: clean
+	rm -rf $(GRV_DIR)build

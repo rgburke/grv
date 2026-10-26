@@ -1,0 +1,103 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  LIBGIT2_VERSION: "0.27.10"
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-amd64
+            os: ubuntu-24.04
+          - name: macos-arm64
+            os: macos-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: stable
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake curl pkg-config \
+            libncurses-dev libreadline-dev
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install readline pkgconf cmake
+
+      - name: Cache libgit2
+        uses: actions/cache@v6
+        with:
+          path: build/libgit2
+          key: libgit2-${{ env.LIBGIT2_VERSION }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('script/build-libgit2.sh') }}
+
+      - name: Build libgit2
+        run: script/ci-run.sh "Build libgit2" make build-libgit2
+
+      - name: Tidy Go modules
+        run: go mod tidy
+
+      - name: Build
+        run: script/ci-run.sh "Build" make grv
+
+      - name: Test
+        run: script/ci-run.sh "Test" make test
+
+      - name: Check generated documentation is up to date
+        run: |
+          make doc
+          git diff --exit-code doc
+
+      - name: Smoke test
+        run: ./grv -version
+
+      - name: Build static binary (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          make clean
+          script/ci-run.sh "Static build" make static
+          file grv
+          ./grv -version
+
+      - name: Check go.mod and go.sum are tidy
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain go.mod go.sum)" ]; then
+            echo "go.mod/go.sum are not tidy; run 'go mod tidy' and commit the result"
+            # Annotations are truncated after a few KB, so report in chunks
+            for f in go.mod go.sum; do
+              split -l 20 "$f" "/tmp/chunk-$f-"
+              for c in /tmp/chunk-$f-*; do
+                echo "::error title=Untidy $f ($(basename "$c"))::$(awk 'BEGIN { ORS="%0A" } { print }' "$c")"
+              done
+            done
+            exit 1
+          fi
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: grv-${{ matrix.name }}
+          path: grv
+          if-no-files-found: error

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	glob "github.com/gobwas/glob"
+	log "github.com/sirupsen/logrus"
 )
 
 // FieldTypeDescriptor provides the type of the provided field (if it exists)

@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type gitStatusViewHandler func(*GitStatusView, Action) error

@@ -257,7 +257,7 @@ func (tableFormatter *TableFormatter) RenderRow(win RenderWindow, winStartRowInd
 	}
 
 	if border {
-		lineBuilder.Append(strings.Repeat(" ", int(tableFormatter.borderColWidth)))
+		lineBuilder.Append("%v", strings.Repeat(" ", int(tableFormatter.borderColWidth)))
 	}
 
 	rowIndex := renderedRowIndex
@@ -425,7 +425,7 @@ func (tableFormatter *TableFormatter) PadCells(border bool) (err error) {
 			maxColWidth := tableFormatter.maxColWidths[colIndex]
 
 			if width < maxColWidth {
-				if err = tableFormatter.AppendToCell(uint(rowIndex), uint(colIndex), strings.Repeat(" ", int(maxColWidth-width))); err != nil {
+				if err = tableFormatter.AppendToCell(uint(rowIndex), uint(colIndex), "%v", strings.Repeat(" ", int(maxColWidth-width))); err != nil {
 					return
 				}
 			}

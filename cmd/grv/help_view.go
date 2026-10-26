@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // HelpSectionText specifies help section text and its style
@@ -97,7 +97,7 @@ func (helpSection *HelpSection) renderDescription(win RenderWindow, winStartRowI
 			spacing += "  "
 		}
 
-		lineBuilder.Append(spacing).AppendWithStyle(themeComponentID, "%v", descriptionLine.text)
+		lineBuilder.Append("%v", spacing).AppendWithStyle(themeComponentID, "%v", descriptionLine.text)
 	}
 
 	return

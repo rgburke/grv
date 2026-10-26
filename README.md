@@ -1,4 +1,4 @@
-# GRV - Git Repository Viewer [![Build Status](https://travis-ci.org/rgburke/grv.svg?branch=master)](https://travis-ci.org/rgburke/grv)
+# GRV - Git Repository Viewer [![Build](https://github.com/rgburke/grv/actions/workflows/build.yml/badge.svg)](https://github.com/rgburke/grv/actions/workflows/build.yml)
 
 GRV is a terminal based interface for viewing Git repositories. It allows
 refs, commits and diffs to be viewed, searched and filtered. The behaviour
@@ -63,26 +63,37 @@ cd /usr/ports/devel/grv && make install clean
 
 ## Build instructions
 
-Go version 1.8 or later is required. GRV depends on the following libraries:
+A recent Go toolchain (Go modules are used) and a C compiler are required.
+GRV depends on the following libraries and tools:
 
  - libncursesw
  - libreadline
- - libcurl
- - cmake (to build libgit2)
+ - pkg-config
+ - cmake and curl (to download and build libgit2)
 
-Building GRV on OSX requires homebrew, and for `readline`, `pkg-config`, and `cmake` to be installed using homebrew:
-
-```
-brew install readline pkg-config cmake
-```
-
-To install GRV run:
+On Debian/Ubuntu these can be installed with:
 
 ```
-go get -d github.com/rgburke/grv/cmd/grv
-cd $GOPATH/src/github.com/rgburke/grv
+sudo apt-get install build-essential cmake curl pkg-config libncurses-dev libreadline-dev
+```
+
+On macOS install the dependencies using homebrew:
+
+```
+brew install readline pkgconf cmake
+```
+
+To build and install GRV run:
+
+```
+git clone https://github.com/rgburke/grv.git
+cd grv
 make install
 ```
+
+This downloads libgit2 v0.27 (the version required by git2go v27), builds it
+statically into `./build/libgit2` and links it into GRV. The binary is
+installed to `$(go env GOPATH)/bin`. To only build the binary run `make`.
 
 To install grv with an alternative binary name change the last step to:
 
@@ -92,10 +103,4 @@ make install BINARY=NewBinaryName
 
 where `NewBinaryName` is the alternative name to use instead.
 
-The steps above will install GRV to `$GOPATH/bin`. A static libgit2 will be built and
-included in GRV when built this way. Alternatively if libgit2 version 0.27 is
-installed on your system GRV can be built normally:
-
-```
-go install ./cmd/grv
-```
+On Linux a fully static binary can be built with `make static`.
